@@ -20,7 +20,7 @@ export type StoredMapGeocodingRuntimeConfig = Readonly<{
   id: string;
   instanceId: string;
   enabled: boolean;
-  provider: 'geoapify' | 'custom';
+  provider: InstanceInterfaceMapGeocoding['config']['provider'];
   styleUrl: string;
   autocompleteEnabled: boolean;
   geocodeEnabled: boolean;
@@ -259,7 +259,12 @@ export const mapRecordToStoredEntry = (
         parseSecretConfig(record.secretConfigCiphertext, record.id).apiKey?.trim()
       ),
       config: {
-        provider: coerceText(record.publicConfig.provider) === 'custom' ? 'custom' : 'geoapify',
+        provider:
+          record.publicConfig.provider === 'mapstick'
+            ? 'mapstick'
+            : coerceText(record.publicConfig.provider) === 'custom'
+              ? 'custom'
+              : 'geoapify',
         styleUrl: coerceText(record.publicConfig.styleUrl),
         autocompleteEnabled: coerceBoolean(record.publicConfig.autocompleteEnabled),
         geocodeEnabled: coerceBoolean(record.publicConfig.geocodeEnabled),

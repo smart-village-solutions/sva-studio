@@ -30,6 +30,9 @@ export const resolveContentMediaUsageDrafts = (
     delete persistableUsage.previewUrl;
     return {
       ...persistableUsage,
+      ...(usage.localDraft.metadata?.focusPoint !== undefined
+        ? { focusPoint: usage.localDraft.metadata.focusPoint }
+        : {}),
       assetId: resolution.assetId,
       persistentUrl: resolution.persistentUrl,
       referenceStatus: 'pending',

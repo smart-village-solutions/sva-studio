@@ -47,7 +47,7 @@ export const GenericItemsMediaPickerView = ({
         pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
       }
       onClose={mediaPicker.close}
-      onConfirmSelection={() => void mediaPicker.confirmSelection()}
+      onConfirmSelection={(tags) => void mediaPicker.confirmSelection(tags)}
       onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
       isMetadataEditable
       visibleMetadataFields={['altText', 'description', 'copyright']}

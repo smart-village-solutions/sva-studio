@@ -15,12 +15,16 @@ const revision = `sha256:${'a'.repeat(64)}`;
 describe('SSF session revocation client', () => {
   it('loads only a complete HTTPS deployment configuration', () => {
     expect(readSsfControlPlaneClientConfig({})).toBeNull();
-    expect(() =>
-      readSsfControlPlaneClientConfig({
-        SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: 'https://ssf.example.test',
-      })
-    ).toThrow('ssf_control_plane_configuration_incomplete');
-
+    const sharedOrigin = { SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: 'https://ssf.example.test' };
+    expect(readSsfControlPlaneClientConfig(sharedOrigin)).toBeNull();
+    for (const partialCredentials of [
+      { SVA_STUDIO_SSF_CONTROL_PLANE_TOKEN_URL: 'https://auth.example.test/token' },
+      { SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET: 'fixture' },
+    ]) {
+      expect(() =>
+        readSsfControlPlaneClientConfig({ ...sharedOrigin, ...partialCredentials })
+      ).toThrow('ssf_control_plane_configuration_incomplete');
+    }
     expect(
       readSsfControlPlaneClientConfig({
         SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: 'https://ssf.example.test/',

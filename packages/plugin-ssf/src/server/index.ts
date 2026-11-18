@@ -1,3 +1,4 @@
+import { createRecordingKeyHandlers } from './organisation-keys.js';
 import { SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID } from '../descriptor.js';
 import type {
   PluginServerExecutionHandler,
@@ -62,6 +63,7 @@ export const createSsfPluginServerHandlers = (
   };
 
   return {
+    ...createRecordingKeyHandlers(dependencies.capabilities),
     [SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID]: createSsfRecordingDirectoryHandler(
       dependencies.capabilities
     ),

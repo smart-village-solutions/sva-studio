@@ -26,6 +26,23 @@ export const MapGeocodingFields = ({
     });
   };
 
+  if (draft.config.provider === 'mapstick')
+    return (
+      <>
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          <p className="font-medium">{t('interfaces.forms.mapGeocoding.mapstick.title')}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t('interfaces.forms.mapGeocoding.mapstick.description')}
+          </p>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="map-style-url">{t('interfaces.forms.mapGeocoding.styleUrl')}</Label>
+          <Input id="map-style-url" type="url" value={draft.config.styleUrl} readOnly />
+        </div>
+        <MapRuntimeFields draft={draft} updateConfig={updateConfig} />
+      </>
+    );
+
   return (
     <>
       {draft.config.provider === 'geoapify' ? (

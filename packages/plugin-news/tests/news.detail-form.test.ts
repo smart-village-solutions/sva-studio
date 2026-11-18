@@ -1,3 +1,7 @@
+import {
+  contentMediaUsagesToMainserver,
+  mainserverContentMediaToUsages,
+} from '@sva/studio-ui-react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -885,6 +889,23 @@ describe('news.detail-form', () => {
     mapNewsDetailFormValuesToMutation(scheduledValues, 'edit');
     expect(scheduledValues.publicationMode).toBe('scheduled');
     expect(scheduledValues.scheduledPublicationAt).toBe('2026-06-01T12:30');
+  });
+
+  it.each([{ x: 0.2, y: 0.8 }, null])('preserves media focus %j through the editor save', (focusPoint) => {
+    const payload = { focusPoint };
+    const sourceUrl = { url: 'https://example.org/image.jpg', description: 'Bildquelle' };
+    const media = { sourceUrl, payload, width: 640 };
+    const values = mapNewsItemToDetailFormValues({
+      ...sampleItem,
+      contentBlocks: [{ title: sampleItem.title, mediaContents: [media] }],
+    });
+    const usages = mainserverContentMediaToUsages(values.contentMedia);
+    values.contentMedia = contentMediaUsagesToMainserver(usages) as NewsDetailFormValues['contentMedia'];
+
+    expect(usages[0]?.focusPoint).toEqual(focusPoint);
+    expect(
+      mapNewsDetailFormValuesToMutation(values, 'edit').contentBlocks?.[0]?.mediaContents
+    ).toEqual([{ sourceUrl, payload, contentType: 'image', width: 640 }]);
   });
 
   it('omits non-finite media dimensions from serialized mutations', () => {

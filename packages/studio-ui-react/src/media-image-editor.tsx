@@ -119,16 +119,11 @@ const MediaImageEditorHeading = ({
   const t = useContentMediaTranslation();
   return (
     <div className="space-y-2">
-      <h3
-        ref={heading}
-        tabIndex={-1}
-        className="rounded-sm text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
+      <h3 ref={heading} tabIndex={-1} className="sr-only">
         {t('editor.imageTitle')}
       </h3>
-      <p className="text-sm text-muted-foreground">{t('editor.originalPreserved')}</p>
-      <p className="text-sm text-muted-foreground">{t('editor.originalRetainedHint')}</p>
-      <p className="text-sm text-muted-foreground">{t('editor.accessibilityHint')}</p>
+      <p className="text-xs text-muted-foreground">{t('editor.originalRetainedHint')}</p>
+      <p className="text-xs text-muted-foreground">{t('editor.accessibilityHint')}</p>
     </div>
   );
 };
@@ -166,7 +161,7 @@ export const StudioMediaImageEditor = ({
     }
   };
   return (
-    <div ref={root} className="space-y-4">
+    <div ref={root} className="flex min-h-0 flex-1 flex-col gap-4">
       <MediaImageEditorHeading heading={heading} />
       {failed || exportFailed ? (
         <p role="alert" className="text-sm text-destructive">
@@ -179,26 +174,28 @@ export const StudioMediaImageEditor = ({
         </Button>
       ) : null}
       {loaded ? (
-        <div className="h-[min(62vh,760px)] min-h-[420px] overflow-hidden rounded-xl border border-border bg-card">
-          <loaded.Editor
-            {...loaded.config}
-            source={loaded.sourceUrl}
-            loadableDesignState={loaded.state}
-            savingPixelRatio={1}
-            previewPixelRatio={1}
-            getCurrentImgDataFnRef={exportImage}
-            onModify={() => onDirtyChange?.(true)}
-          />
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card">
+          <div className="h-full min-h-[420px]">
+            <loaded.Editor
+              {...loaded.config}
+              source={loaded.sourceUrl}
+              loadableDesignState={loaded.state}
+              savingPixelRatio={1}
+              previewPixelRatio={1}
+              getCurrentImgDataFnRef={exportImage}
+              onModify={() => onDirtyChange?.(true)}
+            />
+          </div>
         </div>
       ) : !failed ? (
         <p role="status">{t('messages.loading')}</p>
       ) : null}
-      <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-4">
+      <div className="flex shrink-0 flex-wrap justify-between gap-3 border-t border-border pt-4">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
           {t('editor.cancelEditing')}
         </Button>
         <Button type="button" disabled={!loaded || saving} onClick={() => void apply()}>
-          {t('editor.previewEditedImage')}
+          {t('editor.nextFocus')}
         </Button>
       </div>
     </div>

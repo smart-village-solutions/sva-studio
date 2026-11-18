@@ -1,4 +1,14 @@
 export const sharedDEResources = {
+  studioMap: {
+    chooseStyle: 'Kartenstil wählen',
+    styles: {
+      openmaptiles: 'Standard',
+      'osm-bright': 'Hell',
+      'maptiler-basic': 'Schlicht',
+      'maptiler-3d': '3D',
+      'fiord-color': 'Fiord',
+    },
+  },
   datePicker: {
     time: 'Uhrzeit',
     timeFor: 'Uhrzeit: {{label}}',

@@ -4,7 +4,7 @@ import { errorJson, isRecord, readString } from './content-route-core.js';
 import { parseMediaContents } from './content-route-parsers.js';
 
 const hasContentBlockContent = (block: SvaMainserverContentBlockInput) =>
-  Object.keys(block).length > 0;
+  Boolean(block.title || block.intro || block.body || block.mediaContents?.length);
 
 const parseContentBlockMediaContents = (
   value: unknown
@@ -52,7 +52,7 @@ export const parseContentBlocks = (
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
       ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
       ...(parsedBody ? { body: parsedBody } : {}),
-      ...(mediaContents.length > 0 ? { mediaContents } : {}),
+      ...(Array.isArray(block.mediaContents) ? { mediaContents } : {}),
     };
 
     if (!hasContentBlockContent(parsedBlock)) {

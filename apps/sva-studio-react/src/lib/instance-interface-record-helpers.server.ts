@@ -100,7 +100,7 @@ export const assertValidMapGeocodingDraft = (
     input.draft.config.reverseGeocodeEnabled;
 
   if (
-    input.draft.config.provider === 'custom' &&
+    (input.draft.config.provider === 'custom' || input.draft.config.provider === 'mapstick') &&
     ((input.draft.config.autocompleteEnabled && !isValidAbsoluteHttpUrl(config.suggestEndpoint)) ||
       (input.draft.config.geocodeEnabled && !isValidAbsoluteHttpUrl(config.geocodeEndpoint)) ||
       (input.draft.config.reverseGeocodeEnabled &&

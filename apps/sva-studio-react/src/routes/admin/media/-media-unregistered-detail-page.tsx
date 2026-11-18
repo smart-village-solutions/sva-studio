@@ -1,194 +1,159 @@
+import * as React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Badge } from '../../../components/ui/badge';
 import { Button, StudioPageTitle } from '@sva/studio-ui-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../../components/ui/card';
+import { Card, CardContent } from '../../../components/ui/card';
 import {
   deriveMimeTypeFromUnregisteredMedia,
   useRegisterBucketMedia,
 } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
-import type { IamUnregisteredMediaAsset } from '../../../lib/iam-api';
+import type { IamRegisteredMediaAsset, IamUnregisteredMediaAsset } from '../../../lib/iam-api';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
-type MediaUnregisteredDetailPageProps = Readonly<{
-  asset: IamUnregisteredMediaAsset | null;
-}>;
+const importFailureMessage = (message?: string) =>
+  message === 'storage_quota_exceeded' ? 'media.unregistered.quota' : 'media.unregistered.failed';
 
-const readValue = (value: string | null | undefined): string =>
-  value?.trim() || t('media.values.notAvailable');
-
-const deriveDefaultTitle = (fileName: string): string => fileName.replace(/\.[^.]+$/, '');
-
-export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPageProps) => {
+export const MediaUnregisteredDetailPage = ({
+  asset,
+}: Readonly<{ asset: IamUnregisteredMediaAsset | null }>) => {
   const createDecision = useAccessDecision({
     kind: 'tenant',
     moduleId: 'media',
-    actions: { mode: 'allOf', values: ['media.create'] },
+    actions: { mode: 'allOf', values: ['media.read', 'media.create'] },
   });
-  const canRegisterMedia = createDecision.status === 'allowed';
+  const readDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.read'] },
+  });
+  const canRead = readDecision.status === 'allowed';
+  const canPrepare = canRead && createDecision.status === 'allowed';
   const navigate = useNavigate();
-  const registration = useRegisterBucketMedia();
+  const { registerMedia, mutationError } = useRegisterBucketMedia();
+  const pendingRequest = React.useRef<{
+    identity: string;
+    promise: Promise<IamRegisteredMediaAsset | null>;
+  } | null>(null);
+  const [attempt, setAttempt] = React.useState(0);
+  const [failed, setFailed] = React.useState(false);
+  const storageKey = asset?.storageKey;
+  const fileName = asset?.fileName;
+  const byteSize = asset?.byteSize;
+  const mimeType = asset ? deriveMimeTypeFromUnregisteredMedia(asset) : undefined;
 
-  const handleRegister = async () => {
-    if (!asset || !canRegisterMedia) {
+  React.useEffect(() => {
+    if (!storageKey || !fileName || byteSize === undefined || !mimeType || !canPrepare) {
+      pendingRequest.current = null;
       return;
     }
+    let cancelled = false;
+    setFailed(false);
+    void (async () => {
+      // This component mounts only after deliberate route navigation; loaders and prefetches stay read-only.
+      const identity = JSON.stringify([storageKey, fileName, byteSize, mimeType, attempt]);
+      if (pendingRequest.current?.identity !== identity) {
+        pendingRequest.current = {
+          identity,
+          promise: registerMedia({
+            storageKey,
+            fileName,
+            byteSize,
+            mimeType,
+            visibility: 'public',
+            metadata: { title: fileName.replace(/\.[^.]+$/, '') },
+          }),
+        };
+      }
+      const registered = await pendingRequest.current.promise;
+      if (cancelled) return;
+      if (!registered) {
+        setFailed(true);
+        return;
+      }
+      try {
+        await navigate({
+          to: '/admin/media/$mediaId',
+          params: { mediaId: registered.id },
+          replace: true,
+        });
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storageKey, fileName, byteSize, mimeType, canPrepare, registerMedia, navigate, attempt]);
 
-    const registered = await registration.registerMedia({
-      storageKey: asset.storageKey,
-      fileName: asset.fileName,
-      byteSize: asset.byteSize,
-      mimeType: deriveMimeTypeFromUnregisteredMedia(asset),
-      visibility: 'public',
-      metadata: {
-        title: deriveDefaultTitle(asset.fileName),
-      },
-    });
-
-    if (!registered) {
-      return;
-    }
-
-    await navigate({ to: '/admin/media/$mediaId', params: { mediaId: registered.id } });
-  };
-
-  if (!asset) {
+  if (!asset)
     return (
       <section data-testid="media-unregistered-detail-page">
-        <Alert className="border-destructive/40 text-destructive">
+        <Alert>
           <AlertDescription>{t('media.errors.notFound')}</AlertDescription>
         </Alert>
       </section>
     );
-  }
-
+  const blocked =
+    mutationError?.message === 'media_import_source_untrusted' || mutationError?.status === 403;
+  const failureMessage = importFailureMessage(mutationError?.message);
   return (
     <section className="space-y-6" data-testid="media-unregistered-detail-page">
-      {registration.mutationError ? (
-        <Alert className="border-destructive/40 text-destructive">
-          <AlertDescription>{registration.mutationError.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
+      <StudioPageTitle>{asset.fileName}</StudioPageTitle>
       <Card className="overflow-hidden border-border-subtle bg-card">
-        <CardContent className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,1fr)]">
-          <div className="overflow-hidden rounded-lg border border-border-subtle bg-muted">
-            {asset.previewUrl ? (
-              <img
-                alt={asset.fileName}
-                className="h-full min-h-80 w-full object-cover"
-                src={asset.previewUrl}
-              />
-            ) : (
-              <div className="flex min-h-80 items-center justify-center p-6 text-sm text-muted-foreground">
-                {t('media.library.assetCard.fallback')}
-              </div>
-            )}
+        <CardContent className="space-y-4 p-6">
+          {canRead && !canPrepare && asset.previewUrl ? (
+            <img
+              src={asset.previewUrl}
+              alt={asset.fileName}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              className="mx-auto h-auto max-h-[50dvh] max-w-full rounded-lg object-contain"
+            />
+          ) : null}
+          <div className="flex min-h-64 items-center justify-center rounded-lg border border-border-subtle bg-muted/20 p-8 text-center">
+            <p
+              role={failed ? 'alert' : 'status'}
+              className="max-w-xl text-sm text-muted-foreground"
+            >
+              {t(
+                !canPrepare
+                  ? 'media.unregistered.readOnly'
+                  : failed
+                    ? blocked
+                      ? 'media.unregistered.blocked'
+                      : failureMessage
+                    : 'media.unregistered.preparing'
+              )}
+            </p>
           </div>
-
-          <div className="space-y-5">
-            <div className="space-y-3">
-              <StudioPageTitle withAccessory className="break-all">
-                {asset.fileName}
-              </StudioPageTitle>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                {t('media.unregistered.subtitle')}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{t('media.library.assetCard.unregistered')}</Badge>
-                <Badge variant="outline">{deriveMimeTypeFromUnregisteredMedia(asset)}</Badge>
-                <Badge variant="outline">{readValue(asset.folderPath)}</Badge>
+          {failed && canPrepare && !blocked ? (
+            <Button type="button" onClick={() => setAttempt((value) => value + 1)}>
+              {t('media.unregistered.retry')}
+            </Button>
+          ) : null}
+          <p className="text-sm text-muted-foreground">{t('media.unregistered.sourcePreserved')}</p>
+          <details className="rounded-lg border border-border-subtle p-4">
+            <summary className="cursor-pointer font-medium">
+              {t('media.detail.moreInformation')}
+            </summary>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="text-muted-foreground">{t('media.meta.storageKey')}</dt>
+                <dd className="break-all">{asset.storageKey}</dd>
               </div>
-            </div>
-
-            {canRegisterMedia ? (
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" onClick={() => void handleRegister()}>
-                  {t('media.actions.register')}
-                </Button>
+              <div>
+                <dt className="text-muted-foreground">{t('media.meta.mimeType')}</dt>
+                <dd>{mimeType}</dd>
               </div>
-            ) : null}
-          </div>
+              <div>
+                <dt className="text-muted-foreground">{t('media.meta.byteSize')}</dt>
+                <dd>{asset.byteSize}</dd>
+              </div>
+            </dl>
+          </details>
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,1fr)]">
-        <Card className="border-border-subtle bg-card">
-          <CardHeader>
-            <CardTitle>{t('media.unregistered.metadataTitle')}</CardTitle>
-            <CardDescription>{t('media.unregistered.metadataDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.fields.title')}
-              </p>
-              <p className="text-sm text-foreground">{deriveDefaultTitle(asset.fileName)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.fields.altText')}
-              </p>
-              <p className="text-sm text-foreground">{t('media.unregistered.altTextHint')}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border-subtle bg-card">
-          <CardHeader>
-            <CardTitle>{t('media.meta.title')}</CardTitle>
-            <CardDescription>{t('media.unregistered.technicalDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.storageKey')}
-              </p>
-              <p className="break-all text-sm text-foreground">{asset.storageKey}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.mimeType')}
-              </p>
-              <p className="text-sm text-foreground">
-                {deriveMimeTypeFromUnregisteredMedia(asset)}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.byteSize')}
-              </p>
-              <p className="text-sm text-foreground">{String(asset.byteSize)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.folder')}
-              </p>
-              <p className="text-sm text-foreground">{readValue(asset.folderPath)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.deliveryUrl')}
-              </p>
-              <p className="break-all text-sm text-foreground">{readValue(asset.previewUrl)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t('media.meta.updatedAt')}
-              </p>
-              <p className="text-sm text-foreground">{readValue(asset.updatedAt)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </section>
   );
 };

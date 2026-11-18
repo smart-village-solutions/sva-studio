@@ -178,6 +178,7 @@ const loadConstructionSiteAsset = async (
       copyright: asset.metadata.copyright ?? '',
       license: asset.metadata.license ?? '',
       tags: asset.metadata.tags,
+      focusPoint: asset.metadata.focusPoint,
     },
   };
 };
@@ -218,7 +219,7 @@ export function ConstructionSiteMediaOverlay({
       metadataDraft={picker.metadataDraft}
       onMetadataChange={picker.updateMetadataField}
       onBackFromReview={picker.goBackFromReview}
-      onConfirmSelection={() => void picker.confirmSelection()}
+      onConfirmSelection={(tags) => void picker.confirmSelection(tags)}
       isLoadingReviewAsset={picker.isLoadingReviewAsset}
       isSavingReviewAsset={picker.isSavingReviewAsset}
       isUploadInitialized={media.isUploadInitialized}

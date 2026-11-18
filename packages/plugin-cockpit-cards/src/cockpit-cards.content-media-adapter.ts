@@ -1,4 +1,8 @@
-import type { ContentMediaUsage } from '@sva/studio-ui-react';
+import {
+  contentMediaUsagesToMainserver,
+  readMainserverMediaFocusPoint,
+  type ContentMediaUsage,
+} from '@sva/studio-ui-react';
 
 import type { CockpitCardMedia } from './cockpit-cards.types.js';
 
@@ -20,10 +24,10 @@ export const cockpitCardMediaToUsages = (
       Object.entries(item.sourceUrl).filter(([key]) => key !== 'url' && key !== 'description')
     );
     const additionalData = {
-      ...Object.fromEntries(
-      Object.entries(item).filter(([key]) => !knownKeys.has(key))
-      ),
-      ...(Object.keys(sourceUrlAdditionalData).length > 0 ? { [sourceUrlAdditionalDataKey]: sourceUrlAdditionalData } : {}),
+      ...Object.fromEntries(Object.entries(item).filter(([key]) => !knownKeys.has(key))),
+      ...(Object.keys(sourceUrlAdditionalData).length > 0
+        ? { [sourceUrlAdditionalDataKey]: sourceUrlAdditionalData }
+        : {}),
     };
     return {
       uiId: `cockpit-card-media-${sortOrder}-${reference?.assetId ?? 'manual'}`,
@@ -32,6 +36,7 @@ export const cockpitCardMediaToUsages = (
       altText: item.sourceUrl.description ?? '',
       caption: item.captionText ?? '',
       credit: item.copyright ?? '',
+      focusPoint: readMainserverMediaFocusPoint(item.payload),
       role: 'gallery_item',
       sortOrder,
       additionalData,
@@ -39,18 +44,32 @@ export const cockpitCardMediaToUsages = (
     };
   });
 
-export const cockpitCardUsagesToMedia = (usages: readonly ContentMediaUsage[]): readonly CockpitCardMedia[] =>
+export const cockpitCardUsagesToMedia = (
+  usages: readonly ContentMediaUsage[]
+): readonly CockpitCardMedia[] =>
   usages.map((usage) => {
-    const { [sourceUrlAdditionalDataKey]: sourceUrlAdditionalData, ...additionalData } = usage.additionalData ?? {};
+    const { [sourceUrlAdditionalDataKey]: sourceUrlAdditionalData, ...additionalData } =
+      usage.additionalData ?? {};
     return {
-    ...additionalData,
-    sourceUrl: {
-      ...(sourceUrlAdditionalData && typeof sourceUrlAdditionalData === 'object' && !Array.isArray(sourceUrlAdditionalData) ? sourceUrlAdditionalData : {}),
-      url: usage.persistentUrl,
-      ...(usage.altText ? { description: usage.altText } : {}),
-    },
-    contentType: 'image' as const,
-    ...(usage.caption ? { captionText: usage.caption } : {}),
-    ...(usage.credit ? { copyright: usage.credit } : {}),
-  };
+      ...additionalData,
+      ...(usage.focusPoint !== undefined
+        ? {
+            payload: contentMediaUsagesToMainserver([
+              { ...usage, additionalData: { original: additionalData } },
+            ])[0]?.payload,
+          }
+        : {}),
+      sourceUrl: {
+        ...(sourceUrlAdditionalData &&
+        typeof sourceUrlAdditionalData === 'object' &&
+        !Array.isArray(sourceUrlAdditionalData)
+          ? sourceUrlAdditionalData
+          : {}),
+        url: usage.persistentUrl,
+        ...(usage.altText ? { description: usage.altText } : {}),
+      },
+      contentType: 'image' as const,
+      ...(usage.caption ? { captionText: usage.caption } : {}),
+      ...(usage.credit ? { copyright: usage.credit } : {}),
+    };
   });

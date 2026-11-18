@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
+  ensureManagedMapGeocodingInterface: vi.fn(async () => undefined),
   listExternalInterfaceRecords: state.listExternalInterfaceRecords,
   loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
@@ -1709,5 +1710,57 @@ describe('instance-interfaces-server', () => {
     expect(persisted?.publicConfig.rateLimitPerMinute).toBeUndefined();
     expect(persisted?.publicConfig.endpoint).toBeUndefined();
     expect(persisted?.publicConfig.mode).toBeUndefined();
+  });
+});
+
+
+describe('managed Mapstick target immutability', () => {
+  const draft = () => ({
+    ...createMapGeocodingDraft(),
+    config: {
+      ...createMapGeocodingDraft().config,
+      provider: 'mapstick' as const,
+      styleUrl: 'https://maps.example/styles/osm-bright/style.json',
+      suggestEndpoint: 'https://maps.example/api/',
+      geocodeEndpoint: 'https://maps.example/api/',
+      reverseGeocodeEndpoint: 'https://maps.example/reverse',
+      apiKey: '',
+    },
+  });
+  const existing = () => ({
+    id: 'managed-map', instanceId: 'tenant-a', typeKey: 'map_geocoding',
+    ownerKind: 'host' as const, ownerId: 'host', displayName: 'Mapstick',
+    alias: 'operator-mapstick', enabled: true, isDefault: true,
+    category: 'api' as const, statusCheckKind: 'map_geocoding',
+    visibleStatus: 'unknown' as const, publicConfig: draft().config,
+  });
+  const input = () => ({
+    instanceId: 'tenant-a', interfaceId: 'managed-map', draft: draft(),
+    existing: existing(), hasDefaultRecord: false, previousSecrets: {},
+  });
+  it('rejects Mapstick creation and switching another provider to Mapstick', async () => {
+    const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+    expect(() => build({ ...input(), existing: null })).toThrow('invalid_config');
+    expect(() => build({ ...input(), existing: { ...existing(), publicConfig: { provider: 'custom' } } })).toThrow('invalid_config');
+  });
+  it.each(['styleUrl', 'suggestEndpoint', 'geocodeEndpoint', 'reverseGeocodeEndpoint'] as const)(
+    'rejects changing the provisioned %s', async (field) => {
+      const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+      const value = input();
+      value.draft.config[field] = 'https://other.example/styles/osm-bright/style.json';
+      expect(() => build(value)).toThrow('invalid_config');
+    }
+  );
+  it('allows runtime changes while keeping the provisioned targets', async () => {
+    const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+    const value = input();
+    value.draft.enabled = false;
+    value.draft.config.killSwitchEnabled = true;
+    value.draft.config.rateLimitPerMinute = '12';
+    value.draft.config.requestTimeoutMs = '5000';
+    expect(build(value)).toMatchObject({ enabled: false, publicConfig: {
+      provider: 'mapstick', styleUrl: value.existing.publicConfig.styleUrl,
+      killSwitchEnabled: true, rateLimitPerMinute: 12, requestTimeoutMs: 5000,
+    }});
   });
 });

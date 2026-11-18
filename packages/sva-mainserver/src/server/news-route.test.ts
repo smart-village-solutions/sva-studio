@@ -1,3 +1,4 @@
+import { parseContentBlocks } from './news-route-blocks.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -2067,4 +2068,42 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       message: 'Methode wird für Mainserver-News nicht unterstützt.',
     });
   });
+});
+
+it('preserves an explicitly emptied media list while leaving an omitted list untouched', () => {
+  expect(parseContentBlocks([{ mediaContents: [] }])).toEqual([{ mediaContents: [] }]);
+  expect(parseContentBlocks([{ title: 'Text only' }])).toEqual([{ title: 'Text only' }]);
+});
+
+it.each([{ x: 0.2, y: 0.8 }, null])(
+  'passes validated media focus to the upstream content input: %j',
+  (focusPoint) => {
+    expect(
+      parseContentBlocks([
+        {
+          mediaContents: [
+            {
+              sourceUrl: { url: 'https://media.test/image.png' },
+              payload: { focusPoint, forgedSource: true },
+            },
+          ],
+        },
+      ])
+    ).toEqual([
+      {
+        mediaContents: [
+          { sourceUrl: { url: 'https://media.test/image.png' }, payload: { focusPoint } },
+        ],
+      },
+    ]);
+  }
+);
+it.each([
+  { x: -1, y: 0.5 },
+  { x: 0.5, y: 2 },
+  { x: '0.5', y: 0.5 },
+])('rejects an invalid target media focus: %j', (focusPoint) => {
+  expect(parseContentBlocks([{ mediaContents: [{ payload: { focusPoint } }] }])).toBeInstanceOf(
+    Response
+  );
 });

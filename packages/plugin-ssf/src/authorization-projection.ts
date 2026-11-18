@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { canonicalize } from 'json-canonicalize';
 import { z } from 'zod';
-import { SSF_RECORDING_PERMISSION_IDS } from './constants.js';
+import { SSF_RECORDING_PERMISSION_IDS } from './recording-permissions.js';
 
 /**
  * This version describes the authorization contract, not its current subjects.

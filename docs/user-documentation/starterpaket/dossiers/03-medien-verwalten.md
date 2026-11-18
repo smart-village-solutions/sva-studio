@@ -45,15 +45,13 @@ Löschen beeinflussen.
 - **Route / Typ / Owner:** `/admin/media/$mediaId`, Detail, Host.
 - **Nutzerziel:** Vorschau, Delivery, Qualitätsstatus, Metadaten und Verwendung gemeinsam prüfen.
 - **Produktfakten:** Bearbeitbar sind Titel, Alternativtext, Beschreibung, Copyright, Lizenz,
-  Tags und Sichtbarkeit. „Bild bearbeiten“ öffnet Zuschnitt, Drehen, Filter, Text, Formen,
-  eingefügte Bilder, Wasserzeichen und Größenänderung. „Weiter zu Angaben und Vorschau“ zeigt
-  Angaben und wichtige Bildbereiche der neuen Kopie. „Als neues Bild speichern“ legt ein neues
+  Tags und Fokus. Der Fokus lässt sich direkt auf dem vollständigen Bild per Zeiger oder Tastatur setzen und zusammen mit den Textangaben speichern. Er verändert keine Bildpixel. „Kopie erstellen und bearbeiten“ öffnet Zuschnitt, Drehen, Filter, Text, Formen,
+  eingefügte Bilder, Wasserzeichen und Größenänderung. Die Schritte „Bild gestalten“, „Fokuspunkt setzen“ und „Ergebnis prüfen“ erhalten den Entwurf beim Zurückgehen. „Kopie speichern“ legt ein neues
   Medium an; das bisherige Bild und seine Verwendungen bleiben erhalten. Technische Angaben umfassen Asset-ID, Storage-Key,
   MIME-Typ, Größe, Upload- und Verarbeitungsstatus. Öffentliche URLs können kopiert und als QR-Code
   ausgegeben werden.
 - **Kontextabhängig:** Aktive Referenzen und abhängige bearbeitbare Kopien blockieren das Löschen, nicht jedoch Änderungen an den
-  Metadaten. Ein Objekt aus dem Bucket kann zunächst unregistriert sein und muss als Medium
-  registriert werden.
+  Metadaten. Eine noch nicht verwaltete Datei aus der aktiven eigenen S3-Schnittstelle wird beim bewussten Öffnen mit Lese- und Erstellrechten automatisch geprüft und aufgenommen. Die übernommene Ausgabe ist öffentlich auslieferbar; Quelle und bisherige URL bleiben erhalten. Ohne Erstellrecht bleibt die Ansicht lesend. Technische Angaben und Auslieferungswerkzeuge stehen unter „Weitere Informationen“.
 - **Redaktionelle Leitfragen:** Welche Metadaten sind für Barrierefreiheit erforderlich? Wann ist ein
   Asset auslieferbar? Welche Wirkung haben Fokuspunkt und Zuschnitt?
 - **Stichwörter / Querverweise:** Alternativtext, Lizenz, Fokuspunkt, Zuschnitt, Delivery-URL,

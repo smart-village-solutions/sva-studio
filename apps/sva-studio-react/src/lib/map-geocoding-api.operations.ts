@@ -115,6 +115,8 @@ const authorizeFirstAllowedAction = async (
     Awaited<typeof import('@sva/auth-runtime/server')>['authorizeInstancePermissionForUser']
   >[0]['ctx'],
   actions: readonly (
+    | 'jobs.read'
+    | 'construction-sites.read'
     | 'poi.read'
     | 'poi.create'
     | 'poi.update'
@@ -143,17 +145,7 @@ const authorizeFirstAllowedAction = async (
 
 const withAuthenticatedMapUser = async <T>(
   request: Request,
-  actions: readonly (
-    | 'poi.read'
-    | 'poi.create'
-    | 'poi.update'
-    | 'events.read'
-    | 'events.create'
-    | 'events.update'
-    | 'generic-items.read'
-    | 'generic-items.create'
-    | 'generic-items.update'
-  )[],
+  actions: Parameters<typeof authorizeFirstAllowedAction>[1],
   run: (
     ctx: AuthenticatedMapGeocodingContext,
     diagnostics: MapGeocodingOperationDiagnostics
@@ -226,7 +218,7 @@ export const withGeocodingOperation = async <T>(
   withAuthenticatedMapUser(
     request,
     operation === 'get_config'
-      ? ['poi.read', 'events.read', 'generic-items.read']
+      ? ['poi.read', 'events.read', 'generic-items.read', 'jobs.read', 'construction-sites.read']
       : [
           'poi.update',
           'poi.create',

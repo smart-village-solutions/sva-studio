@@ -29,6 +29,8 @@ export const eventsDEEditor = {
       'Die Veranstaltung wurde nicht gespeichert: Einige Angaben aus der Quelle konnten nicht sicher gelesen werden und würden sonst verloren gehen. Korrigieren Sie die als betroffen gemeldeten Bereiche oder wenden Sie sich an den Support.',
     staleMainserverContext:
       'Der Organisations- oder Mainserver-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihren Entwurf, bevor Sie erneut speichern.',
+    deleteReconciliationRequired:
+      'Der Abschluss des Löschvorgangs oder das Bereinigen der Bildverwendungen konnte nicht bestätigt werden. Bitte prüfe den aktuellen Stand oder wende dich an den Support.',
     deleteError: 'Die Veranstaltung konnte nicht gelöscht werden.',
     createSuccess: 'Die Veranstaltung wurde erstellt.',
     updateSuccess: 'Die Veranstaltung wurde aktualisiert.',

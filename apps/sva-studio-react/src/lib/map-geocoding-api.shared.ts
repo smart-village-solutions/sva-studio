@@ -1,3 +1,4 @@
+import { type MapGeocodingProvider } from '@sva/plugin-sdk';
 import type {
   MapGeocodingAddressInput,
   MapGeocodingCoordinates,
@@ -100,13 +101,15 @@ export const createClientError = (
 
 export const sanitizeMapGeocodingErrorCode = (
   candidate: unknown,
-  fallback: MapGeocodingErrorCode = 'provider_error',
+  fallback: MapGeocodingErrorCode = 'provider_error'
 ): MapGeocodingErrorCode =>
-  typeof candidate === 'string' && mapGeocodingErrorCodeSet.has(candidate) ? candidate as MapGeocodingErrorCode : fallback;
+  typeof candidate === 'string' && mapGeocodingErrorCodeSet.has(candidate)
+    ? (candidate as MapGeocodingErrorCode)
+    : fallback;
 
 export const readMapGeocodingErrorCode = (
   error: unknown,
-  fallback: MapGeocodingErrorCode = 'provider_error',
+  fallback: MapGeocodingErrorCode = 'provider_error'
 ): MapGeocodingErrorCode => {
   if (typeof error !== 'object' || error === null) return fallback;
   const candidate = error as MapGeocodingClientError;
@@ -197,12 +200,15 @@ const toText = (value: unknown): string | undefined =>
 
 const normalizeGeoapifyFeature = (
   feature: GeoapifyFeature,
-  source: 'geoapify' | 'custom',
+  source: MapGeocodingProvider
 ): MapGeocodingFeature | null => {
   const properties = feature.properties ?? {};
   const lat = toNumber(properties.lat) ?? toNumber(feature.geometry?.coordinates?.[1]);
   const lng = toNumber(properties.lon) ?? toNumber(feature.geometry?.coordinates?.[0]);
-  const label = toText(properties.formatted) ?? toText(properties.address_line1) ?? toText(properties.result_type);
+  const label =
+    toText(properties.formatted) ??
+    toText(properties.address_line1) ??
+    toText(properties.result_type);
 
   if (lat === null || lng === null || !label) {
     return null;
@@ -233,7 +239,7 @@ const buildGeoapifyUrl = (
     query?: string;
     coordinates?: MapGeocodingCoordinates;
     apiKey?: string;
-  },
+  }
 ): URL => {
   const url = new URL(`https://api.geoapify.com/v1/geocode/${endpoint}`);
   url.searchParams.set('format', 'geojson');
@@ -255,7 +261,7 @@ const buildCustomUrl = (
   input: {
     query?: string;
     coordinates?: MapGeocodingCoordinates;
-  },
+  }
 ): URL => {
   const trimmedEndpoint = endpoint.trim();
   if (trimmedEndpoint.length === 0) {
@@ -276,33 +282,102 @@ const buildCustomUrl = (
   return url;
 };
 
+const normalizePhotonFeature = (feature: GeoapifyFeature): MapGeocodingFeature | null => {
+  const p = feature.properties ?? {};
+  const coordinates = feature.geometry?.coordinates;
+  const longitude = toNumber(coordinates?.[0]);
+  const latitude = toNumber(coordinates?.[1]);
+  const street = toText(p.street);
+  const houseNumber = toText(p.housenumber);
+  const label =
+    toText(p.name) ??
+    ([street, houseNumber].filter(Boolean).join(' ') ||
+      [toText(p.city), toText(p.state), toText(p.country)].filter(Boolean).join(', '));
+  if (
+    latitude === null ||
+    longitude === null ||
+    Math.abs(latitude) > 90 ||
+    Math.abs(longitude) > 180 ||
+    !label
+  )
+    return null;
+  return {
+    label,
+    coordinates: { latitude, longitude },
+    street,
+    houseNumber,
+    postalCode: toText(p.postcode),
+    city: toText(p.city),
+    district: toText(p.district),
+    county: toText(p.county),
+    state: toText(p.state),
+    country: toText(p.country),
+    countryCode: toText(p.countrycode)?.toLowerCase(),
+    source: 'mapstick',
+  };
+};
+
+const buildMapstickUrl = (
+  config: MapGeocodingRuntimeConfigWithSecrets,
+  mode: 'suggest' | 'geocode' | 'reverse',
+  input: {
+    query?: string;
+    coordinates?: MapGeocodingCoordinates;
+  }
+): URL => {
+  const url = new URL(
+    mode === 'reverse'
+      ? config.reverseGeocodeEndpoint
+      : mode === 'suggest'
+        ? config.suggestEndpoint
+        : config.geocodeEndpoint
+  );
+  url.searchParams.set('lang', 'de');
+  url.searchParams.set('limit', mode === 'suggest' ? '10' : '1');
+  if (input.query) url.searchParams.set('q', input.query);
+  if (input.coordinates) {
+    url.searchParams.set('lat', String(input.coordinates.latitude));
+    url.searchParams.set('lon', String(input.coordinates.longitude));
+  }
+  return url;
+};
+
 export const buildProviderUrl = (
   config: MapGeocodingRuntimeConfigWithSecrets,
   mode: 'suggest' | 'geocode' | 'reverse',
   input: {
     query?: string;
     coordinates?: MapGeocodingCoordinates;
-  },
+  }
 ) =>
-  config.provider === 'geoapify'
-    ? buildGeoapifyUrl(mode === 'suggest' ? 'autocomplete' : mode === 'geocode' ? 'search' : 'reverse', {
-        query: input.query,
-        coordinates: input.coordinates,
-        apiKey: config.apiKey,
-      })
-    : buildCustomUrl(
-        mode === 'suggest'
-          ? config.suggestEndpoint
-          : mode === 'geocode'
-            ? config.geocodeEndpoint
-            : config.reverseGeocodeEndpoint,
-        input,
-      );
+  config.provider === 'mapstick'
+    ? buildMapstickUrl(config, mode, input)
+    : config.provider === 'geoapify'
+      ? buildGeoapifyUrl(
+          mode === 'suggest' ? 'autocomplete' : mode === 'geocode' ? 'search' : 'reverse',
+          {
+            query: input.query,
+            coordinates: input.coordinates,
+            apiKey: config.apiKey,
+          }
+        )
+      : buildCustomUrl(
+          mode === 'suggest'
+            ? config.suggestEndpoint
+            : mode === 'geocode'
+              ? config.geocodeEndpoint
+              : config.reverseGeocodeEndpoint,
+          input
+        );
 
 export const normalizeProviderFeatures = (
   payload: GeoapifyResponse,
-  provider: 'geoapify' | 'custom',
+  provider: MapGeocodingProvider
 ): readonly MapGeocodingFeature[] =>
   (payload.features ?? [])
-    .map((feature) => normalizeGeoapifyFeature(feature, provider))
+    .map((feature) =>
+      provider === 'mapstick'
+        ? normalizePhotonFeature(feature)
+        : normalizeGeoapifyFeature(feature, provider)
+    )
     .filter((feature): feature is MapGeocodingFeature => feature !== null);

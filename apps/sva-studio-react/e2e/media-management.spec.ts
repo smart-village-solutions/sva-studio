@@ -345,6 +345,7 @@ test.describe('media management', () => {
 
     await expect(page.getByRole('heading', { name: 'asset-1' })).toBeVisible();
     await expect(page.getByText('1 Verwendung')).toBeVisible();
+    await page.getByText('Weitere Informationen', { exact: true }).click();
     await expect(page.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeVisible();
     await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
     await expect(page.getByText('Teaserbild')).toBeVisible();
@@ -357,6 +358,84 @@ test.describe('media management', () => {
       page.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')
     ).toBeVisible();
     await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
+  });
+
+  test('automatically prepares an unmanaged image only after deliberately opening it', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    let registrations = 0;
+    const asset: MediaAssetRecord = {
+      id: 'imported-image',
+      instanceId: 'de-musterhausen',
+      storageKey: 'de-musterhausen/variants/imported/claim/original.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 100,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: { title: 'Bestandsbild' },
+      technical: { width: 640, height: 480 },
+      createdAt: '2026-11-18T12:00:00Z',
+      updatedAt: '2026-11-18T12:00:00Z',
+    };
+    const state = {
+      assets: [] as MediaAssetRecord[],
+      usageByAssetId: {
+        'imported-image': { assetId: 'imported-image', totalReferences: 0, references: [] },
+      },
+    };
+    await page.route('**/api/v1/iam/media**', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname === '/api/v1/iam/media/register' && route.request().method() === 'POST') {
+        registrations++;
+        state.assets = [asset];
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: { ...asset, uploadStatus: 'pending', processingStatus: 'pending' },
+          }),
+        });
+        return;
+      }
+      if (url.pathname === '/api/v1/iam/media' && state.assets.length === 0) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              {
+                source: 'bucket',
+                registrationStatus: 'unregistered',
+                storageKey: 'de-musterhausen/legacy/image.jpg',
+                fileName: 'legacy-image.jpg',
+                folderPath: 'legacy',
+                relativePath: 'legacy/image.jpg',
+                byteSize: 100,
+                updatedAt: null,
+                lastModified: null,
+                previewUrl: null,
+              },
+            ],
+            pagination: { hasNextPage: false, nextCursor: null },
+          }),
+        });
+        return;
+      }
+      await routeMediaRequests(route, state);
+    });
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/media');
+    const entry = page.getByRole('link').filter({ hasText: 'legacy-image.jpg' });
+    await expect(entry).toBeVisible();
+    expect(registrations).toBe(0);
+    await entry.click();
+    await expect(page).toHaveURL(/imported-image/);
+    await expect(page.getByRole('heading', { name: 'Bestandsbild', exact: true })).toBeVisible();
+    expect(registrations).toBe(1);
+    await expect(page.getByRole('button', { name: 'Als Medium registrieren' })).toHaveCount(0);
   });
 
   test('keeps users on the media library when the signed upload PUT fails', async ({ page }) => {
@@ -574,17 +653,25 @@ test('real image editor exports and restores editable copies without external ed
       unexpected.push(url.origin + url.pathname);
   });
   const openEditor = async () => {
-    await page.getByRole('button', { name: 'Bild bearbeiten', exact: true }).click();
+    await page.getByRole('button', { name: 'Kopie erstellen und bearbeiten', exact: true }).click();
     await expect(page.locator('.FIE_root')).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => page.locator('.FIE_root canvas').count()).toBeGreaterThan(0);
-    await expect(
-      page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' })
-    ).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Weiter: Fokuspunkt setzen' })).toBeEnabled();
     await expect(
       page.locator('.FIE_root').getByText('Zuschneiden', { exact: true }).first()
     ).toBeVisible();
   };
   await openEditor();
+  const cropMenu = page
+    .locator('.FIE_root li')
+    .filter({ has: page.getByText('Zuschneiden', { exact: true }) })
+    .getByRole('button');
+  await cropMenu.click();
+  await expect(page.locator('[role="dialog"] #SfxPopper')).toHaveCount(1);
+  const square = page.locator('#SfxPopper').getByText('Quadrat', { exact: true });
+  await expect(square).toBeVisible();
+  await square.click();
+
   for (const theme of ['sva-default', 'sva-forest'])
     for (const dark of [false, true]) {
       await page.evaluate(
@@ -595,22 +682,37 @@ test('real image editor exports and restores editable copies without external ed
         { theme, dark }
       );
       // Remount to resolve semantic colors from the current Studio theme.
-      await page.getByRole('button', { name: 'Bearbeitung verwerfen und zurück' }).click();
+      await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      const discard = page.getByRole('alertdialog');
+      if (await discard.isVisible())
+        await discard.getByRole('button', { name: 'Änderungen verwerfen', exact: true }).click();
       await openEditor();
       await page.screenshot({
         path: testInfo.outputPath(`${theme}-${dark ? 'dark' : 'light'}.png`),
         fullPage: false,
       });
     }
-  await page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Wichtiger Bildbereich und Vorschau' })
-  ).toBeVisible();
-  await expect(page.getByRole('slider')).toHaveCount(2);
-  await page.getByRole('slider', { name: 'Horizontaler Bildbereich' }).focus();
+  await page.getByRole('button', { name: 'Weiter: Fokuspunkt setzen' }).click();
+  await expect(page.getByRole('heading', { name: 'Fokuspunkt setzen', exact: true })).toBeVisible();
+  const focusPoint = page.getByRole('button', { name: 'Wichtiger Bildbereich und Vorschau' });
+  await expect(focusPoint).toBeEnabled();
+  const focusGeometry = await focusPoint.evaluate((button) => {
+    const image = button.querySelector('img')!;
+    const control = button.getBoundingClientRect();
+    const area = image.getBoundingClientRect();
+    return Math.max(
+      Math.abs(control.left - area.left),
+      Math.abs(control.top - area.top),
+      Math.abs(control.width - area.width),
+      Math.abs(control.height - area.height)
+    );
+  });
+  expect(focusGeometry).toBeLessThan(1);
+  await page.screenshot({ path: testInfo.outputPath('focus-step.png'), fullPage: false });
+  await focusPoint.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('slider', { name: 'Horizontaler Bildbereich' })).toHaveValue('51');
-  await page.getByRole('button', { name: 'Als neues Bild speichern', exact: true }).click();
+  await page.getByRole('button', { name: 'Weiter: Ergebnis prüfen' }).click();
+  await page.getByRole('button', { name: 'Kopie speichern', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(nextId));
   await expect.poll(() => uploads.length).toBe(1);
   expect(payloads[0]!.editing.sourceAssetId).toBe(original.id);
@@ -621,14 +723,24 @@ test('real image editor exports and restores editable copies without external ed
   expect(uploads[0]!.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   expect(uploads[0]!.equals(sourceBytes)).toBe(false);
   await openEditor();
-  await page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Wichtiger Bildbereich und Vorschau' })
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Weiter: Fokuspunkt setzen' }).click();
+  await expect(page.getByRole('heading', { name: 'Fokuspunkt setzen', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Weiter: Ergebnis prüfen' }).click();
+  for (const size of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    await expect(
+      page.getByRole('button', { name: 'Kopie speichern', exact: true })
+    ).toBeInViewport();
+    await page.screenshot({
+      path: testInfo.outputPath(`review-${size.width}x${size.height}.png`),
+      fullPage: false,
+    });
+  }
   await page.setViewportSize({ width: 320, height: 900 });
-  await expect(
-    page.getByRole('button', { name: 'Als neues Bild speichern', exact: true })
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kopie speichern', exact: true })).toBeVisible();
   const hostOverflow = await page
     .getByRole('dialog')
     .evaluate((el) => el.scrollWidth > el.clientWidth + 1);
@@ -642,9 +754,7 @@ test('real image editor exports and restores editable copies without external ed
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });
-  await expect(
-    page.getByRole('button', { name: 'Als neues Bild speichern', exact: true })
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kopie speichern', exact: true })).toBeVisible();
   expect(await page.getByRole('dialog').evaluate((el) => el.scrollWidth > el.clientWidth + 1)).toBe(
     false
   );
@@ -652,7 +762,7 @@ test('real image editor exports and restores editable copies without external ed
     document.documentElement.style.fontSize = '';
   });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: 'Als neues Bild speichern', exact: true }).click();
+  await page.getByRole('button', { name: 'Kopie speichern', exact: true }).click();
   await expect.poll(() => uploads.length).toBe(2);
   expect(uploads[1]!.equals(uploads[0]!)).toBe(true);
   expect(assets.get(original.id)).toEqual(originalSnapshot);

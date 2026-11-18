@@ -6,7 +6,7 @@ Die kanonische Richtlinie liegt unter [`docs/governance/security-policy.md`](../
 
 ## Meldung von Schwachstellen
 
-Bitte keine öffentlichen GitHub Issues für Sicherheitslücken anlegen.
+Bitte keine öffentlichen GitHub Issues für neue, noch nicht veröffentlichte Sicherheitslücken anlegen. Nicht-sensitive Upgrade-Aufgaben zu bereits öffentlichen Advisories dürfen nach Triage öffentlich verfolgt werden.
 
 Bevorzugte Meldewege:
 
@@ -27,5 +27,6 @@ Bevorzugte Meldewege:
 
 ## Weitere Informationen
 
+- bekannte öffentliche Befunde und akzeptierte Ausnahmen: [Risikoübersicht](../docs/architecture/11-risks-and-technical-debt.md#bekannte-sicherheitsbefunde-und-akzeptierte-ausnahmen)
 - vollständige Richtlinie: [`docs/governance/security-policy.md`](../docs/governance/security-policy.md)
 - Incident-Kommunikation: [`docs/operations/incident-response.md`](../docs/operations/incident-response.md)

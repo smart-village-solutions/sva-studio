@@ -1799,3 +1799,25 @@ describe('Radio', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 });
+
+it('calls exactly one decision callback per confirmation or cancellation', () => {
+  const confirm = vi.fn();
+  const cancel = vi.fn();
+  const props = {
+    open: true,
+    title: 'Decision',
+    description: 'Choose',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+    onConfirm: confirm,
+    onCancel: cancel,
+  };
+  const view = render(<StudioConfirmDialog {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(cancel).not.toHaveBeenCalled();
+  view.unmount();
+  render(<StudioConfirmDialog {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(cancel).toHaveBeenCalledTimes(1);
+});

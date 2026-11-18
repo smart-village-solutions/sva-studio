@@ -92,6 +92,7 @@ const mapAddressToFormValue = (address?: EventAddress): EventAddressFormValue =>
 const mapMediaContentToFormValue = (
   mediaContent: NonNullable<NonNullable<EventContentItem['mediaContents']>[number]>
 ): EventMediaContentFormValue => ({
+  ...(mediaContent.payload !== undefined ? { payload: mediaContent.payload } : {}),
   ...(mediaContent.id ? { id: mediaContent.id } : {}),
   captionText: mediaContent.captionText ?? '',
   copyright: mediaContent.copyright ?? '',
@@ -199,7 +200,9 @@ export const mapEventsDetailFormValuesToInput = (
     addresses: serializeEventAddresses(values.content.addresses),
     ...(contacts.length > 0 ? { contacts } : {}),
     ...(urls.length > 0 ? { urls } : {}),
-    ...(mediaContents.length > 0 ? { mediaContents } : {}),
+    ...(mediaContents.length > 0 || values.content.mediaContents?.length === 0
+      ? { mediaContents }
+      : {}),
     ...(Object.keys(organizer).length > 0 ? { organizer } : {}),
     ...(prices.length > 0 ? { priceInformations: prices } : {}),
     ...(Object.keys(accessibility).length > 0 ? { accessibilityInformation: accessibility } : {}),

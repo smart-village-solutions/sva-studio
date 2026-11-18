@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { z } from 'zod';
+import { SSF_DIRECTORY_PERMISSION_IDS } from '../src/constants.js';
+import { createSsfRecordingDirectory } from '../src/recording-directory.js';
 import { expect, it, vi } from 'vitest';
 import type { PluginServerHandlerExecutionContext } from '@sva/plugin-sdk';
 import { createPluginServerHandlers } from '../src/server/index.js';
@@ -49,9 +53,7 @@ it('binds a live tenant directory, reflects immediate revocation and fails close
     instanceId: 'tenant-a',
     permissionIds: expect.arrayContaining(['ssf.recording.recovery.custodian']),
   });
-  expect((await (await handler(context())).json()).directoryRevision).toBe(
-    first.directoryRevision
-  );
+  expect((await (await handler(context())).json()).directoryRevision).toBe(first.directoryRevision);
   users = [];
   const removed = await (await handler(context())).json();
   expect(removed.users).toEqual([]);
@@ -69,4 +71,47 @@ it('returns directory unavailability when host capability is absent', async () =
   expect(handler).toBeTypeOf('function');
   if (!handler) throw new Error('directory handler missing');
   expect((await handler(context())).status).toBe(503);
+});
+
+it('publishes all seven live directory permissions and rejects undeclared grants', () => {
+  const read = (name: string) =>
+    JSON.parse(
+      readFileSync(
+        new URL('../../../docs/api/ssf-recording-directory-v2.' + name + '.json', import.meta.url),
+        'utf8'
+      )
+    );
+  const published = read('schema');
+  const wire = z.fromJSONSchema(published);
+  const sample = read('example');
+  const actual = createSsfRecordingDirectory('tenant-a', [
+    {
+      keycloakSubject: 'all-grants',
+      displayName: 'All grants',
+      permissionIds: SSF_DIRECTORY_PERMISSION_IDS,
+      languages: [],
+    },
+  ]);
+  expect(wire.safeParse(actual).success).toBe(true);
+  expect(wire.safeParse(sample).success).toBe(true);
+  expect(
+    createSsfRecordingDirectory(
+      sample.tenantId,
+      sample.users.map(
+        (u: { sub: string; displayName: string; permissions: string[]; languages: string[] }) => ({
+          keycloakSubject: u.sub,
+          displayName: u.displayName,
+          permissionIds: u.permissions,
+          languages: u.languages,
+        })
+      )
+    )
+  ).toEqual(sample);
+  const props = published.properties.users.items.properties.permissions;
+  expect([...props.items.enum].sort()).toEqual([...SSF_DIRECTORY_PERMISSION_IDS].sort());
+  expect(props.maxItems).toBe(SSF_DIRECTORY_PERMISSION_IDS.length);
+  expect(
+    wire.safeParse({ ...actual, users: [{ ...actual.users[0], permissions: ['ssf.undeclared'] }] })
+      .success
+  ).toBe(false);
 });

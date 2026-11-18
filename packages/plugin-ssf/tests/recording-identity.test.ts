@@ -31,7 +31,7 @@ it('projects explicit recording grants and competence languages independently of
     languages: ['de', 'en'],
   });
   expect(new Set(ssfPlugin.moduleIam.systemRoles[0].permissionIds)).toEqual(
-    new Set(ssfPlugin.moduleIam.permissionIds)
+    new Set(ssfPlugin.moduleIam.permissionIds.filter((p) => p !== 'ssf.recording.access.transfer'))
   );
   expect(ssfPlugin.moduleIam.permissionIds).toEqual(expect.arrayContaining(grants));
   const changed = {
@@ -44,5 +44,14 @@ it('projects explicit recording grants and competence languages independently of
 
 it('registers the exact live directory service endpoint in the generated handler registry', () => {
   const registry = createPluginServerHandlerRegistry([ssfPlugin]);
-  expect(registry.get('ssf.recording-directory-v2')).toMatchObject({ path: '/internal/plugins/ssf/v2/recording-directory', method: 'GET', actionId: 'ssf.runtime-configuration.read', accessRequirement: { kind: 'service', serviceId: 'ssf-runtime', tenantBinding: { kind: 'header', headerName: 'X-Studio-Tenant-Id' } } });
+  expect(registry.get('ssf.recording-directory-v2')).toMatchObject({
+    path: '/internal/plugins/ssf/v2/recording-directory',
+    method: 'GET',
+    actionId: 'ssf.runtime-configuration.read',
+    accessRequirement: {
+      kind: 'service',
+      serviceId: 'ssf-runtime',
+      tenantBinding: { kind: 'header', headerName: 'X-Studio-Tenant-Id' },
+    },
+  });
 });

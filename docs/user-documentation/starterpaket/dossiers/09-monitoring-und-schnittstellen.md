@@ -10,7 +10,7 @@
   bestehenden Schnittstelle kann nicht geändert werden. Gespeicherte Secrets bleiben verborgen.
 - **App-Konfiguration als Vorschau:** Über „App-Konfiguration öffnen“ lassen sich die beiden ersten Einstellungen aus „Allgemein“ und „Design“ laden und lokal bearbeiten. Die Versionsanfrage kann leer bleiben oder eine bekannte App-Version enthalten. Angefragte und tatsächlich geladene Version werden angezeigt; ein Fallback wird gekennzeichnet. Die Änderungsvorschau zeigt ausschließlich die bearbeiteten Felder. „Änderungen verwerfen“ stellt die geladenen Werte wieder her. „Neu laden“ fragt bei lokalen Änderungen vorher nach. Es gibt noch keine Speichermöglichkeit und keine vollständige Variantenliste; Mainserver und App bleiben durch Formularänderungen unverändert. Der Zugriff benötigt `integration.manage`.
 - **Kontextabhängig:** Supabase setzt das Abfallmodul voraus. Automatische Statusprüfungen sind nicht
-  für jeden Typ vollständig implementiert. Kartenchecks unterstützen derzeit Geoapify.
+  für jeden Typ vollständig implementiert. Kartenchecks unterstützen Geoapify und Mapstick. In eigenen Installationen wird Mapstick als externe Schnittstelle automatisch bereitgestellt; ein eigener API-Key ist dafür nicht erforderlich.
 - **Leitfragen / Stichwörter:** Welche Anbindung ist führend? Was bedeutet eingerichtet statt
   verbunden? Schnittstelle, Endpoint, Secret, Healthcheck, Kill-Switch.
 - **Evidenz:** `routes/interfaces/-interfaces-page.tsx`,

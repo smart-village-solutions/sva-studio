@@ -291,3 +291,57 @@ describe('StudioMediaPickerReviewPanel', () => {
     expect(accepted).not.toHaveBeenCalled();
   });
 });
+
+it('keeps a copy local through focus and review and retains metadata when going back', () => {
+  const confirm = vi.fn();
+  const apply = vi.fn();
+  const local = {
+    ...asset,
+    localDraft: {
+      id: 'copy-draft',
+      file: new File(['image'], 'copy.png', { type: 'image/png' }),
+      metadata: { focusPoint: { x: 0.25, y: 0.75 } },
+      editing: { sourceAssetId: 'asset-1', document: { schemaVersion: 1, state: {} } },
+    },
+  } as unknown as import('./studio-media-picker-overlay.shared.js').StudioMediaPickerAssetDetail;
+  const Harness = () => {
+    const [draft, setDraft] = React.useState(asset.metadata);
+    return (
+      <StudioMediaPickerReviewPanel
+        reviewSource="library"
+        reviewAsset={local}
+        metadataDraft={draft}
+        labels={labels}
+        persistenceContext="library"
+        onMetadataChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
+        onBackFromReview={vi.fn()}
+        onClose={vi.fn()}
+        onConfirmSelection={confirm}
+        onApplyImageEdit={apply}
+        onImageFocusChange={vi.fn()}
+      />
+    );
+  };
+  render(<Harness />);
+  expect(screen.getByRole('list', { name: 'media.editor.copyProgress' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextReview' }));
+  fireEvent.change(screen.getByLabelText('Titel'), {
+    target: { value: 'Kopie mit eigenem Titel' },
+  });
+  fireEvent.change(screen.getByLabelText('media.fields.tags'), {
+    target: { value: 'Park\nRathaus' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'media.editor.backToFocus' }));
+  fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextReview' }));
+  expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
+    'Kopie mit eigenem Titel'
+  );
+  expect((screen.getByLabelText('media.fields.tags') as HTMLTextAreaElement).value).toBe(
+    'Park\nRathaus'
+  );
+  expect(confirm).not.toHaveBeenCalled();
+  expect(apply).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+  expect(confirm).toHaveBeenCalledWith(['Park', 'Rathaus']);
+});

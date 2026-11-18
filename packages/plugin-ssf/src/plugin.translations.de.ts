@@ -1,3 +1,5 @@
+import { recordingKeyTranslationsDe } from './recording-key.translations.de.js';
+
 /** German SSF interface resources. */
 export const de = {
   ssf: {
@@ -8,6 +10,9 @@ export const de = {
         'Die neue Sprache benötigt vollständige Ausgangstexte. Nach dem Speichern bearbeitest du diese unter Standardinhalte.',
 
       pages: {
+        'organisation-keys': 'Organisationsschlüssel',
+        'access-transfers': 'Zugänge verwalten',
+
         overview: 'Übersicht',
         appearance: 'Erscheinungsbild und Inhalte',
         languages: 'Sprachen',
@@ -51,6 +56,7 @@ export const de = {
       open: 'Öffnen',
     },
     navigation: { system: 'SSF-Standards', tenant: 'Smart Speech Flow' },
+    ...recordingKeyTranslationsDe,
     readiness: { login: 'SSF-Anmeldung und Mandant bereit' },
     page: {
       systemTitle: 'SSF-Standards',
@@ -65,6 +71,9 @@ export const de = {
       installation: 'Installation',
       template: 'Vorlage für Mandanten',
       recording: {
+        passphraseFileEnabled: 'Lokalen Passphrase-Datei-Export und -Import erlauben',
+        passphraseFileNotice:
+          'Standardmäßig deaktiviert. Erlaubt Beschäftigten den lokalen Export und Import einer unverschlüsselten TXT-Datei mit ihrer Passphrase. Die Datei muss privat und auf gemeinsam genutzten Geräten besonders geschützt aufbewahrt werden. Sie ist keine Sicherung privater Schlüssel oder Aufnahmen und aktiviert keine Aufnahme.',
         affectedTenants:
           'Die Aufnahmerichtlinie wurde nicht gespeichert. Passen Sie zuerst die Aufbewahrung der Prüfprotokolle für die folgenden Mandanten an die neue Aufnahmefrist an und versuchen Sie es erneut.',
         installationDefault: 'Installationsstandard',
@@ -228,6 +237,7 @@ export const de = {
       recording_request: 'Aufnahme anfordern',
       recording_review: 'Aufnahmen prüfen',
       recording_review_sworn: 'Aufnahmen vereidigt prüfen',
+      recording_access_transfer: 'Zugänge zu Aufzeichnungen übertragen',
       recording_supervise: 'Aufnahmen beaufsichtigen',
       recording_recovery_custodian: 'Aufnahmewiederherstellung verwalten',
       systemRead: 'SSF-Systemstandards lesen',

@@ -89,3 +89,53 @@ export const mapInterfaceRow = (row: ExternalInterfaceRow): ExternalInterfaceRec
   createdAt: row.created_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
 });
+
+/** Build the managed record while retaining existing tenant safety switches. */
+export const buildManagedMapstickRecord = (
+  instanceId: string, base: URL, currentDefault: ExternalInterfaceRecord | null
+): ExternalInterfaceRecord => {
+  const replacesLegacyDefault = currentDefault?.publicConfig.provider === 'geoapify';
+  return {
+    id: `mapstick:${instanceId}`,
+    instanceId,
+    typeKey: 'map_geocoding',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: 'Mapstick',
+    alias: 'operator-mapstick',
+    enabled: replacesLegacyDefault ? currentDefault.enabled : true,
+    isDefault: !currentDefault || replacesLegacyDefault,
+    category: 'api',
+    baseUrl: base.href,
+    authMode: 'none',
+    statusCheckKind: 'map_geocoding',
+    visibleStatus: 'unknown',
+    publicConfig: {
+      provider: 'mapstick',
+      styleUrl: new URL('styles/osm-bright/style.json', base).href,
+      suggestEndpoint: new URL('api/', base).href,
+      geocodeEndpoint: new URL('api/', base).href,
+      reverseGeocodeEndpoint: new URL('reverse', base).href,
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      requestTimeoutMs: 10000,
+      rateLimitPerMinute: 60,
+      killSwitchEnabled: false,
+      ...(replacesLegacyDefault
+        ? Object.fromEntries(
+            Object.entries(currentDefault.publicConfig).filter(([key]) =>
+              [
+                'autocompleteEnabled',
+                'geocodeEnabled',
+                'reverseGeocodeEnabled',
+                'requestTimeoutMs',
+                'rateLimitPerMinute',
+                'killSwitchEnabled',
+              ].includes(key)
+            )
+          )
+        : {}),
+    },
+  };
+};

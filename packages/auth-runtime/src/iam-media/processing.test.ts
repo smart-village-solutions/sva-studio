@@ -789,7 +789,7 @@ describe('media upload processing service', () => {
     expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
   });
 
-  it('uses focus point metadata to keep off-center content in cover variants', async () => {
+  it('retains focus as metadata without using it to crop delivered pixels', async () => {
     const originalBuffer = await sharp({
       create: {
         width: 2000,
@@ -888,6 +888,10 @@ describe('media upload processing service', () => {
     const rightPixelIndex = (centerRow * info.width + (info.width - 24)) * channels;
 
     expect(data[leftPixelIndex + 2]).toBeGreaterThan(data[leftPixelIndex]);
-    expect(data[rightPixelIndex]).toBeGreaterThan(data[rightPixelIndex + 2]);
+    expect(data[rightPixelIndex + 2]).toBeGreaterThan(data[rightPixelIndex]);
+    expect(result).toMatchObject({
+      ok: true,
+      asset: { metadata: { focusPoint: { x: 0.95, y: 0.5 } } },
+    });
   });
 });

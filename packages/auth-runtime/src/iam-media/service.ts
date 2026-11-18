@@ -14,6 +14,8 @@ export const createMediaService = (repository: MediaRepository) => ({
   deleteAsset: repository.deleteAsset,
   deleteVariantsByAssetId: repository.deleteVariantsByAssetId,
   upsertAsset: repository.upsertAsset,
+  createAssetIfAbsent: repository.createAssetIfAbsent,
+  listAssetsByIds: repository.listAssetsByIds,
   upsertVariant: repository.upsertVariant,
   listVariantsByAssetId: repository.listVariantsByAssetId,
   upsertUploadSession: repository.upsertUploadSession,

@@ -7,6 +7,7 @@ import { upsertVariantStatement, listVariantsByAssetIdStatement } from './upload
 import { listAssetsStatement, countAssetsStatement } from './asset-list-statements.js';
 import {
   upsertAssetStatement,
+  listAssetsByIdsStatement,
   getAssetByIdStatement,
   getAssetByStorageKeyStatement,
   deleteAssetStatement,
@@ -20,6 +21,8 @@ export const createAssetMethods = (
 ): Pick<
   MediaRepository,
   | 'upsertAsset'
+  | 'createAssetIfAbsent'
+  | 'listAssetsByIds'
   | 'getAssetById'
   | 'getAssetByStorageKey'
   | 'getProvisionalAssetByDraft'
@@ -34,6 +37,18 @@ export const createAssetMethods = (
   async upsertAsset(input) {
     await assertMediaEditingSource(executor, input);
     await executor.execute(upsertAssetStatement(input));
+  },
+  async createAssetIfAbsent(input) {
+    await assertMediaEditingSource(executor, input);
+    const result = await executor.execute(upsertAssetStatement(input, true));
+    return result.rowCount === 1;
+  },
+  async listAssetsByIds(instanceId, assetIds) {
+    if (assetIds.length === 0) return [];
+    const result = await executor.execute<MediaAssetRow>(
+      listAssetsByIdsStatement(instanceId, assetIds)
+    );
+    return result.rows.map(mapAssetRow);
   },
   async getAssetById(instanceId, assetId) {
     const result = await executor.execute<MediaAssetRow>(

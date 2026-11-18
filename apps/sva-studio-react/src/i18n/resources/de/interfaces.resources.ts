@@ -105,12 +105,13 @@ export const interfacesDEResources = {
       disabled: 'Die Karten-/Geocoding-Schnittstelle ist per Kill-Switch deaktiviert.',
       secretMissing: 'Für diese Karten-/Geocoding-Schnittstelle fehlt der API-Key.',
       mapGeocodingProviderUnsupported:
-        'Automatische Verbindungsprüfungen werden derzeit nur für Geoapify unterstützt.',
+        'Automatische Verbindungsprüfungen unterstützen Geoapify und Mapstick.',
       mapGeocodingAuthFailed: 'Der Geoapify-API-Key ist ungültig oder nicht berechtigt.',
       mapGeocodingRateLimited:
         'Geoapify hat die Verbindungsprüfung wegen zu vieler Anfragen begrenzt.',
-      mapGeocodingUnreachable: 'Geoapify ist für die Verbindungsprüfung nicht erreichbar.',
-      mapGeocodingProviderError: 'Geoapify konnte die Verbindungsprüfung nicht abschließen.',
+      mapGeocodingUnreachable: 'Der Kartenservice ist für die Verbindungsprüfung nicht erreichbar.',
+      mapGeocodingProviderError:
+        'Der Kartenservice konnte die Verbindungsprüfung nicht abschließen.',
     },
   },
   form: {
@@ -299,6 +300,11 @@ export const interfacesDEResources = {
       rateLimitPerMinute: 'Rate-Limit pro Minute',
     },
     mapGeocoding: {
+      mapstick: {
+        title: 'Mapstick',
+        description:
+          'Der Betreiber stellt diese externe Karten- und Geocoding-Schnittstelle automatisch bereit. Ein eigener API-Key ist nicht erforderlich. Den Kartenstil wählen Sie direkt in der Karte.',
+      },
       setup: {
         title: 'Empfohlene Einrichtung mit Geoapify',
         description:

@@ -141,7 +141,7 @@ export type SvaMainserverPoiInput = {
   readonly lunches?: readonly PoiLunchInput[];
   readonly operatingCompany?: SvaMainserverOperatingCompanyInput;
   readonly webUrls?: readonly SvaMainserverWebUrlInput[];
-  readonly mediaContents?: readonly SvaMainserverMediaContentInput[];
+  readonly mediaContents?: readonly (SvaMainserverMediaContentInput & { readonly id?: string })[];
   readonly location?: SvaMainserverLocationInput;
   readonly certificates?: readonly SvaMainserverCertificateInput[];
   readonly accessibilityInformation?: SvaMainserverAccessibilityInformationInput;
@@ -241,6 +241,7 @@ export type SvaMainserverProjectAuthor =
   | Readonly<{ type: 'person'; id: string; displayName: string }>;
 
 export type SvaMainserverProjectImage = Readonly<{
+  focusPoint?: Readonly<{ x: number; y: number }> | null;
   url: string;
   altText: string;
   caption?: string;

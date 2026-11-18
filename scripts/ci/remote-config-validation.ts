@@ -5,6 +5,9 @@ const keyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const referencePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,127}$/u;
 const placeholderPattern = /^(?:__SET(?:_[A-Z0-9_]+)?__|changeme|todo)$/iu;
 
+const isValidManagedMapstickUrl = (url: URL): boolean =>
+  url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+
 type ParsedLayer = Readonly<{ name: string; values: ReadonlyMap<string, string> }>;
 
 const fail = (
@@ -124,12 +127,15 @@ export const validateRemoteConfigValue = (
     );
   if (contract.type === 'url') {
     try {
-      new URL(normalizedValue);
+      const url = new URL(normalizedValue);
+      if (key === 'SVA_MANAGED_MAPSTICK_URL' && !isValidManagedMapstickUrl(url)) throw new Error('invalid_managed_mapstick_url');
     } catch {
       fail(
         environment,
         'PROMOTE_CONFIG_INVALID',
-        `Schluessel ${key} erwartet eine absolute URL.`,
+        key === 'SVA_MANAGED_MAPSTICK_URL'
+          ? `Schluessel ${key} erwartet HTTPS ohne Zugangsdaten, Query oder Fragment.`
+          : `Schluessel ${key} erwartet eine absolute URL.`,
         'Eine gueltige absolute URL setzen.'
       );
     }

@@ -1,6 +1,7 @@
 export * from './authorization-projection.js';
 export * from './admin-contracts.js';
 export * from './constants.js';
+export { SSF_RECORDING_PERMISSION_IDS, SSF_TRANSFER_PERMISSION } from './recording-permissions.js';
 export * from './contracts.js';
 export * from './defaults.js';
 export * from './openapi.js';

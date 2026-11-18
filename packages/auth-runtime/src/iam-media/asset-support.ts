@@ -31,7 +31,10 @@ export const toMediaAssetResponse = (
   } = asset;
   const technical = Object.fromEntries(
     Object.entries(asset.technical ?? {}).filter(
-      ([key]) => !key.startsWith('editing') && key !== 'uploadDraftFingerprint'
+      ([key]) =>
+        !key.startsWith('editing') &&
+        !key.startsWith('importSource') &&
+        key !== 'uploadDraftFingerprint'
     )
   );
   return {
@@ -67,6 +70,7 @@ export const rejectMediaMetadataChange = async (
 
   if (
     (asset.technical?.scanStatus === 'clean' ||
+      asset.technical?.importSource === 'bucket_unregistered' ||
       asset.editingDocument ||
       asset.editingSourceKey ||
       asset.editingSourceAssetId) &&

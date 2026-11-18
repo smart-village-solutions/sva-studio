@@ -1,5 +1,5 @@
 import type { PluginServerExecutionHandler } from '@sva/plugin-sdk';
-import { SSF_RECORDING_PERMISSION_IDS } from '../constants.js';
+import { SSF_DIRECTORY_PERMISSION_IDS } from '../constants.js';
 import {
   createSsfRecordingDirectory,
   type SsfPluginServerCapabilities,
@@ -15,7 +15,7 @@ export const createSsfRecordingDirectoryHandler =
         throw new Error('ssf_recording_directory_authority_missing');
       const subjects = await capabilities.readPermissionDirectorySubjects({
         instanceId: context.tenant.instanceId,
-        permissionIds: SSF_RECORDING_PERMISSION_IDS,
+        permissionIds: SSF_DIRECTORY_PERMISSION_IDS,
       });
       return jsonResponse(
         200,

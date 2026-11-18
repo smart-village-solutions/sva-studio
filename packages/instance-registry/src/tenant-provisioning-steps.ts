@@ -1,3 +1,4 @@
+import { ensureManagedMapGeocodingInterface } from '@sva/data-repositories/server';
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
@@ -59,6 +60,8 @@ const registryStep: StepHandler = async ({
   });
   assertExecutionActive();
   if (!provisioning) throw new Error('instance_not_found');
+  await ensureManagedMapGeocodingInterface(instance.instanceId);
+  assertExecutionActive();
   await syncProtectedSystemAdminPermissions(deps, instance.instanceId);
   assertExecutionActive();
   const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);

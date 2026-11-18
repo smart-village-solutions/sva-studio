@@ -5,6 +5,7 @@ import {
 } from '@sva/data-repositories/server';
 import { revealField } from '@sva/auth-runtime/server';
 import {
+  fetchPublicHttps,
   ExternalInterfaceRuntimeError,
   resolveExternalInterface,
   runExternalInterfaceConnectionCheck,
@@ -28,12 +29,41 @@ const verifyMapGeocodingConnection = async (
   deps: { readonly fetchImpl?: typeof fetch }
 ): Promise<void> => {
   const provider = resolvedInterface.publicConfig.provider;
+  if (provider === 'mapstick') {
+    try {
+      const endpoint = resolvedInterface.publicConfig.geocodeEndpoint;
+      if (typeof endpoint !== 'string') throw new Error('invalid_config');
+      const url = new URL(endpoint);
+      url.searchParams.set('q', 'Berlin');
+      url.searchParams.set('limit', '1');
+      const response = await (deps.fetchImpl ?? fetchPublicHttps)(url, {
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error('provider_error');
+      }
+      const payload = (await response.json()) as { features?: unknown };
+      if (!Array.isArray(payload.features)) throw new Error('provider_error');
+      return;
+    } catch {
+      throw createRuntimeError(
+        'map_geocoding_unreachable',
+        resolvedInterface.instanceId,
+        'map_geocoding',
+        'Der Kartenservice ist für die Verbindungsprüfung nicht erreichbar.',
+        true
+      );
+    }
+  }
+
   if (provider !== 'geoapify') {
     throw createRuntimeError(
       'map_geocoding_provider_unsupported',
       resolvedInterface.instanceId,
       'map_geocoding',
-      'Automatische Verbindungsprüfungen werden derzeit nur für Geoapify unterstützt.'
+      'Automatische Verbindungsprüfungen unterstützen Geoapify und Mapstick.'
     );
   }
 

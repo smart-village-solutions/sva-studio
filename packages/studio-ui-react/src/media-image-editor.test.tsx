@@ -115,7 +115,7 @@ describe('StudioMediaImageEditor integration', () => {
     const apply = vi.fn();
     render(<StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />);
     await waitFor(() => expect(library.props).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'media.editor.previewEditedImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextFocus' }));
     await waitFor(() => expect(apply).toHaveBeenCalledOnce());
     const result = apply.mock.calls[0][0];
     expect(result.file.name).toBe('foto.png');
@@ -133,7 +133,7 @@ describe('StudioMediaImageEditor integration', () => {
     await screen.findByRole('alert');
     fireEvent.click(screen.getByRole('button', { name: 'media.editor.retry' }));
     await waitFor(() => expect(library.props).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'media.editor.previewEditedImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextFocus' }));
     await screen.findByRole('alert');
     expect(apply).not.toHaveBeenCalled();
     expect(
@@ -159,7 +159,7 @@ describe('StudioMediaImageEditor integration', () => {
       </React.Activity>
     );
     await waitFor(() => expect(library.props).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'media.editor.previewEditedImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextFocus' }));
     view.rerender(
       <React.Activity mode="hidden">
         <StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />
@@ -195,7 +195,7 @@ describe('StudioMediaImageEditor integration', () => {
       <StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />
     );
     await waitFor(() => expect(library.props).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'media.editor.previewEditedImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.nextFocus' }));
     unmount();
     await act(async () => finish?.(new Blob(['png'], { type: 'image/png' })));
     expect(apply).not.toHaveBeenCalled();

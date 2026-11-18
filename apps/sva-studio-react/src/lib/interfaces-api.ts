@@ -158,7 +158,8 @@ export const upsertInstanceInterfaceForRequest = async (
         stored.type === 'supabase' ||
         stored.type === 'postgresql' ||
         stored.type === 's3' ||
-        (stored.type === 'mapGeocoding' && stored.config.provider === 'geoapify')
+        (stored.type === 'mapGeocoding' &&
+          ['geoapify', 'mapstick'].includes(stored.config.provider))
       ) {
         try {
           const { runStoredInterfaceHealthcheck } =

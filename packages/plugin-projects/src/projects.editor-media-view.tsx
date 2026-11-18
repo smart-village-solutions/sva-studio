@@ -66,7 +66,7 @@ export function ProjectMediaPicker({
       onUploadFile={(file) => void mediaPicker.uploadFile(file)}
       onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
       onBackFromReview={mediaPicker.goBackFromReview}
-      onConfirmSelection={() => void mediaPicker.confirmSelection()}
+      onConfirmSelection={(tags) => void mediaPicker.confirmSelection(tags)}
       onOpenMediaManagement={(assetId) =>
         void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
       }

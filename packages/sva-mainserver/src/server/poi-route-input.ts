@@ -23,7 +23,11 @@ import {
   parseTags,
   parseWebUrls,
 } from './content-route-parsers.js';
-import { changeSvaMainserverPoiVisibility, createSvaMainserverPoi, getSvaMainserverPoiDetail } from './service.js';
+import {
+  changeSvaMainserverPoiVisibility,
+  createSvaMainserverPoi,
+  getSvaMainserverPoiDetail,
+} from './service.js';
 import { SvaMainserverError } from './errors.js';
 import {
   authorizeMainserverCreateForPrincipal,
@@ -110,7 +114,7 @@ export const parsePoiInput = async (
   const openingHours = parseOpeningHours(body.openingHours);
   const operatingCompany = parseOperatingCompany(body.operatingCompany);
   const webUrls = parseWebUrls(body.webUrls);
-  const mediaContents = parseMediaContents(body.mediaContents);
+  const mediaContents = parseMediaContents(body.mediaContents, { includeStoredIds: true });
   const location = parseLocation(body.location);
   const certificates = parseCertificates(body.certificates);
   const accessibilityInformation = parseAccessibilityInformation(body.accessibilityInformation);
@@ -188,13 +192,16 @@ export const applyPoiVisibilityAfterWrite = async (
       observedDataProviderId: data.dataProvider?.id,
       lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
     });
-    return json({
-      error: 'poi_visibility_failed',
-      message: 'poi_visibility_failed',
-      details: { contentId: data.id },
-      partialSuccess: true,
-      data,
-    }, error instanceof SvaMainserverError ? error.statusCode : 502);
+    return json(
+      {
+        error: 'poi_visibility_failed',
+        message: 'poi_visibility_failed',
+        details: { contentId: data.id },
+        partialSuccess: true,
+        data,
+      },
+      error instanceof SvaMainserverError ? error.statusCode : 502
+    );
   }
 };
 

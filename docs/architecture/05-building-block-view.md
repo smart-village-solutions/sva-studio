@@ -1341,3 +1341,33 @@ unverändert; die Anzeige wird nicht mit dem laufenden Image abgeglichen.
 ### Standard Redakteur
 
 Der Core-Permission-Katalog besitzt die redaktionelle Action-Auswahl und deren Scopes. `data-repositories` erzeugt die löschbare Rolle atomar mit dem Mandanten und ergänzt ihre Core-/Modulgrants ausschließlich bei noch vorhandener Rolle. Migration 0116 übernimmt den einmaligen Bestand. `iam-admin` klassifiziert alle gescopten redaktionellen Actions als Datensatzrechte; die Mainserver-Mutations- und Resource-Access-Pfade erzwingen die vorhandene exakte Ownership-Prüfung. Es entstehen keine neuen Packages, Services oder Verwaltungsendpunkte.
+
+### Mapstick im bestehenden Karten-/Geocoding-Pfad
+
+- `map_geocoding` bleibt eine externe, mandantengebundene Schnittstelle. Die optionale
+  Serverkonfiguration `SVA_MANAGED_MAPSTICK_URL` richtet sie in eigenen Installationen
+  automatisch ein; allgemeine Studio-/Standalone-Installationen besitzen keinen
+  Default auf den SVA-Kartenservice. Bestehende Mandanten werden beim ersten Zugriff,
+  neue im vorhandenen Provisionierungsschritt bedient. Bestehende explizite
+  Mapstick-Einstellungen werden nicht überschrieben; ein Geoapify-Default wird mit
+  Erhalt seiner Aktivierungs-/Budgetflags ersetzt. Ein Custom-Default bleibt erhalten.
+- Photon wird im bestehenden Host-Adapter in SDK-Adressen normalisiert. Plugins
+  erhalten nur Host-Operationen und denselben Konfigurationsvertrag.
+- Der bestehende Map-Geocoding-Dispatcher stellt unter
+  `/api/v1/iam/map-geocoding/mapstick/` genau bekannte Style-, Sprite-, Glyphen- und
+  PMTiles-Ressourcen bereit. Der Service bleibt extern; diese Weitergabe überbrückt
+  den fehlenden CORS-Zugriff und vervollständigt die MapLibre-Styles.
+- Die vorhandene gemeinsame Karten-UI bietet OSM Standard, OSM Bright, Basic, 3D und
+  Fiord. Die MapLibre-Instanz bleibt beim Stilwechsel erhalten. Der Baustelleneditor
+  übernimmt die nativen `td-*`-Zeichnungsquellen/-ebenen in den neuen Stil und erhält
+  dadurch auch noch nicht gespeicherte Zeichenstände und die Undo-Historie.
+
+Die Plugin-Bindings liefern der gemeinsamen Karten-UI die Übersetzungsfunktion und
+den vom SDK abgeleiteten, konto-/mandantengebundenen Präferenzschlüssel. Die
+UI-Bibliothek greift nicht auf den breiten Plugin-SDK-Einstieg zu; die neutralen
+Kartenstil- und Ressourcenpfadkonstanten gehören zum vorhandenen Core-Vertrag für
+externe Schnittstellen.
+
+## Bausteine der SSF-Aufzeichnungsverwaltung
+
+Das SSF-Plugin stellt die beiden geschützten Routen, lokale WebCrypto-Funktionen und Serverhandler mit festen DTOs bereit. Der Auth-Runtime-Dispatcher bindet die Gateway-Capability an den aktuellen Request. Die Runtime prüft Sitzung, Realm, Mandant und Benutzer, tauscht das Access-Token und ruft den fest konfigurierten Gateway-Origin auf.

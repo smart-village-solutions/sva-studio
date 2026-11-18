@@ -28,11 +28,15 @@ export const MediaPage = () => {
     if (bucketStorageKey) {
       return (
         <MediaUnregisteredDetailPage
+          key={bucketStorageKey}
           asset={{
             source: 'bucket',
             registrationStatus: 'unregistered',
             storageKey: bucketStorageKey,
-            fileName: readSearchValue(search.fileName) ?? bucketStorageKey.split('/').pop() ?? bucketStorageKey,
+            fileName:
+              readSearchValue(search.fileName) ??
+              bucketStorageKey.split('/').pop() ??
+              bucketStorageKey,
             folderPath: readSearchValue(search.folderPath) ?? '',
             relativePath: readSearchValue(search.relativePath) ?? bucketStorageKey,
             byteSize: readByteSize(search.byteSize),
@@ -44,7 +48,7 @@ export const MediaPage = () => {
       );
     }
 
-    return <MediaDetailPage assetId={mediaId} />;
+    return <MediaDetailPage key={mediaId} assetId={mediaId} />;
   }
 
   return <MediaLibraryPage />;

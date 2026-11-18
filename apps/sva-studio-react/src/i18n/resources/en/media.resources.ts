@@ -115,6 +115,8 @@ export const mediaENResources = {
     },
   },
   detail: {
+    fileSummary: '{{mimeType}} · {{width}} × {{height}} pixels · {{bytes}} bytes',
+    moreInformation: 'More information',
     visibilityFixedHint:
       'Visibility remains fixed after a scanned upload. To change visibility, upload the media again.',
     subtitle:
@@ -157,7 +159,7 @@ export const mediaENResources = {
     downloadQrSvg: 'Download QR code as SVG',
     register: 'Register as media asset',
     open: 'Open',
-    save: 'Save metadata',
+    save: 'Save changes',
     delete: 'Delete media',
     deleteConfirm: 'Delete this media asset?',
     back: 'Back to media library',
@@ -321,13 +323,14 @@ export const mediaENResources = {
     },
   },
   unregistered: {
-    subtitle:
-      'This object already exists in the bucket but has not been registered in Studio as a managed media asset yet.',
-    metadataTitle: 'Suggested registration',
-    metadataDescription:
-      'These values will be used as initial metadata when the media asset is registered.',
-    technicalDescription: 'Technical bucket details for this unregistered object.',
-    altTextHint: 'Will be completed later during editorial review.',
+    preparing:
+      'The image is being safely added to the media library. Its detail view will open next.',
+    readOnly: 'You can view this image but do not have permission to add it to the media library.',
+    blocked: 'This source is not approved for automatic import.',
+    quota: 'There is not enough storage quota to add this image.',
+    failed: 'The image could not be prepared. Check the file or try again.',
+    retry: 'Try again',
+    sourcePreserved: 'The original file and its existing address are preserved.',
   },
   errors: {
     infected:

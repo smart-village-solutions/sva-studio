@@ -25,6 +25,19 @@ describe('mainserver content media adapter', () => {
     expect(result).toEqual(source);
   });
 
+  it.each([{ x: 0.2, y: 0.8 }, null])(
+    'passes focus metadata without changing the image URL or other payload values: %j',
+    (focusPoint) => {
+      const [usage] = mainserverContentMediaToUsages([
+        { payload: { retained: true }, sourceUrl: { url: 'https://cdn.example.test/image.jpg' } },
+      ]);
+      expect(contentMediaUsagesToMainserver([{ ...usage!, focusPoint }])[0]).toMatchObject({
+        payload: { retained: true, focusPoint },
+        sourceUrl: { url: 'https://cdn.example.test/image.jpg' },
+      });
+    }
+  );
+
   it('aligns the gallery role and asset id by order', () => {
     const [usage] = mainserverContentMediaToUsages(
       [{ sourceUrl: { url: 'https://cdn.example.test/image.jpg' } }],
@@ -66,4 +79,17 @@ describe('mainserver content media adapter', () => {
       },
     ]);
   });
+});
+
+it.each([
+  [
+    { x: 0.2, y: 1 },
+    { x: 0.2, y: 1 },
+  ],
+  [null, null],
+  [{ x: 2, y: 0 }, undefined],
+  [{ x: '0', y: 0 }, undefined],
+])('restores only valid focus metadata from an existing media usage', (focusPoint, expected) => {
+  const [usage] = mainserverContentMediaToUsages([{ payload: { focusPoint } }]);
+  expect(usage?.focusPoint).toEqual(expected);
 });

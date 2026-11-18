@@ -35,6 +35,15 @@ const overrides = Object.entries(remoteConfigContract)
   )
   .join('\n');
 
+const dockerComposeAvailable = (() => {
+  try {
+    execFileSync('docker', ['compose', 'version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 describe('remote app config builder', () => {
   it('injects the separate search key without changing the source scope or config revision', () => {
     const existingBundle = overrides
@@ -294,12 +303,13 @@ describe('remote app config builder', () => {
 
       expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
       expect(result.source).toContain('BUS_API_BASE_URL=https://bus-api.smart-village.app\n');
+      expect(result.source).toContain('SVA_MANAGED_MAPSTICK_URL=https://mapstick.smart-village.app/\n');
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
     }
   );
 
-  it.each(['dev', 'staging', 'prod'] as const)(
+  it.skipIf(!dockerComposeAvailable).each(['dev', 'staging', 'prod'] as const)(
     'passes the managed Mapstick URL from the %s profile to app and provisioner',
     (environment) => {
       const remoteProfile = readFileSync(

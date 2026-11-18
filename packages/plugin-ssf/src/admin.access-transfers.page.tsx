@@ -233,7 +233,7 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
             'PREPARATION_USED',
             'PREPARATION_EXPIRED',
             'PERMISSION_REQUIRED',
-            'STEP_UP_REQUIRED',
+            'AUTHENTICATION_REQUIRED',
             'INVALID_PROOF',
           ].includes(e.message)
         )

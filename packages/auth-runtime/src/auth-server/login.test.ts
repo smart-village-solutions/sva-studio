@@ -73,12 +73,12 @@ describe('createLoginUrl', () => {
     );
   });
 
-  it('requests actual MFA assurance for the SSF key management step-up', async () => {
+  it('uses the ordinary tenant login policy for SSF recording administration', async () => {
     const { createLoginUrl } = await import('./login.js');
-    await createLoginUrl({ returnTo: '/plugins/ssf/access-transfers', reauth: true });
+    await createLoginUrl({ returnTo: '/plugins/ssf/access-transfers' });
     expect(mocks.buildAuthorizationUrl).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ acr_values: 'mfa', max_age: '0' })
+      expect.not.objectContaining({ acr_values: expect.anything() })
     );
   });
 

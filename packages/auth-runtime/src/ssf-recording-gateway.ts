@@ -1,4 +1,4 @@
-import { jwtVerify, type JWTPayload } from 'jose';
+import { errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
 import type {
   BoundSsfRecordingRequest,
   SsfRecordingGatewayRequest,
@@ -60,13 +60,13 @@ export const forwardSsfRecordingRequest = async (
   try {
     const instanceId = ctx.actor.instanceId;
     const session = await getSession(ctx.sessionId, { decryptTokens: true });
+    if (!session?.accessToken) return fail(401, 'AUTHENTICATION_REQUIRED');
     if (
-      !session?.accessToken ||
       session.userId !== ctx.actor.id ||
       session.auth?.kind !== 'instance' ||
       session.auth.instanceId !== instanceId
     )
-      return fail(403, 'STEP_UP_REQUIRED');
+      return fail(403, 'PERMISSION_REQUIRED');
     const config = await resolveAuthConfigForInstance(instanceId);
     if (
       config.kind !== 'instance' ||
@@ -74,7 +74,7 @@ export const forwardSsfRecordingRequest = async (
       config.issuer !== session.auth.issuer ||
       config.clientId !== session.auth.clientId
     )
-      return fail(403, 'STEP_UP_REQUIRED');
+      return fail(403, 'PERMISSION_REQUIRED');
     const audience = process.env.SVA_STUDIO_SSF_GATEWAY_AUDIENCE?.trim() || 'ssf-frontend';
     const origin = new URL(process.env.SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL ?? '');
     if (
@@ -105,8 +105,6 @@ export const forwardSsfRecordingRequest = async (
       !allowed(original, route[2])
     )
       return fail(403, 'PERMISSION_REQUIRED');
-    if (typeof original.acr !== 'string' || !Number.isSafeInteger(original.auth_time))
-      return fail(403, 'STEP_UP_REQUIRED');
     const signal = AbortSignal.any([ctx.request.signal, AbortSignal.timeout(15_000)]);
     const exchange = await fetch(config.issuer + '/protocol/openid-connect/token', {
       method: 'POST',
@@ -128,7 +126,12 @@ export const forwardSsfRecordingRequest = async (
         audience,
       }),
     });
-    if (!exchange.ok) return fail(503, 'RECORDING_UNAVAILABLE');
+    if (!exchange.ok) {
+      const rejection = (await exchange.json().catch(() => ({}))) as { error?: string };
+      if (rejection.error === 'invalid_grant' || rejection.error === 'invalid_token')
+        return fail(401, 'AUTHENTICATION_REQUIRED');
+      return fail(503, 'RECORDING_UNAVAILABLE');
+    }
     const token = (await exchange.json()) as Record<string, unknown>;
     if (
       token.issued_token_type !== accessTokenType ||
@@ -158,7 +161,15 @@ export const forwardSsfRecordingRequest = async (
       },
       ...(operation.body ? { body: operation.body } : {}),
     });
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof joseErrors.JWTExpired ||
+      error instanceof joseErrors.JWSSignatureVerificationFailed ||
+      error instanceof joseErrors.JWTClaimValidationFailed ||
+      error instanceof joseErrors.JWTInvalid ||
+      error instanceof joseErrors.JWSInvalid
+    )
+      return fail(401, 'AUTHENTICATION_REQUIRED');
     return fail(503, 'RECORDING_UNAVAILABLE');
   }
 };

@@ -77,11 +77,10 @@ export const de = {
       activate: 'Gesicherten Schlüssel aktivieren',
       activated: 'Die Aktivierung wurde bestätigt. Die Liste zeigt den aktuellen Gateway-Stand.',
       cancel: 'Abbrechen',
-      reauth: 'Erneut mit MFA anmelden',
+      login: 'Anmelden',
       states: { active: 'Aktiv', prepared: 'Vorbereitet', superseded: 'Ersetzt' },
       errors: {
-        STEP_UP_REQUIRED:
-          'Eine neue Mandantenanmeldung mit MFA ist erforderlich. Beginnen Sie danach eine neue Vorbereitung.',
+        AUTHENTICATION_REQUIRED: 'Ihre Sitzung ist beendet. Melden Sie sich an, um fortzufahren.',
         PERMISSION_REQUIRED: 'Ihnen fehlt die Berechtigung für diesen Vorgang.',
         PREPARATION_NOT_FOUND: 'Die Auswahl ist nicht mehr verfügbar. Laden Sie sie neu.',
         KEY_VERSION_CHANGED:

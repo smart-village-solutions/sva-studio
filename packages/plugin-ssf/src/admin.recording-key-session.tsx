@@ -32,15 +32,10 @@ export const RecordingContext = ({
   );
   if (!session.isResolved && !session.hasError)
     return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
-  if (
-    session.hasError ||
-    !session.instanceId ||
-    !session.subjectId ||
-    !session.permissionActions.includes(permission)
-  )
-    return (
-      <StudioFormSummary kind="error">{pt('keys.errors.PERMISSION_REQUIRED')}</StudioFormSummary>
-    );
+  if (session.hasError) return <RecordingError code="RECORDING_UNAVAILABLE" />;
+  if (!session.subjectId) return <RecordingError code="AUTHENTICATION_REQUIRED" />;
+  if (!session.instanceId || !session.permissionActions.includes(permission))
+    return <RecordingError code="PERMISSION_REQUIRED" />;
   return (
     <Form
       key={JSON.stringify([session.instanceId, session.subjectId, session.organizationId])}
@@ -94,10 +89,15 @@ export const RecordingError = ({ code }: { code: string }) => {
   return (
     <StudioFormSummary kind="error">
       {pt('keys.errors.' + code)}
-      {code === 'STEP_UP_REQUIRED' ? (
+      {code === 'AUTHENTICATION_REQUIRED' ? (
         <Button asChild>
-          <a href={'/auth/login?reauth=1&returnTo=' + encodeURIComponent(location.pathname)}>
-            {pt('keys.reauth')}
+          <a
+            href={
+              '/auth/login?returnTo=' +
+              encodeURIComponent(typeof window === 'undefined' ? '/' : window.location.pathname)
+            }
+          >
+            {pt('keys.login')}
           </a>
         </Button>
       ) : null}

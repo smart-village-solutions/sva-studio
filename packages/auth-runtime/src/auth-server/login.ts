@@ -57,12 +57,6 @@ export const createLoginUrl = async (input?: {
     ...(input?.kcAction ? { kc_action: input.kcAction } : {}),
     ...(input?.silent ? { prompt: 'none' } : {}),
     ...(freshReauthRequested ? { prompt: 'login', max_age: '0' } : {}),
-    ...(freshReauthRequested &&
-    ['/plugins/ssf/organisation-keys', '/plugins/ssf/access-transfers'].includes(
-      input?.returnTo ?? ''
-    )
-      ? { acr_values: 'mfa' }
-      : {}),
   });
 
   return { url: url.href, state, loginState };

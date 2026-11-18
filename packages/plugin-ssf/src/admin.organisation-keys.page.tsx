@@ -153,7 +153,7 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
             'PREPARATION_EXPIRED',
             'PREPARATION_USED',
             'PERMISSION_REQUIRED',
-            'STEP_UP_REQUIRED',
+            'AUTHENTICATION_REQUIRED',
             'INVALID_PROOF',
           ].includes(e.message)
         )

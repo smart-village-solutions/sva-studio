@@ -46,3 +46,15 @@ it('redacts malformed gateway output and makes the public response uncacheable',
   expect(ok.status).toBe(200);
   expect(ok.headers.get('cache-control')).toBe('no-store');
 });
+
+it('retains an upstream authentication failure without disclosing provider details', async () => {
+  const handler = createPluginServerHandlers()['ssf.organisation-keys.read'];
+  const response = await handler!({
+    ...ctx,
+    handlerId: 'ssf.organisation-keys.read',
+    request: new Request('https://studio.test/api'),
+    forwardSsfRecordingRequest: async () => new Response('private upstream error', { status: 401 }),
+  });
+  expect(response.status).toBe(401);
+  expect(await response.json()).toEqual({ error: { code: 'AUTHENTICATION_REQUIRED' } });
+});

@@ -128,13 +128,13 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await current.page.locator('#kc-login').click();
   };
 
-  const tokenForCode = async (
+  const tokensForCode = async (
     current: Session,
     realm: string,
     verifier: string,
     clientId = 'ssf-frontend',
     clientSecret?: string
-  ): Promise<string> => {
+  ) => {
     try {
       await current.page.waitForURL(isCallback, { timeout: 20_000 });
     } catch {
@@ -161,9 +161,10 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
       }),
     });
     if (!response.ok) throw new Error(`Disposable token exchange failed: ${response.status}`);
-    const token = (await response.json()) as { access_token: string };
-    return token.access_token;
+    return (await response.json()) as { access_token: string; refresh_token: string };
   };
+  const tokenForCode = async (...args: Parameters<typeof tokensForCode>) =>
+    (await tokensForCode(...args)).access_token;
   const claims = async (
     current: Session,
     realm: string,
@@ -283,8 +284,10 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
   }, 30_000);
 
   it.skipIf(process.env.RUN_SSF_EXCHANGE_INTEGRATION !== '1')(
-    'exchanges a tenant Studio MFA session retaining its identity and refuses other realms and audiences',
+    'uses the verified tenant session for recording actions and denies ended sessions and other realms',
     async () => {
+      const oldMfa = process.env.SSF_RECORDING_JOURNEY_AGED_MFA === '1';
+      const omitAcr = process.env.SSF_RECORDING_JOURNEY_OMIT_ACR === '1';
       const clientId = 'recording-studio',
         secret = randomBytes(30).toString('hex'),
         instanceId = 'fixture-' + randomUUID();
@@ -330,9 +333,32 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
           audience: 'ssf-frontend',
         });
         await client.ensureLoginMfaPolicy({
-          mode: 'optional',
+          mode: oldMfa && realm === realmA ? 'required' : 'optional',
           clientIds: [clientId, 'ssf-frontend', 'studio-client'],
         });
+      }
+      if (omitAcr) {
+        const clients = await api<{ id: string }[]>(
+          'GET',
+          realmA + '/clients?clientId=' + clientId
+        );
+        const scopes = await api<{ id: string; name: string }[]>(
+          'GET',
+          realmA + '/clients/' + clients[0]!.id + '/default-client-scopes'
+        );
+        const acrScope = scopes.find((scope) => scope.name === 'acr');
+        if (!acrScope) throw new Error('Disposable client does not expose the default ACR scope');
+        await api(
+          'DELETE',
+          realmA + '/clients/' + clients[0]!.id + '/default-client-scopes/' + acrScope.id
+        );
+        const mappers = await clientA.listClientProtocolMappers(clientId);
+        const acr = mappers.find((mapper) => mapper.name === 'studio-login-mfa-acr');
+        if (!acr?.id) throw new Error('Disposable client has no managed ACR mapper');
+        await api(
+          'DELETE',
+          realmA + '/clients/' + clients[0]!.id + '/protocol-mappers/models/' + acr.id
+        );
       }
       const username = 'exchange-user';
       await api('POST', realmA + '/users', {
@@ -351,12 +377,21 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
       const current = await session(username);
       const verifier = await authorize(current, realmA, {
         client_id: clientId,
-        acr_values: 'mfa',
-        max_age: '0',
       });
       await enterPassword(current);
-      await enroll(current);
-      const source = await tokenForCode(current, realmA, verifier, clientId, secret);
+      if (oldMfa) await enroll(current);
+      const tokens = await tokensForCode(current, realmA, verifier, clientId, secret);
+      let source = tokens.access_token;
+      const refresh = () =>
+        fetch(base + '/realms/' + realmA + '/protocol/openid-connect/token', {
+          method: 'POST',
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: clientId,
+            client_secret: secret,
+            refresh_token: tokens.refresh_token,
+          }),
+        });
       const decode = (token: string) =>
         JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString()) as Record<
           string,
@@ -368,7 +403,7 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
         studio_tenant_id: instanceId,
         ssf_permissions: fixturePermissions,
       });
-      expect(initial.acr).toBe('mfa');
+      expect(initial.acr).toBe(omitAcr ? undefined : oldMfa ? 'mfa' : 'pwd');
       expect(initial.auth_time).toBeTypeOf('number');
       const exchange = (realm: string, audience: string) =>
         fetch(base + '/realms/' + realm + '/protocol/openid-connect/token', {
@@ -383,6 +418,24 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
             audience,
           }),
         });
+      if (oldMfa) {
+        const waitUntil =
+          Math.max(Number(initial.exp), Number(initial.auth_time) + 301) * 1000 + 200;
+        await new Promise((resolve) => setTimeout(resolve, Math.max(0, waitUntil - Date.now())));
+        expect((await exchange(realmA, 'ssf-frontend')).ok).toBe(false);
+        const refreshed = await refresh();
+        expect(refreshed.status).toBe(200);
+        const renewed = (await refreshed.json()) as typeof tokens;
+        tokens.refresh_token = renewed.refresh_token;
+        source = renewed.access_token;
+        expect(decode(source)).toMatchObject({
+          sid: initial.sid,
+          sub: initial.sub,
+          auth_time: initial.auth_time,
+          acr: 'mfa',
+        });
+        expect(Date.now() / 1000 - Number(initial.auth_time)).toBeGreaterThan(300);
+      }
       const response = await exchange(realmA, 'ssf-frontend');
       expect(response.status).toBe(200);
       const result = decode(((await response.json()) as { access_token: string }).access_token);
@@ -391,12 +444,12 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
         sid: initial.sid,
         iss: initial.iss,
         azp: clientId,
-        acr: initial.acr,
         auth_time: initial.auth_time,
         aud: 'ssf-frontend',
         studio_tenant_id: instanceId,
         ssf_permissions: fixturePermissions,
       });
+      expect(result.acr).toBe(initial.acr);
       expect((await exchange(realmB, 'ssf-frontend')).ok).toBe(false);
       expect((await exchange(realmA, 'unprovisioned-audience')).ok).toBe(false);
       const directory = process.env.SSF_RECORDING_JOURNEY_DIRECTORY,
@@ -416,11 +469,8 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
         const other = await session(username),
           otherVerifier = await authorize(other, realmB, {
             client_id: clientId,
-            acr_values: 'mfa',
-            max_age: '0',
           });
         await enterPassword(other);
-        await enroll(other);
         const otherSource = await tokenForCode(other, realmB, otherVerifier, clientId, secret),
           otherClaims = decode(otherSource);
         const { recordingGatewayJourney } =
@@ -485,11 +535,14 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
           tenantConfig.mockRestore();
         }
       }
+      await api('DELETE', realmA + '/sessions/' + String(initial.sid));
+      expect((await exchange(realmA, 'ssf-frontend')).ok).toBe(false);
+      expect((await refresh()).ok).toBe(false);
     },
-    90000
+    process.env.SSF_RECORDING_JOURNEY_AGED_MFA === '1' ? 450000 : 90000
   );
 
-  it('enforces voluntary/required factors, preserves SSO and certifies fresh step-up', async () => {
+  it('enforces optional and required login factors and preserves SSO', async () => {
     const realm = realmA;
     const ordinary = await session('ordinary');
     let verifier = await authorize(ordinary, realm);
@@ -508,19 +561,6 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await enterPassword(voluntary);
     await enterOtp(voluntary, secret);
     await claims(voluntary, realm, verifier);
-
-    const stepUpStarted = Math.floor(Date.now() / 1000);
-    verifier = await authorize(voluntary, realm, { acr_values: 'mfa', max_age: '0' });
-    await enterPassword(voluntary);
-    await enterOtp(voluntary, secret);
-    const fresh = await claims(voluntary, realm, verifier);
-    expect(fresh.acr).toBe('mfa');
-    expect(fresh.auth_time).toBeTypeOf('number');
-    if (typeof fresh.auth_time !== 'number')
-      throw new Error('MFA token has no authentication time');
-    expect(fresh.auth_time).toBeGreaterThanOrEqual(stepUpStarted - 1);
-    expect(Math.floor(Date.now() / 1000) - fresh.auth_time).toBeGreaterThanOrEqual(-60);
-    expect(Math.floor(Date.now() / 1000) - fresh.auth_time).toBeLessThanOrEqual(300);
 
     await clientA.ensureLoginMfaPolicy({
       mode: 'required',

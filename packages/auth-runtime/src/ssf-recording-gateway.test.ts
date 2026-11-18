@@ -121,3 +121,36 @@ it('does not exchange a session from a different realm or send a bearer to anoth
   ).toBe(false);
   expect(request).not.toHaveBeenCalled();
 });
+
+it.each([
+  { acr: 'pwd', auth_time: undefined },
+  { acr: undefined, auth_time: undefined },
+  { acr: 'mfa', auth_time: 1 },
+])('accepts the signed optional authentication context without a freshness gate', async (extra) => {
+  const token = await sign(extra);
+  const session = await mocks.session();
+  mocks.session.mockResolvedValue({ ...session, accessToken: token });
+  request
+    .mockResolvedValueOnce(
+      Response.json({
+        access_token: token,
+        token_type: 'Bearer',
+        issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      })
+    )
+    .mockResolvedValueOnce(Response.json({ keys: [] }));
+  expect(
+    (await gateway.forwardSsfRecordingRequest(ctx, { method: 'GET', path: '/organisation-keys' }))
+      .status
+  ).toBe(200);
+});
+it('requires normal login when the authenticated session no longer exists', async () => {
+  mocks.session.mockResolvedValue(null);
+  const res = await gateway.forwardSsfRecordingRequest(ctx, {
+    method: 'GET',
+    path: '/organisation-keys',
+  });
+  expect(res.status).toBe(401);
+  expect(await res.json()).toEqual({ error: { code: 'AUTHENTICATION_REQUIRED' } });
+  expect(request).not.toHaveBeenCalled();
+});

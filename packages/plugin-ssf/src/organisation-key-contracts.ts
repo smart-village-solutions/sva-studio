@@ -168,7 +168,7 @@ export const operationSchemas = {
 } as const;
 export const pluginRecordingBase = '/api/v1/ssf/recording/v2';
 export const errors = z.enum([
-  'STEP_UP_REQUIRED',
+  'AUTHENTICATION_REQUIRED',
   'PERMISSION_REQUIRED',
   'PREPARATION_NOT_FOUND',
   'KEY_VERSION_CHANGED',

@@ -41,9 +41,11 @@ export const requestOperation = async <K extends Operation>(
     throw new Error(
       parsed.success
         ? parsed.data
-        : response.status === 403
-          ? 'PERMISSION_REQUIRED'
-          : 'RECORDING_UNAVAILABLE'
+        : response.status === 401
+          ? 'AUTHENTICATION_REQUIRED'
+          : response.status === 403
+            ? 'PERMISSION_REQUIRED'
+            : 'RECORDING_UNAVAILABLE'
     );
   }
   return op.output.parse(response.status === 204 ? null : await response.json()) as z.output<
@@ -57,7 +59,13 @@ export const readPeople = async (signal: AbortSignal) => {
     credentials: 'same-origin',
   });
   if (!res.ok)
-    throw new Error(res.status === 403 ? 'PERMISSION_REQUIRED' : 'RECORDING_UNAVAILABLE');
+    throw new Error(
+      res.status === 401
+        ? 'AUTHENTICATION_REQUIRED'
+        : res.status === 403
+          ? 'PERMISSION_REQUIRED'
+          : 'RECORDING_UNAVAILABLE'
+    );
   return z
     .strictObject({
       users: z.array(z.strictObject({ sub: subject, displayName: z.string().max(200) })).max(10000),

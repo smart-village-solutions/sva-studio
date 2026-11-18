@@ -90,6 +90,7 @@ export const createRecordingKeyHandlers = (
           path,
           ...(body ? { body } : {}),
         });
+        if (upstream.status === 401) return failure(401, 'AUTHENTICATION_REQUIRED');
         if (!upstream.ok) {
           const raw = (await readBoundedJson(upstream, 8192)) as {
             error?: { code?: unknown };

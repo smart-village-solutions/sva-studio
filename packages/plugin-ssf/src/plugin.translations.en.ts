@@ -24,11 +24,10 @@ export const en = {
       activate: 'Activate saved key',
       activated: 'Activation was confirmed. The list shows the current Gateway state.',
       cancel: 'Cancel',
-      reauth: 'Sign in again with MFA',
+      login: 'Sign in',
       states: { active: 'Active', prepared: 'Prepared', superseded: 'Superseded' },
       errors: {
-        STEP_UP_REQUIRED:
-          'A fresh tenant sign-in with MFA is required. Start a new preparation after signing in.',
+        AUTHENTICATION_REQUIRED: 'Your session has ended. Sign in to continue.',
         PERMISSION_REQUIRED: 'You do not have permission for this operation.',
         PREPARATION_NOT_FOUND: 'This selection is no longer available. Reload and choose again.',
         KEY_VERSION_CHANGED:

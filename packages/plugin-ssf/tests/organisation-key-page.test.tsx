@@ -165,7 +165,9 @@ it('clears the preparation on tenant switch and blocks the workflow after logout
     act(() =>
       publishSessionAccessSnapshot({ ...snapshot, subjectId: undefined, permissionActions: [] })
     );
-    await screen.findByText('keys.errors.PERMISSION_REQUIRED');
+    await screen.findByText('keys.errors.AUTHENTICATION_REQUIRED');
+    const login = screen.getByRole('link', { name: 'keys.login' });
+    expect(login.getAttribute('href')).toBe('/auth/login?returnTo=%2F');
     expect(api.mock.calls.some(([op]) => op === 'activate')).toBe(false);
   } finally {
     act(() => publishSessionAccessSnapshot(original));

@@ -433,8 +433,14 @@ test.describe('media management', () => {
     const entry = page.getByRole('link').filter({ hasText: 'legacy-image.jpg' });
     await expect(entry).toBeVisible();
     expect(registrations).toBe(0);
+    const registration = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/iam/media/register' &&
+        response.request().method() === 'POST'
+    );
     await entry.click();
-    await expect(page).toHaveURL(/imported-image/);
+    expect((await registration).status()).toBe(202);
+    await expect(page).toHaveURL(/imported-image/, { timeout: 20_000 });
     await expect(page.getByRole('heading', { name: 'Bestandsbild', exact: true })).toBeVisible();
     expect(registrations).toBe(1);
     await expect(page.getByRole('button', { name: 'Als Medium registrieren' })).toHaveCount(0);

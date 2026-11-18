@@ -55,6 +55,11 @@
         "enabled": {
           "type": "boolean"
         },
+        "passphraseFileEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allows explicit local passphrase TXT export/import. Tenant override, then installation default, then false. Missing fields in older policies mean false. Does not enable recording or grant archive access."
+        },
         "legalBasis": {
           "enum": [
             "consent",

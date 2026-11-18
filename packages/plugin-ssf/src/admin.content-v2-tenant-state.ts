@@ -26,6 +26,7 @@ const draftFromView = (view: SsfTenantContentV2View): SsfRuntimeContentV2Fields 
         ...view.runtimeTemplate.recording,
         ...overrides,
         enabled: overrides.enabled ?? false,
+        passphraseFileEnabled: overrides.passphraseFileEnabled,
         retentionHours: overrides.retentionHours ?? null,
       },
     };

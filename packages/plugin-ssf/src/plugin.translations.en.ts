@@ -64,6 +64,9 @@ export const en = {
       installation: 'Installation',
       template: 'Tenant template',
       recording: {
+        passphraseFileEnabled: 'Allow local passphrase file export and import',
+        passphraseFileNotice:
+          'Disabled by default. Allows staff to export and import an unencrypted local TXT file containing their passphrase. Keep it private and take particular care on shared computers. It does not back up private keys or recordings and does not enable recording.',
         affectedTenants:
           'The recording policy was not saved. First increase audit retention for the following tenants to cover the new recording retention, then retry.',
         installationDefault: 'Installation default',

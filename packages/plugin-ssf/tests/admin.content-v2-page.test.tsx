@@ -768,3 +768,80 @@ describe('SSF independently saved administration pages', () => {
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}, revision));
   });
 });
+
+describe('passphrase file administration', () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.readSystem.mockResolvedValue(rootView());
+    api.writeSystem.mockImplementation(async (input) => ({ ...rootView(), ...input }));
+  });
+  it('saves an explicit installation default with a translated label and warning', async () => {
+    render(<SsfSystemContentV2Page page="default-configuration" />);
+    await screen.findByRole('tab', { name: 'administration.sections.settings' });
+    clickTab('administration.sections.settings');
+    const toggle = await screen.findByRole('checkbox', {
+      name: 'v2.recording.passphraseFileEnabled',
+    });
+    expect(toggle).toHaveProperty('checked', false);
+    expect(screen.getByText('v2.recording.passphraseFileNotice')).toBeTruthy();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeSystem).toHaveBeenCalled());
+    expect(api.writeSystem.mock.calls[0]?.[0].runtimeTemplate.recording.passphraseFileEnabled).toBe(
+      true
+    );
+    expect(api.writeSystem.mock.calls[0]?.[1]).toBe(revision);
+  });
+  it.each([true, false])(
+    'preserves explicit tenant choice %j and resets to inheritance',
+    async (enabled) => {
+      const view = tenantView();
+      view.runtimeTemplate.recording = {
+        legalBasis: 'consent',
+        signature: 'off',
+        idCheck: 'off',
+        verificationRequired: false,
+        recoveryMode: 'standard',
+        timestampAuthorityUrl: 'https://tsa.example.org',
+        auditRetentionHours: 8760,
+        passphraseFileEnabled: enabled,
+      };
+      api.readTenant.mockResolvedValue(view);
+      api.writeTenant.mockImplementation(async (overrides) => ({ ...view, overrides }));
+      render(<SsfTenantContentV2Page page="recordings" canManage />);
+      const select = (await screen.findByRole('combobox', {
+        name: 'v2.recording.passphraseFileEnabled',
+      })) as HTMLSelectElement;
+      expect(select.value).toBe('');
+      expect(Array.from(select.options).map(({ textContent }) => textContent)).toEqual([
+        'v2.inherited',
+        'administration.enabled',
+        'administration.disabled',
+      ]);
+      fireEvent.change(select, { target: { value: String(enabled) } });
+      fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+      await waitFor(() =>
+        expect(api.writeTenant).toHaveBeenLastCalledWith(
+          { recording: { passphraseFileEnabled: enabled } },
+          revision
+        )
+      );
+      await screen.findByText('status.saved');
+      fireEvent.change(
+        screen.getByRole('combobox', { name: 'v2.recording.passphraseFileEnabled' }),
+        { target: { value: '' } }
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+      await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({}, revision));
+    }
+  );
+  it('keeps the passphrase policy disabled for read-only tenant users', async () => {
+    api.readTenant.mockResolvedValue(tenantView());
+    render(<SsfTenantContentV2Page page="recordings" canManage={false} />);
+    expect(
+      await screen.findByRole('combobox', { name: 'v2.recording.passphraseFileEnabled' })
+    ).toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: 'actions.save' })).toBeNull();
+  });
+});

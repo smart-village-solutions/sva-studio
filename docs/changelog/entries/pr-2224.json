@@ -1,0 +1,4 @@
+{
+  "prNumber": 2224,
+  "body": "SSF administrators can now allow local passphrase TXT export and import through recording settings. The installation default is disabled. Tenants can inherit that default or explicitly enable or disable the option; resetting restores inheritance. The runtime configuration exposes the effective policy without automatically enabling recording or granting archive access. German and English controls explain that passphrase files are unencrypted and must remain private."
+}

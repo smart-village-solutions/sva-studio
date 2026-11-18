@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { resolveRecordingRetentionHours, resolveSsfRecordingPolicy } from '../src/content-v2-recording.js';
+import { resolveRecordingRetentionHours, resolveSsfRecordingPolicy, ssfRecordingPolicySchema, ssfRecordingSettingsSchema } from '../src/content-v2-recording.js';
 import { diffSsfContentV2, effectiveSsfRuntimeFieldsV2 } from '../src/content-v2-overrides.js';
 import { resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
 const policy = { legalBasis: 'consent', signature: 'optional', idCheck: 'off', verificationRequired: true,
@@ -68,4 +68,47 @@ describe('recording policy', () => {
     expect(response.guestLanguages.every(({ guest }) => guest.storageQuestionHtml === null)).toBe(true);
     expect(response.recording).toBeUndefined();
   });
+});
+
+
+describe('recording passphrase file policy', () => {
+  it('defaults old complete policies to disabled and resolves installation and tenant values', () => {
+    expect(ssfRecordingPolicySchema.parse({ ...policy, enabled: true, retentionHours: 720 }).passphraseFileEnabled).toBe(false);
+    expect(resolveSsfRecordingPolicy(policy, {})?.passphraseFileEnabled).toBe(false);
+    expect(resolveSsfRecordingPolicy({ ...policy, passphraseFileEnabled: true }, {})?.passphraseFileEnabled).toBe(true);
+    for (const enabled of [true, false]) {
+      expect(resolveSsfRecordingPolicy({ ...policy, passphraseFileEnabled: !enabled }, { passphraseFileEnabled: enabled })?.passphraseFileEnabled).toBe(enabled);
+    }
+  });
+  it.each(['true', 1, null, {}, []])('rejects a non-boolean passphrase policy (%j)', (invalid) => {
+    expect(ssfRecordingSettingsSchema.safeParse({ passphraseFileEnabled: invalid }).success).toBe(false);
+    expect(() => resolveSsfRecordingPolicy({ ...policy, passphraseFileEnabled: invalid }, {})).toThrow();
+    expect(() => resolveSsfRecordingPolicy(policy, { passphraseFileEnabled: invalid })).toThrow();
+  });
+  it('revisions only effective policy and preserves equal explicit overrides until reset', () => {
+    const source = (enabled: boolean) => ({ ...template(), recording: { ...policy, passphraseFileEnabled: enabled } });
+    const resolve = (enabled: boolean, overrides: unknown) => resolveSsfRuntimeContentV2({ tenant, template: source(enabled), overrides });
+    expect(resolve(false, {}).configurationRevision).not.toBe(resolve(true, {}).configurationRevision);
+    for (const enabled of [true, false]) {
+      const draft = { ...source(enabled), recording: { ...policy, passphraseFileEnabled: enabled } };
+      const stored = JSON.parse(JSON.stringify(diffSsfContentV2(source(enabled), draft)));
+      expect(stored.recording.passphraseFileEnabled).toBe(enabled);
+      expect(resolve(!enabled, stored).recording?.passphraseFileEnabled).toBe(enabled);
+      expect(resolve(false, stored).configurationRevision).toBe(resolve(true, stored).configurationRevision);
+      const resetDraft = { ...draft, recording: { ...policy } };
+      const reset = JSON.parse(JSON.stringify(diffSsfContentV2(source(enabled), resetDraft)) ?? '{}');
+      expect(reset.recording?.passphraseFileEnabled).toBeUndefined();
+      expect(resolve(!enabled, reset).recording?.passphraseFileEnabled).toBe(!enabled);
+    }
+  });
+});
+
+
+it.each([
+  { branding: { passphraseFileEnabled: true } },
+  { staff: { dashboard: { passphraseFileEnabled: false } } },
+  { guestLanguages: [{ locale: 'en', passphraseFileEnabled: true }] },
+])('rejects a passphrase file policy misplaced outside recording (%j)', (overrides) => {
+  expect(() => resolveSsfRuntimeContentV2({ tenant, template: template(), overrides }))
+    .toThrow('ssf_v2_override_field_unknown');
 });

@@ -65,6 +65,9 @@ export const de = {
       installation: 'Installation',
       template: 'Vorlage für Mandanten',
       recording: {
+        passphraseFileEnabled: 'Lokalen Passphrase-Datei-Export und -Import erlauben',
+        passphraseFileNotice:
+          'Standardmäßig deaktiviert. Erlaubt Beschäftigten den lokalen Export und Import einer unverschlüsselten TXT-Datei mit ihrer Passphrase. Die Datei muss privat und auf gemeinsam genutzten Geräten besonders geschützt aufbewahrt werden. Sie ist keine Sicherung privater Schlüssel oder Aufnahmen und aktiviert keine Aufnahme.',
         affectedTenants:
           'Die Aufnahmerichtlinie wurde nicht gespeichert. Passen Sie zuerst die Aufbewahrung der Prüfprotokolle für die folgenden Mandanten an die neue Aufnahmefrist an und versuchen Sie es erneut.',
         installationDefault: 'Installationsstandard',

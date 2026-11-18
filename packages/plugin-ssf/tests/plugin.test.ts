@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createPluginModuleIamRegistry, createPluginRegistry } from '@sva/plugin-sdk';
 
+import { ssfPluginTranslations } from '../src/plugin.translations.js';
 import { ssfPlugin } from '../src/index.js';
 import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from '../src/plugin.js';
 import {
@@ -151,4 +152,18 @@ describe('SSF plugin metadata', () => {
       expect(Object.keys(ssf.administration?.pages ?? {})).toHaveLength(8);
     }
   });
+});
+
+it('provides German and English passphrase policy labels and plaintext guidance', () => {
+  for (const locale of ['de', 'en'] as const) {
+    const translations = ssfPluginTranslations[locale].ssf.v2.recording;
+    expect(translations.passphraseFileEnabled.length).toBeGreaterThan(10);
+    expect(translations.passphraseFileNotice).toContain('TXT');
+    expect(translations.passphraseFileNotice).toContain(
+      locale === 'de' ? 'unverschlüsselt' : 'unencrypted'
+    );
+  }
+  expect(ssfPluginTranslations.de.ssf.v2.recording.passphraseFileEnabled).not.toBe(
+    ssfPluginTranslations.en.ssf.v2.recording.passphraseFileEnabled
+  );
 });

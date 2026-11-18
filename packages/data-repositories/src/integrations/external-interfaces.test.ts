@@ -333,12 +333,13 @@ describe('external interface repository', () => {
     await repository.updateConnectionCheck(connectionCheck);
 
     expect(statements[0]?.text).toContain('INSERT INTO iam.external_interface_types');
-    expect(statements[1]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
-    expect(statements[1]?.text).toContain('UPDATE iam.instance_external_interfaces');
-    expect(statements[1]?.values).toContain('media');
-    expect(statements[1]?.values).toContain('cipher-1');
-    expect(statements[2]?.text).toContain('UPDATE iam.instance_external_interfaces');
-    expect(statements[2]?.values).toEqual([
+    expect(statements[1]?.text).toContain('SET is_default = false');
+    expect(statements[1]?.values).toEqual(['tenant-a', 's3', 'interface-1']);
+    expect(statements[2]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
+    expect(statements[2]?.values).toContain('media');
+    expect(statements[2]?.values).toContain('cipher-1');
+    expect(statements[3]?.text).toContain('UPDATE iam.instance_external_interfaces');
+    expect(statements[3]?.values).toEqual([
       'tenant-a',
       'interface-1',
       'error',
@@ -348,6 +349,15 @@ describe('external interface repository', () => {
       'Host unreachable',
     ]);
     expect(externalInterfaceStatements.upsertType(typeDefinition).values.at(0)).toBe('s3');
+  });
+
+  it('keeps the existing default when saving a non-default interface', async () => {
+    const { executor, statements } = createExecutor();
+
+    await createExternalInterfaceRepository(executor).upsert({ ...record, isDefault: false });
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
   });
 
   it('builds delete and lookup statements for default and alias resolution', async () => {

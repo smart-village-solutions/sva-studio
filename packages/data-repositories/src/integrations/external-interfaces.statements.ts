@@ -130,18 +130,20 @@ LIMIT 1;
 `,
   values: [instanceId, typeKey],
 });
+const clearOtherDefaultsStatement = (input: ExternalInterfaceRecord): SqlStatement => ({
+  text: `
+UPDATE iam.instance_external_interfaces
+SET is_default = false, updated_at = NOW()
+WHERE instance_id = $1
+  AND type_key = $2
+  AND id <> $3
+  AND is_default = true;
+`,
+  values: [input.instanceId, input.typeKey, input.id],
+});
 
 const upsertStatement = (input: ExternalInterfaceRecord): SqlStatement => ({
   text: `
-WITH clear_defaults AS (
-  UPDATE iam.instance_external_interfaces
-  SET is_default = false,
-      updated_at = NOW()
-  WHERE instance_id = $1
-    AND type_key = $3
-    AND id <> $2
-    AND $8 = true
-)
 INSERT INTO iam.instance_external_interfaces (
   id,
   instance_id,
@@ -250,6 +252,7 @@ export const externalInterfaceStatements = {
   getById: getByIdStatement,
   getByAlias: getByAliasStatement,
   getDefault: getDefaultStatement,
+  clearOtherDefaults: clearOtherDefaultsStatement,
   upsert: upsertStatement,
   deleteById: deleteStatement,
   updateConnectionCheck: updateConnectionCheckStatement,

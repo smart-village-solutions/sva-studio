@@ -513,10 +513,15 @@ describe('DeepL credential transaction guards', () => {
         .mockResolvedValueOnce(activeModule)
         .mockResolvedValueOnce(initial ? empty : { rows: [{ revision: '7' }], rowCount: 1 })
         .mockResolvedValueOnce(empty)
+        .mockResolvedValueOnce(empty)
         .mockResolvedValueOnce(empty);
       const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
       await saveDeepLInterfaceRecord(record, initial ? '0' : '7');
-      const write = query.mock.calls[4] ?? [];
+      expect(query.mock.calls[4]).toEqual([
+        expect.stringContaining('SET is_default = false'),
+        ['tenant-a', 'deepl', record.id],
+      ]);
+      const write = query.mock.calls[5] ?? [];
       expect(write[0]).toContain('INSERT INTO iam.instance_external_interfaces');
       expect(write[1]).toEqual([
         'tenant-a',

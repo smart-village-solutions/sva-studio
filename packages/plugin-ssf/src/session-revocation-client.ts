@@ -77,7 +77,7 @@ export const readSsfControlPlaneClientConfig = (
   const clientId =
     environment[SSF_CONTROL_PLANE_ENV.clientId]?.trim() || SSF_CONTROL_PLANE_CLIENT_ID;
 
-  if (!baseUrl && !tokenUrl && !clientSecret) return null;
+  if (!tokenUrl && !clientSecret) return null;
   if (!baseUrl || !tokenUrl || !clientSecret) {
     throw new Error('ssf_control_plane_configuration_incomplete');
   }

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -295,6 +296,32 @@ describe('remote app config builder', () => {
       expect(result.source).toContain('BUS_API_BASE_URL=https://bus-api.smart-village.app\n');
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
+    }
+  );
+
+  it.each(['dev', 'staging', 'prod'] as const)(
+    'passes the managed Mapstick URL from the %s profile to app and provisioner',
+    (environment) => {
+      const remoteProfile = readFileSync(
+        new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url), 'utf8'
+      );
+      const render = (source: string) => {
+        const config = buildRemoteAppConfig({ environment, profile: source, overrides });
+        const env = Object.fromEntries(parseRemoteConfigLayer(environment, 'test output', config.source).values);
+        return JSON.parse(execFileSync('docker', [
+          'compose', '-f', 'compose.yaml', '-f', `deploy/compose.${environment}.yaml`,
+          'config', '--no-normalize', '--format', 'json',
+        ], { cwd: new URL('../../', import.meta.url), env: { ...process.env, ...env, IMAGE_REF: 'ghcr.io/smart-village-solutions/sva-studio:test', SVA_CONFIG_REVISION: 'a'.repeat(64), REDIS_SNAPSHOT_HMAC_SECRET: 'synthetic-test-only-hmac-value-32chars' },
+          encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })).services as Record<
+          string, { environment: Record<string, string> }
+        >;
+      };
+      const own = render(remoteProfile);
+      expect(own.app.environment.SVA_MANAGED_MAPSTICK_URL).toBe('https://mapstick.smart-village.app/');
+      expect(own.provisioner.environment.SVA_MANAGED_MAPSTICK_URL).toBe('https://mapstick.smart-village.app/');
+      const generic = render(remoteProfile.replace(/^SVA_MANAGED_MAPSTICK_URL=.*\n/m, ''));
+      expect(generic.app.environment.SVA_MANAGED_MAPSTICK_URL).toBe('');
+      expect(generic.provisioner.environment.SVA_MANAGED_MAPSTICK_URL).toBe('');
     }
   );
 

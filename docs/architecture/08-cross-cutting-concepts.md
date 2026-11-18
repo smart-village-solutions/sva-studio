@@ -1607,8 +1607,12 @@ The existing SSF v2 recording policy includes `passphraseFileEnabled`: a strict 
 Mapstick bleibt eine externe Schnittstelle ohne Einbettung seiner App-Oberfläche.
 Die automatische Einrichtung ist ein Betreiber-Opt-in über
 `SVA_MANAGED_MAPSTICK_URL`, keine technische Zugriffssperre am öffentlichen Dienst.
-Die benannten eigenen Portainer-Profile `studio` und `demo` setzen den Wert; das
-allgemeine Referenzprofil und Standalone besitzen keinen Service-Default.
+Die eigenen Remote-Profile `config/runtime/remote/{dev,staging,prod}.vars` setzen
+den Wert über den bestehenden autoritativen Konfigurationsvertrag. Der reguläre
+Promote-Pfad reicht ihn in `compose.yaml` an App und Provisioner weiter. Ohne
+expliziten Wert bleibt er leer; generische Installationen und Standalone besitzen
+keinen Service-Default. Die eigenen Portainer-Profile `studio` und `demo` setzen
+ihren Wert ebenfalls.
 
 Kartenressourcen verwenden die vorhandene mandantengebundene Leseautorisierung;
 auch die bestehenden Verbraucher Jobs und Baustellen dürfen ihre Karte lesen.

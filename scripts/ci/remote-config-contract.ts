@@ -10,6 +10,7 @@ type RemoteConfigKeyContract = Readonly<{
 
 const configKeys = [
   'BUS_API_BASE_URL',
+  'SVA_MANAGED_MAPSTICK_URL',
   'MEILI_SOURCES',
   'APP_DB_USER',
   'ENABLE_OTEL',
@@ -126,6 +127,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   ...Object.fromEntries(configKeys.map((key) => [key, { kind: 'config' as const }])),
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
   BUS_API_BASE_URL: { kind: 'config', type: 'url' },
+  SVA_MANAGED_MAPSTICK_URL: { kind: 'config', type: 'url' },
   MEILI_URL: { kind: 'config', type: 'url' },
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
   ENABLE_OTEL: { kind: 'config', type: 'boolean' },

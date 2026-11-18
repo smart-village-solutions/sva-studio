@@ -1,6 +1,5 @@
 import type { SqlStatement } from '../iam/repositories/types.js';
 import type { MediaAssetRecord } from './model-types.js';
-
 export const upsertAssetStatement = (
   input: MediaAssetRecord,
   insertOnly = false
@@ -78,7 +77,6 @@ SET storage_key = EXCLUDED.storage_key,
     input.editingDocument ? JSON.stringify(input.editingDocument) : null,
   ],
 });
-
 export const getAssetByIdStatement = (instanceId: string, assetId: string): SqlStatement => ({
   text: `
 SELECT
@@ -111,7 +109,6 @@ LIMIT 1;
 `,
   values: [instanceId, assetId],
 });
-
 export const getAssetByStorageKeyStatement = (
   instanceId: string,
   storageKey: string

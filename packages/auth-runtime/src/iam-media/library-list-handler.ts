@@ -75,19 +75,16 @@ type MediaListRequest = Readonly<{
   filters: MediaListingFilters;
 }>;
 const MAX_MEDIA_LIST_LIMIT = 144;
-
 const readOptionalListParam = (params: URLSearchParams, key: string): string | undefined => {
   const value = params.get(key)?.trim();
   return value ? value : undefined;
 };
-
 const parseListVisibility = (params: URLSearchParams): MediaVisibility | Response | undefined => {
   const visibility = readOptionalListParam(params, 'visibility');
   if (!visibility) return undefined;
   if (isMediaVisibility(visibility)) return visibility;
   return createApiError(400, 'invalid_request', 'Ungueltiger Sichtbarkeitsfilter.', getRequestId());
 };
-
 const parseListLimit = (params: URLSearchParams): number | Response => {
   const rawLimit = params.get('limit');
   const limit = rawLimit === null ? 25 : Number(rawLimit);
@@ -99,7 +96,6 @@ const parseListLimit = (params: URLSearchParams): number | Response => {
     getRequestId()
   );
 };
-
 const parseListCursor = (
   params: URLSearchParams,
   filters: MediaListingFilters
@@ -116,7 +112,6 @@ const parseListCursor = (
     )
   );
 };
-
 const parseMediaListRequest = (request: Request): MediaListRequest | Response => {
   const url = new URL(request.url);
   if (url.searchParams.has('page') || url.searchParams.has('pageSize')) {
@@ -141,7 +136,6 @@ const parseMediaListRequest = (request: Request): MediaListRequest | Response =>
   if (cursor instanceof Response) return cursor;
   return { search, tag, visibility, limit, cursor, filters };
 };
-
 const loadMediaListingSources = async (input: {
   deps: MediaHttpHandlerDeps;
   instanceId: string;
@@ -170,7 +164,6 @@ const loadMediaListingSources = async (input: {
       lastScannedBucketKey: undefined,
     };
   }
-
   const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
   const listing = await storagePort.listObjects({
     instanceId: input.instanceId,
@@ -202,7 +195,6 @@ const loadMediaListingSources = async (input: {
     lastScannedBucketKey: listing.lastScannedStorageKey,
   };
 };
-
 const enrichMediaListing = async (
   deps: MediaHttpHandlerDeps,
   instanceId: string,
@@ -215,7 +207,6 @@ const enrichMediaListing = async (
       item.mimeType.startsWith('image/')
   );
   if (!requiresPreview) return items;
-
   try {
     const storagePort = await resolveMediaStoragePort(deps, instanceId);
     return Promise.all(items.map((item) => enrichListItemWithPreviewUrl({ storagePort, item })));
@@ -224,7 +215,6 @@ const enrichMediaListing = async (
     throw error;
   }
 };
-
 const listMediaWithStorage = async (input: {
   deps: MediaHttpHandlerDeps;
   ctx: AuthenticatedRequestContext;
@@ -253,7 +243,6 @@ const listMediaWithStorage = async (input: {
       result: 'success',
       resourceType: 'media_library',
     });
-
     const nextCursor =
       merged.hasNextPage && merged.nextCursorStorageKey
         ? encodeMediaListingCursor(
@@ -293,7 +282,6 @@ const listMediaWithStorage = async (input: {
     );
   }
 };
-
 export const listMedia = async (
   deps: MediaHttpHandlerDeps,
   request: Request,
@@ -316,7 +304,6 @@ export const listMedia = async (
     });
     return mapAuthorizationFailure(authorization);
   }
-
   const query = parseMediaListRequest(request);
   if (query instanceof Response) {
     return query;

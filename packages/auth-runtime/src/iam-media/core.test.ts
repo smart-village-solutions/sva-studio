@@ -1945,6 +1945,42 @@ describe('media http handlers', () => {
     expect(fixture.storage.writeObject).toHaveBeenCalledOnce();
   });
 
+  it('bounds concurrent snapshot reads and releases capacity after failure', async () => {
+    const { register, storage } = bucketImportFixture();
+    const read = await storage.readObject();
+    storage.readObject.mockClear();
+    let release: () => void = () => {};
+    const hold = new Promise<void>((resolve) => { release = resolve; });
+    storage.readObject.mockImplementation(async () => {
+      await hold;
+      return { ...read, etag: 'changed' };
+    });
+    const active = Array.from({ length: 8 }, (_, index) => register(`tenant-a/import/${index}.png`));
+    try {
+      await vi.waitFor(() => expect(storage.readObject).toHaveBeenCalledTimes(8));
+      expect((await register()).status).toBe(503);
+      expect(storage.readObject).toHaveBeenCalledTimes(8);
+    } finally {
+      release();
+      await Promise.all(active);
+    }
+    expect((await register()).status).toBe(409);
+    expect(storage.readObject).toHaveBeenCalledTimes(9);
+  });
+
+  it('keeps an intake object that is already owned by another asset', async () => {
+    const { register, service, storage } = bucketImportFixture();
+    const occupied = { id: 'other-asset' };
+    service.getAssetByStorageKey.mockImplementation(async (_instanceId?: string, key?: string) =>
+      key?.startsWith('.protected/') ? occupied as never : null
+    );
+    const response = await register();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { message: 'media_import_storage_conflict' } });
+    expect(storage.writeObject).not.toHaveBeenCalled();
+    expect(storage.deleteObject).not.toHaveBeenCalled();
+  });
+
   it('does not mutate while listing and hides a source already represented by a managed import', async () => {
     const fixture = bucketImportFixture();
     expect((await fixture.register()).status).toBe(202);

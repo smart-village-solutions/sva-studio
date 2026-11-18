@@ -79,6 +79,55 @@ const VariantPreview = ({
   );
 };
 
+const focusInputHandlers = (
+  image: React.RefObject<HTMLImageElement | null>,
+  disabled: boolean,
+  position: MediaFocusPoint,
+  onFocusChange: (point: MediaFocusPoint) => void
+) => {
+  const move = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || !image.current) return;
+    const rect = image.current.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    // Letterboxing, padding and pointer movements outside the image are not image coordinates.
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    onFocusChange({ x, y });
+  };
+  return {
+    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0) return;
+      event.currentTarget.focus();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      move(event);
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) move(event);
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId);
+    },
+    onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      const delta = event.shiftKey ? 0.1 : 0.01;
+      const offsets: Record<string, MediaFocusPoint> = {
+        ArrowLeft: { x: -delta, y: 0 },
+        ArrowRight: { x: delta, y: 0 },
+        ArrowUp: { x: 0, y: -delta },
+        ArrowDown: { x: 0, y: delta },
+      };
+      const offset = offsets[event.key];
+      if (!offset || disabled) return;
+      event.preventDefault();
+      onFocusChange({
+        x: Math.min(1, Math.max(0, position.x + offset.x)),
+        y: Math.min(1, Math.max(0, position.y + offset.y)),
+      });
+    },
+  };
+};
+
 export const StudioMediaImageFocus = ({
   url,
   focus,
@@ -95,25 +144,12 @@ export const StudioMediaImageFocus = ({
   const t = useContentMediaTranslation();
   const id = React.useId();
   const image = React.useRef<HTMLImageElement>(null);
-  const [ready, setReady] = React.useState(false);
-  const [failed, setFailed] = React.useState(false);
-  React.useEffect(() => {
-    setReady(false);
-    setFailed(false);
-  }, [url]);
+  const [imageStatus, setImageStatus] = React.useState<'loading' | 'ready' | 'failed'>('loading');
+  React.useEffect(() => setImageStatus('loading'), [url]);
+  const ready = imageStatus === 'ready';
   const position = {
     x: Number.isFinite(focus.x) ? Math.min(1, Math.max(0, focus.x)) : 0.5,
     y: Number.isFinite(focus.y) ? Math.min(1, Math.max(0, focus.y)) : 0.5,
-  };
-  const move = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (disabled || !ready || !image.current) return;
-    const rect = image.current.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-    // Letterboxing, padding and pointer movements outside the image are not image coordinates.
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-    onFocusChange({ x, y });
   };
   return (
     <div className="space-y-3">
@@ -124,35 +160,7 @@ export const StudioMediaImageFocus = ({
           aria-label={t('editor.focusTitle')}
           aria-describedby={`${id}-hint ${id}-position`}
           className="relative mx-auto block max-w-full touch-none rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 disabled:cursor-default"
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            event.currentTarget.focus();
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-            move(event);
-          }}
-          onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture?.(event.pointerId)) move(event);
-          }}
-          onPointerUp={(event) => {
-            if (event.currentTarget.hasPointerCapture?.(event.pointerId))
-              event.currentTarget.releasePointerCapture(event.pointerId);
-          }}
-          onKeyDown={(event) => {
-            const delta = event.shiftKey ? 0.1 : 0.01;
-            const offsets: Record<string, MediaFocusPoint> = {
-              ArrowLeft: { x: -delta, y: 0 },
-              ArrowRight: { x: delta, y: 0 },
-              ArrowUp: { x: 0, y: -delta },
-              ArrowDown: { x: 0, y: delta },
-            };
-            const offset = offsets[event.key];
-            if (!offset || disabled || !ready) return;
-            event.preventDefault();
-            onFocusChange({
-              x: Math.min(1, Math.max(0, position.x + offset.x)),
-              y: Math.min(1, Math.max(0, position.y + offset.y)),
-            });
-          }}
+          {...focusInputHandlers(image, disabled || !ready, position, onFocusChange)}
         >
           <img
             ref={image}
@@ -160,14 +168,8 @@ export const StudioMediaImageFocus = ({
             alt={alt}
             draggable={false}
             className="block h-auto max-h-[50dvh] w-auto max-w-full rounded-lg"
-            onLoad={() => {
-              setReady(true);
-              setFailed(false);
-            }}
-            onError={() => {
-              setReady(false);
-              setFailed(true);
-            }}
+            onLoad={() => setImageStatus('ready')}
+            onError={() => setImageStatus('failed')}
           />
           {ready ? (
             <span
@@ -189,7 +191,7 @@ export const StudioMediaImageFocus = ({
           y: Math.round(position.y * 100),
         })}
       </p>
-      {failed ? (
+      {imageStatus === 'failed' ? (
         <p role="alert" className="text-sm text-destructive">
           {t('editor.previewError')}
         </p>

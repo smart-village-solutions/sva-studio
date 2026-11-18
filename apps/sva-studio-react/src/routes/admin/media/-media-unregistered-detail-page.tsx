@@ -11,6 +11,9 @@ import { t } from '../../../i18n';
 import type { IamRegisteredMediaAsset, IamUnregisteredMediaAsset } from '../../../lib/iam-api';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
+const importFailureMessage = (message?: string) =>
+  message === 'storage_quota_exceeded' ? 'media.unregistered.quota' : 'media.unregistered.failed';
+
 export const MediaUnregisteredDetailPage = ({
   asset,
 }: Readonly<{ asset: IamUnregisteredMediaAsset | null }>) => {
@@ -93,7 +96,7 @@ export const MediaUnregisteredDetailPage = ({
     );
   const blocked =
     mutationError?.message === 'media_import_source_untrusted' || mutationError?.status === 403;
-  const quota = mutationError?.message === 'storage_quota_exceeded';
+  const failureMessage = importFailureMessage(mutationError?.message);
   return (
     <section className="space-y-6" data-testid="media-unregistered-detail-page">
       <StudioPageTitle>{asset.fileName}</StudioPageTitle>
@@ -119,9 +122,7 @@ export const MediaUnregisteredDetailPage = ({
                   : failed
                     ? blocked
                       ? 'media.unregistered.blocked'
-                      : quota
-                        ? 'media.unregistered.quota'
-                        : 'media.unregistered.failed'
+                      : failureMessage
                     : 'media.unregistered.preparing'
               )}
             </p>

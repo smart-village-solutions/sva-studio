@@ -47,7 +47,6 @@ export {
   type MainserverActingPrincipalType,
 } from './mainserver-request.js';
 export type { MainserverResponseMeta } from './mainserver-request.js';
-
 export type MainserverCrudClientOptions<
   TItem,
   TMutationInput,
@@ -65,7 +64,6 @@ export type MainserverCrudClientOptions<
   createHeaders?: () => HeadersInit;
   updateHeaders?: () => HeadersInit;
 }>;
-
 type ApiItemResponse<T> = Readonly<{
   data: T;
   meta?: Readonly<{
@@ -73,10 +71,8 @@ type ApiItemResponse<T> = Readonly<{
     deviations?: readonly MainserverDataDeviation[];
   }>;
 }>;
-
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
-
 const createMainserverItemLoader = <TItem, TError extends Error>(input: {
   readonly basePath: string;
   readonly fetch?: typeof fetch;
@@ -103,7 +99,6 @@ const createMainserverItemLoader = <TItem, TError extends Error>(input: {
       access: response.meta?.access ?? {},
     };
   };
-
   return {
     loadDetail,
     loadItem: async (

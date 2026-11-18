@@ -80,3 +80,16 @@ describe('mainserver content media adapter', () => {
     ]);
   });
 });
+
+it.each([
+  [
+    { x: 0.2, y: 1 },
+    { x: 0.2, y: 1 },
+  ],
+  [null, null],
+  [{ x: 2, y: 0 }, undefined],
+  [{ x: '0', y: 0 }, undefined],
+])('restores only valid focus metadata from an existing media usage', (focusPoint, expected) => {
+  const [usage] = mainserverContentMediaToUsages([{ payload: { focusPoint } }]);
+  expect(usage?.focusPoint).toEqual(expected);
+});

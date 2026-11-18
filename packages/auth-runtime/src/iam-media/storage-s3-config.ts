@@ -77,6 +77,9 @@ export const resolveMediaStorageConfig = (): MediaStorageConfig | null => {
   };
 };
 
+const readRegion = (value: unknown) =>
+  (typeof value === 'string' && value.trim()) || 'eu-central-1';
+
 export const resolveMediaStorageConfigFromInterface = async (
   instanceId: string
 ): Promise<MediaStorageConfig | null> => {
@@ -88,9 +91,7 @@ export const resolveMediaStorageConfigFromInterface = async (
     s3Records[0] ??
     null;
 
-  if (!selectedRecord) {
-    return null;
-  }
+  if (!selectedRecord) return null;
 
   const resolved = await resolveExternalInterface({
     instanceId,
@@ -112,11 +113,7 @@ export const resolveMediaStorageConfigFromInterface = async (
     typeof resolved.secretConfig.secretAccessKey === 'string'
       ? resolved.secretConfig.secretAccessKey.trim()
       : '';
-  const region =
-    typeof resolved.publicConfig.region === 'string' &&
-    resolved.publicConfig.region.trim().length > 0
-      ? resolved.publicConfig.region.trim()
-      : 'eu-central-1';
+  const region = readRegion(resolved.publicConfig.region);
 
   if (
     !resolved.enabled ||

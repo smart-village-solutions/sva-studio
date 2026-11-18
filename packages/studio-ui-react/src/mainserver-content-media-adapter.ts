@@ -13,6 +13,20 @@ export type MainserverContentMedia = Readonly<Record<string, unknown>> & {
   };
 };
 
+const readFocusPoint = (payload: unknown): ContentMediaUsage['focusPoint'] => {
+  if (!payload || typeof payload !== 'object' || !('focusPoint' in payload)) return undefined;
+  const point = payload.focusPoint;
+  if (point === null) return null;
+  if (!point || typeof point !== 'object' || !('x' in point) || !('y' in point)) return undefined;
+  const { x, y } = point;
+  if (typeof x !== 'number' || typeof y !== 'number') return undefined;
+  try {
+    return normalizeMediaMetadataPatch({ focusPoint: { x, y } }).focusPoint;
+  } catch {
+    return undefined;
+  }
+};
+
 export const mainserverContentMediaToUsages = (
   mediaContents: readonly MainserverContentMedia[],
   references: readonly Readonly<{
@@ -28,6 +42,7 @@ export const mainserverContentMediaToUsages = (
     altText: media.sourceUrl?.description?.trim() ?? '',
     caption: media.captionText?.trim() ?? '',
     credit: media.copyright?.trim() ?? '',
+    focusPoint: readFocusPoint(media.payload),
     role,
     sortOrder,
     referenceStatus:

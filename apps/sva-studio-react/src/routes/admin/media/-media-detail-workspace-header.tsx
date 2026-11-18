@@ -7,7 +7,6 @@ import {
 } from '@tabler/icons-react';
 import * as QRCode from 'qrcode';
 import type { MediaFocusPoint } from '@sva/media';
-
 import { ModalDialog } from '../../../components/ModalDialog';
 import { Badge } from '../../../components/ui/badge';
 import {
@@ -20,7 +19,6 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
 import { copyTextToClipboard } from './-media-detail-workspace-header-clipboard';
-
 type MediaDetailWorkspaceHeaderProps = Readonly<{
   asset: IamRegisteredMediaAsset;
   usageCount: number;
@@ -30,31 +28,23 @@ type MediaDetailWorkspaceHeaderProps = Readonly<{
   canEditFocus: boolean;
   copyAction: React.ReactNode;
 }>;
-
 const usageCountLabel = (count: number): string =>
   count === 1 ? t('media.library.usageCountOne') : t('media.library.usageCountOther', { count });
-
 const isVisualPreview = (mimeType: string | undefined): boolean =>
   typeof mimeType === 'string' && mimeType.startsWith('image/');
-
 const previewAltText = (asset: IamRegisteredMediaAsset): string =>
   asset.metadata.altText?.trim() || asset.metadata.title?.trim() || asset.id;
-
 const trimEdgeCharacters = (value: string, character: string): string => {
   let start = 0;
   let end = value.length;
-
   while (start < end && value[start] === character) {
     start += 1;
   }
-
   while (end > start && value[end - 1] === character) {
     end -= 1;
   }
-
   return value.slice(start, end);
 };
-
 const createQrDownloadName = (asset: IamRegisteredMediaAsset) =>
   `${
     trimEdgeCharacters(
@@ -62,20 +52,16 @@ const createQrDownloadName = (asset: IamRegisteredMediaAsset) =>
       '-'
     ) || asset.id
   }-qr`;
-
 const useQrCodeAssets = (deliveryUrl: string, qrDialogOpen: boolean) => {
   const [qrSvgMarkup, setQrSvgMarkup] = React.useState<string | null>(null);
   const [qrSvgDownloadUrl, setQrSvgDownloadUrl] = React.useState<string | null>(null);
   const [qrPngDownloadUrl, setQrPngDownloadUrl] = React.useState<string | null>(null);
   const [qrGenerationError, setQrGenerationError] = React.useState(false);
-
   React.useEffect(() => {
     if (!qrDialogOpen) {
       return;
     }
-
     let cancelled = false;
-
     void (async () => {
       try {
         const [svgMarkup, pngDataUrl] = await Promise.all([
@@ -92,7 +78,6 @@ const useQrCodeAssets = (deliveryUrl: string, qrDialogOpen: boolean) => {
             color: { dark: '#0f172a', light: '#ffffffff' },
           }),
         ]);
-
         if (cancelled) {
           return;
         }

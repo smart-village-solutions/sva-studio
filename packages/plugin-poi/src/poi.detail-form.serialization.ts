@@ -24,11 +24,9 @@ import {
   serializeTags,
 } from './poi.detail-form.serialization.metadata.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
-
 type MutablePartial<T> = {
   -readonly [Key in keyof T]?: T[Key];
 };
-
 const withoutUndefined = <T extends Record<string, unknown>>(value: T): MutablePartial<T> =>
   Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined)

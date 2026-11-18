@@ -24,26 +24,24 @@ import {
   assertSupportedListAssetVisibility,
   isGeneratedVariantStorageKey,
 } from './asset-record-support.js';
-
 type BucketRegistration = ReturnType<(typeof registerBucketMediaSchema)['parse']>;
-
-const importError = (reason: string, status = 409): Response =>
+const importErrorCodes = {
+  403: 'forbidden',
+  404: 'not_found',
+  409: 'conflict',
+  413: 'invalid_request',
+  415: 'invalid_request',
+  503: 'internal_error',
+} as const;
+type ImportErrorStatus = keyof typeof importErrorCodes;
+const importError = (reason: string, status: ImportErrorStatus = 409) =>
   createApiError(
     status,
-    status === 403
-      ? 'forbidden'
-      : status === 404
-        ? 'not_found'
-        : status === 413 || status === 415
-          ? 'invalid_request'
-          : status === 503
-            ? 'internal_error'
-            : 'conflict',
+    importErrorCodes[status],
     reason,
     getRequestId(),
     { reason }
   );
-
 const acceptImportProcessing = async (
   input: { deps: MediaHttpHandlerDeps; instanceId: string },
   asset: MediaAssetRecord
@@ -76,13 +74,136 @@ const acceptImportProcessing = async (
   }
   return jsonResponse(202, asApiItem(toMediaAssetResponse(asset), getRequestId()));
 };
-
-const registerAuthorizedBucketMedia = async (input: {
+type Registration = {
   deps: MediaHttpHandlerDeps;
   ctx: AuthenticatedRequestContext;
   instanceId: string;
   data: BucketRegistration;
-}): Promise<Response> => {
+};
+// Bound memory occupied by source bytes while a private intake is being staged.
+const maxActiveSnapshots = 8;
+let activeSnapshots = 0;
+type Storage = Awaited<ReturnType<typeof resolveMediaStoragePort>>;
+type SourceStat = Awaited<ReturnType<Storage['statObject']>>;
+const readImportSnapshot = async (
+  storage: Storage,
+  objectInput: Parameters<Storage['statObject']>[0],
+  stat: SourceStat
+) => {
+  const object = await storage.readObject({ ...objectInput, maxBytes: mediaScanLimits.maxBytes });
+  const after = await storage.statObject(objectInput);
+  if (
+    object.etag !== stat.etag ||
+    after.etag !== stat.etag ||
+    object.byteSize !== stat.byteSize ||
+    object.body.byteLength !== stat.byteSize ||
+    after.byteSize !== stat.byteSize
+  )
+    return importError('media_import_source_changed');
+  const detected = await fileTypeFromBuffer(object.body);
+  if (!detected || !['image/png', 'image/jpeg', 'image/webp'].includes(detected.mime))
+    return importError('invalid_media_content', 415);
+  return { object, mimeType: detected.mime };
+};
+
+const persistImportSnapshot = async (
+  input: Registration,
+  storage: Storage,
+  source: NonNullable<Storage['importSource']>,
+  stat: SourceStat,
+  assetId: string,
+  { object, mimeType }: Exclude<Awaited<ReturnType<typeof readImportSnapshot>>, Response>
+): Promise<Response> => {
+  const sessionId = input.deps.createId();
+  const upload = await storage.prepareUpload({
+    instanceId: input.instanceId,
+    assetId,
+    uploadSessionId: sessionId,
+    mediaType: 'image',
+    mimeType,
+    byteSize: object.byteSize,
+    privateInput: true,
+  });
+  const readIntakeOwner = () =>
+    input.deps.withMediaService(input.instanceId, (service) =>
+      service.getAssetByStorageKey(input.instanceId, upload.storageKey)
+    );
+  if (await readIntakeOwner()) return importError('media_import_storage_conflict');
+  let cleanupSafe = true;
+  try {
+    await storage.writeObject({
+      instanceId: input.instanceId,
+      storageKey: upload.storageKey,
+      body: object.body,
+      contentType: mimeType,
+    });
+    const asset: MediaAssetRecord = {
+      id: assetId,
+      instanceId: input.instanceId,
+      storageKey: upload.storageKey,
+      mediaType: 'image',
+      mimeType,
+      byteSize: object.byteSize,
+      visibility: source.visibility,
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      lifecycleStatus: 'active',
+      metadata: input.data.metadata ? { ...input.data.metadata } : {},
+      technical: {
+        importSource: 'bucket_unregistered',
+        importSourceId: source.id,
+        importSourceKey: input.data.storageKey,
+        importSourceEtag: stat.etag,
+        importSourceBytes: stat.byteSize,
+        importedAt: input.deps.now(),
+        originalFileName: input.data.storageKey.split('/').pop(),
+      },
+    };
+    cleanupSafe = false; // A lost commit acknowledgement must not delete a possibly committed snapshot.
+    const inserted = await input.deps.withMediaService(input.instanceId, async (service) => {
+      if (!(await service.createAssetIfAbsent(asset))) return false;
+      await service.upsertUploadSession({
+        id: sessionId,
+        instanceId: input.instanceId,
+        assetId,
+        storageKey: upload.storageKey,
+        mimeType,
+        byteSize: object.byteSize,
+        status: 'pending',
+        expiresAt: upload.expiresAt,
+      });
+      return true;
+    });
+    if (!inserted && (await readIntakeOwner())) return importError('media_import_storage_conflict');
+    cleanupSafe = !inserted;
+    const saved = inserted
+      ? asset
+      : await input.deps.withMediaService(input.instanceId, (service) =>
+          service.getAssetById(input.instanceId, assetId)
+        );
+    if (!saved) return importError('media_import_storage_conflict');
+    if (!sourceMatches(saved, source.id, stat)) return importError('media_import_source_changed');
+    await emitMediaAuditEvent({
+      ...input,
+      actionId: 'media.create',
+      result: 'success',
+      reasonCode: inserted ? 'import_prepared' : 'already_registered',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
+    return acceptImportProcessing(input, saved);
+  } finally {
+    if (cleanupSafe)
+      await storage.deleteObject({ instanceId: input.instanceId, storageKey: upload.storageKey });
+  }
+};
+
+const sourceMatches = (asset: MediaAssetRecord, sourceId: string, stat: SourceStat) =>
+  asset.technical.importSourceId === sourceId &&
+  asset.technical.importSourceEtag === stat.etag &&
+  asset.technical.importSourceBytes === stat.byteSize;
+
+const registerAuthorizedBucketMedia = async (input: Registration): Promise<Response> => {
   if (
     isPrivateMediaStorageKey(input.data.storageKey) ||
     isGeneratedVariantStorageKey(input.instanceId, input.data.storageKey)
@@ -134,110 +255,21 @@ const registerAuthorizedBucketMedia = async (input: {
     service.getAssetById(input.instanceId, assetId)
   );
   if (imported) {
-    if (
-      imported.technical.importSourceId !== source.id ||
-      imported.technical.importSourceEtag !== stat.etag ||
-      imported.technical.importSourceBytes !== stat.byteSize
-    )
-      return importError('media_import_source_changed');
+    if (!sourceMatches(imported, source.id, stat)) return importError('media_import_source_changed');
     return acceptImportProcessing(input, imported);
   }
   const quota = await input.deps.withMediaService(input.instanceId, (service) =>
     service.wouldExceedStorageQuota(input.instanceId, stat.byteSize)
   );
   if (quota.wouldExceed) return importError('storage_quota_exceeded');
-  const object = await storage.readObject({ ...objectInput, maxBytes: mediaScanLimits.maxBytes });
-  const after = await storage.statObject(objectInput);
-  if (
-    object.etag !== stat.etag ||
-    after.etag !== stat.etag ||
-    object.byteSize !== stat.byteSize ||
-    object.body.byteLength !== stat.byteSize ||
-    after.byteSize !== stat.byteSize
-  )
-    return importError('media_import_source_changed');
-  const detected = await fileTypeFromBuffer(object.body);
-  if (!detected || !['image/png', 'image/jpeg', 'image/webp'].includes(detected.mime))
-    return importError('invalid_media_content', 415);
-  const sessionId = input.deps.createId();
-  const upload = await storage.prepareUpload({
-    instanceId: input.instanceId,
-    assetId,
-    uploadSessionId: sessionId,
-    mediaType: 'image',
-    mimeType: detected.mime,
-    byteSize: object.byteSize,
-    privateInput: true,
-  });
-  let cleanupSafe = true;
+  if (activeSnapshots >= maxActiveSnapshots) return importError('media_import_processing_unavailable', 503);
+  activeSnapshots++;
   try {
-    await storage.writeObject({
-      instanceId: input.instanceId,
-      storageKey: upload.storageKey,
-      body: object.body,
-      contentType: detected.mime,
-    });
-    const asset: MediaAssetRecord = {
-      id: assetId,
-      instanceId: input.instanceId,
-      storageKey: upload.storageKey,
-      mediaType: 'image',
-      mimeType: detected.mime,
-      byteSize: object.byteSize,
-      visibility: source.visibility,
-      uploadStatus: 'pending',
-      processingStatus: 'pending',
-      lifecycleStatus: 'active',
-      metadata: input.data.metadata ? { ...input.data.metadata } : {},
-      technical: {
-        importSource: 'bucket_unregistered',
-        importSourceId: source.id,
-        importSourceKey: input.data.storageKey,
-        importSourceEtag: stat.etag,
-        importSourceBytes: stat.byteSize,
-        importedAt: input.deps.now(),
-        originalFileName: input.data.storageKey.split('/').pop(),
-      },
-    };
-    cleanupSafe = false; // A lost commit acknowledgement must not delete a possibly committed snapshot.
-    const inserted = await input.deps.withMediaService(input.instanceId, async (service) => {
-      if (!(await service.createAssetIfAbsent(asset))) return false;
-      await service.upsertUploadSession({
-        id: sessionId,
-        instanceId: input.instanceId,
-        assetId,
-        storageKey: upload.storageKey,
-        mimeType: detected.mime,
-        byteSize: object.byteSize,
-        status: 'pending',
-        expiresAt: upload.expiresAt,
-      });
-      return true;
-    });
-    cleanupSafe = !inserted;
-    const saved = inserted
-      ? asset
-      : await input.deps.withMediaService(input.instanceId, (service) =>
-          service.getAssetById(input.instanceId, assetId)
-        );
-    if (
-      !saved ||
-      saved.technical.importSourceEtag !== stat.etag ||
-      saved.technical.importSourceBytes !== stat.byteSize
-    )
-      return importError('media_import_source_changed');
-    await emitMediaAuditEvent({
-      ...input,
-      actionId: 'media.create',
-      result: 'success',
-      reasonCode: inserted ? 'import_prepared' : 'already_registered',
-      resourceType: 'media_asset',
-      resourceId: assetId,
-    });
-    return acceptImportProcessing(input, saved);
+    const snapshot = await readImportSnapshot(storage, objectInput, stat);
+    if (snapshot instanceof Response) return snapshot;
+    return await persistImportSnapshot(input, storage, source, stat, assetId, snapshot);
   } finally {
-    if (cleanupSafe)
-      await storage.deleteObject({ instanceId: input.instanceId, storageKey: upload.storageKey });
+    activeSnapshots--;
   }
 };
 

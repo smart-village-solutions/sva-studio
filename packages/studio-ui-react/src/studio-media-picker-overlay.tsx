@@ -215,13 +215,11 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
           className="flex h-[92dvh] max-h-[92dvh] w-[min(96vw,1280px)] max-w-none flex-col gap-4 overflow-hidden"
           onCloseAutoFocus={(event) => restoreManualMediaFocus(event, acceptedManualUiId)}
         >
-          {/* Scaleflex 3's usePortal reuses this target, keeping menus inside Radix's modal boundary. */}
           <div id="SfxPopper" />
           <DialogHeader className="shrink-0">
             <DialogTitle>{labels.title}</DialogTitle>
             <DialogDescription>{labels.description}</DialogDescription>
           </DialogHeader>
-
           {visibleMode !== 'review' ? (
             <StudioMediaPickerModeActions
               canUpload={props.canUpload !== false}

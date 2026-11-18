@@ -231,6 +231,7 @@ export const de = {
       recording_request: 'Aufnahme anfordern',
       recording_review: 'Aufnahmen prüfen',
       recording_review_sworn: 'Aufnahmen vereidigt prüfen',
+      recording_access_transfer: 'Zugänge zu Aufzeichnungen übertragen',
       recording_supervise: 'Aufnahmen beaufsichtigen',
       recording_recovery_custodian: 'Aufnahmewiederherstellung verwalten',
       systemRead: 'SSF-Systemstandards lesen',

@@ -44,9 +44,9 @@ describe('SSF plugin metadata', () => {
         },
       ],
     });
-    expect(new Set(contract?.systemRoles[0]?.permissionIds)).toEqual(
-      new Set(contract?.permissionIds)
-    );
+    expect(contract?.permissionIds).toContain('ssf.recording.access.transfer');
+    expect(contract?.systemRoles[0]?.permissionIds).not.toContain('ssf.recording.access.transfer');
+    expect(contract?.systemAdminPermissionExclusions).toContain('ssf.recording.access.transfer');
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.manage');
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.read');
   });

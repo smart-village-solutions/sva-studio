@@ -12,6 +12,7 @@ import {
 } from './content-v2-admin-contracts.js';
 import {
   SSF_RECORDING_PERMISSION_IDS,
+  SSF_TRANSFER_PERMISSION,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_V2_ENDPOINT_PATH,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
@@ -41,7 +42,12 @@ const tenantManageAccess = {
   actions: { mode: 'allOf', values: [SSF_ADMIN_ACTIONS.tenantManage] },
 } as const;
 
+const transferAccess = {
+  kind: 'tenant', moduleId: 'ssf', actions: { mode: 'allOf', values: [SSF_TRANSFER_PERMISSION] },
+} as const;
+
 const actions = definePluginActions('ssf', [
+  { id: SSF_TRANSFER_PERMISSION, titleKey: 'ssf.permissions.recording_access_transfer', accessRequirement: transferAccess },
   {
     id: SSF_ADMIN_ACTIONS.systemRead,
     titleKey: 'ssf.permissions.systemRead',
@@ -77,7 +83,8 @@ const tenantPermissionIds = permissions.map(({ id }) => id);
 const moduleIam = definePluginModuleIamContract('ssf', {
   moduleId: 'ssf',
   permissionIds: tenantPermissionIds,
-  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds }],
+  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds.filter(id => id !== SSF_TRANSFER_PERMISSION) }],
+  systemAdminPermissionExclusions: [SSF_TRANSFER_PERMISSION],
 });
 
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;

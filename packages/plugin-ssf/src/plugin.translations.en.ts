@@ -230,6 +230,7 @@ export const en = {
       recording_request: 'Request recording',
       recording_review: 'Review recordings',
       recording_review_sworn: 'Review recordings as a sworn reviewer',
+      recording_access_transfer: 'Transfer access to recordings',
       recording_supervise: 'Supervise recordings',
       recording_recovery_custodian: 'Act as recording recovery custodian',
       systemRead: 'Read SSF system defaults',

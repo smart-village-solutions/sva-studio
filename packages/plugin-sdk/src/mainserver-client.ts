@@ -248,7 +248,7 @@ const createMainserverCrudMutations = <
     await input.ensureContextBinding(contentId, actingPrincipalType);
     try {
       const response = await requestMainserverJson<
-        ApiItemResponse<{ readonly id: string; readonly reconciliationRequired?: boolean }>,
+        ApiItemResponse<{ readonly id: string; readonly reconciliationRequired?: boolean } | null>,
         TError
       >({
         url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
@@ -259,7 +259,7 @@ const createMainserverCrudMutations = <
           headers: input.contextBindingStore.mutationHeaders(contentId, actingPrincipalType),
         },
       });
-      if (response.data.reconciliationRequired)
+      if (response.data?.reconciliationRequired)
         throw input.options.errorFactory('reconciliation_required', 'reconciliation_required');
     } catch (error) {
       return invalidateBindingOnStaleContext(

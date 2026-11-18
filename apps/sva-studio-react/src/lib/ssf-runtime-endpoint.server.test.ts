@@ -3,7 +3,7 @@ import {
   createPluginServerHandlerDispatcher,
   createSsfRuntimePluginServiceAccess,
 } from '@sva/auth-runtime/server';
-import type { PluginServerHandlerRegistryEntry } from '@sva/plugin-sdk';
+import { createPluginServerHandlerRegistry, type PluginServerHandlerRegistryEntry } from '@sva/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -13,13 +13,11 @@ import {
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
-  SSF_RUNTIME_V2_ENDPOINT_PATH,
-  SSF_RUNTIME_V2_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
   SSF_RUNTIME_SERVICE_ID,
   type SsfRuntimeConfiguration,
 } from '../../../../packages/plugin-ssf/src/index.js';
-import { createSsfPluginServerHandlers } from '../../../../packages/plugin-ssf/src/server/index.js';
+import { createPluginServerHandlers, createSsfPluginServerHandlers } from '../../../../packages/plugin-ssf/src/server/index.js';
 
 const authorizationRevision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;
@@ -92,23 +90,14 @@ const createEndpoint = (runtimeHandler = vi.fn().mockResolvedValue(configuration
     directoryReader,
     runtimeHandler,
     dispatch: createPluginServerHandlerDispatcher({
-      descriptors: new Map([
-        [descriptor.id, descriptor],
-        [SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID, {
-          ...descriptor,
-          id: SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
-          path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
-        }],
-        [SSF_RUNTIME_V2_SERVER_HANDLER_ID, {
-          ...descriptor,
-          id: SSF_RUNTIME_V2_SERVER_HANDLER_ID,
-          path: SSF_RUNTIME_V2_ENDPOINT_PATH,
-        }],
-      ]),
-      handlers: createSsfPluginServerHandlers({
-        runtimeHandler,
-        capabilities: { readPermissionDirectorySubjects: directoryReader },
-      }),
+      descriptors: createPluginServerHandlerRegistry([ssfPlugin]),
+      handlers: {
+        ...createPluginServerHandlers(),
+        ...createSsfPluginServerHandlers({
+          runtimeHandler,
+          capabilities: { readPermissionDirectorySubjects: directoryReader },
+        }),
+      },
       dependencies: access,
     }),
   };

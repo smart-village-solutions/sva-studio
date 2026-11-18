@@ -1701,3 +1701,7 @@ organisation reads. See [SSF administration](../development/ssf-v2-inhaltsverwal
 ### Standard Redakteur
 
 Bei erfolgreicher erstmaliger Mandantenanlage schreibt dasselbe SQL-Statement die Rolle `standard_editor`; spätere Core-/Modulabgleiche vergeben ihre redaktionellen Rechte ohne Benutzerzuweisung. Löscht eine autorisierte Person die Rolle, finden spätere Abgleiche keine Zielrolle und erzeugen sie nicht erneut. Der einmalige Bestandsbackfill sperrt konkurrierende Mandanten-/Rollenanlagen, prüft Kollisionen, schreibt atomar Rolle und Grants und invalidiert betroffene Permission-Snapshots. Ein Fehler rollt die Migration zurück. Spätere redaktionelle Mainserver-Actions prüfen den Ressourceninhaber vor Mutation; Push ist dabei eine zusätzliche Action am selben Objekt.
+
+## Aktivierung und Zugangsübertragung
+
+Bei der Aktivierung erzeugt der Tab das Schlüsselpaar. Nach Vorbereitung durch das Gateway exportiert die Person die lokale Datei, bestätigt ihre Verwahrung und sendet den Besitznachweis. Bei einem Ersatz bleiben bestehende Aufzeichnungsfenster ihrer historischen Version zugeordnet. Für eine Übertragung wählt die Person Aufzeichnungen, Versionsgruppe, Ziel und Grund. Der Tab prüft Umfang und Signaturen, entschlüsselt die ausgewählten Inhaltsschlüssel lokal und verschlüsselt jeden für die bestätigte Zielversion. Das Gateway schließt den vorbereiteten Umfang atomar ab. Identische Wiederholungen liefern den bestehenden Beleg.

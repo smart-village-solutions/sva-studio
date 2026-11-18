@@ -1,6 +1,9 @@
+import { recordingKeyTranslationsEn } from './recording-key.translations.en.js';
+
 /** English SSF interface resources. */
 export const en = {
   ssf: {
+    ...recordingKeyTranslationsEn,
     readiness: { login: 'SSF login and tenant ready' },
     administration: {
       templateRequired: 'This page requires an existing valid SSF template.',
@@ -9,6 +12,9 @@ export const en = {
         'The new language needs complete initial content. After saving, edit this content under Default content.',
 
       pages: {
+        'organisation-keys': 'Organisation keys',
+        'access-transfers': 'Manage recording access',
+
         overview: 'Overview',
         appearance: 'Appearance and content',
         languages: 'Languages',
@@ -230,6 +236,7 @@ export const en = {
       recording_request: 'Request recording',
       recording_review: 'Review recordings',
       recording_review_sworn: 'Review recordings as a sworn reviewer',
+      recording_access_transfer: 'Transfer access to recordings',
       recording_supervise: 'Supervise recordings',
       recording_recovery_custodian: 'Act as recording recovery custodian',
       systemRead: 'Read SSF system defaults',

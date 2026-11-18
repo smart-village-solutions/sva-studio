@@ -738,3 +738,7 @@ Der Mainserver ersetzt bei Ortsupdates Gutscheine und Kontingente und entfernt E
 ## Offene Browser- und Edge-Abnahme der Script-CSP
 
 Die lokale Härtung ergänzt Header und eine Script-Policy im Report-Only-Modus. Produktive Edge-Header und die vollständigen Login-/Logout-/Silent-SSO-, Karten-, Medien-, Download- und Embed-Flows sind damit noch nicht abgenommen. Vor Enforcement müssen konkrete Zielhosts lesend freigegeben, App-/Edge-Ownership geklärt und dieselben Policies am ausgelieferten Build geprüft werden. Report-Only schließt F06 des historischen OWASP-Reviews (`docs/reports/2026-11-08-owasp-cheat-sheet-review.md`) nicht. Weitere, dort nicht ausgewählte Map-Limiter und GitHub-Action-Pinning bleiben außerhalb dieses Changes.
+
+## Verlust der Organisationsschlüsseldatei
+
+Geht die zu einer historischen Version gehörige Datei verloren, kann das Studio deren Inhaltsschlüssel nicht für eine weitere Person umschlüsseln. Bestehende persönliche Zugänge bleiben nutzbar. Betreiber prüfen Dateiverwahrung und Lesbarkeit der exportierten Sicherung. Der Betreiber muss den zur Keycloak-Version passenden Assurance-Mapper bereitstellen und den Mandantenclient abgleichen. Ein fehlender Mapper oder eine von der Quellsitzung abweichende Assurance sperrt den Verwaltungsvorgang.

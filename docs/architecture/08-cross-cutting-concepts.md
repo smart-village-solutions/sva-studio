@@ -1629,3 +1629,9 @@ LocalStorage-Schlüssel gespeichert. Gesperrter Speicher und unbekannte Werte
 verhindern die Kartenbenutzung nicht. Stiländerungen ändern keine Fachkoordinaten,
 keine Marker und keine Geometrien; die nativen Auswahlfelder sind benannt und der
 Popover gibt den Fokus beim Schließen zurück.
+
+## Schlüsselmaterial und Sitzung
+
+Private Organisationsschlüssel und entschlüsselte Inhaltsschlüssel werden im Browser verarbeitet. Download und temporäre Druckansicht sind bewusste Exporte. Das Gateway erhält öffentliche Metadaten, verschlüsselte Umschläge und einen an die konkrete Challenge gebundenen HMAC. Dieser bestätigt den Besitz des Organisationsschlüssels. Die lokale Prüfung jeder Quellsignatur und des vorbereiteten Umfangs sichert die Zuordnung der Inhaltsschlüssel. Die persönliche Richtlinie `passphraseFileEnabled` bleibt separat.
+
+Eine gültige Mandantensitzung reicht für alle berechtigten SSF-Aufzeichnungsaktionen. Passwortlogin bei optionaler MFA und Sitzungen mit älterer MFA sind zulässig. Das Ende einer Vorbereitung verlangt eine neue Challenge, das Ende der Sitzung einen normalen Login.

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalize } from 'json-canonicalize';
 import { z } from 'zod';
-import { SSF_RECORDING_PERMISSION_IDS } from './constants.js';
+import { SSF_DIRECTORY_PERMISSION_IDS } from './constants.js';
 
 export type PermissionDirectorySubject = Readonly<{
   keycloakSubject: string;
@@ -27,7 +27,7 @@ const userSchema = z
       .trim()
       .min(1)
       .refine((value) => Array.from(value).length <= 200),
-    permissions: z.array(z.enum(SSF_RECORDING_PERMISSION_IDS)).min(1),
+    permissions: z.array(z.enum(SSF_DIRECTORY_PERMISSION_IDS)).min(1),
     languages: z
       .array(
         z
@@ -46,7 +46,7 @@ export const createSsfRecordingDirectory = (
     .flatMap((subject) => {
       const permissions = sortedUnique(
         subject.permissionIds.filter((id) =>
-          (SSF_RECORDING_PERMISSION_IDS as readonly string[]).includes(id)
+          (SSF_DIRECTORY_PERMISSION_IDS as readonly string[]).includes(id)
         )
       );
       if (!permissions.length) return [];

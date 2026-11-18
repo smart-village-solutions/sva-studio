@@ -14,6 +14,7 @@ type Raw = Record<string, unknown>;
 type Path = readonly string[];
 const recordingKeys = [
   'enabled',
+  'passphraseFileEnabled',
   'legalBasis',
   'signature',
   'idCheck',
@@ -105,7 +106,11 @@ const applyRecording = (
   setSparsePath(
     result,
     path,
-    key === 'enabled' ? next : next === null || equalContent(next, inherited) ? undefined : next
+    key === 'enabled' || key === 'passphraseFileEnabled'
+      ? next
+      : next === null || equalContent(next, inherited)
+        ? undefined
+        : next
   );
 };
 

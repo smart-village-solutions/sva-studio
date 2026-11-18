@@ -47,6 +47,7 @@ const mergeObject = (base: Record<string, unknown>, overrides: Record<string, un
     if (
       !Object.prototype.hasOwnProperty.call(base, key) &&
       key !== 'enabled' &&
+        key !== 'passphraseFileEnabled' &&
       !optionalFields.has(key) &&
       key !== 'icon' &&
       key !== 'legalTexts'
@@ -56,7 +57,8 @@ const mergeObject = (base: Record<string, unknown>, overrides: Record<string, un
   }
   return Object.fromEntries(
     [...new Set([...Object.keys(base), ...Object.keys(overrides)])]
-      .filter((key) => key !== 'enabled' && !(optionalFields.has(key) && overrides[key] === null))
+      .filter((key) => key !== 'enabled' &&
+        key !== 'passphraseFileEnabled' && !(optionalFields.has(key) && overrides[key] === null))
       .map((key) => [key, mergeSsfContentV2(base[key], overrides[key])])
   );
 };
@@ -110,11 +112,14 @@ const diffRecording = (base: unknown, current: Record<string, unknown>): unknown
       ([key, value]) =>
         key !== 'retentionHours' &&
         key !== 'enabled' &&
+        key !== 'passphraseFileEnabled' &&
         JSON.stringify(value) !== JSON.stringify(isSsfContentRecord(base) ? base[key] : undefined)
     )
   );
   // Enablement is tenant-only, even when it happens to equal the installation value.
   if (typeof current['enabled'] === 'boolean') result['enabled'] = current['enabled'];
+  // Keep explicit convenience choices pinned even when equal to the current default.
+  if (typeof current['passphraseFileEnabled'] === 'boolean') result['passphraseFileEnabled'] = current['passphraseFileEnabled'];
   if (current['retentionHours'] != null) result['retentionHours'] = current['retentionHours'];
   return Object.keys(result).length ? result : undefined;
 };

@@ -7,7 +7,7 @@ const recordingTexts = z.array(z.object({
 }).strict()).max(40).refine((values) => new Set(values.map(({ locale }) => locale)).size === values.length,
   'duplicate_recording_locale');
 const fields = z.object({
-  enabled: z.boolean(), legalBasis: z.enum(['consent', 'statutory']),
+  enabled: z.boolean(), passphraseFileEnabled: z.boolean().default(false), legalBasis: z.enum(['consent', 'statutory']),
   signature: z.enum(['off', 'optional', 'required']), idCheck: z.enum(['off', 'optional', 'required']),
   retentionHours: hours, verificationRequired: z.boolean(), recoveryMode: z.enum(['standard', 'enhanced']),
   timestampAuthorityUrl: z.string().url().max(2048).refine((value) => value.startsWith('https://')),
@@ -19,7 +19,11 @@ export const ssfRecordingPolicySchema = fields.superRefine((value, context) => {
   });
 });
 /** Sparse administrator drafts are deliberately distinct from publishable policies. */
-export const ssfRecordingSettingsSchema = fields.partial().extend({ retentionHours: hours.nullable().optional() }).strict();
+export const ssfRecordingSettingsSchema = fields.partial().extend({
+  retentionHours: hours.nullable().optional(),
+  // Sparse overrides must not materialize the effective policy default.
+  passphraseFileEnabled: z.boolean().optional(),
+}).strict();
 export type RecordingPolicy = z.infer<typeof ssfRecordingPolicySchema>;
 export const resolveRecordingRetentionHours = (installationHours?: number | null, tenantHours?: number | null): number => {
   if (installationHours != null) hours.parse(installationHours);
@@ -31,6 +35,7 @@ export const resolveSsfRecordingPolicy = (installation: unknown, tenant: unknown
   const defaults = ssfRecordingSettingsSchema.parse(installation === undefined ? {} : installation);
   const overrides = ssfRecordingSettingsSchema.parse(tenant === undefined ? {} : tenant);
   const candidate = { ...defaults, ...overrides, enabled: overrides.enabled ?? false,
+    passphraseFileEnabled: overrides.passphraseFileEnabled ?? defaults.passphraseFileEnabled ?? false,
     retentionHours: resolveRecordingRetentionHours(defaults.retentionHours, overrides.retentionHours) };
   if (candidate.auditRetentionHours !== undefined && candidate.auditRetentionHours < candidate.retentionHours) {
     throw new z.ZodError([{ code: 'custom', path: ['auditRetentionHours'], message: 'recording_audit_retention_too_short' }]);

@@ -7,6 +7,7 @@ import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 const databaseName = process.env.INSTANCE_PROVISIONING_INTEGRATION_DB;
 const integrationDescribe = databaseName ? describe : describe.skip;
 const instanceId = 'integration-iam-baseline-partial';
+const transfer = 'ssf.recording.access.transfer';
 
 const createExecutor = (client: Pool | PoolClient) => ({
   execute: async <TRow = Record<string, unknown>>(statement: {
@@ -37,6 +38,7 @@ integrationDescribe('IAM baseline persistence', () => {
     const repository = createInstanceRegistryRepository(createExecutor(pool));
     const afterModuleActivationPolicyReconcile = vi.fn(async () => undefined);
 
+    let includeUnknownRequiredModule = true;
     try {
       const created = await repository.createInstance({
         instanceId,
@@ -115,6 +117,22 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
         ],
       });
 
+      // Model an existing deployment whose previous module synchronization granted transfer.
+      await repository.syncAssignedModuleIam({
+        instanceId,
+        managedModuleIds: ['ssf'],
+        contracts: [
+          {
+            moduleId: 'ssf',
+            permissionIds: [transfer],
+            permissions: [
+              { key: transfer, description: 'Transfer recording access', resourceType: 'ssf' },
+            ],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: [transfer] }],
+          },
+        ],
+      });
+
       const runtime = createInstanceRegistryRuntime({
         resolvePool: () => ({
           connect: async () => {
@@ -140,7 +158,12 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
               'ssf',
               {
                 moduleId: 'ssf',
-                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+                permissionIds: [
+                  'ssf.configuration.tenant.read',
+                  'ssf.configuration.tenant.manage',
+                  transfer,
+                ],
+                systemAdminPermissionExclusions: [transfer],
                 systemRoles: [
                   {
                     roleName: 'system_admin',
@@ -154,7 +177,7 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
             ],
           ]),
           readModuleActivationPolicySnapshot: () => ({
-            revision: 'integration-catalog-1',
+            revision: includeUnknownRequiredModule ? 'integration-catalog-1' : 'integration-catalog-2',
             modules: [
               {
                 moduleId: 'ssf',
@@ -162,12 +185,16 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
                 manifestVersion: 1,
                 policyRevision: 'ssf-1',
               },
-              {
-                moduleId: 'legacy-module',
-                activationPolicy: 'required',
-                manifestVersion: 2,
-                policyRevision: 'legacy-2',
-              },
+              ...(includeUnknownRequiredModule
+                ? [
+                    {
+                      moduleId: 'legacy-module',
+                      activationPolicy: 'required' as const,
+                      manifestVersion: 2,
+                      policyRevision: 'legacy-2',
+                    },
+                  ]
+                : []),
             ],
           }),
         },
@@ -264,6 +291,39 @@ WHERE role.instance_id = $1 AND role.role_key = 'system_admin';
         legacy_active: true,
         removed_active: false,
       });
+      // Remove the intentionally missing policy contract before the normal sync.
+      includeUnknownRequiredModule = false;
+      const transferGrant = `
+        FROM iam.roles r
+        JOIN iam.permissions p ON p.instance_id = r.instance_id AND p.permission_key = $2
+        WHERE r.instance_id = $1 AND r.role_key = 'system_admin'`;
+      const readOrigins = async () => {
+        const { rows } = await pool.query<{ origin: string }>(
+          `SELECT rp.grant_origin_kind AS origin FROM iam.role_permissions rp
+           JOIN (SELECT r.id AS role_id, p.id AS permission_id ${transferGrant}) selected
+             ON selected.role_id = rp.role_id AND selected.permission_id = rp.permission_id
+           WHERE rp.instance_id = $1`,
+          [instanceId, transfer]
+        );
+        return rows.map(({ origin }) => origin);
+      };
+      const forceSync = () =>
+        runtime.withScopedRegistryService(instanceId, async () => undefined, {
+          forceIamSync: true,
+          awaitActivationPolicyFollowUp: true,
+        });
+      await forceSync();
+      expect(await readOrigins()).toEqual([]);
+      await forceSync();
+      expect(await readOrigins()).toEqual([]);
+      const manual = await pool.query(
+        `INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, grant_origin_kind)
+         SELECT r.instance_id, r.id, p.id, 'manual' ${transferGrant}`,
+        [instanceId, transfer]
+      );
+      expect(manual.rowCount).toBe(1);
+      await forceSync();
+      expect(await readOrigins()).toEqual(['manual']);
     } finally {
       await pool.end();
     }

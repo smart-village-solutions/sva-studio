@@ -86,6 +86,7 @@ export const resolveAssignedModuleContracts = (
     if (!contract) {
       throw new Error(`unknown_module_contract:${moduleId}`);
     }
+    const adminExclusions = new Set(contract.systemAdminPermissionExclusions);
     const existingSystemRoles = (
       contract.systemRoles ??
       contract.tenantBootstrapRoles ??
@@ -110,7 +111,7 @@ export const resolveAssignedModuleContracts = (
         ...existingSystemRoles,
         {
           roleName: 'system_admin',
-          permissionIds: [...contract.permissionIds],
+          permissionIds: contract.permissionIds.filter((key) => !adminExclusions.has(key)),
         },
       ],
     };

@@ -40,8 +40,12 @@ describe('SSF authorization projection contract', () => {
     expect(SSF_TENANT_PERMISSION_IDS).toEqual([
       'ssf.configuration.tenant.manage',
       'ssf.configuration.tenant.read',
-      'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
-      'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+      'ssf.recording.request',
+      'ssf.recording.review',
+      'ssf.recording.review.sworn',
+      'ssf.recording.access.transfer',
+      'ssf.recording.supervise',
+      'ssf.recording.recovery.custodian',
     ]);
   });
 

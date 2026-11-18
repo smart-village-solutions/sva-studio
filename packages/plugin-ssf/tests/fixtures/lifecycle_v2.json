@@ -1,0 +1,61 @@
+{
+  "tenantId": "tenant-a",
+  "actorSub": "manager",
+  "organisationKeyId": "00000000-0000-4000-8000-000000000001",
+  "organisationVersion": 2,
+  "organisationFingerprint": "rxSISlrHHZEDH2AGCnMpX8W2z8BKNyAdbsVjIfIPoc4",
+  "organisationPublicKey": "BM_HRlieShQHhbO_lMcmmtGxetJZ--cXwnauCw50mDOvnuJdAgtb6Xm-T5Nn4nEyLOihAGrvDkH2Eee7GTCXjvg",
+  "organisationPrivateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGWhRANCAATPx0ZYnkoUB4Wzv5THJprRsXrSWfvnF8J2rgsOdJgzr57iXQILW-l5vk-TZ-JxMizooQBq7w5B9hHnuxkwl474",
+  "targetUserSub": "employee",
+  "targetVersion": 3,
+  "targetFingerprint": "NebqYIqwQoryZ9Biwaf6976Cg4oLNEQNqdghAagjOpY",
+  "targetEncPub": "BOC7ThEycvfvhbb7xnno_R8eCNetZNJ5Mu-ixCnwFEuesmDJH4Cau8XPAbfWznprXW4V9RnvsHJGquQXA4aXnNM",
+  "targetSigPub": "BNTPKZtSkEpncKgxPm2x_hL_9ZvcmrvDqklrvGFiq2zC_ElM56UqTIPk2KETXykkKP_tRUbCLXUe-TRlROUXafk",
+  "targetPrivateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGahRANCAATgu04RMnL374W2-8Z56P0fHgjXrWTSeTLvosQp8BRLnrJgyR-AmrvFzwG31s56a11uFfUZ77ByRqrkFwOGl5zT",
+  "gatewayPublicKey": "BJn4iP8RKz9dYDPGEU9yMtbzeZhxMdXtKX8_scH8Kqv2XWyxQ4AnGyNPNTHZP4s6LeS_orBwasKC_Jg3id_Ob2c",
+  "preparationId": "00000000-0000-4000-8000-000000000002",
+  "transferId": "00000000-0000-4000-8000-000000000003",
+  "conversationId": "00000000-0000-4000-8000-000000000004",
+  "keyId": "00000000-0000-4000-8000-000000000005",
+  "epoch": 1,
+  "expiresAt": "2026-11-18T12:05:00.000000Z",
+  "reason": "Approved reassignment",
+  "challengeNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "contentKey": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+  "activationChallenge": {
+    "v": 1,
+    "t": "SSF-ORG-POSSESSION-V1",
+    "R": "BAQH3aSs4LCly9eeBiSRz2ofxVvtHZN_XkiCFSiS7_AsHv2-YwMhx4rVW74Hid4WJS9eaV1D31mPebeGqJutX9s",
+    "nonce": "BAQEBAQEBAQEBAQE",
+    "ct": "TvBsxq8c2hHCwl4CwdpQvlV01qP4KNbA8OcVae0zpb-dxlOX_HN0MJ_uW1M7OYZf"
+  },
+  "transferChallenge": {
+    "v": 1,
+    "t": "SSF-ORG-POSSESSION-V1",
+    "R": "BPnByQuarB_D53qRXSje2sLYl-el_H11u9Tqmc_mSc5_fH3rZ6hEzThCQp7i7y8afxRL7CNdONPcqxE8LfpUoGs",
+    "nonce": "BQUFBQUFBQUFBQUF",
+    "ct": "mHOZDvmmU_qGjy9_RGQnKhT0u1_g594i0rJBw5FCKS7myYhHN9gjKYcvOIgnuVZm"
+  },
+  "activationTranscript": "ABNTU0YtT1JHLUFDVElWQVRFLVYxAAh0ZW5hbnQtYQAHbWFuYWdlcgAkMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAyACQwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEAATIAQQTPx0ZYnkoUB4Wzv5THJprRsXrSWfvnF8J2rgsOdJgzr57iXQILW-l5vk-TZ-JxMizooQBq7w5B9hHnuxkwl474ACCvFIhKWscdkQMfYAYKcylfxbbPwEo3IB1uxWMh8g-hzgAAABsyMDI2LTExLTE4VDEyOjA1OjAwLjAwMDAwMFoABXNhdmVk",
+  "activationProof": "z64jKpPlJrWwW1eJ0bgwb2kUYDAxfe6orSghD7HDu7k",
+  "sourceEnvelope": {
+    "v": 1,
+    "t": "SSF-CK-WRAP-V2",
+    "R": "BL8UMWA6NVoB5PD_hUV2JA86280C8Nyv5FtFJVG2akNdU4OSve5NQRuKoVNAtJ-1nKOEsqmY9sLbIppksY6YlfA",
+    "nonce": "BgYGBgYGBgYGBgYG",
+    "ct": "aoZeaaC2NT6UCxwt0X1c1_jUUiRI3aJ5ONs_z4EcTRvF6a_9HPMiH9bo9v5c6mtf"
+  },
+  "sourceSignature": "sqcBMqeptEHGAWcEOvd62eymKmydxN6l3XIrpL-WbJW2cg_9X8rM7VwrNjlSTCGmbretNfsRGpnx3lWckTOqgw",
+  "targetEnvelope": {
+    "v": 1,
+    "t": "SSF-CK-WRAP-V2",
+    "R": "BAWUnAQHJX-hcjmfiZAZmTtXANIeuaF2JAQyGRI5WF9DvfHX6h3Dl1ZF3_FzEtsXWZvw1OjccfHZB0Aee_cjNgY",
+    "nonce": "BwcHBwcHBwcHBwcH",
+    "ct": "nf-jS6N55fgFHeRwVL1NVRT5ztpNGDKZClMVfAiwx2MqT7vag9LDQQt2TstwxYcN"
+  },
+  "targetSignature": "H_SLoXyASCU2KawtNbGIzGTW2pu1rKzyRvLZo94McL0T-HIPYgZVCoygl_1-J_qTMwlQgi9s0m7iO1DMPx-RHw",
+  "scopeDigest": "riF2pX2xohk-_2fQHc5ZDm2b8vC_oK_Nhjstx5a4Acg",
+  "resultDigest": "1fwfy80rJJR4HLdPbV3EVe9l3FHT0qP1k3Rj8UkCqfM",
+  "transferTranscript": "ABZTU0YtQUNDRVNTLVRSQU5TRkVSLVYxAAh0ZW5hbnQtYQAHbWFuYWdlcgAkMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAzACQwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEAATIAIK8UiEpaxx2RAx9gBgpzKV_Fts_ASjcgHW7FYyHyD6HOAAhlbXBsb3llZQABMwAgNebqYIqwQoryZ9Biwaf6976Cg4oLNEQNqdghAagjOpYAIK4hdqV9saIZPv9n0B3OWQ5tm_Lwv6CvzYY7LceWuAHIACAL0nl0RIn4PRnOMECRWoEe2ZP9Zp5EGL29QjZ3x9wkewAg1fwfy80rJJR4HLdPbV3EVe9l3FHT0qP1k3Rj8UkCqfMAGzIwMjYtMTEtMThUMTI6MDU6MDAuMDAwMDAwWg",
+  "transferProof": "usUAnbyVkstV8RwuyWfdyXSQMnPxfGVdMVq8HapYZcM"
+}

@@ -1,0 +1,173 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from 'vitest';
+import {
+  StudioEditorLeaveGuardProvider,
+  type StudioEditorLeaveGuardRegister,
+} from '@sva/studio-ui-react';
+import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+import React from 'react';
+import { publishSessionAccessSnapshot, readSessionAccessSnapshot } from '@sva/plugin-sdk';
+import * as forms from '../src/admin.organisation-keys.page.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const v = JSON.parse(
+  readFileSync(resolve(process.cwd(), 'tests/fixtures/lifecycle_v2.json'), 'utf8')
+);
+const api = vi.hoisted(() => vi.fn());
+vi.mock('../src/organisation-key-client.js', async (original) => ({
+  ...(await original<typeof import('../src/organisation-key-client.js')>()),
+  requestOperation: api,
+}));
+vi.mock('@sva/plugin-sdk', async (original) => ({
+  ...(await original<typeof import('@sva/plugin-sdk')>()),
+  usePluginTranslation: () => (k: string) => k,
+}));
+vi.mock('../src/organisation-key-crypto.js', async (original) => ({
+  ...(await original<typeof import('../src/organisation-key-crypto.js')>()),
+  generateOrganisationKey: async () => ({ publicKey: v.organisationPublicKey }),
+  createOrganisationKeyFile: async () => JSON.stringify({ privateKeyPkcs8: 'LOCAL-ONLY' }),
+  importOrganisationKey: async () => ({}),
+  activationProof: async () => v.activationProof,
+}));
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+});
+it('gates activation on custody and sends only proof, then reconciles authoritative metadata', async () => {
+  api.mockImplementation(async (op: string) =>
+    op === 'list'
+      ? { activeKeyId: null, keys: [] }
+      : op === 'prepareKey'
+        ? {
+            keyId: v.organisationKeyId,
+            version: 2,
+            fingerprint: v.organisationFingerprint,
+            expiresAt: new Date(Date.now() + 300000).toISOString(),
+            preparationId: v.preparationId,
+            challengeEnvelope: v.activationChallenge,
+          }
+        : {}
+  );
+  expect(forms.OrganisationKeyForm).toBeTypeOf('function');
+  render(<forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
+  const activate = await screen.findByRole('button', { name: 'keys.activate' });
+  expect((activate as HTMLButtonElement).disabled).toBe(true);
+  const saved = screen.getByRole('checkbox', { name: 'keys.saved' }) as HTMLInputElement;
+  expect(saved.disabled).toBe(true);
+  URL.createObjectURL = vi.fn(() => 'blob:key-fixture');
+  URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  fireEvent.click(screen.getByRole('button', { name: 'keys.download' }));
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  fireEvent.click(saved);
+  fireEvent.click(activate);
+  await waitFor(() => expect(api.mock.calls.filter((c) => c[0] === 'activate')).toHaveLength(1));
+  expect(api.mock.calls.find((c) => c[0] === 'activate')?.[1]).toMatchObject({
+    id: v.preparationId,
+    body: { proof: v.activationProof, savedConfirmation: true },
+  });
+  expect(JSON.stringify(api.mock.calls)).not.toContain('LOCAL-ONLY');
+  await waitFor(() => expect(api.mock.calls.filter((c) => c[0] === 'list')).toHaveLength(2));
+});
+
+it('refreshes public key state when a concurrent activation invalidates a preparation request', async () => {
+  api.mockImplementation(async (op: string) => {
+    if (op === 'list') return { activeKeyId: null, keys: [] };
+    throw new Error('KEY_VERSION_CHANGED');
+  });
+  render(<forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
+  await screen.findByText('keys.errors.KEY_VERSION_CHANGED');
+  expect(api.mock.calls.filter(([op]) => op === 'list')).toHaveLength(2);
+  expect(api.mock.calls.some(([op]) => op === 'activate')).toBe(false);
+});
+
+it('moves focus to export and clears the local print sheet on navigation discard', async () => {
+  const { renderToString } = await import('react-dom/server');
+  api.mockImplementation(async (op: string) => {
+    if (op === 'list') return { activeKeyId: null, keys: [] };
+    return {
+      keyId: v.organisationKeyId,
+      version: 2,
+      fingerprint: v.organisationFingerprint,
+      expiresAt: new Date(Date.now() + 300000).toISOString(),
+      preparationId: v.preparationId,
+      challengeEnvelope: v.activationChallenge,
+    };
+  });
+  const app = <forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />;
+  expect(renderToString(app)).not.toContain('LOCAL-ONLY');
+  const register = vi.fn<StudioEditorLeaveGuardRegister>(() => () => undefined);
+  render(
+    <StudioEditorLeaveGuardProvider register={register}>{app}</StudioEditorLeaveGuardProvider>
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
+  const download = await screen.findByRole('button', { name: 'keys.download' });
+  expect(document.activeElement).toBe(download);
+  const [dirty, actions] = register.mock.calls.at(-1)!;
+  expect(dirty()).toBe(true);
+  const append = document.body.appendChild.bind(document.body);
+  const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+    const appended = append(node);
+    if (node instanceof HTMLIFrameElement && node.contentWindow) {
+      node.contentWindow.focus = vi.fn();
+      node.contentWindow.print = vi.fn();
+    }
+    return appended;
+  });
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'keys.print' }));
+    const sheet = document.querySelector('iframe');
+    expect(sheet?.contentDocument?.body.textContent).toContain(
+      Buffer.from(JSON.stringify({ privateKeyPkcs8: 'LOCAL-ONLY' })).toString('base64url')
+    );
+    expect(JSON.stringify(api.mock.calls)).not.toContain('LOCAL-ONLY');
+    act(() => actions?.discard?.());
+    expect(dirty()).toBe(false);
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(api.mock.calls.some(([op]) => op === 'abandon')).toBe(true);
+  } finally {
+    appendSpy.mockRestore();
+  }
+});
+
+it('clears the preparation on tenant switch and blocks the workflow after logout', async () => {
+  const original = readSessionAccessSnapshot();
+  const snapshot = {
+    isResolved: true,
+    instanceId: v.tenantId,
+    subjectId: v.actorSub,
+    roles: [],
+    assignedModules: [],
+    permissionActions: ['ssf.configuration.tenant.manage'],
+  };
+  api.mockImplementation(async (op: string) =>
+    op === 'list'
+      ? { keys: [], activeKeyId: null }
+      : {
+          keyId: v.organisationKeyId,
+          version: 2,
+          fingerprint: v.organisationFingerprint,
+          expiresAt: new Date(Date.now() + 300000).toISOString(),
+          preparationId: v.preparationId,
+          challengeEnvelope: v.activationChallenge,
+        }
+  );
+  try {
+    act(() => publishSessionAccessSnapshot(snapshot));
+    render(<forms.SsfOrganisationKeysPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
+    await screen.findByRole('button', { name: 'keys.activate' });
+    act(() => publishSessionAccessSnapshot({ ...snapshot, instanceId: 'other-tenant' }));
+    await screen.findByRole('button', { name: 'keys.create' });
+    expect(screen.queryByRole('button', { name: 'keys.activate' })).toBeNull();
+    act(() =>
+      publishSessionAccessSnapshot({ ...snapshot, subjectId: undefined, permissionActions: [] })
+    );
+    await screen.findByText('keys.errors.PERMISSION_REQUIRED');
+    expect(api.mock.calls.some(([op]) => op === 'activate')).toBe(false);
+  } finally {
+    act(() => publishSessionAccessSnapshot(original));
+  }
+});

@@ -4,7 +4,9 @@ const mocks = vi.hoisted(() => ({
   createLoginState: vi.fn(),
   getOidcConfig: vi.fn(async () => ({ issuer: 'https://issuer.example/realms/test' })),
   getScopeFromAuthConfig: vi.fn(() => ({ kind: 'platform' })),
-  buildAuthorizationUrl: vi.fn(() => new URL('https://issuer.example/protocol/openid-connect/auth')),
+  buildAuthorizationUrl: vi.fn(
+    () => new URL('https://issuer.example/protocol/openid-connect/auth')
+  ),
 }));
 
 vi.mock('../config.js', () => ({
@@ -57,7 +59,10 @@ describe('createLoginUrl', () => {
     const result = await createLoginUrl({ returnTo: '/admin/instances', reauth: true });
 
     expect(result.loginState.freshReauthRequested).toBe(true);
-    expect(mocks.createLoginState).toHaveBeenCalledWith('state-1', expect.objectContaining({ freshReauthRequested: true }));
+    expect(mocks.createLoginState).toHaveBeenCalledWith(
+      'state-1',
+      expect.objectContaining({ freshReauthRequested: true })
+    );
     expect(mocks.buildAuthorizationUrl).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -65,6 +70,15 @@ describe('createLoginUrl', () => {
         max_age: '0',
         response_mode: 'query',
       })
+    );
+  });
+
+  it('requests actual MFA assurance for the SSF key management step-up', async () => {
+    const { createLoginUrl } = await import('./login.js');
+    await createLoginUrl({ returnTo: '/plugins/ssf/access-transfers', reauth: true });
+    expect(mocks.buildAuthorizationUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ acr_values: 'mfa', max_age: '0' })
     );
   });
 

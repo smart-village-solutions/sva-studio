@@ -38,6 +38,7 @@ export const TenantOverview = ({
                   value.recording?.enabled ? 'administration.enabled' : 'administration.disabled'
                 )}
               </p>
+              <p>{pt('keys.policyNotice')}</p>
               <p>
                 {pt('v2.recording.effectiveRetention')}: {retentionHours}
               </p>

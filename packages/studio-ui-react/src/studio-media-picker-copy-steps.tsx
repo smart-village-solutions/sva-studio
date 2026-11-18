@@ -166,19 +166,7 @@ export const CopyReviewFields = ({
 };
 
 type ReviewRef<T> = RefObject<T | null>;
-export const PickerReview = ({
-  props,
-  isCopy,
-  copyDisabled,
-  copyFocus,
-  reviewHeadingRef,
-  centralButtonRef,
-  editorButtonRef,
-  openCentral,
-  openEditor,
-  backToFocus,
-  tagDraft,
-}: {
+type PickerReviewProps = {
   props: ReviewProps;
   isCopy: boolean;
   copyDisabled: boolean;
@@ -196,7 +184,21 @@ export const PickerReview = ({
     setTags: (value: string) => void;
     normalizedTags: string[];
   };
-}) => {
+};
+
+export const PickerReview = ({
+  props,
+  isCopy,
+  copyDisabled,
+  copyFocus,
+  reviewHeadingRef,
+  centralButtonRef,
+  editorButtonRef,
+  openCentral,
+  openEditor,
+  backToFocus,
+  tagDraft,
+}: PickerReviewProps) => {
   const t = useContentMediaTranslation();
   const { reviewAsset, isLoadingReviewAsset = false, isSavingReviewAsset = false } = props;
   const { tagsId, tags, tagsInvalid, setTags, normalizedTags } = tagDraft;

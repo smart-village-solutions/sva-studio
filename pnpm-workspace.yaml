@@ -20,6 +20,14 @@ trustPolicyExclude:
   # Remove this exact-version exception once the transitive graph no longer requires semver 6.x.
   - semver@6.3.1
 blockExoticSubdeps: true
+auditConfig:
+  # Nachverfolgung: https://github.com/smart-village-solutions/sva-studio/issues/2225
+  # Übergangsausnahme vom 18.11.2026 für picomatch; erneute Prüfung am 25.11.2026.
+  # Im externen Plugin nur über Entwicklungswerkzeuge, kein Glob-Matching im Plugin-Code.
+  # Studio führt picomatch zusätzlich transitiv; dies ist keine Laufzeit-Unbedenklichkeitsfreigabe.
+  # Nach geprüftem Update aller betroffenen Pfade auf >=4.0.8 entfernen.
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf
 packageExtensions:
   # Beide Scaleflex-Pakete importieren Babel-Helper ohne eigene Runtime-Abhängigkeit.
   "@scaleflex/icons@3.0.0-beta.10":

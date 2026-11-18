@@ -13,6 +13,8 @@
 
 Wir modernisieren das Redaktionssystem der Smart Village App zu einer integrierten Plattform für Content-Management, Benutzerverwaltung, App-Design, Module und Schnittstellen. Fokus: nutzerfreundlich, sicher, erweiterbar.
 
+Sicherheitsmeldungen und der Umgang mit bekannten Befunden sind in der [Sicherheitsrichtlinie](SECURITY.md) beschrieben. Öffentlich dokumentierte Befunde und akzeptierte Ausnahmen stehen unter [bekannte Sicherheitsbefunde](docs/architecture/11-risks-and-technical-debt.md#bekannte-sicherheitsbefunde-und-akzeptierte-ausnahmen).
+
 ## Einleitung
 SVA Studio soll als Headless- und API-first-System sowohl die App versorgen als auch als Stadt-CMS bzw. Content-Hub für externe Kanäle dienen (Websites, Stelen, Fachsoftware). Schwerpunkt liegt auf strukturierten Inhalten (Presse, Events, POI, Verwaltungsleistungen, Baustellen, Stellenanzeigen), aber auch Sensordaten und anderen typischen Smart City Daten. Ziel ist ein flexibles System, das Inhalte auch in externen Systemen pflegen lässt.
 

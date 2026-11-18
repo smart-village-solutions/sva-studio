@@ -416,7 +416,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: smart-village-solutions/sva-studio_plugin-application-overview/.github/workflows/quality.yml@5ec07993755730ab42c18bf0d274ce4a50c8e251
+    uses: smart-village-solutions/sva-studio_plugin-application-overview/.github/workflows/quality.yml@46b261d9ad1f46db66228f68cc4a0eb50ae6bc1e
     with:
-      plugin-ref: 5ec07993755730ab42c18bf0d274ce4a50c8e251
+      plugin-ref: 46b261d9ad1f46db66228f68cc4a0eb50ae6bc1e
       studio-ref: ${{ github.sha }}

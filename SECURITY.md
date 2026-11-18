@@ -22,7 +22,7 @@ Sicherheitskorrekturen werden primär für den aktuellen Stand auf `main` umgese
 
 ## Schwachstellen melden
 
-Bitte keine öffentlichen GitHub Issues für Sicherheitslücken anlegen.
+Bitte keine öffentlichen GitHub Issues für neue, noch nicht veröffentlichte Sicherheitslücken anlegen. Nicht-sensitive Upgrade-Aufgaben zu bereits öffentlichen Advisories dürfen nach Triage öffentlich verfolgt werden.
 
 Bevorzugte Meldewege:
 
@@ -143,6 +143,12 @@ Für dieses Repository gilt bei SSRF- und ähnlichen Outbound-Request-Befunden:
 - Es gibt kein öffentliches Bug-Bounty-Programm.
 - Themen rund um Supply Chain, Build-Härtung, Secret-Rotation oder externe SaaS-Abhängigkeiten können Folgearbeit erfordern, auch wenn die Erstmeldung validiert ist.
 - Third-Party-Schwachstellen ohne ausnutzbaren Projektbezug werden als Abhängigkeits- oder Upgrade-Thema behandelt.
+
+## Bekannte Befunde und akzeptierte Ausnahmen
+
+Der Umgang mit bekannten Befunden ist in der [ausführlichen Sicherheitsrichtlinie](./docs/governance/security-policy.md#bekannte-befunde-und-akzeptierte-ausnahmen) festgelegt. Die gemeinsame Übersicht steht unter [bekannte Sicherheitsbefunde und akzeptierte Ausnahmen](./docs/architecture/11-risks-and-technical-debt.md#bekannte-sicherheitsbefunde-und-akzeptierte-ausnahmen).
+
+Eine Dependency-Warnung, eine bestätigte ausnutzbare Schwachstelle und ein akzeptiertes Restrisiko sind unterschiedliche Zustände. Eine Audit-Ausnahme behebt keine Schwachstelle. Noch nicht veröffentlichte eigene Befunde bleiben bis zur abgestimmten Offenlegung privat.
 
 ## Fixes und Dokumentation
 

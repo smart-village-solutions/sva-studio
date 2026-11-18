@@ -20,6 +20,20 @@ Schulden auf IST-Basis.
 
 ## Aktueller Stand
 
+### Bekannte Sicherheitsbefunde und akzeptierte Ausnahmen
+
+Einträge werden nach der [Sicherheitsrichtlinie](../governance/security-policy.md#bekannte-befunde-und-akzeptierte-ausnahmen) gepflegt. Diese Übersicht enthält ausgewählte relevante Befunde und keine vollständige Scanner-Inventur. Fehlende Einträge belegen keine Schwachstellenfreiheit.
+
+#### picomatch – GHSA-fc5q-39xc-vjpf
+
+- **Quelle und Prüfstand:** [öffentliche Advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), lokaler Dependency-/Audit-Check vom 18. November 2026. Betroffener Bereich laut Advisory: `<=4.0.7`.
+- **Betroffene Stände:** Studio-Lockdatei mit `2.3.2`, `4.0.4`, `4.0.5` und `4.0.7`; externes `@sva/plugin-application-workspace` mit `4.0.7` über Vite, Vitest und TypeScript-ESLint. Diese Angaben beschreiben die geprüften lokalen Lockdateien, keine verifizierten produktiven Images.
+- **Befundstatus:** Dependency-Warnung bestätigt. Präparierte Glob-Muster können laut Advisory die Verfügbarkeit durch ReDoS beeinträchtigen. Im geprüften Plugin-Quellcode wurde kein Glob-Matching gefunden; eine produktive Ausnutzbarkeit ist bisher nicht nachgewiesen. Die Studio-Laufzeitpfade und ausgelieferten Artefakte sind damit nicht abschließend bewertet.
+- **Behandlung und Freigabe:** Der Nutzer hat am 18. November 2026 die Übergangsausnahme für genau diese GHSA in beiden Repositories autorisiert. `auditConfig.ignoreGhsas` unterdrückt diesen Befund; es behebt die Schwachstelle nicht und schützt keine erreichbaren Matching-Pfade. Andere Audit-Befunde und Prüfschwellen bleiben unverändert.
+- **Nachweis und Grenzen:** Lokaler Plugin-Audit mit Ausnahme: Exit-Code `0`, ein hoher Befund ignoriert. Studio-Audit: dieser Befund ausgenommen, weitere moderate/hohe Befunde offen. Remote-CI, Merge und Rollout sind dadurch nicht nachgewiesen.
+- **Owner und Nachverfolgung:** Plattformteam für Studio, Plugin-Maintainer für das externe Plugin; persönliche Zuweisung noch offen. Gemeinsames [Follow-up #2225](https://github.com/smart-village-solutions/sva-studio/issues/2225). Nächste Prüfung: **25. November 2026**, ohne automatische Erinnerung oder automatische Ablaufprüfung.
+- **Endbedingung:** Der Registry-Audit nennt inzwischen `>=4.0.8` als gepatcht; diese Angabe muss vor dem Update gegen Release und Wirksamkeit geprüft werden. Alle betroffenen Pfade aktualisieren oder entfernen, beide Ausnahmen löschen, passende Tests und Audit ohne diese Ausnahme sowie die Remote-Gates des gelieferten HEAD prüfen. Anschließend diesen Eintrag und das Ticket mit Behebungsnachweisen fortschreiben.
+
 ### Hotfix auf gemeinsamem Staging
 
 - Risiko: Staging enthält bereits Beta-Daten oder einen neueren Schema-/Config-Stand, den ein Prod-basierter Hotfix nicht lesen kann. Ein Image-Rollback setzt Daten nicht zurück.

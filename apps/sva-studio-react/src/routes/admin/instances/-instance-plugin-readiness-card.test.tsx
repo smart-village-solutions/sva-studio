@@ -1,15 +1,22 @@
-import { isPluginOwnedMessageKey, type PluginTenantReadinessReadModel } from '@sva/plugin-sdk';
+import {
+  isPluginOwnedMessageKey,
+  type PluginTenantReadinessReadModel,
+  type PluginTranslations,
+} from '@sva/plugin-sdk';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getActiveLocale, setActiveLocale } from '../../../i18n';
+import { DEFAULT_LOCALE, getActiveLocale, setActiveLocale } from '../../../i18n';
 import { IamHttpError } from '../../../lib/iam-api';
 import { PluginReadinessCard } from './-instance-plugin-readiness-card';
 
-const pluginTranslations = {
+const pluginTranslations: Readonly<Record<string, PluginTranslations>> = {
   ssf: {
     de: { ssf: { errors: { rootDatabaseNotConfigured: 'SSF-Root-Datenbank fehlt.' } } },
     en: { ssf: { errors: { rootDatabaseNotConfigured: 'SSF root database missing.' } } },
+  },
+  'english-only': {
+    en: { englishOnly: { errors: { configurationBlocked: 'Configuration missing.' } } },
   },
   'speech-flow': {
     de: { speechFlow: { readiness: { configurationBlocked: 'Konfiguration fehlt.' } } },
@@ -17,19 +24,24 @@ const pluginTranslations = {
   },
 } as const;
 
-const readLeaf = (resources: unknown, key: string): string =>
-  key.split('.').reduce<unknown>(
-    (pointer, segment) => (pointer as Record<string, unknown>)[segment],
-    resources
-  ) as string;
+const readLeaf = (resources: unknown, key: string): string | undefined =>
+  key
+    .split('.')
+    .reduce<unknown>(
+      (pointer, segment) => (pointer as Record<string, unknown> | undefined)?.[segment],
+      resources
+    ) as string | undefined;
 
 // Plugin text is merged into the host catalog at runtime; the mock reads it per active locale.
 vi.mock('../../../lib/plugins', () => ({
   resolveStudioPluginOwnedMessage: (pluginId: string, key: string | undefined) => {
-    const translations = pluginTranslations[pluginId as keyof typeof pluginTranslations];
-    return isPluginOwnedMessageKey(key, translations)
-      ? readLeaf(translations[getActiveLocale()], key)
-      : undefined;
+    const translations = pluginTranslations[pluginId];
+    if (!isPluginOwnedMessageKey(key, translations)) return undefined;
+    return (
+      readLeaf(translations?.[getActiveLocale()], key) ??
+      readLeaf(translations?.[DEFAULT_LOCALE], key) ??
+      key
+    );
   },
 }));
 
@@ -326,6 +338,15 @@ describe('PluginReadinessCard', () => {
     expect(notice.textContent).not.toContain('hunter2');
     expect(notice.textContent).not.toContain('Konfiguration fehlt.');
     expect(notice.textContent).not.toContain('Plugin-Betriebsbereitschaft');
+  });
+
+  it('uses the host fallback when an owned message has no active or fallback translation', () => {
+    const messageKey = 'englishOnly.errors.configurationBlocked';
+    renderCard([{ ...ssfFailure(messageKey), pluginId: 'english-only' }]);
+
+    const notice = screen.getByRole('status');
+    expect(notice.textContent).toContain('Dieses Plugin meldet ein Lifecycle-Problem.');
+    expect(notice.textContent).not.toContain(messageKey);
   });
 
   it('keeps an untrusted error code out of the notice', () => {

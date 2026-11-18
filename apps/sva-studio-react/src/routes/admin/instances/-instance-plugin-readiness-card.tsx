@@ -64,6 +64,11 @@ const uniqueRepairOperations = (
 
 const technicalErrorCodePattern = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
 
+const resolveReadinessMessage = (pluginId: string, key: string | undefined): string | undefined => {
+  const message = resolveStudioPluginOwnedMessage(pluginId, key);
+  return message === key ? undefined : message;
+};
+
 const PluginLifecycleErrorNotice = ({
   plugin,
 }: {
@@ -72,7 +77,7 @@ const PluginLifecycleErrorNotice = ({
   // A pending generation re-runs the lifecycle; its predecessor's error is no longer current.
   if (!plugin.error || (plugin.status !== 'blocked' && plugin.status !== 'degraded')) return null;
   const message =
-    resolveStudioPluginOwnedMessage(plugin.pluginId, plugin.error.messageKey) ??
+    resolveReadinessMessage(plugin.pluginId, plugin.error.messageKey) ??
     t('admin.instances.pluginReadiness.lifecycleError.fallback');
   return (
     <Alert
@@ -173,7 +178,7 @@ export const PluginReadinessCard = ({
                     <p className="text-foreground">{t(check.titleKey)}</p>
                     {check.messageKey ? (
                       <p className="text-xs text-muted-foreground">
-                        {resolveStudioPluginOwnedMessage(plugin.pluginId, check.messageKey) ??
+                        {resolveReadinessMessage(plugin.pluginId, check.messageKey) ??
                           t('admin.instances.pluginReadiness.checkMessageUnavailable')}
                       </p>
                     ) : null}

@@ -58,6 +58,8 @@ export const eventsENEditor = {
     sourceDataUnavailable:
       'The event was not saved: some details from the source could not be read reliably and would otherwise be lost. Correct the areas reported as affected or contact support.',
     staleMainserverContext: 'Context changed. Reload and review your draft before saving.',
+    deleteReconciliationRequired:
+      'The deletion or cleanup of image usages could not be confirmed. Check the current state or contact support.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',
     updateSuccess: 'Event was updated.',

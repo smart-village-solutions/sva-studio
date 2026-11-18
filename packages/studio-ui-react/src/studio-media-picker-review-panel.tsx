@@ -1,13 +1,18 @@
 import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
-import { StudioMediaImagePreview } from './media-image-preview.js';
+import { StudioMediaImagePreview, StudioMediaImageExamples } from './media-image-preview.js';
 import { ReviewPanelActions, ReviewPanelExtras } from './studio-media-picker-review-actions.js';
 import { StudioMediaImageEditor } from './media-image-editor.js';
 import type { StudioMediaImageEdit } from './media-image-editor-state.js';
 import * as React from 'react';
-import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
+import { Button } from './button.js';
+import { Textarea } from './textarea.js';
+import {
+  normalizeMediaTags,
+  type MediaEditorialMetadataPatch,
+  type MediaFocusPoint,
+} from '@sva/media';
 import { StudioMediaPickerCentralMetadata } from './studio-media-picker-central-metadata.js';
 import {
-  studioMediaPickerPreviewClassName,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerMetadataDraft,
   type StudioMediaPickerMetadataField,
@@ -21,7 +26,11 @@ import {
 
 const StudioMediaPreview = ({ alt, url }: Readonly<{ alt: string; url?: string | null }>) =>
   url ? (
-    <img alt={alt} className="h-full w-full object-contain" src={url} />
+    <img
+      alt={alt}
+      className="block h-auto max-h-[50dvh] w-auto max-w-full object-contain"
+      src={url}
+    />
   ) : (
     <div className="px-4 text-center text-sm text-muted-foreground">{alt}</div>
   );
@@ -43,7 +52,7 @@ const ReviewAssetPreview = ({
   reviewAsset: StudioMediaPickerAssetDetail;
 }>) => (
   <div className="space-y-4">
-    <div className={studioMediaPickerPreviewClassName}>
+    <div className="flex items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20">
       <StudioMediaPreview
         alt={metadataDraft.altText || metadataDraft.title || reviewAsset.title}
         url={reviewAsset.previewUrl}
@@ -79,7 +88,7 @@ export type StudioMediaPickerReviewPanelProps = Readonly<{
   ) => void;
   onBackFromReview: () => void;
   onClose: () => void;
-  onConfirmSelection: () => void | Promise<void>;
+  onConfirmSelection: (tags?: readonly string[]) => void | Promise<void>;
   onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
   visibleMetadataFields?: readonly StudioMediaPickerMetadataField[];
   canEditCentralMetadata?: boolean;
@@ -133,7 +142,7 @@ const ReviewPanelMetadata = (
           {labels.review.description}
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <div className="space-y-6">
           <ReviewAssetPreview metadataDraft={metadataDraft} reviewAsset={reviewAsset} />
           <StudioMediaPickerReviewFields
             isMetadataEditable={isMetadataEditable}
@@ -167,29 +176,111 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
     isLoadingReviewAsset = false,
     isSavingReviewAsset = false,
   } = props;
+  const t = useContentMediaTranslation();
+  const [tags, setTags] = React.useState(() => (reviewAsset?.metadata.tags ?? []).join('\n'));
+  const tagsId = React.useId();
+  let normalizedTags: string[] = [];
+  let tagsInvalid = false;
+  try {
+    normalizedTags = normalizeMediaTags(tags.split('\n').filter((line) => line.trim()));
+  } catch {
+    tagsInvalid = true;
+  }
+  const [copyStep, setCopyStep] = React.useState<1 | 2>(1);
   const [showEditor, setShowEditor] = React.useState(props.initialEditorOpen ?? false);
   const { showCentral, setShowCentral } = useCentralMetadataView(reviewAsset);
   const reviewHeadingRef = React.useRef<HTMLHeadingElement>(null);
   const editorButtonRef = React.useRef<HTMLButtonElement>(null);
   const centralButtonRef = React.useRef<HTMLButtonElement>(null);
+  const isCopy = showEditor || Boolean(reviewAsset?.localDraft?.editing);
+  const step = showEditor ? 0 : copyStep;
+  const stepper = isCopy ? (
+    <ol
+      aria-label={t('editor.copyProgress')}
+      className="grid shrink-0 gap-3 border-b border-border pb-4 sm:grid-cols-3"
+    >
+      {(['designStep', 'focusStep', 'reviewStep'] as const).map((key, index) => (
+        <li
+          key={key}
+          aria-current={index === step ? 'step' : undefined}
+          className={
+            index === step
+              ? 'border-b-2 border-primary pb-2 font-semibold text-foreground'
+              : 'border-b-2 border-transparent pb-2 text-muted-foreground'
+          }
+        >
+          <span aria-hidden="true">{index + 1} </span>
+          {t(`editor.${key}`)}
+        </li>
+      ))}
+    </ol>
+  ) : null;
   if (showEditor && reviewAsset)
     return (
-      <StudioMediaImageEditor
-        asset={reviewAsset}
-        onDirtyChange={props.onWorkspaceDirtyChange}
-        onCancel={() => {
-          props.onWorkspaceDirtyChange?.(false);
-          setShowEditor(false);
-          requestAnimationFrame(() => editorButtonRef.current?.focus());
-        }}
-        onApply={async (result) => {
-          if (!onApplyImageEdit) throw new Error('media_image_apply_unavailable');
-          await onApplyImageEdit(result);
-          props.onWorkspaceDirtyChange?.(false);
-          setShowEditor(false);
-          requestAnimationFrame(() => reviewHeadingRef.current?.focus());
-        }}
-      />
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        {stepper}
+        <StudioMediaImageEditor
+          asset={reviewAsset}
+          onDirtyChange={props.onWorkspaceDirtyChange}
+          onCancel={props.onClose}
+          onApply={async (result) => {
+            if (!onApplyImageEdit) throw new Error('media_image_apply_unavailable');
+            const previousDocument = reviewAsset.localDraft?.editing?.document;
+            if (
+              !previousDocument ||
+              JSON.stringify(previousDocument) !== JSON.stringify(result.editing.document)
+            )
+              await onApplyImageEdit(result);
+            props.onWorkspaceDirtyChange?.(true);
+            setCopyStep(1);
+            setShowEditor(false);
+            requestAnimationFrame(() => reviewHeadingRef.current?.focus());
+          }}
+        />
+      </div>
+    );
+  if (isCopy && copyStep === 1 && reviewAsset?.previewUrl && props.onImageFocusChange)
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        {stepper}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <h3
+            ref={reviewHeadingRef}
+            tabIndex={-1}
+            className="mb-4 text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t('editor.focusStep')}
+          </h3>
+          <StudioMediaImagePreview
+            url={reviewAsset.previewUrl}
+            disabled={props.isUploadInitialized || isSavingReviewAsset}
+            focus={reviewAsset.localDraft?.metadata?.focusPoint ?? { x: 0.5, y: 0.5 }}
+            onFocusChange={props.onImageFocusChange}
+          />
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={props.isUploadInitialized || isSavingReviewAsset}
+            onClick={() => setShowEditor(true)}
+          >
+            {t('editor.backToDesign')}
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            {t(`editor.pending.${props.persistenceContext ?? 'content'}`)}
+          </p>
+          <Button
+            type="button"
+            onClick={() => {
+              setCopyStep(2);
+              requestAnimationFrame(() => reviewHeadingRef.current?.focus());
+            }}
+          >
+            {t('editor.nextReview')}
+          </Button>
+        </div>
+      </div>
     );
   if (showCentral && reviewAsset && onSaveCentralMetadata)
     return (
@@ -210,28 +301,77 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
       />
     );
   return (
-    <div className="space-y-5">
-      <ReviewPanelMetadata {...props} headingRef={reviewHeadingRef} />
-      {reviewAsset?.localDraft?.editing && reviewAsset.previewUrl && props.onImageFocusChange ? (
-        <StudioMediaImagePreview
-          disabled={props.isUploadInitialized}
-          url={reviewAsset.previewUrl}
-          focus={reviewAsset.localDraft.metadata?.focusPoint ?? { x: 0.5, y: 0.5 }}
-          onFocusChange={props.onImageFocusChange}
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {stepper}
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
+        <ReviewPanelMetadata {...props} headingRef={reviewHeadingRef} />
+        {isCopy ? (
+          <div className="space-y-3">
+            {reviewAsset?.previewUrl ? (
+              <StudioMediaImageExamples
+                url={reviewAsset.previewUrl}
+                focus={reviewAsset.localDraft?.metadata?.focusPoint ?? { x: 0.5, y: 0.5 }}
+              />
+            ) : null}
+            <label htmlFor={tagsId} className="text-sm font-medium">
+              {t('fields.tags')}
+            </label>
+            <Textarea
+              id={tagsId}
+              value={tags}
+              disabled={props.isUploadInitialized || isSavingReviewAsset}
+              aria-invalid={tagsInvalid}
+              aria-describedby={`${tagsId}-hint`}
+              onChange={(event) => setTags(event.target.value)}
+            />
+            <p
+              id={`${tagsId}-hint`}
+              className={tagsInvalid ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+            >
+              {t(tagsInvalid ? 'errors.invalidTags' : 'fields.tagsHint')}
+            </p>
+            <p className="text-sm text-muted-foreground">{t('editor.copyReviewHint')}</p>
+          </div>
+        ) : (
+          <ReviewPanelExtras
+            props={props}
+            centralButtonRef={centralButtonRef}
+            editorButtonRef={editorButtonRef}
+            openCentral={() => setShowCentral(true)}
+            openEditor={() => setShowEditor(true)}
+          />
+        )}
+      </div>
+      <div className="shrink-0">
+        <ReviewPanelActions
+          {...props}
+          onConfirmSelection={
+            isCopy ? () => props.onConfirmSelection(normalizedTags) : props.onConfirmSelection
+          }
+          canConfirmSelection={props.canConfirmSelection !== false && (!isCopy || !tagsInvalid)}
+          onBackFromReview={
+            isCopy
+              ? () => {
+                  setCopyStep(1);
+                  requestAnimationFrame(() => reviewHeadingRef.current?.focus());
+                }
+              : props.onBackFromReview
+          }
+          labels={
+            isCopy
+              ? {
+                  actions: {
+                    ...props.labels.actions,
+                    backToLibrary: t('editor.backToFocus'),
+                    backToUpload: t('editor.backToFocus'),
+                  },
+                }
+              : props.labels
+          }
+          isLoadingReviewAsset={isLoadingReviewAsset}
+          isSavingReviewAsset={isSavingReviewAsset}
         />
-      ) : null}
-      <ReviewPanelExtras
-        props={props}
-        centralButtonRef={centralButtonRef}
-        editorButtonRef={editorButtonRef}
-        openCentral={() => setShowCentral(true)}
-        openEditor={() => setShowEditor(true)}
-      />
-      <ReviewPanelActions
-        {...props}
-        isLoadingReviewAsset={isLoadingReviewAsset}
-        isSavingReviewAsset={isSavingReviewAsset}
-      />
+      </div>
     </div>
   );
 };

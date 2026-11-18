@@ -414,7 +414,7 @@ const buildEventFields = (media: string) => `
   dataProvider { id name }
 `;
 
-const eventFields = buildEventFields(mediaContentFields);
+const eventFields = buildEventFields(`${mediaContentFields} payload`);
 
 const poiFields = `
   id
@@ -459,7 +459,7 @@ const poiFields = `
     ${webUrlFields}
   }
   mediaContents {
-    ${mediaContentFields}
+    ${mediaContentFields} payload
   }
   location {
     ${locationFields}

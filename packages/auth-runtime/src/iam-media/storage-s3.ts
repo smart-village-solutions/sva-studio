@@ -135,11 +135,12 @@ export const createS3MediaStoragePort = (
   };
 
   const prepareUpload = async (input: PrepareMediaUploadInput): Promise<MediaUploadPreparation> => {
-    const storageKey = getMediaScanEnabled()
-      ? `.quarantine/${input.instanceId}/${input.assetId}/${input.uploadSessionId}`
-      : input.privateInput
-        ? `.protected/${input.instanceId}/${input.assetId}/intake/${input.uploadSessionId}`
-        : createStorageKey(input, config.bucket);
+    const storageKey =
+      input.requireScan || getMediaScanEnabled()
+        ? `.quarantine/${input.instanceId}/${input.assetId}/${input.uploadSessionId}`
+        : input.privateInput
+          ? `.protected/${input.instanceId}/${input.assetId}/intake/${input.uploadSessionId}`
+          : createStorageKey(input, config.bucket);
     if (isPrivateMediaStorageKey(storageKey))
       await assertPrivateIntake(storageKey, input.instanceId);
     const uploadUrl = await signedUrl(
@@ -239,6 +240,7 @@ export const createS3MediaStoragePort = (
   };
 
   return {
+    ...(config.importSource ? { importSource: config.importSource } : {}),
     listObjects,
     prepareUpload,
     resolveDelivery,

@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { mediaMetadataLimits, normalizeMediaMetadataPatch } from './media.metadata.js';
 
 describe('editorial media metadata', () => {
+  it('preserves focus, explicit removal and omission independently of text fields', () => {
+    expect(normalizeMediaMetadataPatch({ focusPoint: { x: 0, y: 1 }, title: ' Bild ' })).toEqual({
+      focusPoint: { x: 0, y: 1 },
+      title: 'Bild',
+    });
+    expect(normalizeMediaMetadataPatch({ focusPoint: null })).toEqual({ focusPoint: null });
+    expect(normalizeMediaMetadataPatch({ title: 'Bild' })).not.toHaveProperty('focusPoint');
+  });
+
+  it.each([NaN, Infinity, -Infinity, -0.01, 1.01])(
+    'rejects invalid focus coordinate %s',
+    (value) => {
+      for (const point of [
+        { x: value, y: 0.5 },
+        { x: 0.5, y: value },
+      ]) {
+        expect(() => normalizeMediaMetadataPatch({ focusPoint: point })).toThrow(
+          'invalid_media_metadata:focusPoint'
+        );
+      }
+    }
+  );
   it('distinguishes unchanged fields, clearing and trimmed content', () => {
     expect(
       normalizeMediaMetadataPatch({ title: ' Rathaus ', altText: ' ', license: null })

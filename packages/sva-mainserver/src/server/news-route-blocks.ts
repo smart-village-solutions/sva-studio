@@ -1,50 +1,7 @@
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import type { SvaMainserverNewsInput } from '../types.js';
-import { errorJson, isRecord, readNumber, readString } from './content-route-core.js';
-import { parseMediaUrl } from './content-route-parsers.js';
-
-const parseContentBlockMediaContents = (
-  value: unknown
-):
-  | Array<
-      NonNullable<
-        NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']
-      >[number]
-    >
-  | Response => {
-  const mediaContents: Array<
-    NonNullable<
-      NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']
-    >[number]
-  > = [];
-
-  if (value === undefined || value === null) {
-    return mediaContents;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
-  }
-
-  for (const media of value) {
-    if (!isRecord(media)) {
-      return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
-    }
-    const sourceUrl = parseMediaUrl(media.sourceUrl);
-    if (sourceUrl instanceof Response) {
-      return sourceUrl;
-    }
-    mediaContents.push({
-      ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
-      ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
-      ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
-      ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
-      ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
-      ...(sourceUrl ? { sourceUrl } : {}),
-    });
-  }
-
-  return mediaContents;
-};
+import { errorJson, isRecord, readString } from './content-route-core.js';
+import { parseMediaContents } from './content-route-parsers.js';
 
 const validateContentBlockText = (block: Record<string, unknown>): Response | null => {
   if (
@@ -78,7 +35,7 @@ export const parseContentBlocks = (
     }
     const textError = validateContentBlockText(block);
     if (textError) return textError;
-    const mediaContents = parseContentBlockMediaContents(block.mediaContents);
+    const mediaContents = parseMediaContents(block.mediaContents);
     if (mediaContents instanceof Response) {
       return mediaContents;
     }
@@ -97,7 +54,7 @@ export const parseContentBlocks = (
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
       ...(sanitizedIntro ? { intro: sanitizedIntro } : {}),
       ...(sanitizedBody ? { body: sanitizedBody } : {}),
-      ...(mediaContents.length > 0 ? { mediaContents } : {}),
+      ...(Array.isArray(block.mediaContents) ? { mediaContents } : {}),
     });
   }
   return blocks;

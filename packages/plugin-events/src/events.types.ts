@@ -35,6 +35,7 @@ export type EventWebUrl = {
 };
 
 export type EventMediaContent = {
+  readonly payload?: Readonly<Record<string, unknown>>;
   /** Mainserver id of a stored entry; lets the host keep source metadata with this entry. */
   readonly id?: string;
   readonly captionText?: string;

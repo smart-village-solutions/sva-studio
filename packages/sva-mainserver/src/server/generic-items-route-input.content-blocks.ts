@@ -52,7 +52,7 @@ export const parseContentBlocks = (
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
       ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
       ...(parsedBody ? { body: parsedBody } : {}),
-      ...(mediaContents.length > 0 ? { mediaContents } : {}),
+      ...(Array.isArray(block.mediaContents) ? { mediaContents } : {}),
     };
 
     if (!hasContentBlockContent(parsedBlock)) {

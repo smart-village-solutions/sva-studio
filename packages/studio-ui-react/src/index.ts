@@ -257,3 +257,9 @@ export {
 } from './temporal-inputs.js';
 export { parseDatePickerValue, initialDatePickerMonth } from './date-picker-value.js';
 export * from './studio-map-style.js';
+
+export {
+  StudioMediaImageFocus,
+  StudioMediaImageExamples,
+  StudioMediaImagePreview,
+} from './media-image-preview.js';

@@ -252,7 +252,10 @@ const createMainserverCrudMutations = <
   ): Promise<void> => {
     await input.ensureContextBinding(contentId, actingPrincipalType);
     try {
-      await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
+      const response = await requestMainserverJson<
+        ApiItemResponse<{ readonly id: string; readonly reconciliationRequired?: boolean }>,
+        TError
+      >({
         url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: input.options.fetch,
         errorFactory: input.options.errorFactory,
@@ -261,6 +264,8 @@ const createMainserverCrudMutations = <
           headers: input.contextBindingStore.mutationHeaders(contentId, actingPrincipalType),
         },
       });
+      if (response.data.reconciliationRequired)
+        throw input.options.errorFactory('reconciliation_required', 'reconciliation_required');
     } catch (error) {
       return invalidateBindingOnStaleContext(
         error as TError,

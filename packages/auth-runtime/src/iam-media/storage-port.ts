@@ -44,6 +44,8 @@ export type PrepareMediaUploadInput = Readonly<{
   mimeType: string;
   byteSize: number;
   privateInput?: boolean;
+  /** Retain an already established scan obligation when retrying a quarantined session. */
+  requireScan?: boolean;
 }>;
 
 export type ResolveMediaDeliveryInput = Readonly<{
@@ -77,6 +79,13 @@ export type DeleteMediaObjectInput = Readonly<{
 }>;
 
 export type MediaStoragePort = {
+  /** Set only by the active instance-owned interface; environment fallback is not an import source. */
+  readonly importSource?: Readonly<{
+    id: string;
+    instanceId: string;
+    prefix: string;
+    visibility: MediaVisibility;
+  }>;
   listObjects(input: ListMediaStorageObjectsInput): Promise<MediaStorageObjectList>;
   prepareUpload(input: PrepareMediaUploadInput): Promise<MediaUploadPreparation>;
   resolveDelivery(input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution>;

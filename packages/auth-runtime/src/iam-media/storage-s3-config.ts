@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { listExternalInterfaceRecords } from '@sva/data-repositories/server';
 import { type S3ClientConfig } from '@aws-sdk/client-s3';
 import { resolveExternalInterface } from '@sva/server-runtime';
@@ -19,6 +20,12 @@ export type MediaStorageConfig = Readonly<{
   accessKeyId: string;
   secretAccessKey: string;
   publicBaseUrl?: string;
+  importSource?: Readonly<{
+    id: string;
+    instanceId: string;
+    prefix: string;
+    visibility: 'protected' | 'public';
+  }>;
   signedUrlTtlSeconds: number;
 }>;
 
@@ -128,6 +135,14 @@ export const resolveMediaStorageConfigFromInterface = async (
     accessKeyId,
     secretAccessKey,
     publicBaseUrl: createBucketPublicBaseUrl(endpoint, bucket),
+    importSource: {
+      id: createHash('sha256')
+        .update(JSON.stringify([selectedRecord.id, endpoint, bucket]))
+        .digest('hex'),
+      instanceId,
+      prefix: bucket === instanceId ? '' : `${instanceId}/`,
+      visibility: 'public',
+    },
     signedUrlTtlSeconds: getMediaStorageSignedUrlTtlSeconds(),
   };
 };

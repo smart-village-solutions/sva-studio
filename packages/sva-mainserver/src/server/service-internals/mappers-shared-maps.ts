@@ -284,3 +284,30 @@ export const mapOpeningHour = (
     description: optionalString(value.description),
   });
 };
+
+/** Public projections expose the editorial point, never the image's internal import payload. */
+export const projectMediaFocus = <
+  T extends { readonly mediaContents: readonly SvaMainserverMediaContent[] },
+>(
+  item: T
+): T => ({
+  ...item,
+  mediaContents: item.mediaContents.map(({ payload, ...media }) => {
+    const point =
+      typeof payload === 'object' && payload !== null && 'focusPoint' in payload
+        ? payload.focusPoint
+        : undefined;
+    const valid =
+      point === null ||
+      (typeof point === 'object' &&
+        point !== null &&
+        'x' in point &&
+        'y' in point &&
+        typeof point.x === 'number' &&
+        typeof point.y === 'number' &&
+        [point.x, point.y].every(
+          (coordinate) => Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 1
+        ));
+    return { ...media, ...(valid ? { payload: { focusPoint: point } } : {}) };
+  }),
+});

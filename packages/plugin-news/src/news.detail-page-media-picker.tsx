@@ -61,7 +61,7 @@ export const NewsDetailMediaPicker = ({
         pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
       }
       onClose={mediaPicker.close}
-      onConfirmSelection={() => void mediaPicker.confirmSelection()}
+      onConfirmSelection={(tags) => void mediaPicker.confirmSelection(tags)}
       onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
       onOpenMediaManagement={(assetId) =>
         void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })

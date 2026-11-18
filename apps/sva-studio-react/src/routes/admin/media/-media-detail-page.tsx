@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { MediaEditorialMetadataPatch } from '@sva/media';
+import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
@@ -13,7 +13,10 @@ import { MediaDetailImageControlsSection } from './-media-detail-image-controls-
 import { MediaDetailMetadataSection } from './-media-detail-metadata-section.js';
 import { MediaDetailTechnicalSection } from './-media-detail-technical-section.js';
 import { MediaDetailUsageSection } from './-media-detail-usage-section.js';
-import { MediaDetailWorkspaceHeader } from './-media-detail-workspace-header.js';
+import {
+  MediaDetailWorkspaceHeader,
+  MediaDetailDeliveryTools,
+} from './-media-detail-workspace-header.js';
 import type { MediaDetailPageProps } from './-media-ui.shared.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
@@ -60,6 +63,11 @@ const resolveMediaScanResult = (
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
   const [metadataDraft, setMetadataDraft] = React.useState<MediaEditorialMetadataPatch>();
+  const [focusDraft, setFocusDraft] = React.useState<{
+    assetId: string;
+    point: MediaFocusPoint | null;
+  }>();
+  const [saving, setSaving] = React.useState(false);
   const createDecision = useAccessDecision({
     kind: 'tenant',
     moduleId: 'media',
@@ -129,52 +137,103 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
         asset={mediaApi.asset}
         usageCount={mediaApi.usage.totalReferences}
         delivery={mediaApi.delivery}
-        onResolveDelivery={() => void mediaApi.resolveDelivery()}
-        onDelete={() => void handleDelete()}
-        canDelete={deleteDecision.status === 'allowed'}
-        canResolveDelivery={
-          mediaApi.asset.visibility === 'protected'
-            ? protectedDeliveryDecision.status === 'allowed'
-            : publicDeliveryDecision.status === 'allowed'
+        focusPoint={
+          focusDraft?.assetId === assetId
+            ? focusDraft.point
+            : (mediaApi.asset.metadata.focusPoint ?? null)
+        }
+        onFocusChange={(point) => setFocusDraft({ assetId, point })}
+        canEditFocus={
+          updateDecision.status === 'allowed' &&
+          !saving &&
+          mediaApi.asset.processingStatus === 'ready' &&
+          mediaApi.asset.uploadStatus === 'processed'
+        }
+        copyAction={
+          <MediaDetailImageControlsSection
+            asset={mediaApi.asset}
+            metadataDraft={metadataDraft}
+            canCreateCopy={
+              createDecision.status === 'allowed' &&
+              !saving &&
+              (mediaApi.asset.visibility === 'public'
+                ? publicDeliveryDecision.status === 'allowed'
+                : protectedDeliveryDecision.status === 'allowed')
+            }
+          />
         }
       />
 
-      <Alert
-        role="status"
-        aria-labelledby="media-scan-title"
-        className={scanResult === 'infected' ? 'border-destructive/40 text-destructive' : undefined}
-      >
-        <AlertTitle id="media-scan-title">{t('media.scan.title')}</AlertTitle>
-        <AlertDescription>{t(`media.scan.${scanResult}`)}</AlertDescription>
-      </Alert>
+      {scanResult !== 'clean' && scanResult !== 'unknown' ? (
+        <Alert
+          role="status"
+          aria-labelledby="media-scan-title"
+          className={
+            scanResult === 'infected' ? 'border-destructive/40 text-destructive' : undefined
+          }
+        >
+          <AlertTitle id="media-scan-title">{t('media.scan.title')}</AlertTitle>
+          <AlertDescription>{t(`media.scan.${scanResult}`)}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">
         <div className="space-y-6">
           <MediaDetailMetadataSection
             key={mediaApi.asset.id}
             asset={mediaApi.asset}
+            focusPoint={focusDraft?.assetId === assetId ? focusDraft.point : undefined}
+            onResetFocus={() => setFocusDraft(undefined)}
+            onSavingChange={setSaving}
             canEdit={
               updateDecision.status === 'allowed' &&
               mediaApi.asset.processingStatus === 'ready' &&
               mediaApi.asset.uploadStatus === 'processed'
             }
             onDraftChange={setMetadataDraft}
-            onSave={(metadata) => mediaApi.updateMedia({ metadata })}
-          />
-          <MediaDetailImageControlsSection
-            asset={mediaApi.asset}
-            metadataDraft={metadataDraft}
-            canCreateCopy={
-              createDecision.status === 'allowed' &&
-              (mediaApi.asset.visibility === 'public'
-                ? publicDeliveryDecision.status === 'allowed'
-                : protectedDeliveryDecision.status === 'allowed')
-            }
+            onSave={async (metadata) => {
+              const saved = await mediaApi.updateMedia({ metadata });
+              if (saved) setFocusDraft(undefined);
+              return saved;
+            }}
           />
         </div>
         <div className="space-y-6">
           <MediaDetailUsageSection usage={mediaApi.usage} />
-          <MediaDetailTechnicalSection asset={mediaApi.asset} delivery={mediaApi.delivery} />
+          <details className="rounded-xl border border-border bg-card p-5">
+            <summary className="cursor-pointer font-semibold">
+              {t('media.detail.moreInformation')}
+            </summary>
+            <div className="mt-4 space-y-4">
+              <MediaDetailTechnicalSection asset={mediaApi.asset} delivery={mediaApi.delivery} />
+              {scanResult === 'clean' || scanResult === 'unknown' ? (
+                <div
+                  role="status"
+                  aria-label={t('media.scan.title')}
+                  className="text-sm text-muted-foreground"
+                >
+                  {t(`media.scan.${scanResult}`)}
+                </div>
+              ) : null}
+              {scanResult === 'clean' ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('media.detail.visibilityFixedHint')}
+                </p>
+              ) : null}
+              <MediaDetailDeliveryTools
+                asset={mediaApi.asset}
+                delivery={mediaApi.delivery}
+                onResolveDelivery={() => void mediaApi.resolveDelivery()}
+                onDelete={() => void handleDelete()}
+                canDelete={deleteDecision.status === 'allowed'}
+                canResolveDelivery={
+                  mediaApi.asset.visibility === 'protected'
+                    ? protectedDeliveryDecision.status === 'allowed'
+                    : publicDeliveryDecision.status === 'allowed'
+                }
+              />
+            </div>
+          </details>
         </div>
       </div>
     </section>

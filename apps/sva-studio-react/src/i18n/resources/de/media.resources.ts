@@ -119,6 +119,8 @@ export const mediaDEResources = {
     },
   },
   detail: {
+    fileSummary: '{{mimeType}} · {{width}} × {{height}} Pixel · {{bytes}} Byte',
+    moreInformation: 'Weitere Informationen',
     visibilityFixedHint:
       'Die Sichtbarkeit bleibt nach dem gescannten Upload fest. Für eine andere Sichtbarkeit laden Sie das Medium erneut hoch.',
     subtitle:
@@ -161,7 +163,7 @@ export const mediaDEResources = {
     downloadQrSvg: 'QR-Code als SVG laden',
     register: 'Als Medium registrieren',
     open: 'Öffnen',
-    save: 'Metadaten speichern',
+    save: 'Änderungen speichern',
     delete: 'Medium löschen',
     deleteConfirm: 'Soll dieses Medium wirklich gelöscht werden?',
     back: 'Zur Medienbibliothek',
@@ -326,13 +328,15 @@ export const mediaDEResources = {
     },
   },
   unregistered: {
-    subtitle:
-      'Dieses Objekt liegt bereits im Bucket, ist aber noch nicht als verwaltetes Medienobjekt im Studio registriert.',
-    metadataTitle: 'Vorgeschlagene Registrierung',
-    metadataDescription:
-      'Diese Angaben werden beim Registrieren als Startwerte für das Medienobjekt übernommen.',
-    technicalDescription: 'Technische Bucket-Informationen für dieses unregistrierte Objekt.',
-    altTextHint: 'Wird bei der Registrierung später fachlich ergänzt.',
+    preparing:
+      'Das Bild wird sicher in die Mediathek aufgenommen. Anschließend öffnet sich die Bildansicht.',
+    readOnly:
+      'Du kannst dieses Bild ansehen, hast aber keine Berechtigung, es in die Mediathek aufzunehmen.',
+    blocked: 'Diese Quelle ist für die automatische Aufnahme nicht freigegeben.',
+    quota: 'Für die Aufnahme reicht das Speicherkontingent nicht aus.',
+    failed: 'Das Bild konnte nicht vorbereitet werden. Prüfe die Datei oder versuche es erneut.',
+    retry: 'Erneut versuchen',
+    sourcePreserved: 'Die ursprüngliche Datei und ihre bisherige Adresse bleiben erhalten.',
   },
   errors: {
     infected:

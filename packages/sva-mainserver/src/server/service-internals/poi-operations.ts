@@ -1,3 +1,4 @@
+import { projectMediaFocus } from './mappers-shared-maps.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverInstanceConfig,
@@ -56,7 +57,9 @@ const buildPoiMutationVariables = (input: {
   ...includeDefinedField('lunches', input.poi.lunches),
   ...includeTruthyField('operatingCompany', input.poi.operatingCompany),
   ...includeTruthyField('webUrls', input.poi.webUrls),
-  ...includeTruthyField('mediaContents', input.poi.mediaContents),
+  ...(input.poi.mediaContents
+    ? { mediaContents: input.poi.mediaContents.map(({ id: _id, ...media }) => media) }
+    : {}),
   ...includeTruthyField('location', input.poi.location),
   ...includeTruthyField('certificates', input.poi.certificates),
   ...includeTruthyField('accessibilityInformation', input.poi.accessibilityInformation),
@@ -114,7 +117,7 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
       order: 'updatedAt_DESC',
       readItems: (response) => response.pointsOfInterest ?? [],
       isVisible: (item) => input.includeInvisible === true || item.visible !== false,
-      mapItem: mapPoiItem,
+      mapItem: (item) => projectMediaFocus(mapPoiItem(item)),
     }),
 
   getPoiWithConfig: async (
@@ -131,12 +134,13 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
       config
     );
 
-    return mapOptionalPoiItem(response.pointOfInterest);
+    return projectMediaFocus(mapOptionalPoiItem(response.pointOfInterest));
   },
 
   getPoiDetailWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly poiId: string },
-    config: SvaMainserverInstanceConfig
+    config: SvaMainserverInstanceConfig,
+    retainMediaSourcePayload = false
   ) => {
     const response = await executeGraphqlWithConfig<SvaMainserverPoiDetailQuery>(
       {
@@ -150,13 +154,14 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
     if (!response.pointOfInterest) {
       return { data: mapOptionalPoiItem(response.pointOfInterest), deviations: [] };
     }
-    return mapPoiItemDetail(response.pointOfInterest);
+    const detail = mapPoiItemDetail(response.pointOfInterest);
+    return retainMediaSourcePayload ? detail : { ...detail, data: projectMediaFocus(detail.data) };
   },
 
   writePoiWithConfig: (
     input: Parameters<typeof writePoiWithConfig>[1],
     config: SvaMainserverInstanceConfig
-  ) => writePoiWithConfig(executeGraphqlWithConfig, input, config),
+  ) => writePoiWithConfig(executeGraphqlWithConfig, input, config).then(projectMediaFocus),
 
   destroyPoiWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly poiId: string },

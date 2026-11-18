@@ -112,7 +112,7 @@ export const BrandingMediaPickerControls = ({
           mode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
         }
         onClose={mediaPicker.close}
-        onConfirmSelection={() => void mediaPicker.confirmSelection()}
+        onConfirmSelection={(tags) => void mediaPicker.confirmSelection(tags)}
         onMetadataChange={(key, nextValue) => mediaPicker.updateMetadataField(key, nextValue)}
         onSearchValueChange={mediaPicker.setSearchValue}
         onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}

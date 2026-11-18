@@ -1,5 +1,10 @@
 import { requestJson, type FetchLike } from './http-client.js';
-import { parseMediaEditingDocument, type MediaEditingDocument } from '@sva/media';
+import {
+  normalizeMediaMetadataPatch,
+  parseMediaEditingDocument,
+  type MediaEditingDocument,
+  type MediaFocusPoint,
+} from '@sva/media';
 
 export type HostMediaAssetListItem = Readonly<{
   id: string;
@@ -14,6 +19,7 @@ export type HostMediaAssetListItem = Readonly<{
 }>;
 
 export type HostMediaAssetMetadata = Readonly<{
+  focusPoint?: MediaFocusPoint | null;
   tags?: string[];
   title?: string | null;
   description?: string | null;
@@ -87,6 +93,7 @@ export const getHostMediaAssetFileName = (
 };
 
 export type UpdateHostMediaMetadataInput = Readonly<{
+  focusPoint?: MediaFocusPoint | null;
   tags?: string[];
   title?: string | null;
   description?: string | null;
@@ -202,7 +209,7 @@ export const updateHostMediaAsset = async (input: {
       body: JSON.stringify({
         ...(input.instanceId ? { instanceId: input.instanceId } : {}),
         ...(input.visibility ? { visibility: input.visibility } : {}),
-        metadata: input.metadata,
+        metadata: normalizeMediaMetadataPatch(input.metadata),
       }),
     },
   });

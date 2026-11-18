@@ -762,7 +762,8 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(accept).not.toHaveBeenCalled();
     expect(result.current.reviewAsset?.id).not.toBe(asset.id);
     expect(asset.metadata.altText).toBe('Alt');
-    await act(async () => result.current.confirmSelection());
+    expect(asset.metadata.tags).toEqual(['Stadt']);
+    await act(async () => result.current.confirmSelection(['Park']));
     expect(accept).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({ altText: 'Mein Inhalt' }),
@@ -772,7 +773,7 @@ describe('useStudioMediaPickerOverlay', () => {
           editing,
           metadata: expect.objectContaining({
             altText: 'Alt',
-            tags: ['Stadt'],
+            tags: ['Park'],
             focusPoint: { x: 0.2, y: 0.8 },
           }),
         }),

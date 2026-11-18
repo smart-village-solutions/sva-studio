@@ -118,56 +118,62 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
-  const refetch = React.useCallback(async () => {
-    if (!assetId) {
-      setAsset(null);
-      setUsage(null);
-      setDelivery(null);
-      setAutoResolvedDeliveryAssetId(null);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
-
-    logBrowserOperationStart(mediaLogger, 'media_detail_refetch_started', {
-      operation: 'get_media_detail',
-      asset_id: assetId,
-    });
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [assetResponse, usageResponse] = await Promise.all([
-        getMedia(assetId),
-        getMediaUsage(assetId),
-      ]);
-      setAsset(assetResponse.data);
-      setUsage(usageResponse.data);
-      setDelivery(null);
-      setAutoResolvedDeliveryAssetId(null);
-      logBrowserOperationSuccess(mediaLogger, 'media_detail_refetch_succeeded', {
-        operation: 'get_media_detail',
-        asset_id: assetId,
-        reference_count: usageResponse.data.totalReferences,
-      });
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401) {
-        await refreshSession();
+  const refetch = React.useCallback(
+    async (preserveDraft = false) => {
+      if (!assetId) {
+        setAsset(null);
+        setUsage(null);
+        setDelivery(null);
+        setAutoResolvedDeliveryAssetId(null);
+        setError(null);
+        setIsLoading(false);
+        return;
       }
-      setAsset(null);
-      setUsage(null);
-      setDelivery(null);
-      setAutoResolvedDeliveryAssetId(null);
-      setError(resolvedError);
-      logBrowserOperationFailure(mediaLogger, 'media_detail_refetch_failed', resolvedError, {
+
+      logBrowserOperationStart(mediaLogger, 'media_detail_refetch_started', {
         operation: 'get_media_detail',
         asset_id: assetId,
       });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [assetId, refreshSession]);
+      if (!preserveDraft) setIsLoading(true);
+      setError(null);
+
+      try {
+        const [assetResponse, usageResponse] = await Promise.all([
+          getMedia(assetId),
+          getMediaUsage(assetId),
+        ]);
+        setAsset(assetResponse.data);
+        setUsage(usageResponse.data);
+        setDelivery(null);
+        setAutoResolvedDeliveryAssetId(null);
+        logBrowserOperationSuccess(mediaLogger, 'media_detail_refetch_succeeded', {
+          operation: 'get_media_detail',
+          asset_id: assetId,
+          reference_count: usageResponse.data.totalReferences,
+        });
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401) {
+          await refreshSession();
+        }
+        if (!preserveDraft) {
+          setAsset(null);
+          setUsage(null);
+          setDelivery(null);
+          setAutoResolvedDeliveryAssetId(null);
+          setError(resolvedError);
+        }
+        logBrowserOperationFailure(mediaLogger, 'media_detail_refetch_failed', resolvedError, {
+          operation: 'get_media_detail',
+          asset_id: assetId,
+        });
+        if (preserveDraft) throw resolvedError;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [assetId, refreshSession]
+  );
 
   React.useEffect(() => {
     void refetch();
@@ -188,7 +194,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
 
       try {
         await updateMedia(assetId, payload);
-        await refetch();
+        await refetch(true);
         logBrowserOperationSuccess(mediaLogger, 'media_update_succeeded', {
           operation: 'update_media',
           asset_id: assetId,

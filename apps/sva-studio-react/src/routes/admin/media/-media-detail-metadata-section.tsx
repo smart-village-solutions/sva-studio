@@ -5,6 +5,7 @@ import {
   mediaMetadataTextFields,
   normalizeMediaMetadataPatch,
   type MediaEditorialMetadataPatch,
+  type MediaFocusPoint,
 } from '@sva/media';
 import { Button, StudioSaveButton, useStudioSaveFeedback } from '@sva/studio-ui-react';
 import {
@@ -22,6 +23,9 @@ import type { IamRegisteredMediaAsset } from '../../../lib/iam-api';
 
 type MediaDetailMetadataSectionProps = Readonly<{
   asset: IamRegisteredMediaAsset;
+  focusPoint?: MediaFocusPoint | null;
+  onResetFocus?: () => void;
+  onSavingChange?: (saving: boolean) => void;
   canEdit?: boolean;
   onDraftChange?: (metadata: MediaEditorialMetadataPatch) => void;
   onSave?: (metadata: MediaEditorialMetadataPatch) => Promise<boolean>;
@@ -38,6 +42,9 @@ const createDraft = (asset: IamRegisteredMediaAsset) => ({
 
 export const MediaDetailMetadataSection = ({
   asset,
+  focusPoint,
+  onResetFocus,
+  onSavingChange,
   canEdit = false,
   onDraftChange,
   onSave,
@@ -48,9 +55,18 @@ export const MediaDetailMetadataSection = ({
   }, [draft, onDraftChange]);
   const feedback = useStudioSaveFeedback();
   const saving = feedback.status === 'saving';
+  React.useEffect(() => {
+    onSavingChange?.(saving);
+  }, [onSavingChange, saving]);
+  const previousFocus = React.useRef(focusPoint);
+  React.useEffect(() => {
+    if (focusPoint !== undefined && previousFocus.current !== focusPoint) feedback.markDirty();
+    previousFocus.current = focusPoint;
+  }, [focusPoint, feedback.markDirty]);
   const [error, setError] = React.useState<string | null>(null);
   const reset = () => {
     setDraft(createDraft(asset));
+    onResetFocus?.();
     setError(null);
     feedback.reset();
   };
@@ -63,6 +79,7 @@ export const MediaDetailMetadataSection = ({
     try {
       metadata = normalizeMediaMetadataPatch({
         ...draft,
+        focusPoint,
         tags: draft.tags.split('\n').filter((line) => line.trim()),
       });
     } catch (cause) {

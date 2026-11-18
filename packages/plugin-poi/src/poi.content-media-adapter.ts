@@ -1,4 +1,8 @@
-import type { ContentMediaAssetSnapshot, ContentMediaUsage } from '@sva/studio-ui-react';
+import {
+  contentMediaUsagesToMainserver,
+  type ContentMediaAssetSnapshot,
+  type ContentMediaUsage,
+} from '@sva/studio-ui-react';
 
 import type { PoiMediaContent } from './poi.content.types.js';
 
@@ -33,21 +37,11 @@ export const poiMediaContentsToUsages = (
 export const poiMediaUsagesToContents = (
   usages: readonly ContentMediaUsage[]
 ): readonly PoiMediaContent[] =>
-  usages.map((usage) => ({
-    ...(typeof usage.additionalData?.original === 'object' && usage.additionalData.original !== null
-      ? usage.additionalData.original
-      : {}),
-    sourceUrl: { url: usage.persistentUrl, description: usage.altText },
-    captionText: usage.caption,
-    copyright: usage.credit,
-    contentType:
-      typeof usage.additionalData?.contentType === 'string'
-        ? usage.additionalData.contentType
-        : undefined,
-    width: typeof usage.additionalData?.width === 'number' ? usage.additionalData.width : undefined,
-    height:
-      typeof usage.additionalData?.height === 'number' ? usage.additionalData.height : undefined,
-  }));
+  contentMediaUsagesToMainserver(usages).map((media) => ({
+    ...media,
+    width: typeof media.width === 'number' ? media.width : undefined,
+    height: typeof media.height === 'number' ? media.height : undefined,
+  })) as readonly PoiMediaContent[];
 
 export const poiAssetToUsage = (input: {
   readonly assetId: string;
@@ -60,6 +54,7 @@ export const poiAssetToUsage = (input: {
     description: string;
     copyright: string;
     license: string;
+    focusPoint?: ContentMediaUsage['focusPoint'];
   }>;
   readonly centralMetadata?: Readonly<{
     title: string;
@@ -67,6 +62,7 @@ export const poiAssetToUsage = (input: {
     description: string;
     copyright: string;
     license: string;
+    focusPoint?: ContentMediaUsage['focusPoint'];
   }>;
   readonly sortOrder: number;
 }): ContentMediaUsage => {
@@ -86,6 +82,7 @@ export const poiAssetToUsage = (input: {
     caption: snapshot.caption,
     credit: snapshot.credit,
     license: snapshot.license,
+    focusPoint: input.metadata.focusPoint,
     role: 'gallery_item',
     sortOrder: input.sortOrder,
     assetSnapshot: input.centralMetadata

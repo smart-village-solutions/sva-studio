@@ -1,3 +1,4 @@
+import type { MediaAssetRecord, MediaUploadSessionRecord } from '@sva/data-repositories';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMediaEditingDocument } from '@sva/media';
 
@@ -1436,87 +1437,100 @@ describe('media http handlers', () => {
     );
   });
 
-  it('returns the same provisional asset and upload session when initialization is retried', async () => {
-    const service = createService();
-    service.getContentSaveOperation = vi.fn(async () => ({
-      id: '00000000-0000-4000-8000-000000000001',
-      instanceId: 'tenant-a',
-      actorSubject: 'kc-user-1',
-      targetType: 'news',
-      status: 'uploading',
-      expiresAt: '2026-04-30T19:00:00.000Z',
-    }));
-    service.getProvisionalAssetByDraft = vi.fn(async () => ({
-      id: 'asset-1',
-      instanceId: 'tenant-a',
-      storageKey: 'tenant-a/originals/asset-1',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 200,
-      visibility: 'public',
-      uploadStatus: 'pending',
-      processingStatus: 'pending',
-      lifecycleStatus: 'provisional',
-      metadata: {},
-      technical: {},
-    }));
-    service.getUploadSessionByAssetId = vi.fn(async () => ({
-      id: 'upload-1',
-      instanceId: 'tenant-a',
-      assetId: 'asset-1',
-      storageKey: 'tenant-a/originals/asset-1',
-      mimeType: 'image/jpeg',
-      byteSize: 200,
-      status: 'pending',
-    }));
-    const storagePort = {
-      prepareUpload: vi.fn(async () => ({
-        uploadUrl: 'https://uploads.example.test/put-retry',
-        method: 'PUT' as const,
-        storageKey: 'tenant-a/originals/asset-1',
-        expiresAt: '2026-04-29T20:00:00.000Z',
-      })),
-      resolveDelivery: vi.fn(),
-    };
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort,
-      authorizeAction: allowAuthorization,
-      createId: vi.fn(),
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
+  it.each([
+    ['tenant-a/originals/asset-1', false, false],
+    ['.protected/tenant-a/asset-1/intake/upload-1', true, false],
+    ['.quarantine/tenant-a/asset-1/upload-1', true, true],
+  ] as const)(
+    'retains the intake contract when initialization is retried: %s',
+    async (storageKey, privateInput, requireScan) => {
+      const service = createService();
+      service.getContentSaveOperation = vi.fn(async () => ({
+        id: '00000000-0000-4000-8000-000000000001',
+        instanceId: 'tenant-a',
+        actorSubject: 'kc-user-1',
+        targetType: 'news',
+        status: 'uploading',
+        expiresAt: '2026-04-30T19:00:00.000Z',
+      }));
+      service.getProvisionalAssetByDraft = vi.fn(async () => ({
+        id: 'asset-1',
+        instanceId: 'tenant-a',
+        storageKey,
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 200,
+        visibility: 'public',
+        uploadStatus: 'pending',
+        processingStatus: 'pending',
+        lifecycleStatus: 'provisional',
+        metadata: {},
+        technical: {},
+      }));
+      service.getUploadSessionByAssetId = vi.fn(async () => ({
+        id: 'upload-1',
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        storageKey,
+        mimeType: 'image/jpeg',
+        byteSize: 200,
+        status: 'pending',
+      }));
+      const storagePort = {
+        prepareUpload: vi.fn(async () => ({
+          uploadUrl: 'https://uploads.example.test/put-retry',
+          method: 'PUT' as const,
+          storageKey,
+          expiresAt: '2026-04-29T20:00:00.000Z',
+        })),
+        resolveDelivery: vi.fn(),
+      };
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instanceId, work) => work(service as never),
+        storagePort,
+        authorizeAction: allowAuthorization,
+        createId: vi.fn(),
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent,
+      });
 
-    const response = await handlers.initializeUpload(
-      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          mediaType: 'image',
-          mimeType: 'image/jpeg',
-          byteSize: 200,
-          visibility: 'public',
-          uploadContext: 'content-save',
-          contentSaveOperationId: '00000000-0000-4000-8000-000000000001',
-          draftId: '00000000-0000-4000-8000-000000000002',
+      const response = await handlers.initializeUpload(
+        new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            instanceId: 'tenant-a',
+            mediaType: 'image',
+            mimeType: 'image/jpeg',
+            byteSize: 200,
+            visibility: 'public',
+            uploadContext: 'content-save',
+            contentSaveOperationId: '00000000-0000-4000-8000-000000000001',
+            draftId: '00000000-0000-4000-8000-000000000002',
+          }),
         }),
-      }),
-      createContext()
-    );
+        createContext()
+      );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      data: { assetId: 'asset-1', uploadSessionId: 'upload-1' },
-    });
-    expect(service.upsertAsset).not.toHaveBeenCalled();
-    expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
-    expect(service.refreshPendingUploadSession).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      sessionId: 'upload-1',
-      storageKey: 'tenant-a/originals/asset-1',
-      expiresAt: '2026-04-29T20:00:00.000Z',
-    });
-  });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: { assetId: 'asset-1', uploadSessionId: 'upload-1' },
+      });
+      expect(storagePort.prepareUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...(privateInput ? { privateInput: true } : {}),
+          ...(requireScan ? { requireScan: true } : {}),
+        })
+      );
+      expect(service.upsertAsset).not.toHaveBeenCalled();
+      expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
+      expect(service.refreshPendingUploadSession).toHaveBeenCalledWith({
+        instanceId: 'tenant-a',
+        sessionId: 'upload-1',
+        storageKey,
+        expiresAt: '2026-04-29T20:00:00.000Z',
+      });
+    }
+  );
 
   it('preserves an active upload claim when draft initialization is retried', async () => {
     const service = createService();
@@ -1719,233 +1733,258 @@ describe('media http handlers', () => {
     expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 
-  it('registers an existing bucket object as a managed media asset', async () => {
-    const service = createService();
-    service.getAssetByStorageKey = vi.fn(async () => null);
-    const storagePort = {
-      statObject: vi.fn(async () => ({
-        byteSize: 84,
-        contentType: 'image/jpeg',
-      })),
-      prepareUpload: vi.fn(),
-      resolveDelivery: vi.fn(),
+  const bucketImportFixture = () => {
+    const bytes = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6bkAAAAASUVORK5CYII=',
+      'base64'
+    );
+    const assets = new Map<string, MediaAssetRecord>();
+    const sessions = new Map<string, MediaUploadSessionRecord>();
+    const service = {
+      ...createService(),
+      getAssetById: vi.fn(async (_instance: string, id: string) => assets.get(id) ?? null),
+      getAssetByStorageKey: vi.fn(async () => null),
+      getUploadSessionByAssetId: vi.fn(
+        async (_instance: string, id: string) =>
+          [...sessions.values()].find((session) => session.assetId === id) ?? null
+      ),
+      createAssetIfAbsent: vi.fn(async (asset: MediaAssetRecord) => {
+        if (assets.has(asset.id)) return false;
+        assets.set(asset.id, asset);
+        return true;
+      }),
+      upsertUploadSession: vi.fn(async (session: MediaUploadSessionRecord) => {
+        sessions.set(session.id, session);
+      }),
     };
-
+    const storage = {
+      importSource: {
+        id: 'own-s3',
+        instanceId: 'tenant-a',
+        prefix: 'tenant-a/',
+        visibility: 'protected' as const,
+      },
+      statObject: vi.fn(async () => ({ byteSize: bytes.length, etag: 'version-1' })),
+      readObject: vi.fn(async () => ({ body: bytes, byteSize: bytes.length, etag: 'version-1' })),
+      prepareUpload: vi.fn(async (input: { uploadSessionId: string }) => ({
+        storageKey: `.protected/tenant-a/intake/${input.uploadSessionId}`,
+        uploadUrl: 'https://private.test/put',
+        method: 'PUT' as const,
+        expiresAt: '2026-11-18T20:00:00Z',
+      })),
+      writeObject: vi.fn(async () => ({ byteSize: bytes.length })),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    let sequence = 0;
+    const authorize = vi.fn(
+      async () =>
+        ({ ok: true }) as { ok: boolean; status?: number; error?: string; message?: string }
+    );
     const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'asset-registered',
-      now: () => '2026-04-29T19:00:00.000Z',
+      withMediaService: async (_id, work) => work(service as never),
+      storagePort: storage as never,
+      authorizeAction: authorize as never,
+      createId: () => `session-${++sequence}`,
+      now: () => '2026-11-18T12:00:00Z',
       emitAuditEvent,
     });
-
-    const response = await handlers.registerBucketMedia(
-      new Request('http://localhost/api/v1/iam/media/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          storageKey: 'cms_uploads/photo.jpg',
-          fileName: 'photo.jpg',
-          byteSize: 42,
-          mimeType: 'image/jpeg',
-          visibility: 'public',
-          metadata: { title: 'photo' },
+    const register = (storageKey = 'tenant-a/import/photo.png') =>
+      handlers.registerBucketMedia(
+        new Request('http://localhost/api/v1/iam/media/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            storageKey,
+            fileName: 'forged.jpg',
+            byteSize: 1,
+            mimeType: 'image/jpeg',
+            visibility: 'public',
+            metadata: { title: 'Photo' },
+          }),
         }),
-      }),
-      createContext()
-    );
+        createContext()
+      );
+    return { bytes, assets, sessions, service, storage, handlers, register, authorize };
+  };
 
-    expect(response.status).toBe(201);
-    expect(storagePort.statObject).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      storageKey: 'cms_uploads/photo.jpg',
+  it('prepares a byte-checked private snapshot using source visibility and the existing job, preserving the original', async () => {
+    const fixture = bucketImportFixture();
+    const response = await fixture.register();
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    expect(body.data).toMatchObject({
+      mimeType: 'image/png',
+      byteSize: fixture.bytes.length,
+      visibility: 'protected',
+      processingStatus: 'pending',
     });
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 84);
-    expect(service.upsertAsset).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'asset-registered',
-        storageKey: 'cms_uploads/photo.jpg',
-        mimeType: 'image/jpeg',
-        byteSize: 84,
-        uploadStatus: 'processed',
-        processingStatus: 'ready',
-      })
+    expect(fixture.storage.readObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/import/photo.png',
+      maxBytes: 64 * 1024 * 1024,
+    });
+    expect(fixture.storage.prepareUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ privateInput: true, mimeType: 'image/png' })
     );
-    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      totalBytesDelta: 84,
-      assetCountDelta: 1,
+    expect(scheduleUploadProcessing).toHaveBeenCalledOnce();
+    expect(fixture.service.applyStorageUsageDelta).not.toHaveBeenCalled();
+    expect(fixture.storage.writeObject.mock.calls[0]?.[0]).toMatchObject({
+      storageKey: expect.stringContaining('.protected/'),
+      body: fixture.bytes,
     });
+    expect(fixture.storage.deleteObject).not.toHaveBeenCalled();
+    expect(fixture.authorize.mock.calls.map(([input]) => input.action)).toEqual([
+      'media.create',
+      'media.read',
+    ]);
   });
 
-  it('returns the existing asset when the bucket object is already registered by storage key', async () => {
-    const service = createService();
-    service.getAssetByStorageKey = vi.fn(async () => ({
-      id: 'asset-1',
-      instanceId: 'tenant-a',
-      storageKey: 'cms_uploads/photo.jpg',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 42,
-      visibility: 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
-      metadata: {},
-      technical: {},
-      updatedAt: '2026-04-29T19:00:00.000Z',
-    }));
+  it('converges parallel openings on one identity and upload session, cleaning only the losing private snapshot', async () => {
+    const fixture = bucketImportFixture();
+    const responses = await Promise.all([fixture.register(), fixture.register()]);
+    const bodies = await Promise.all(responses.map((response) => response.json()));
+    expect(responses.map((response) => response.status)).toEqual([202, 202]);
+    expect(bodies[0].data.id).toBe(bodies[1].data.id);
+    expect(fixture.assets.size).toBe(1);
+    expect(fixture.sessions.size).toBe(1);
+    expect(fixture.service.upsertUploadSession).toHaveBeenCalledOnce();
+    expect(fixture.storage.deleteObject).toHaveBeenCalledOnce();
+    expect(fixture.storage.deleteObject.mock.calls[0]?.[0].storageKey).not.toBe(
+      [...fixture.sessions.values()][0]?.storageKey
+    );
+    expect(fixture.service.applyStorageUsageDelta).not.toHaveBeenCalled();
+  });
 
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'asset-registered',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
+  it('resumes job acceptance with the same private snapshot after an enqueue failure', async () => {
+    const fixture = bucketImportFixture();
+    scheduleUploadProcessing.mockRejectedValueOnce(new Error('queue unavailable'));
+    expect((await fixture.register()).status).toBe(503);
+    expect((await fixture.register()).status).toBe(202);
+    expect(fixture.assets.size).toBe(1);
+    expect(fixture.storage.writeObject).toHaveBeenCalledOnce();
+    expect(fixture.storage.deleteObject).not.toHaveBeenCalled();
+    expect(scheduleUploadProcessing.mock.calls[0]?.[0].uploadSessionId).toBe(
+      scheduleUploadProcessing.mock.calls[1]?.[0].uploadSessionId
+    );
+  });
+
+  it.each([
+    'untrusted',
+    'foreign_source',
+    'foreign_key',
+    'changed',
+    'missing',
+    'oversized',
+    'invalid_bytes',
+    'quota',
+    'read_denied',
+  ])('fails closed before creating an import: %s', async (failure) => {
+    const fixture = bucketImportFixture();
+    let key = 'tenant-a/import/photo.png';
+    let status = 409;
+    if (failure === 'untrusted') Object.assign(fixture.storage, { importSource: undefined });
+    if (failure === 'foreign_source') fixture.storage.importSource.instanceId = 'tenant-b';
+    if (failure === 'foreign_key') {
+      key = 'tenant-b/image.png';
+      status = 403;
+    }
+    if (failure === 'changed')
+      fixture.storage.statObject.mockResolvedValueOnce({
+        byteSize: fixture.bytes.length,
+        etag: 'old',
+      });
+    if (failure === 'missing') {
+      fixture.storage.statObject.mockRejectedValueOnce(new MediaStorageObjectNotFoundError());
+      status = 404;
+    }
+    if (failure === 'oversized') {
+      fixture.storage.statObject.mockResolvedValueOnce({
+        byteSize: 64 * 1024 * 1024 + 1,
+        etag: 'version-1',
+      });
+      status = 413;
+    }
+    if (failure === 'invalid_bytes') {
+      const body = Buffer.alloc(fixture.bytes.length);
+      fixture.storage.readObject.mockResolvedValueOnce({
+        body,
+        byteSize: body.length,
+        etag: 'version-1',
+      });
+      status = 415;
+    }
+    if (failure === 'quota')
+      fixture.service.wouldExceedStorageQuota.mockResolvedValueOnce({
+        instanceId: 'tenant-a',
+        currentBytes: 1000,
+        additionalBytes: fixture.bytes.length,
+        maxBytes: 1000,
+        wouldExceed: true,
+      });
+    if (failure === 'read_denied') {
+      fixture.authorize
+        .mockResolvedValueOnce({ ok: true })
+        .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Denied' });
+      status = 403;
+    }
+    expect((await fixture.register(key)).status).toBe(status);
+    expect(fixture.service.createAssetIfAbsent).not.toHaveBeenCalled();
+    expect(fixture.storage.writeObject).not.toHaveBeenCalled();
+    expect(scheduleUploadProcessing).not.toHaveBeenCalled();
+  });
+
+  it('does not silently reuse an imported identity after the source has changed', async () => {
+    const fixture = bucketImportFixture();
+    expect((await fixture.register()).status).toBe(202);
+    fixture.storage.statObject.mockResolvedValueOnce({
+      byteSize: fixture.bytes.length,
+      etag: 'replacement',
     });
+    const response = await fixture.register();
+    expect(response.status).toBe(409);
+    expect(fixture.assets.size).toBe(1);
+    expect(fixture.storage.writeObject).toHaveBeenCalledOnce();
+  });
 
-    const response = await handlers.registerBucketMedia(
-      new Request('http://localhost/api/v1/iam/media/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          storageKey: 'cms_uploads/photo.jpg',
-          fileName: 'photo.jpg',
-          byteSize: 42,
-          mimeType: 'image/jpeg',
-          visibility: 'public',
-        }),
+  it('does not mutate while listing and hides a source already represented by a managed import', async () => {
+    const fixture = bucketImportFixture();
+    expect((await fixture.register()).status).toBe(202);
+    fixture.service.listAssets.mockResolvedValue([...fixture.assets.values()] as never);
+    const listAssetsByIds = vi.fn(async () => [...fixture.assets.values()]);
+    Object.assign(fixture.service, { listAssetsByIds });
+    Object.assign(fixture.storage, {
+      listObjects: async () => ({
+        items: [
+          {
+            storageKey: 'tenant-a/import/photo.png',
+            byteSize: fixture.bytes.length,
+            lastModified: null,
+          },
+        ],
+        nextCursor: null,
       }),
+    });
+    fixture.service.createAssetIfAbsent.mockClear();
+    fixture.storage.writeObject.mockClear();
+    const response = await fixture.handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media'),
       createContext()
     );
-
     expect(response.status).toBe(200);
-    expect(service.upsertAsset).not.toHaveBeenCalled();
-    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+    const body = await response.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe([...fixture.assets.keys()][0]);
+    expect(listAssetsByIds).toHaveBeenCalledOnce();
+    expect(fixture.service.createAssetIfAbsent).not.toHaveBeenCalled();
+    expect(fixture.storage.writeObject).not.toHaveBeenCalled();
   });
 
-  it('uses the trusted storage byte size instead of the client-provided bucket media size', async () => {
-    const service = createService();
-    service.getAssetByStorageKey = vi.fn(async () => null);
-    const storagePort = {
-      statObject: vi.fn(async () => ({
-        byteSize: 512,
-        contentType: 'image/jpeg',
-      })),
-      prepareUpload: vi.fn(),
-      resolveDelivery: vi.fn(),
-    };
-
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'asset-registered',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-
-    const response = await handlers.registerBucketMedia(
-      new Request('http://localhost/api/v1/iam/media/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          storageKey: 'cms_uploads/photo.jpg',
-          fileName: 'photo.jpg',
-          byteSize: 1,
-          mimeType: 'image/jpeg',
-          visibility: 'public',
-        }),
-      }),
-      createContext()
-    );
-
-    expect(response.status).toBe(201);
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 512);
-    expect(service.upsertAsset).toHaveBeenCalledWith(expect.objectContaining({ byteSize: 512 }));
-    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      totalBytesDelta: 512,
-      assetCountDelta: 1,
-    });
-  });
-
-  it('returns not found when the bucket object no longer exists during registration', async () => {
-    const service = createService();
-    service.getAssetByStorageKey = vi.fn(async () => null);
-    const storagePort = {
-      statObject: vi.fn(async () => {
-        throw new MediaStorageObjectNotFoundError();
-      }),
-      prepareUpload: vi.fn(),
-      resolveDelivery: vi.fn(),
-    };
-
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'asset-registered',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-
-    const response = await handlers.registerBucketMedia(
-      new Request('http://localhost/api/v1/iam/media/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          storageKey: 'cms_uploads/photo.jpg',
-          fileName: 'photo.jpg',
-          byteSize: 42,
-          mimeType: 'image/jpeg',
-          visibility: 'public',
-        }),
-      }),
-      createContext()
-    );
-
-    expect(response.status).toBe(404);
-    expect(service.upsertAsset).not.toHaveBeenCalled();
-    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
-  });
-
-  it('accepts tenant-like prefixes inside the externally isolated tenant bucket', async () => {
-    const service = createService();
-
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: {
-        prepareUpload: vi.fn(),
-        resolveDelivery: vi.fn(),
-        statObject: vi.fn(async () => ({ byteSize: 42 })),
-      } as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'asset-registered',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-
-    const response = await handlers.registerBucketMedia(
-      new Request('http://localhost/api/v1/iam/media/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          instanceId: 'tenant-a',
-          storageKey: 'tenant-b/originals/photo.jpg',
-          fileName: 'photo.jpg',
-          byteSize: 42,
-          mimeType: 'image/jpeg',
-          visibility: 'public',
-        }),
-      }),
-      createContext()
-    );
-
-    expect(response.status).toBe(201);
-    expect(service.upsertAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ storageKey: 'tenant-b/originals/photo.jpg' })
-    );
+  it('preserves an already registered legacy asset without new files or quota charges', async () => {
+    const fixture = bucketImportFixture();
+    const asset = await createService().getAssetById('tenant-a', 'asset-1');
+    fixture.service.getAssetByStorageKey.mockResolvedValueOnce(asset as never);
+    expect((await fixture.register()).status).toBe(200);
+    expect(fixture.storage.readObject).not.toHaveBeenCalled();
+    expect(fixture.service.createAssetIfAbsent).not.toHaveBeenCalled();
   });
 
   it('merges a metadata patch into the current locked asset without reverting unrelated changes', async () => {

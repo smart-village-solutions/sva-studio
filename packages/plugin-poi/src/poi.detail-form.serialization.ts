@@ -174,6 +174,8 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
 
 const serializeMediaContent = (entry: PoiMediaContent): PoiMediaContent | undefined => {
   const result: MutablePartial<PoiMediaContent> = withoutUndefined({
+    id: compactString(entry?.id),
+    payload: entry?.payload,
     captionText: compactString(entry?.captionText),
     copyright: compactString(entry?.copyright),
     height: compactFiniteNumber(entry?.height),

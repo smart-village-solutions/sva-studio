@@ -15,6 +15,11 @@ import type {
 } from './model-types.js';
 export type MediaRepository = {
   upsertAsset(input: MediaAssetRecord): Promise<void>;
+  createAssetIfAbsent(input: MediaAssetRecord): Promise<boolean>;
+  listAssetsByIds(
+    instanceId: string,
+    assetIds: readonly string[]
+  ): Promise<readonly MediaAssetRecord[]>;
   getAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
   lockAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
   listEditingCopies(

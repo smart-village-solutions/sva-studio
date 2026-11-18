@@ -1,10 +1,21 @@
 import React from 'react';
-import { IconCopy as Copy, IconDownload as Download, IconExternalLink as ExternalLink, IconQrcode as QrCode } from '@tabler/icons-react';
+import {
+  IconCopy as Copy,
+  IconDownload as Download,
+  IconExternalLink as ExternalLink,
+  IconQrcode as QrCode,
+} from '@tabler/icons-react';
 import * as QRCode from 'qrcode';
+import type { MediaFocusPoint } from '@sva/media';
 
 import { ModalDialog } from '../../../components/ModalDialog';
 import { Badge } from '../../../components/ui/badge';
-import { Button, StudioPageTitle } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioPageTitle,
+  StudioMediaImageFocus,
+  StudioMediaImageExamples,
+} from '@sva/studio-ui-react';
 import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
@@ -14,10 +25,10 @@ type MediaDetailWorkspaceHeaderProps = Readonly<{
   asset: IamRegisteredMediaAsset;
   usageCount: number;
   delivery: IamMediaDelivery | null;
-  onResolveDelivery: () => void;
-  onDelete: () => void;
-  canResolveDelivery: boolean;
-  canDelete: boolean;
+  focusPoint: MediaFocusPoint | null;
+  onFocusChange: (point: MediaFocusPoint | null) => void;
+  canEditFocus: boolean;
+  copyAction: React.ReactNode;
 }>;
 
 const usageCountLabel = (count: number): string =>
@@ -307,91 +318,95 @@ export const MediaDetailWorkspaceHeader = ({
   asset,
   usageCount,
   delivery,
-  onResolveDelivery,
-  onDelete,
-  canResolveDelivery,
-  canDelete,
-}: MediaDetailWorkspaceHeaderProps) => {
-  const showPublicDeliveryTools = asset.visibility === 'public' && Boolean(delivery?.deliveryUrl);
-
-  return (
+  focusPoint,
+  onFocusChange,
+  canEditFocus,
+  copyAction,
+}: MediaDetailWorkspaceHeaderProps) => (
+  <div className="space-y-6">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="space-y-3">
+        <StudioPageTitle>{asset.metadata.title?.trim() || asset.id}</StudioPageTitle>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline">{t(`media.visibility.${asset.visibility}`)}</Badge>
+          <span>{usageCountLabel(usageCount)}</span>
+        </div>
+      </div>
+      {copyAction}
+    </div>
     <Card className="overflow-hidden border-border-subtle bg-card">
-      <CardContent className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,1fr)]">
-        <div className="overflow-hidden rounded-lg border border-border-subtle bg-muted">
-          {delivery?.deliveryUrl && isVisualPreview(asset.mimeType) ? (
-            <img
+      <CardContent className="space-y-3 p-4 sm:p-6">
+        {delivery?.deliveryUrl && isVisualPreview(asset.mimeType) ? (
+          <>
+            <StudioMediaImageFocus
+              url={delivery.deliveryUrl}
               alt={previewAltText(asset)}
-              className="h-full min-h-80 w-full object-cover"
-              src={delivery.deliveryUrl}
+              focus={focusPoint ?? { x: 0.5, y: 0.5 }}
+              onFocusChange={onFocusChange}
+              disabled={!canEditFocus}
             />
-          ) : (
-            <div className="flex min-h-80 items-center bg-surface-inset p-6">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                  {t('media.detail.previewEyebrow')}
-                </p>
-                <div className="space-y-2">
-                  <p className="text-2xl font-semibold text-foreground">
-                    {t('media.detail.previewTitle')}
-                  </p>
-                  <p className="max-w-md text-sm text-muted-foreground">
-                    {t('media.detail.previewBody')}
-                  </p>
-                </div>
-                <div className="inline-flex rounded-full border border-border-subtle bg-card px-3 py-1 text-xs font-medium text-foreground">
-                  {asset.mimeType}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-5">
-          <div className="space-y-3">
-            <StudioPageTitle withAccessory>
-              {asset.metadata.title?.trim() || asset.id}
-            </StudioPageTitle>
-            <p className="max-w-2xl text-sm text-muted-foreground">{t('media.detail.subtitle')}</p>
-            {asset.technical.scanStatus === 'clean' ? (
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                {t('media.detail.visibilityFixedHint')}
-              </p>
+            <StudioMediaImageExamples
+              url={delivery.deliveryUrl}
+              focus={focusPoint ?? { x: 0.5, y: 0.5 }}
+            />
+            {focusPoint === null ? (
+              <p className="text-sm text-muted-foreground">{t('media.editor.focusNotSet')}</p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">{t(`media.visibility.${asset.visibility}`)}</Badge>
-              <Badge variant="outline">{t(`media.uploadStatus.${asset.uploadStatus}`)}</Badge>
-              <Badge variant="outline">
-                {t(`media.processingStatus.${asset.processingStatus}`)}
-              </Badge>
-              <Badge className="border-border-subtle bg-surface-inset text-foreground" variant="secondary">
-                {usageCountLabel(usageCount)}
-              </Badge>
-              {delivery ? (
-                <Badge className="border-border-subtle bg-surface-inset text-foreground" variant="secondary">
-                  {t('media.delivery.title')}
-                </Badge>
-              ) : null}
-            </div>
-          </div>
-
-          {showPublicDeliveryTools && delivery?.deliveryUrl ? (
-            <PublicDeliveryTools asset={asset} deliveryUrl={delivery.deliveryUrl} />
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            {!showPublicDeliveryTools && canResolveDelivery ? (
-              <Button type="button" onClick={onResolveDelivery}>
-                {t('media.actions.resolveDelivery')}
+            {canEditFocus && focusPoint ? (
+              <Button type="button" variant="tertiary" onClick={() => onFocusChange(null)}>
+                {t('media.editor.clearFocus')}
               </Button>
             ) : null}
-            {canDelete ? (
-              <Button type="button" variant="destructive" onClick={onDelete}>
-                {t('media.actions.delete')}
-              </Button>
-            ) : null}
-          </div>
-        </div>
+          </>
+        ) : (
+          <p className="py-16 text-center text-muted-foreground">{t('media.detail.previewBody')}</p>
+        )}
+        <p className="text-center text-sm text-muted-foreground">
+          {t('media.detail.fileSummary', {
+            mimeType: asset.mimeType,
+            width:
+              typeof asset.technical.width === 'number'
+                ? asset.technical.width
+                : t('media.values.notAvailable'),
+            height:
+              typeof asset.technical.height === 'number'
+                ? asset.technical.height
+                : t('media.values.notAvailable'),
+            bytes: asset.byteSize,
+          })}
+        </p>
       </CardContent>
     </Card>
-  );
-};
+  </div>
+);
+
+export const MediaDetailDeliveryTools = ({
+  asset,
+  delivery,
+  canResolveDelivery,
+  onResolveDelivery,
+  canDelete,
+  onDelete,
+}: Readonly<{
+  asset: IamRegisteredMediaAsset;
+  delivery: IamMediaDelivery | null;
+  canResolveDelivery: boolean;
+  onResolveDelivery: () => void;
+  canDelete: boolean;
+  onDelete: () => void;
+}>) => (
+  <div className="space-y-4">
+    {asset.visibility === 'public' && delivery?.deliveryUrl ? (
+      <PublicDeliveryTools asset={asset} deliveryUrl={delivery.deliveryUrl} />
+    ) : canResolveDelivery ? (
+      <Button type="button" variant="secondary" onClick={onResolveDelivery}>
+        {t('media.actions.resolveDelivery')}
+      </Button>
+    ) : null}
+    {canDelete ? (
+      <Button type="button" variant="destructive" onClick={onDelete}>
+        {t('media.actions.delete')}
+      </Button>
+    ) : null}
+  </div>
+);

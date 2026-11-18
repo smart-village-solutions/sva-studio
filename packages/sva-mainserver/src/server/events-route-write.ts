@@ -1,4 +1,4 @@
-import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
+import { withMediaService, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
 import { isResponse, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
@@ -216,11 +216,55 @@ export const handleItemDelete = async (
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
       const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
+      let confirmed = false;
+      try {
+        await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
+      } catch (error) {
+        confirmed = error instanceof SvaMainserverError && error.code === 'not_found';
+      }
+      let referencesCleared = false;
+      if (confirmed) {
+        try {
+          await withMediaService(actor.instanceId, (service) =>
+            service.replaceReferences({
+              instanceId: actor.instanceId,
+              targetType: EVENTS_CONTENT_TYPE,
+              targetId: route.itemId,
+              references: [],
+            })
+          );
+          referencesCleared = true;
+        } catch {
+          /* Keep the established mutation journal available for reconciliation. */
+        }
+      }
+      if (!referencesCleared) {
+        await finalizeMainserverMutation({
+          actor,
+          providerOutcome: 'succeeded',
+          reconciliationStatus: 'reconciliation_required',
+          completedSteps: confirmed
+            ? ['provider_write', 'tombstone', 'readback']
+            : ['provider_write', 'tombstone'],
+          contentId: route.itemId,
+          observedDataProviderId: existing.data?.dataProvider?.id,
+          lastErrorCode: confirmed
+            ? 'media_reference_cleanup_failed'
+            : 'event_delete_readback_unconfirmed',
+        });
+        return json(
+          {
+            data: { ...data, reconciliationRequired: true },
+            meta: { reconciliationStatus: 'reconciliation_required' },
+          },
+          202
+        );
+      }
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus: 'complete',
-        completedSteps: ['provider_write', 'tombstone'],
+        completedSteps: ['provider_write', 'tombstone', 'readback', 'media_references'],
         contentId: route.itemId,
         observedDataProviderId: existing.data?.dataProvider?.id,
       });

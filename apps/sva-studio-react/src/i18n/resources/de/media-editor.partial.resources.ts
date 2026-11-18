@@ -156,7 +156,7 @@ export const mediaEditorResources = {
     'Angaben in der Mediathek gespeichert. Die Konfiguration ist noch nicht gespeichert.',
   closeWorkspace: 'Arbeitsraum schließen',
 
-  saveCopy: 'Als neues Bild speichern',
+  saveCopy: 'Kopie speichern',
   copyMetadataDescription: 'Prüfe die Angaben der neuen Kopie. Das bisherige Bild bleibt erhalten.',
   newAssetMetadataHint: 'Diese Angaben werden mit der neuen Kopie in der Mediathek gespeichert.',
   pending: {
@@ -167,9 +167,24 @@ export const mediaEditorResources = {
       'Die bearbeitete Kopie wird jetzt in der Mediathek gespeichert und ausgewählt. Die Konfiguration muss anschließend noch gespeichert werden.',
   },
 
+  focusNotSet: 'Kein Fokuspunkt gespeichert. Die Mitte dient nur als Beispiel.',
+  focusPointHint:
+    'Punkt anklicken oder ziehen. Pfeiltasten verschieben den Fokus; Umschalt vergrößert die Schritte.',
+  focusPosition: 'Fokus: {{x}} % horizontal, {{y}} % vertikal.',
+  clearFocus: 'Fokus entfernen',
+  copyProgress: 'Fortschritt der Bildkopie',
+  designStep: 'Bild gestalten',
+  focusStep: 'Fokuspunkt setzen',
+  reviewStep: 'Ergebnis prüfen',
+  backToDesign: 'Zurück: Bild gestalten',
+  backToFocus: 'Zurück: Fokuspunkt setzen',
+  nextFocus: 'Weiter: Fokuspunkt setzen',
+  nextReview: 'Weiter: Ergebnis prüfen',
+  copyReviewHint:
+    'Texte und Fokus gelten für diese neue Kopie. Prüfen Sie nach Bildänderungen auch Alternativtext und Beschreibung.',
   focusTitle: 'Wichtiger Bildbereich und Vorschau',
   focusHint:
-    'Verschiebe den wichtigen Bildbereich, damit er bei unterschiedlichen Bildformaten möglichst sichtbar bleibt.',
+    'Unverbindliche Beispielansichten. Die Zielanwendung entscheidet, ob und wie sie den Fokus verwendet.',
   focusAxis: { x: 'Horizontaler Bildbereich', y: 'Vertikaler Bildbereich' },
   centerFocus: 'Bildmitte verwenden',
   presets: { thumbnail: 'Vorschaubild', teaser: 'Teaserbild', hero: 'Großes Titelbild' },
@@ -184,9 +199,9 @@ export const mediaEditorResources = {
     'Die Bildbearbeitung ist derzeit nicht vollständig mit Tastatur und Screenreader bedienbar.',
   imageError: 'Die Bildbearbeitung konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
   retry: 'Erneut versuchen',
-  cancelEditing: 'Bearbeitung verwerfen und zurück',
+  cancelEditing: 'Abbrechen',
   previewEditedImage: 'Weiter zu Angaben und Vorschau',
-  editImage: 'Bild bearbeiten',
+  editImage: 'Kopie erstellen und bearbeiten',
   editedTitle: '{{title}} – bearbeitet',
   localEditHint:
     'Die bearbeitete Kopie wird mit dem Inhalt gespeichert. Bitte Alternativtext und Beschreibung prüfen.',

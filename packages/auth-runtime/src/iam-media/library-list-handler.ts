@@ -1,3 +1,4 @@
+import { deriveMediaImportAssetId } from './storage-key-paths.js';
 import { isMediaAssetReady, toMediaAssetResponse } from './asset-support.js';
 import type { MediaVisibility } from '@sva/media';
 import type { MediaAssetRecord } from '@sva/data-repositories';
@@ -177,9 +178,26 @@ const loadMediaListingSources = async (input: {
     prefix: search,
     startAfter: cursor?.afterStorageKey,
   });
+  const source = storagePort.importSource;
+  const imported =
+    source?.instanceId === input.instanceId && listing.items.length > 0
+      ? await input.deps.withMediaService(input.instanceId, (service) =>
+          service.listAssetsByIds(
+            input.instanceId,
+            listing.items.map((item) =>
+              deriveMediaImportAssetId(input.instanceId, source.id, item.storageKey)
+            )
+          )
+        )
+      : [];
+  const importedKeys = new Set(
+    imported
+      .filter((asset) => asset.technical.importSourceId === source?.id)
+      .map((asset) => asset.technical.importSourceKey)
+  );
   return {
     registeredAssets,
-    bucketObjects: listing.items,
+    bucketObjects: listing.items.filter((item) => !importedKeys.has(item.storageKey)),
     bucketHasMore: listing.nextCursor !== null,
     lastScannedBucketKey: listing.lastScannedStorageKey,
   };

@@ -7,6 +7,7 @@ export type ProjectAuthor =
   | Readonly<{ type: 'person'; id: string; displayName: string }>;
 
 export type ProjectImage = Readonly<{
+  focusPoint?: Readonly<{ x: number; y: number }> | null;
   url: string;
   altText: string;
   caption?: string;

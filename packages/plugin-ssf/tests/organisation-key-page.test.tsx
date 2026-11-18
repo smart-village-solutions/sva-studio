@@ -105,7 +105,9 @@ it('moves focus to export and clears the local print sheet on navigation discard
   fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
   const download = await screen.findByRole('button', { name: 'keys.download' });
   expect(document.activeElement).toBe(download);
-  const [dirty, actions] = register.mock.calls.at(-1)!;
+  const guard = register.mock.calls.at(-1);
+  if (!guard) throw new Error('Missing custody leave guard');
+  const [dirty, actions] = guard;
   expect(dirty()).toBe(true);
   const append = document.body.appendChild.bind(document.body);
   const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
@@ -174,8 +176,8 @@ it('clears the preparation on tenant switch and blocks the workflow after logout
   }
 });
 
-it.each(['late-success', 'lost-response'])(
-  'recovers the confirmed activation across its local deadline: %s',
+it.each(['late-success', 'lost-response', 'history-reconciled', 'rejected', 'unsubmitted-expiry'])(
+  'handles preparation expiry and authoritative activation outcomes: %s',
   async (scenario) => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const originalList = { activeKeyId: null, keys: [] },
@@ -189,7 +191,7 @@ it.each(['late-success', 'lost-response'])(
     let sends = 0;
     api.mockImplementation(async (op: string) => {
       if (op === 'list')
-        return sends > 1 || (scenario === 'late-success' && sends > 0)
+        return sends > 1 || (['late-success', 'history-reconciled'].includes(scenario) && sends > 0)
           ? { activeKeyId: active.keyId, keys: [active] }
           : originalList;
       if (op === 'prepareKey')
@@ -209,9 +211,37 @@ it.each(['late-success', 'lost-response'])(
       URL.revokeObjectURL = vi.fn();
       vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
       fireEvent.click(await screen.findByRole('button', { name: 'keys.download' }));
+      if (scenario === 'unsubmitted-expiry') {
+        await act(async () => {
+          vi.advanceTimersByTime(300005);
+        });
+        await screen.findByText('keys.errors.PREPARATION_EXPIRED');
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fixture');
+        expect(screen.queryByRole('button', { name: 'keys.activate' })).toBeNull();
+        expect(sends).toBe(0);
+        return;
+      }
       fireEvent.click(screen.getByRole('checkbox', { name: 'keys.saved' }));
       fireEvent.click(screen.getByRole('button', { name: 'keys.activate' }));
       await waitFor(() => expect(sends).toBe(1));
+      if (scenario === 'history-reconciled') {
+        await act(async () => {
+          response.resolve({ ...active, state: 'prepared' });
+        });
+        await screen.findByText('keys.activated');
+        expect(sends).toBe(1);
+        expect(screen.queryByRole('button', { name: 'keys.retryConfirmed' })).toBeNull();
+        return;
+      }
+      if (scenario === 'rejected') {
+        await act(async () => {
+          response.reject(new Error('PERMISSION_REQUIRED'));
+        });
+        await screen.findByText('keys.errors.PERMISSION_REQUIRED');
+        expect(screen.queryByRole('button', { name: 'keys.retryConfirmed' })).toBeNull();
+        expect(screen.queryByText('keys.activated')).toBeNull();
+        return;
+      }
       if (scenario === 'lost-response')
         await act(async () => {
           response.reject(new Error('RECORDING_UNAVAILABLE'));
@@ -243,3 +273,13 @@ it.each(['late-success', 'lost-response'])(
     }
   }
 );
+
+it('offers a history reload after a failed read without starting a preparation', async () => {
+  api
+    .mockRejectedValueOnce(new Error('RECORDING_UNAVAILABLE'))
+    .mockResolvedValue({ keys: [], activeKeyId: null });
+  render(<forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'keys.reload' }));
+  await screen.findByRole('button', { name: 'keys.create' });
+  expect(api.mock.calls.map(([op]) => op)).toEqual(['list', 'list']);
+});

@@ -1,10 +1,16 @@
-import { operationSchemas, pluginRecordingBase } from './organisation-key-contracts.js';
 import {
-  definePluginActions,
-  definePluginModuleIamContract,
-  definePluginPermissions,
-  type PluginDescriptor,
-} from '@sva/plugin-sdk';
+  platformAccess,
+  tenantReadAccess,
+  tenantManageAccess,
+  transferAccess,
+  keyReadAccess,
+  actions,
+  permissions,
+  moduleIam,
+} from './descriptor-access.js';
+import { SSF_TRANSFER_PERMISSION } from './recording-permissions.js';
+import { operationSchemas, pluginRecordingBase } from './organisation-key-contracts.js';
+import type { PluginDescriptor } from '@sva/plugin-sdk';
 
 import { SSF_ADMIN_ACTIONS } from './admin-contracts.js';
 import {
@@ -12,8 +18,6 @@ import {
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
 } from './content-v2-admin-contracts.js';
 import {
-  SSF_RECORDING_PERMISSION_IDS,
-  SSF_TRANSFER_PERMISSION,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_V2_ENDPOINT_PATH,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
@@ -28,32 +32,6 @@ export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH =
   '/internal/plugins/ssf/v2/recording-directory' as const;
 export const SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID = 'ssf.recording-directory-v2' as const;
 
-const platformAccess = {
-  kind: 'platform',
-  roles: { mode: 'allOf', values: ['instance_registry_admin'] },
-} as const;
-const tenantReadAccess = {
-  kind: 'tenant',
-  moduleId: 'ssf',
-  actions: { mode: 'allOf', values: [SSF_ADMIN_ACTIONS.tenantRead] },
-} as const;
-const tenantManageAccess = {
-  kind: 'tenant',
-  moduleId: 'ssf',
-  actions: { mode: 'allOf', values: [SSF_ADMIN_ACTIONS.tenantManage] },
-} as const;
-
-const transferAccess = {
-  kind: 'tenant',
-  moduleId: 'ssf',
-  actions: { mode: 'allOf', values: [SSF_TRANSFER_PERMISSION] },
-} as const;
-
-const keyReadAccess = {
-  kind: 'tenant',
-  moduleId: 'ssf',
-  actions: { mode: 'anyOf', values: [SSF_ADMIN_ACTIONS.tenantManage, SSF_TRANSFER_PERMISSION] },
-} as const;
 const keyPages = [
   {
     page: 'organisation-keys',
@@ -66,61 +44,6 @@ const keyPages = [
     accessRequirement: transferAccess,
   },
 ] as const;
-const actions = definePluginActions('ssf', [
-  {
-    id: 'ssf.organisation-keys.inspect',
-    titleKey: 'ssf.administration.pages.organisation-keys',
-    accessRequirement: keyReadAccess,
-  },
-  {
-    id: SSF_TRANSFER_PERMISSION,
-    titleKey: 'ssf.permissions.recording_access_transfer',
-    accessRequirement: transferAccess,
-  },
-  {
-    id: SSF_ADMIN_ACTIONS.systemRead,
-    titleKey: 'ssf.permissions.systemRead',
-    accessRequirement: platformAccess,
-  },
-  {
-    id: SSF_ADMIN_ACTIONS.systemManage,
-    titleKey: 'ssf.permissions.systemManage',
-    accessRequirement: platformAccess,
-  },
-  {
-    id: SSF_ADMIN_ACTIONS.tenantRead,
-    titleKey: 'ssf.permissions.tenantRead',
-    accessRequirement: tenantReadAccess,
-  },
-  {
-    id: SSF_ADMIN_ACTIONS.tenantManage,
-    titleKey: 'ssf.permissions.tenantManage',
-    accessRequirement: tenantManageAccess,
-  },
-]);
-
-const permissions = definePluginPermissions('ssf', [
-  ...SSF_RECORDING_PERMISSION_IDS.map((id) => ({
-    id,
-    titleKey: `ssf.permissions.${id.replace('ssf.recording.', 'recording_').replace(/\./gu, '_')}`,
-  })),
-  { id: SSF_ADMIN_ACTIONS.tenantRead, titleKey: 'ssf.permissions.tenantRead' },
-  { id: SSF_ADMIN_ACTIONS.tenantManage, titleKey: 'ssf.permissions.tenantManage' },
-]);
-
-const tenantPermissionIds = permissions.map(({ id }) => id);
-const moduleIam = definePluginModuleIamContract('ssf', {
-  moduleId: 'ssf',
-  permissionIds: tenantPermissionIds,
-  systemRoles: [
-    {
-      roleName: 'system_admin',
-      permissionIds: tenantPermissionIds.filter((id) => id !== SSF_TRANSFER_PERMISSION),
-    },
-  ],
-  systemAdminPermissionExclusions: [SSF_TRANSFER_PERMISSION],
-});
-
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;
 
 const jobTypes = [

@@ -74,7 +74,7 @@ it('exchanges the original session token for the fixed audience and forwards onl
     (await gateway.forwardSsfRecordingRequest(ctx, { path: '/organisation-keys', method: 'GET' }))
       .status
   ).toBe(200);
-  const [url, init] = request.mock.calls[0]!;
+  const [url, init] = request.mock.calls[0] ?? [];
   expect(url).toBe(issuer + '/protocol/openid-connect/token');
   expect(Object.fromEntries(init.body)).toMatchObject({
     grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -201,5 +201,124 @@ it('reports a wrongly issued downstream token as an exchange failure', async () 
     path: '/organisation-keys',
   });
   expect(res.status).toBe(503);
+  expect(request).toHaveBeenCalledTimes(1);
+});
+
+const readKeys = () =>
+  gateway.forwardSsfRecordingRequest(ctx, { path: '/organisation-keys', method: 'GET' });
+
+it.each([
+  { sub: 'other-user' },
+  { azp: 'another-client' },
+  { client_id: 'service' },
+  { preferred_username: 'service-account-job' },
+  { studio_tenant_id: 'other-tenant' },
+  { ssf_permissions: [] },
+  { ssf_permissions: 'ssf.configuration.tenant.manage' },
+])('requires a tenant-bound authorized human subject before exchanging %j', async (overrides) => {
+  mocks.session.mockResolvedValue({
+    ...(await mocks.session()),
+    accessToken: await sign(overrides),
+  });
+  const res = await readKeys();
+  expect(res.status).toBe(403);
+  expect(await res.json()).toEqual({ error: { code: 'PERMISSION_REQUIRED' } });
+  expect(request).not.toHaveBeenCalled();
+});
+
+it.each([
+  { kind: 'platform' },
+  { instanceId: 'different' },
+  { issuer: issuer + '-other' },
+  { clientId: 'other-login-client' },
+])('prevents exchange when the current client binding no longer matches %j', async (overrides) => {
+  mocks.config.mockResolvedValue({ ...(await mocks.config()), ...overrides });
+  expect((await readKeys()).status).toBe(403);
+  expect(request).not.toHaveBeenCalled();
+});
+
+it.each([
+  'http://gateway.test',
+  'https://user@gateway.test',
+  'https://:pass@gateway.test',
+  'https://gateway.test/another-base',
+  'https://gateway.test/?api=1',
+  'https://gateway.test/#else',
+])('refuses a Gateway base with credentials or a noncanonical origin %s', async (origin) => {
+  vi.stubEnv('SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL', origin);
+  expect((await readKeys()).status).toBe(503);
+  expect(request).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['invalid_token', 401, 'AUTHENTICATION_REQUIRED'],
+  ['invalid_grant', 401, 'AUTHENTICATION_REQUIRED'],
+  ['invalid_client', 503, 'RECORDING_UNAVAILABLE'],
+] as const)(
+  'translates OAuth exchange failure %s without sharing details',
+  async (error, status, code) => {
+    request.mockResolvedValueOnce(
+      Response.json({ error, error_description: 'private' }, { status: 400 })
+    );
+    const res = await readKeys();
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error: { code } });
+    expect(request).toHaveBeenCalledTimes(1);
+  }
+);
+
+it.each([{ issued_token_type: 'refresh' }, { token_type: 'Basic' }, { access_token: null }])(
+  'refuses a malformed token response before using its bearer %j',
+  async (overrides) => {
+    request.mockResolvedValueOnce(
+      Response.json({
+        issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+        token_type: 'Bearer',
+        access_token: await sign(),
+        ...overrides,
+      })
+    );
+    expect((await readKeys()).status).toBe(503);
+    expect(request).toHaveBeenCalledTimes(1);
+  }
+);
+
+it('returns unavailability on a network error during exchange', async () => {
+  request.mockRejectedValueOnce(new Error('private transport message'));
+  const res = await readKeys();
+  expect(res.status).toBe(503);
+  expect(await res.json()).toEqual({ error: { code: 'RECORDING_UNAVAILABLE' } });
+});
+
+it('forwards the approved method and canonical JSON body on an authenticated mutation', async () => {
+  const bearer = await sign({ aud: ['studio', 'ssf-frontend'] });
+  mocks.session.mockResolvedValue({ ...(await mocks.session()), accessToken: bearer });
+  request
+    .mockResolvedValueOnce(
+      Response.json({
+        issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+        token_type: 'Bearer',
+        access_token: bearer,
+      })
+    )
+    .mockResolvedValueOnce(new Response(null, { status: 201 }));
+  const body = JSON.stringify({ expectedActiveKeyId: null, publicKey: 'A'.repeat(87) });
+  const result = await gateway.forwardSsfRecordingRequest(
+    { ...ctx, handlerId: 'ssf.organisation-keys.prepare' },
+    { method: 'POST', path: '/organisation-keys/preparations', body }
+  );
+  expect(result.status).toBe(201);
+  expect(request.mock.calls[1]?.[1]).toMatchObject({
+    method: 'POST',
+    body,
+    headers: { Authorization: 'Bearer ' + bearer, 'Content-Type': 'application/json' },
+  });
+});
+
+it('redacts an unreadable identity-provider rejection', async () => {
+  request.mockResolvedValueOnce(new Response('private provider diagnostic', { status: 502 }));
+  const res = await readKeys();
+  expect(res.status).toBe(503);
+  expect(await res.json()).toEqual({ error: { code: 'RECORDING_UNAVAILABLE' } });
   expect(request).toHaveBeenCalledTimes(1);
 });

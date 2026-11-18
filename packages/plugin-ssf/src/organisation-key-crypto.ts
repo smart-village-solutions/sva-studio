@@ -7,7 +7,7 @@ import {
 
 const utf8 = new TextEncoder();
 const ecdh = { name: 'ECDH', namedCurve: 'P-256' };
-export type Field = string | number | Uint8Array<ArrayBuffer>;
+type Field = string | number | Uint8Array<ArrayBuffer>;
 export const bytes = (value: string) => {
   const raw = Uint8Array.from(atob(value.replace(/-/gu, '+').replace(/_/gu, '/')), (c) =>
     c.charCodeAt(0)

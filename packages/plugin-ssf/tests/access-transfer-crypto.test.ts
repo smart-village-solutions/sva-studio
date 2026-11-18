@@ -9,7 +9,7 @@ import {
   importOrganisationKey,
   open,
 } from '../src/organisation-key-crypto.js';
-import { transfer } from '../src/organisation-key-contracts.js';
+import { operationSchemas } from '../src/organisation-key-contracts.js';
 const published = JSON.parse(
   readFileSync(new URL('./fixtures/lifecycle_v2.json', import.meta.url), 'utf8')
 );
@@ -74,7 +74,7 @@ const item = {
   sourceWrap: { envelope: v.sourceEnvelope, signature: v.sourceSignature },
   sourceSigner: { keyId: 'gateway', publicKey: v.gatewayPublicKey },
 };
-const prep = transfer.parse({
+const prep = operationSchemas.prepareTransfer.output.parse({
   transferId: v.transferId,
   expiresAt: v.expiresAt,
   scopeDigest: v.scopeDigest,

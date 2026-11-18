@@ -6,10 +6,10 @@ export const uuid = z
 export const subject = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,254}$/u);
 const version = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const binary = z.string().regex(/^[A-Za-z0-9_-]+$/u);
-export const publicKey = binary.length(87);
-export const digest = binary.length(43);
+const publicKey = binary.length(87);
+const digest = binary.length(43);
 const instant = z.iso.datetime({ offset: false });
-export const envelope = z.strictObject({
+const envelope = z.strictObject({
   v: z.literal(1),
   t: z.enum(['SSF-CK-WRAP-V2', 'SSF-ORG-POSSESSION-V1']),
   R: publicKey,
@@ -17,25 +17,25 @@ export const envelope = z.strictObject({
   ct: binary.length(64),
 });
 export type Envelope = z.infer<typeof envelope>;
-export const keyIdentity = z.strictObject({ keyId: uuid, version, publicKey, fingerprint: digest });
+const keyIdentity = z.strictObject({ keyId: uuid, version, publicKey, fingerprint: digest });
 export const fileSchema = keyIdentity.extend({
   tenantId: z.string().min(1).max(128),
   format: z.literal('ssf-organisation-key'),
   formatVersion: z.literal(1),
   privateKeyPkcs8: binary.max(1024),
 });
-export const organisationKey = keyIdentity.extend({
+const organisationKey = keyIdentity.extend({
   state: z.enum(['prepared', 'active', 'superseded']),
   createdAt: instant,
   activatedAt: instant.nullable(),
 });
 export type OrganisationKey = z.infer<typeof organisationKey>;
 export type KeyIdentity = z.infer<typeof keyIdentity> & { tenantId: string };
-export const keyList = z.strictObject({
+const keyList = z.strictObject({
   activeKeyId: uuid.nullable(),
   keys: z.array(organisationKey),
 });
-export const activation = z.strictObject({
+const activation = z.strictObject({
   preparationId: uuid,
   keyId: uuid,
   version,
@@ -44,7 +44,7 @@ export const activation = z.strictObject({
   challengeEnvelope: envelope,
 });
 export type Activation = z.infer<typeof activation>;
-export const candidate = z.strictObject({
+const candidate = z.strictObject({
   conversationId: uuid,
   employeeSub: subject,
   startedAt: instant,
@@ -54,18 +54,18 @@ export const candidate = z.strictObject({
   keyScopes: z.array(z.strictObject({ keyId: uuid, organisationKeyId: uuid })).nonempty(),
 });
 export type Candidate = z.infer<typeof candidate>;
-export const candidates = z.strictObject({
+const candidates = z.strictObject({
   items: z.array(candidate).max(50),
   nextCursor: z.string().min(1).max(2048).nullable(),
 });
-export const targetKey = z.strictObject({
+const targetKey = z.strictObject({
   userSub: subject,
   version,
   fingerprint: digest,
   encPub: publicKey,
   sigPub: publicKey,
 });
-export const transferInput = z.strictObject({
+const transferInput = z.strictObject({
   conversationIds: z
     .array(uuid)
     .min(1)
@@ -81,7 +81,7 @@ export const transferInput = z.strictObject({
     .max(1000)
     .refine((s) => s.trim().length > 0),
 });
-export const transfer = z.strictObject({
+const transfer = z.strictObject({
   transferId: uuid,
   expiresAt: instant,
   scopeDigest: digest,
@@ -102,8 +102,8 @@ export const transfer = z.strictObject({
     .max(1000),
 });
 export type Transfer = z.infer<typeof transfer>;
-export const submittedWrap = z.strictObject({ conversationId: uuid, keyId: uuid, envelope });
-export const receipt = z.strictObject({
+const submittedWrap = z.strictObject({ conversationId: uuid, keyId: uuid, envelope });
+const receipt = z.strictObject({
   transferId: uuid,
   status: z.literal('committed'),
   targetUserSub: subject,

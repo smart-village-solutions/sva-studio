@@ -77,7 +77,9 @@ it('groups a selected conversation across versions and resolves a target before 
   fireEvent.change(screen.getByLabelText('transfer.target'), { target: { value: 'target' } });
   const groups = await screen.findAllByRole('button', { name: 'transfer.preview' });
   expect(groups).toHaveLength(2);
-  fireEvent.click(groups[0]!);
+  const [firstGroup] = groups;
+  if (!firstGroup) throw new Error('Missing scope group');
+  fireEvent.click(firstGroup);
   await waitFor(() =>
     expect(api.op).toHaveBeenCalledWith(
       'prepareTransfer',
@@ -112,8 +114,16 @@ it('finds retained source conversations for a known former directory subject', a
   ).toBe(true);
 });
 
-it.each(['late-success', 'lost-response'])(
-  'keeps the exact committed transfer through expiry and permits a new target version: %s',
+const transferOutcomes = [
+  'late-success',
+  'lost-response',
+  'mismatched-receipt',
+  'terminal-rejection',
+  'preview-expiry',
+  'expiry-during-proof',
+];
+it.each(transferOutcomes)(
+  'uses the preparation deadline and authoritative transfer outcomes: %s',
   async (scenario) => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { act } = await import('@testing-library/react');
@@ -191,9 +201,48 @@ it.each(['late-success', 'lost-response'])(
       });
       const yes = (await screen.findByLabelText('transfer.confirm')) as HTMLInputElement;
       await waitFor(() => expect(yes.disabled).toBe(false));
+      if (scenario === 'preview-expiry') {
+        await act(async () => {
+          vi.advanceTimersByTime(300005);
+        });
+        await screen.findByText('keys.errors.PREPARATION_EXPIRED');
+        expect(screen.queryByLabelText('transfer.file')).toBeNull();
+        expect(sends).toBe(0);
+        expect(rewrap).not.toHaveBeenCalled();
+        return;
+      }
+      if (scenario === 'expiry-during-proof') {
+        rewrap.mockImplementationOnce(async () => {
+          vi.setSystemTime(Date.now() + 300005);
+          return wires;
+        });
+      }
       fireEvent.click(yes);
       fireEvent.click(screen.getByRole('button', { name: 'transfer.commit' }));
+      if (scenario === 'expiry-during-proof') {
+        await screen.findByText('keys.errors.PREPARATION_EXPIRED');
+        expect(sends).toBe(0);
+        expect(screen.queryByRole('button', { name: 'keys.retryConfirmed' })).toBeNull();
+        return;
+      }
       await waitFor(() => expect(sends).toBe(1));
+      if (scenario === 'terminal-rejection') {
+        await act(async () => {
+          response.reject(new Error('KEY_VERSION_CHANGED'));
+        });
+        await screen.findByText('keys.errors.KEY_VERSION_CHANGED');
+        expect(screen.queryByRole('button', { name: 'keys.retryConfirmed' })).toBeNull();
+        expect(screen.queryByText(/transfer.receipt/)).toBeNull();
+        expect(screen.getByRole('button', { name: 'transfer.preview' })).toBeDefined();
+        return;
+      }
+      if (scenario === 'mismatched-receipt') {
+        await act(async () => {
+          response.resolve({ ...outcome, grantedKeyIds: [] });
+        });
+        await screen.findByText('keys.errors.RECORDING_UNAVAILABLE');
+        expect(screen.queryByText(/transfer.receipt/)).toBeNull();
+      }
       if (scenario === 'lost-response')
         await act(async () => {
           response.reject(new Error('RECORDING_UNAVAILABLE'));
@@ -235,3 +284,62 @@ it.each(['late-success', 'lost-response'])(
     }
   }
 );
+
+it('reloads the directory and refuses a candidate page with scope outside the chosen source', async () => {
+  api.people
+    .mockRejectedValueOnce(new Error('RECORDING_UNAVAILABLE'))
+    .mockResolvedValue([{ sub: 'target', displayName: 'Target' }]);
+  api.op.mockClear().mockImplementation(async (op: string) =>
+    op === 'list'
+      ? { keys: [] }
+      : {
+          items: [
+            {
+              employeeSub: 'different-source',
+              conversationId: v.conversationId,
+              keyIds: [v.keyId],
+              keyScopes: [],
+              organisationKeyIds: [],
+            },
+          ],
+          nextCursor: null,
+        }
+  );
+  render(<view.AccessTransferForm tenantId={v.tenantId} actor={v.actorSub} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'keys.reload' }));
+  await screen.findByText('Target', { selector: 'option' });
+  fireEvent.change(screen.getByLabelText('transfer.source'), { target: { value: 'source' } });
+  fireEvent.click(screen.getByRole('button', { name: 'transfer.find' }));
+  await screen.findByText('keys.errors.SCOPE_CHANGED');
+  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(api.op.mock.calls.some(([op]) => op === 'prepareTransfer')).toBe(false);
+});
+
+it('appends distinct candidates on the next page and removes a deselected conversation from scope', async () => {
+  const row = {
+    employeeSub: 'source',
+    conversationId: v.conversationId,
+    startedAt: '2026-11-01',
+    keyIds: [v.keyId],
+    keyScopes: [{ keyId: v.keyId, organisationKeyId: v.organisationKeyId }],
+    organisationKeyIds: [v.organisationKeyId],
+  };
+  api.people.mockResolvedValue([{ sub: 'target', displayName: 'Target' }]);
+  api.op.mockClear().mockImplementation(async (op: string, options) => {
+    if (op === 'list') return { keys: [{ keyId: v.organisationKeyId, version: 2 }] };
+    if (options.query.get('cursor') === 'next')
+      return { items: [row, { ...row, conversationId: v.transferId }], nextCursor: null };
+    return { items: [row], nextCursor: 'next' };
+  });
+  render(<view.AccessTransferForm tenantId={v.tenantId} actor={v.actorSub} />);
+  await screen.findByText('Target', { selector: 'option' });
+  fireEvent.change(screen.getByLabelText('transfer.source'), { target: { value: 'source' } });
+  fireEvent.click(screen.getByRole('button', { name: 'transfer.find' }));
+  fireEvent.click(await screen.findByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'transfer.more' }));
+  await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(2));
+  const first = screen.getByLabelText(new RegExp(v.conversationId)) as HTMLInputElement;
+  expect(first.checked).toBe(true);
+  fireEvent.click(first);
+  expect(screen.queryByRole('button', { name: 'transfer.preview' })).toBeNull();
+});

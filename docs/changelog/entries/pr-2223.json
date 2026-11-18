@@ -1,0 +1,4 @@
+{
+  "prNumber": 2223,
+  "body": "Die Plugin-Betriebsbereitschaft zeigt bei einem gescheiterten Lifecycle-Vorgang jetzt den übersetzten Hinweis des Plugins mit dem Fehlercode an, zum Beispiel wenn für Smart Speech Flow die Root-Datenbankverbindung fehlt. Hinweise erscheinen nur, wenn das meldende Plugin den Text selbst mitliefert; andernfalls zeigt Studio einen neutralen Hinweis. Ein Hinweis aus einem früheren Lauf wird ausgeblendet, solange ein neuer Lauf aussteht."
+}

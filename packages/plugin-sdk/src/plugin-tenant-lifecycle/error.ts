@@ -6,6 +6,17 @@ import type { PluginTenantLifecycleError } from './types.js';
 
 const errorAllowedKeys = new Set(['code', 'messageKey', 'retry', 'details'] as const);
 const retryAllowedKeys = new Set(['kind', 'retryAfterMs'] as const);
+const messageKeyPattern = /^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)+$/;
+const messageKeyMaxLength = 160;
+
+/**
+ * Accepts only dot-separated translation key paths, so persisted lifecycle message keys
+ * cannot carry free text, markup or upstream payloads.
+ */
+export const isPluginTenantLifecycleMessageKey = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.length <= messageKeyMaxLength &&
+  messageKeyPattern.test(value);
 
 export const definePluginTenantLifecycleError = (
   namespace: string,

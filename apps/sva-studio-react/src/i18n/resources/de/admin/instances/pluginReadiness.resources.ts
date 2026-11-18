@@ -32,6 +32,11 @@ export const pluginReadinessInstancesAdminDEResources = {
     suspend: 'Sperrung',
     reactivate: 'Reaktivierung',
   },
+  lifecycleError: {
+    fallback: 'Dieses Plugin meldet ein Lifecycle-Problem. Ein weiterer Hinweis liegt nicht vor.',
+    code: 'Fehlercode: {{code}}',
+  },
+  checkMessageUnavailable: 'Das Plugin hat einen Hinweis gemeldet, der nicht angezeigt werden kann.',
   activeJob: 'Aktiven Job öffnen',
   activeJobAriaLabel: 'Aktiven Job für Plugin {{pluginId}} öffnen',
 } as const;

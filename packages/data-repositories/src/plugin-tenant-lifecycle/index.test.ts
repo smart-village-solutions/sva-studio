@@ -15,8 +15,9 @@ const row = {
   active_job_id: null,
   readiness_revision: null,
   readiness_checks: [],
-  error_code: null,
-  retry_kind: null,
+  error_code: null as string | null,
+  error_message_key: null as string | null,
+  retry_kind: null as 'terminal' | 'retryable' | null,
   retry_after: null,
   next_recheck_at: '2026-08-30T12:02:00.000Z',
   contract_revision: 'policy:contract',
@@ -206,6 +207,81 @@ describe('plugin tenant lifecycle repository', () => {
     expect(statements[0]?.text).toContain('contract_revision = $9');
     expect(statements[0]?.values[7]).toBe('[{"checkId":"speech.databaseSchema","status":"ready"}]');
     expect(statements[0]?.values[8]).toBe('speech-1:1');
+  });
+
+  it('persists the lifecycle error message key with the fenced failure and maps it back', async () => {
+    const failedRow = {
+      ...row,
+      readiness_status: 'blocked' as const,
+      error_code: 'ssf.root-database-not-configured',
+      error_message_key: 'ssf.errors.rootDatabaseNotConfigured',
+      retry_kind: 'terminal' as const,
+    };
+    const { executor, statements } = createExecutor([failedRow]);
+
+    const transition = await createPluginTenantLifecycleRepository(executor).failLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'ssf',
+      jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+      generation: 2,
+      readinessStatus: 'blocked',
+      errorCode: 'ssf.root-database-not-configured',
+      errorMessageKey: 'ssf.errors.rootDatabaseNotConfigured',
+      retryKind: 'terminal',
+    });
+
+    expect(statements[0]?.text).toContain('error_message_key = $9');
+    expect(statements[0]?.values[8]).toBe('ssf.errors.rootDatabaseNotConfigured');
+    expect(transition).toMatchObject({
+      outcome: 'applied',
+      record: {
+        errorCode: 'ssf.root-database-not-configured',
+        errorMessageKey: 'ssf.errors.rootDatabaseNotConfigured',
+      },
+    });
+  });
+
+  it('stores no message key without one and clears it on every non-plugin transition', async () => {
+    const { executor, statements } = createExecutor();
+    const repository = createPluginTenantLifecycleRepository(executor);
+
+    await repository.failLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+      generation: 2,
+      readinessStatus: 'blocked',
+      errorCode: 'plugin_operation_handler_missing',
+      retryKind: 'terminal',
+    });
+    await repository.requestLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      operation: 'reconcile',
+    });
+    await repository.failUnclaimedLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      generation: 2,
+      readinessStatus: 'blocked',
+      errorCode: 'plugin_tenant_lifecycle_job_creation_failed',
+      retryKind: 'retryable',
+    });
+    await repository.completeLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+      generation: 2,
+      operation: 'readiness',
+      readinessStatus: 'ready',
+      readinessRevision: 'schema:2',
+      readinessChecks: [],
+    });
+
+    expect(statements[0]?.values[8]).toBeNull();
+    for (const statement of statements.slice(1)) {
+      expect(statement.text).toContain('error_message_key = NULL');
+    }
   });
 
   it('distinguishes already applied and conflicting lifecycle transitions', async () => {

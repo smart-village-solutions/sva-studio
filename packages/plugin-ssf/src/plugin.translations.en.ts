@@ -206,7 +206,7 @@ export const en = {
     errors: {
       authorizationReconcileUnavailable: 'SSF permissions could not be reconciled.',
       rootDatabaseNotConfigured:
-        'The SSF database connection is not configured. Complete the configuration and restart reconciliation.',
+        'The SSF root database connection is not configured. Ask platform operations to set SVA_STUDIO_SSF_ROOT_DATABASE_URL and redeploy Studio, then start the reconciliation repair again.',
       tenantInstanceIdInvalid:
         'The tenant ID is invalid. Remove the invalid tenant and recreate it with a lowercase ID.',
       invalidAuthorizationReconcileContext:

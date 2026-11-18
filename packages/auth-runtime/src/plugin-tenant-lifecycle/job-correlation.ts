@@ -6,13 +6,16 @@ import type {
 import {
   createPluginTenantReadinessSnapshot,
   definePluginTenantLifecycleError,
+  isPluginTenantLifecycleMessageKey,
   pluginTenantLifecycleOperations,
   type PluginJobExecutionResult,
   type PluginTenantLifecycleError,
   type PluginTenantLifecycleOperation,
   type PluginTenantLifecycleRegistryEntry,
 } from '@sva/plugin-sdk';
+import { createSdkLogger } from '@sva/server-runtime';
 
+const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
 const lifecycleOperations = new Set<string>(pluginTenantLifecycleOperations);
 const pluginTenantLifecycleDefaultRetryDelayMs = 60_000;
 
@@ -136,11 +139,13 @@ const resolveLifecycleFailureContext = (
 const resolveLifecycleFailure = (
   dependencies: Pick<CorrelationDependencies, 'now'>,
   pluginId: string,
+  job: Pick<StudioJobRecord, 'id' | 'instanceId'>,
   error: StudioJobError,
   reason: 'failed' | 'missing_handler' | 'cancelled'
 ): {
   readonly readinessStatus: 'degraded' | 'blocked';
   readonly errorCode: string;
+  readonly errorMessageKey?: string;
   readonly retryKind: 'terminal' | 'retryable';
   readonly retryAfter?: string;
 } => {
@@ -162,9 +167,27 @@ const resolveLifecycleFailure = (
       pluginId,
       pluginError as PluginTenantLifecycleError
     );
+    // Only a key path is persisted; plugin ownership of the key is verified by the rendering host.
+    const keyAccepted = isPluginTenantLifecycleMessageKey(lifecycleError.messageKey);
+    if (!keyAccepted) {
+      // The rejected value may be free text, so only its owner and error code are logged.
+      logger.warn('plugin_tenant_lifecycle_message_key_rejected', {
+        operation: 'plugin_tenant_lifecycle_fail',
+        instance_id: job.instanceId,
+        job_id: job.id,
+        plugin_id: pluginId,
+        error_code: lifecycleError.code,
+      });
+    }
+    const messageKey = keyAccepted ? { errorMessageKey: lifecycleError.messageKey } : {};
     // The worker's final classification includes its authoritative retry budget.
     if (error.category === 'permanent') {
-      return { readinessStatus: 'blocked', errorCode: lifecycleError.code, retryKind: 'terminal' };
+      return {
+        readinessStatus: 'blocked',
+        errorCode: lifecycleError.code,
+        ...messageKey,
+        retryKind: 'terminal',
+      };
     }
     const retryAfterMs =
       lifecycleError.retry.kind === 'retryable'
@@ -179,6 +202,7 @@ const resolveLifecycleFailure = (
     return {
       readinessStatus: lifecycleError.retry.kind === 'retryable' ? 'degraded' : 'blocked',
       errorCode: lifecycleError.code,
+      ...messageKey,
       retryKind: lifecycleError.retry.kind,
       ...(retryAfter ? { retryAfter } : {}),
     };
@@ -244,7 +268,13 @@ export const createPluginTenantLifecycleJobCorrelation = (
       return;
     }
     const failure = context.contractMatches
-      ? resolveLifecycleFailure(dependencies, context.pluginId, input.error, input.reason)
+      ? resolveLifecycleFailure(
+          dependencies,
+          context.pluginId,
+          input.job,
+          input.error,
+          input.reason
+        )
       : {
           readinessStatus: 'blocked' as const,
           errorCode: 'plugin_tenant_lifecycle_job_contract_mismatch',

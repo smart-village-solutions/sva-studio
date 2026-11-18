@@ -54,6 +54,7 @@ SET access_state = CASE
     claimed_generation = NULL,
     active_job_id = NULL,
     error_code = NULL,
+    error_message_key = NULL,
     retry_kind = NULL,
     retry_after = NULL,
     next_recheck_at = NOW() + INTERVAL '120 seconds',
@@ -105,7 +106,7 @@ const createFailUnclaimedLifecycle =
       lifecycleStatement(
         `
 UPDATE iam.instance_plugin_lifecycle
-SET readiness_status = $4, error_code = $5, retry_kind = $6,
+SET readiness_status = $4, error_code = $5, error_message_key = NULL, retry_kind = $6,
     retry_after = $7::timestamptz, completed_at = NOW(), updated_at = NOW()
 WHERE instance_id = $1 AND plugin_id = $2 AND desired_generation = $3
   AND claimed_generation IS NULL AND active_job_id IS NULL
@@ -139,7 +140,7 @@ SET access_state = CASE WHEN $5 = 'suspend' THEN 'suspended'
       WHEN $5 = 'reactivate' THEN 'suspended' ELSE access_state END,
     readiness_status = $6, completed_generation = $4, claimed_generation = NULL,
     active_job_id = NULL, readiness_revision = $7, readiness_checks = $8::jsonb,
-    error_code = NULL, retry_kind = NULL, retry_after = NULL,
+    error_code = NULL, error_message_key = NULL, retry_kind = NULL, retry_after = NULL,
     next_recheck_at = CASE WHEN $6 = 'pending' THEN NOW() + INTERVAL '120 seconds' ELSE NULL END,
     contract_revision = $9,
     completed_at = NOW(), updated_at = NOW()
@@ -175,6 +176,7 @@ const createFailLifecycle =
 UPDATE iam.instance_plugin_lifecycle
 SET readiness_status = $5, claimed_generation = NULL, active_job_id = NULL,
     error_code = $6, retry_kind = $7, retry_after = $8::timestamptz,
+    error_message_key = $9,
     completed_at = NOW(), updated_at = NOW()
 WHERE instance_id = $1 AND plugin_id = $2 AND active_job_id = $3::uuid
   AND claimed_generation = $4 AND desired_generation = $4
@@ -189,6 +191,7 @@ RETURNING *;
             input.errorCode,
             input.retryKind,
             input.retryAfter ?? null,
+            input.errorMessageKey ?? null,
           ]
         )
       )

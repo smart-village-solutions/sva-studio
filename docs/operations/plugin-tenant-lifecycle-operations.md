@@ -131,6 +131,9 @@ Der Fehler `ssf.root-database-not-configured` bezeichnet eine fehlende
 SSF-Reconcile-Auftrag terminal; automatische Wiederholungen können die fehlende
 Konfiguration nicht herstellen. Vorübergehende Datenbank- oder Netzwerkfehler
 bleiben davon unabhängig wiederholbar. Die SSF-Readiness bleibt gesperrt.
+Die Plugin-Readiness-Karte in der Modulverwaltung zeigt dazu den übersetzten
+SSF-Hinweis auf die fehlende Root-Datenbankverbindung und darunter den
+Fehlercode; Verbindungswerte oder Secrets werden dort nicht angezeigt.
 
 Zuerst prüfen, ob SSF auf der betroffenen Installation vorgesehen ist. Falls ja,
 Plugin-Datenbank und Verbindungswerte über den regulären Rollout bereitstellen

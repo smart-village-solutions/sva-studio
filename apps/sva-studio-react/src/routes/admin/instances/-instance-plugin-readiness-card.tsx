@@ -11,6 +11,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { resolveStudioPluginOwnedMessage } from '../../../lib/plugins';
 
 const statusVariants = {
   pending: 'outline',
@@ -59,6 +60,44 @@ const uniqueRepairOperations = (
       repairableChecks.flatMap((check) => (check.repairOperation ? [check.repairOperation] : []))
     ),
   ];
+};
+
+const technicalErrorCodePattern = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/;
+
+const resolveReadinessMessage = (pluginId: string, key: string | undefined): string | undefined => {
+  const message = resolveStudioPluginOwnedMessage(pluginId, key);
+  return message === key ? undefined : message;
+};
+
+const PluginLifecycleErrorNotice = ({
+  plugin,
+}: {
+  readonly plugin: PluginTenantReadinessReadModel;
+}) => {
+  // A pending generation re-runs the lifecycle; its predecessor's error is no longer current.
+  if (!plugin.error || (plugin.status !== 'blocked' && plugin.status !== 'degraded')) return null;
+  const message =
+    resolveReadinessMessage(plugin.pluginId, plugin.error.messageKey) ??
+    t('admin.instances.pluginReadiness.lifecycleError.fallback');
+  return (
+    <Alert
+      role="status"
+      className={
+        plugin.status === 'blocked'
+          ? 'border-destructive/40 bg-destructive/10 text-destructive'
+          : 'border-border bg-muted text-foreground'
+      }
+    >
+      <AlertDescription className="space-y-1">
+        <p>{message}</p>
+        {technicalErrorCodePattern.test(plugin.error.code) ? (
+          <p className="text-xs">
+            {t('admin.instances.pluginReadiness.lifecycleError.code', { code: plugin.error.code })}
+          </p>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  );
 };
 
 type PluginReadinessCardProps = {
@@ -130,13 +169,18 @@ export const PluginReadinessCard = ({
               </Badge>
             </div>
 
+            <PluginLifecycleErrorNotice plugin={plugin} />
+
             <ul className="space-y-2">
               {plugin.checks.map((check) => (
                 <li key={check.checkId} className="flex items-start justify-between gap-3 text-sm">
                   <div>
                     <p className="text-foreground">{t(check.titleKey)}</p>
                     {check.messageKey ? (
-                      <p className="text-xs text-muted-foreground">{t(check.messageKey)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {resolveReadinessMessage(plugin.pluginId, check.messageKey) ??
+                          t('admin.instances.pluginReadiness.checkMessageUnavailable')}
+                      </p>
                     ) : null}
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">

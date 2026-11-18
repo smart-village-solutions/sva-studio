@@ -7,6 +7,10 @@ import type {
 } from '@sva/data-repositories';
 import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 
+const loggerMock = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }));
+
+vi.mock('@sva/server-runtime', () => ({ createSdkLogger: () => loggerMock }));
+
 import {
   createPluginTenantLifecycleJobCorrelation,
   pluginTenantLifecycleJobInputKey,
@@ -314,6 +318,121 @@ describe('plugin tenant lifecycle job correlation', () => {
         retryKind: 'retryable',
         retryAfter: '2026-08-30T12:06:00.000Z',
       })
+    );
+  });
+
+  it('persists the message key of a terminal plugin error without changing its classification', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        message: 'speech_database_not_configured',
+        details: {
+          plugin: {
+            code: 'speech.database-not-configured',
+            messageKey: 'speech.errors.databaseNotConfigured',
+            retry: { kind: 'terminal' },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      jobId: job.id,
+      generation: 3,
+      readinessStatus: 'blocked',
+      errorCode: 'speech.database-not-configured',
+      errorMessageKey: 'speech.errors.databaseNotConfigured',
+      retryKind: 'terminal',
+    });
+  });
+
+  it('keeps the retry classification and deadline when it persists a retryable message key', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'retryable',
+        details: {
+          plugin: {
+            code: 'speech.databaseUnavailable',
+            messageKey: 'speech.errors.databaseUnavailable',
+            retry: { kind: 'retryable', retryAfterMs: 5_000 },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'degraded',
+        errorCode: 'speech.databaseUnavailable',
+        errorMessageKey: 'speech.errors.databaseUnavailable',
+        retryKind: 'retryable',
+        retryAfter: '2026-08-30T12:05:05.000Z',
+      })
+    );
+  });
+
+  it('drops a message key that is free text but keeps the validated error classification', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        details: {
+          plugin: {
+            code: 'speech.databaseUnavailable',
+            messageKey: 'Run psql postgres://admin:secret@db and retry',
+            retry: { kind: 'terminal' },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'blocked',
+        errorCode: 'speech.databaseUnavailable',
+        retryKind: 'terminal',
+      })
+    );
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.not.objectContaining({ errorMessageKey: expect.anything() })
+    );
+    expect(loggerMock.warn).toHaveBeenCalledWith('plugin_tenant_lifecycle_message_key_rejected', {
+      operation: 'plugin_tenant_lifecycle_fail',
+      instance_id: 'tenant-a',
+      job_id: job.id,
+      plugin_id: 'speech',
+      error_code: 'speech.databaseUnavailable',
+    });
+    expect(JSON.stringify(loggerMock.warn.mock.calls)).not.toContain('secret');
+  });
+
+  it('persists no message key for host-side lifecycle failures', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: { code: 'plugin_operation_handler_missing', category: 'permanent' },
+      reason: 'missing_handler',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.not.objectContaining({ errorMessageKey: expect.anything() })
     );
   });
 

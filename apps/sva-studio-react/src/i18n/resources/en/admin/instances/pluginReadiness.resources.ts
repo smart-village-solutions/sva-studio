@@ -32,6 +32,11 @@ export const pluginReadinessInstancesAdminENResources = {
     suspend: 'suspension',
     reactivate: 'reactivation',
   },
+  lifecycleError: {
+    fallback: 'This plugin reported a lifecycle problem. No further hint is available.',
+    code: 'Error code: {{code}}',
+  },
+  checkMessageUnavailable: 'The plugin reported a hint that cannot be displayed.',
   activeJob: 'Open active job',
   activeJobAriaLabel: 'Open active job for plugin {{pluginId}}',
 } as const;

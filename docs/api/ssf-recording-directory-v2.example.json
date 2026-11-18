@@ -3,6 +3,20 @@
   "tenantId": "synthetic-tenant-a",
   "users": [
     {
+      "sub": "synthetic-administrator",
+      "displayName": "Synthetic Administrator",
+      "permissions": [
+        "ssf.configuration.tenant.manage",
+        "ssf.recording.access.transfer",
+        "ssf.recording.recovery.custodian",
+        "ssf.recording.request",
+        "ssf.recording.review",
+        "ssf.recording.review.sworn",
+        "ssf.recording.supervise"
+      ],
+      "languages": []
+    },
+    {
       "sub": "synthetic-custodian",
       "displayName": "Synthetic Custodian",
       "permissions": [
@@ -25,5 +39,5 @@
       ]
     }
   ],
-  "directoryRevision": "sha256:2b426ee5df85175252a376ce5721d98d06cec1f3003817df5e14146664d30826"
+  "directoryRevision": "sha256:06eb28ddc72c16f430c771bba92bbcd802b464d09c9fc5e5e619a4b69f2bef91"
 }

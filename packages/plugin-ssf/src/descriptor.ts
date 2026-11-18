@@ -1,3 +1,4 @@
+import { operationSchemas, pluginRecordingBase } from './organisation-key-contracts.js';
 import {
   definePluginActions,
   definePluginModuleIamContract,
@@ -12,6 +13,7 @@ import {
 } from './content-v2-admin-contracts.js';
 import {
   SSF_RECORDING_PERMISSION_IDS,
+  SSF_TRANSFER_PERMISSION,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_V2_ENDPOINT_PATH,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
@@ -41,7 +43,40 @@ const tenantManageAccess = {
   actions: { mode: 'allOf', values: [SSF_ADMIN_ACTIONS.tenantManage] },
 } as const;
 
+const transferAccess = {
+  kind: 'tenant',
+  moduleId: 'ssf',
+  actions: { mode: 'allOf', values: [SSF_TRANSFER_PERMISSION] },
+} as const;
+
+const keyReadAccess = {
+  kind: 'tenant',
+  moduleId: 'ssf',
+  actions: { mode: 'anyOf', values: [SSF_ADMIN_ACTIONS.tenantManage, SSF_TRANSFER_PERMISSION] },
+} as const;
+const keyPages = [
+  {
+    page: 'organisation-keys',
+    actionId: SSF_ADMIN_ACTIONS.tenantManage,
+    accessRequirement: tenantManageAccess,
+  },
+  {
+    page: 'access-transfers',
+    actionId: SSF_TRANSFER_PERMISSION,
+    accessRequirement: transferAccess,
+  },
+] as const;
 const actions = definePluginActions('ssf', [
+  {
+    id: 'ssf.organisation-keys.inspect',
+    titleKey: 'ssf.administration.pages.organisation-keys',
+    accessRequirement: keyReadAccess,
+  },
+  {
+    id: SSF_TRANSFER_PERMISSION,
+    titleKey: 'ssf.permissions.recording_access_transfer',
+    accessRequirement: transferAccess,
+  },
   {
     id: SSF_ADMIN_ACTIONS.systemRead,
     titleKey: 'ssf.permissions.systemRead',
@@ -77,7 +112,13 @@ const tenantPermissionIds = permissions.map(({ id }) => id);
 const moduleIam = definePluginModuleIamContract('ssf', {
   moduleId: 'ssf',
   permissionIds: tenantPermissionIds,
-  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds }],
+  systemRoles: [
+    {
+      roleName: 'system_admin',
+      permissionIds: tenantPermissionIds.filter((id) => id !== SSF_TRANSFER_PERMISSION),
+    },
+  ],
+  systemAdminPermissionExclusions: [SSF_TRANSFER_PERMISSION],
 });
 
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;
@@ -121,6 +162,18 @@ export const ssfPlugin = {
   },
   translations: ssfPluginTranslations,
   routes: [
+    ...keyPages.map(({ page, actionId, accessRequirement }) => ({
+      id: `ssf-tenant-${page}` as const,
+      path: `/plugins/ssf/${page}`,
+      editorLeaveGuard: true as const,
+      actionId,
+      accessRequirement,
+      documentation: {
+        kind: 'page' as const,
+        id: `ssf.tenant-${page}`,
+        pageType: 'setup' as const,
+      },
+    })),
     ...(['overview', 'appearance', 'languages', 'recordings', 'feedback'] as const).map((page) => ({
       id: `ssf-tenant-${page}` as const,
       path: `/plugins/ssf/${page}`,
@@ -149,6 +202,15 @@ export const ssfPlugin = {
     })),
   ],
   navigation: [
+    ...keyPages.map(({ page, actionId, accessRequirement }) => ({
+      id: `ssf.tenant-navigation-${page}`,
+      to: `/plugins/ssf/${page}`,
+      titleKey: `ssf.administration.pages.${page}`,
+      section: 'applications' as const,
+      group: { id: 'ssf.application', titleKey: 'ssf.navigation.tenant' },
+      actionId,
+      accessRequirement,
+    })),
     ...(['overview', 'appearance', 'languages', 'recordings', 'feedback'] as const).map((page) => ({
       id: `ssf.tenant-navigation-${page}`,
       to: `/plugins/ssf/${page}`,
@@ -169,6 +231,30 @@ export const ssfPlugin = {
     })),
   ],
   serverHandlers: [
+    ...Object.values(operationSchemas).map((operation) => ({
+      id: operation.id,
+      path: pluginRecordingBase + operation.path,
+      method: operation.method,
+      actionId:
+        operation.id === 'ssf.organisation-keys.read'
+          ? 'ssf.organisation-keys.inspect'
+          : operation.id.startsWith('ssf.access-transfer.')
+            ? SSF_TRANSFER_PERMISSION
+            : SSF_ADMIN_ACTIONS.tenantManage,
+      accessRequirement:
+        operation.id === 'ssf.organisation-keys.read'
+          ? keyReadAccess
+          : operation.id.startsWith('ssf.access-transfer.')
+            ? transferAccess
+            : tenantManageAccess,
+    })),
+    {
+      id: 'ssf.access-transfer.people',
+      path: pluginRecordingBase + '/access-transfer/people',
+      method: 'GET',
+      actionId: SSF_TRANSFER_PERMISSION,
+      accessRequirement: transferAccess,
+    },
     {
       id: SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
       path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,

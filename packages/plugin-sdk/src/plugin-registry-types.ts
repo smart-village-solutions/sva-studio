@@ -22,9 +22,16 @@ export type PluginServerHandlerRegistryEntry = PluginServerHandlerDefinition & {
   readonly ownerPluginId: string;
 };
 
+export type SsfRecordingGatewayRequest = Readonly<{
+  path: string;
+  method: 'GET' | 'POST' | 'DELETE';
+  body?: string;
+}>;
+
 type PluginUserServerHandlerExecutionContext = Readonly<{
   request: Request;
   sessionId: string;
+  forwardSsfRecordingRequest?: (operation: SsfRecordingGatewayRequest) => Promise<Response>;
   pluginId: string;
   handlerId: string;
   scope: 'platform' | 'tenant';
@@ -66,8 +73,9 @@ export type PluginServerExecutionHandler = (
   context: PluginServerHandlerExecutionContext
 ) => Promise<Response> | Response;
 
-export type PluginServerHandlerModuleFactory = () =>
-  Readonly<Record<string, PluginServerExecutionHandler>>;
+export type PluginServerHandlerModuleFactory = () => Readonly<
+  Record<string, PluginServerExecutionHandler>
+>;
 
 export type PluginAuditEventRegistryEntry = {
   readonly eventType: string;

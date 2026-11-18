@@ -1,5 +1,8 @@
 # Change: Deliver Studio administration for recording policy and identity
 
+Die am 18. November 2026 zusätzlich genehmigte SSF-Regel `remove-sensitive-action-reauthentication` ersetzt die früheren Aussagen zur aktionsbezogenen MFA bei Aufzeichnungen. Optionale und verpflichtende MFA gelten weiterhin beim Mandantenlogin. Frühere Abnahmeprotokolle dokumentieren den damaligen Stand.
+
+
 ## Why
 
 SSF already consumes recording policy, legal wording and recording-directory responses, but Studio must administer and produce them. The confirmed decisions add a 30-day retention default with installation and tenant configuration and optional ordinary-login MFA managed through Studio and Keycloak.

@@ -2,7 +2,7 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { KeycloakAdminClient } from './core.js';
 
@@ -36,14 +36,17 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
 
   const refreshAdminToken = async (): Promise<void> => {
     const response = await fetch(`${base}/realms/master/protocol/openid-connect/token`, {
-      method: 'POST', body: new URLSearchParams({
-        client_id: 'admin-cli', grant_type: 'password',
+      method: 'POST',
+      body: new URLSearchParams({
+        client_id: 'admin-cli',
+        grant_type: 'password',
         username: process.env.KEYCLOAK_MFA_TEST_ADMIN_USERNAME ?? 'recording-test-admin',
         password: process.env.KEYCLOAK_MFA_TEST_ADMIN_PASSWORD ?? 'recording-test-password',
       }),
     });
-    if (!response.ok) throw new Error(`Disposable bootstrap authentication failed: ${response.status}`);
-    const token = await response.json() as { access_token: string; expires_in: number };
+    if (!response.ok)
+      throw new Error(`Disposable bootstrap authentication failed: ${response.status}`);
+    const token = (await response.json()) as { access_token: string; expires_in: number };
     adminToken = token.access_token;
     adminExpiresAt = Date.now() + Math.max(1, token.expires_in - 10) * 1000;
   };
@@ -69,13 +72,19 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
   };
 
   const authorize = async (
-    current: Session, realm: string, extra: Record<string, string> = {},
+    current: Session,
+    realm: string,
+    extra: Record<string, string> = {}
   ): Promise<string> => {
     const verifier = randomBytes(32).toString('base64url');
     const query = new URLSearchParams({
-      client_id: 'ssf-frontend', redirect_uri: callback, response_type: 'code', scope: 'openid',
+      client_id: 'ssf-frontend',
+      redirect_uri: callback,
+      response_type: 'code',
+      scope: 'openid',
       code_challenge: createHash('sha256').update(verifier).digest('base64url'),
-      code_challenge_method: 'S256', ...extra,
+      code_challenge_method: 'S256',
+      ...extra,
     });
     await current.page.goto(`${base}/realms/${realm}/protocol/openid-connect/auth?${query}`);
     return verifier;
@@ -84,14 +93,14 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
   const enterPassword = async ({ page, username }: Session): Promise<void> => {
     await expect.poll(() => page.locator('#password').isVisible()).toBe(true);
     const name = page.locator('#username');
-    if (await name.isVisible() && await name.isEditable()) await name.fill(username);
+    if ((await name.isVisible()) && (await name.isEditable())) await name.fill(username);
     await page.locator('#password').fill(password);
     await page.locator('#kc-login').click();
   };
 
   const otp = async (username: string, secret: string): Promise<string> => {
     const tick = Math.floor(Date.now() / 30_000);
-    const remaining = 30_000 - Date.now() % 30_000;
+    const remaining = 30_000 - (Date.now() % 30_000);
     if (usedTicks.get(username) === tick || remaining < 1000) {
       await new Promise((resolve) => setTimeout(resolve, remaining + 200));
     }
@@ -119,27 +128,50 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await current.page.locator('#kc-login').click();
   };
 
-  const claims = async (
-    current: Session, realm: string, verifier: string, clientId = 'ssf-frontend',
-  ): Promise<Claims> => {
+  const tokensForCode = async (
+    current: Session,
+    realm: string,
+    verifier: string,
+    clientId = 'ssf-frontend',
+    clientSecret?: string
+  ) => {
     try {
       await current.page.waitForURL(isCallback, { timeout: 20_000 });
     } catch {
-      const fields = await current.page.locator('input').evaluateAll((elements) =>
-        elements.map((element) => ({ id: element.id, type: element.type })));
-      throw new Error(`Disposable authorization did not complete at ${new URL(current.page.url()).pathname}; fields=${JSON.stringify(fields)}`);
+      const fields = await current.page
+        .locator('input')
+        .evaluateAll((elements) =>
+          elements.map((element) => ({ id: element.id, type: element.type }))
+        );
+      throw new Error(
+        `Disposable authorization did not complete at ${new URL(current.page.url()).pathname}; fields=${JSON.stringify(fields)}`
+      );
     }
     const code = new URL(current.page.url()).searchParams.get('code');
     if (!code) throw new Error('Disposable authorization produced no code');
     const response = await fetch(`${base}/realms/${realm}/protocol/openid-connect/token`, {
-      method: 'POST', body: new URLSearchParams({
-        grant_type: 'authorization_code', client_id: clientId, redirect_uri: callback,
-        code, code_verifier: verifier,
+      method: 'POST',
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        redirect_uri: callback,
+        code,
+        code_verifier: verifier,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
       }),
     });
     if (!response.ok) throw new Error(`Disposable token exchange failed: ${response.status}`);
-    const token = await response.json() as { access_token: string };
-    const payload = token.access_token.split('.')[1];
+    return (await response.json()) as { access_token: string; refresh_token: string };
+  };
+  const tokenForCode = async (...args: Parameters<typeof tokensForCode>) =>
+    (await tokensForCode(...args)).access_token;
+  const claims = async (
+    current: Session,
+    realm: string,
+    verifier: string,
+    clientId = 'ssf-frontend'
+  ): Promise<Claims> => {
+    const payload = (await tokenForCode(current, realm, verifier, clientId)).split('.')[1];
     if (!payload) throw new Error('Disposable access token is malformed');
     return JSON.parse(Buffer.from(payload, 'base64url').toString()) as Claims;
   };
@@ -154,7 +186,10 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await refreshAdminToken();
     const serviceSecret = randomBytes(32).toString('base64url');
     await api('POST', 'master/clients', {
-      clientId: tag, secret: serviceSecret, enabled: true, publicClient: false,
+      clientId: tag,
+      secret: serviceSecret,
+      enabled: true,
+      publicClient: false,
       serviceAccountsEnabled: true,
     });
     const service = await api<{ id: string }[]>('GET', `master/clients?clientId=${tag}`);
@@ -181,30 +216,47 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
       createdRealms.push(realm);
       for (const clientId of ['studio-client', 'ssf-frontend']) {
         await api('POST', `${realm}/clients`, {
-          clientId, enabled: true, publicClient: true, standardFlowEnabled: true,
-          redirectUris: [callback], webOrigins: [new URL(callback).origin],
+          clientId,
+          enabled: true,
+          publicClient: true,
+          standardFlowEnabled: true,
+          redirectUris: [callback],
+          webOrigins: [new URL(callback).origin],
         });
       }
       for (const username of ['ordinary', 'voluntary']) {
         await api('POST', `${realm}/users`, {
-          username, enabled: true, firstName: 'Synthetic', lastName: 'Tester',
-          email: `${username}@example.org`, emailVerified: true,
+          username,
+          enabled: true,
+          firstName: 'Synthetic',
+          lastName: 'Tester',
+          email: `${username}@example.org`,
+          emailVerified: true,
           credentials: [{ type: 'password', value: password, temporary: false }],
         });
       }
     }
-    const makeClient = (realm: string) => new KeycloakAdminClient({
-      baseUrl: base, realm, adminRealm: 'master', clientId: tag, clientSecret: serviceSecret,
-    });
+    const makeClient = (realm: string) =>
+      new KeycloakAdminClient({
+        baseUrl: base,
+        realm,
+        adminRealm: 'master',
+        clientId: tag,
+        clientSecret: serviceSecret,
+      });
     clientA = makeClient(realmA);
     clientB = makeClient(realmB);
     for (const client of [clientA, clientB]) {
-      await client.ensureLoginMfaPolicy({ mode: 'optional', clientIds: ['studio-client', 'ssf-frontend'] });
+      await client.ensureLoginMfaPolicy({
+        mode: 'optional',
+        clientIds: ['studio-client', 'ssf-frontend'],
+      });
     }
     browser = await chromium.launch({
       headless: true,
       ...(process.env.KEYCLOAK_MFA_TEST_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.KEYCLOAK_MFA_TEST_BROWSER_EXECUTABLE } : {}),
+        ? { executablePath: process.env.KEYCLOAK_MFA_TEST_BROWSER_EXECUTABLE }
+        : {}),
       args: ['--no-sandbox'],
     });
   }, 120_000);
@@ -223,7 +275,7 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     if (listener?.listening) {
       listener.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
-        listener.close((error) => error ? reject(error) : resolve());
+        listener.close((error) => (error ? reject(error) : resolve()));
       });
     }
     if (cleaned.some((result) => result.status === 'rejected')) {
@@ -231,7 +283,266 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     }
   }, 30_000);
 
-  it('enforces voluntary/required factors, preserves SSO and certifies fresh step-up', async () => {
+  it.skipIf(process.env.RUN_SSF_EXCHANGE_INTEGRATION !== '1')(
+    'uses the verified tenant session for recording actions and denies ended sessions and other realms',
+    async () => {
+      const oldMfa = process.env.SSF_RECORDING_JOURNEY_AGED_MFA === '1';
+      const omitAcr = process.env.SSF_RECORDING_JOURNEY_OMIT_ACR === '1';
+      const clientId = 'recording-studio',
+        secret = randomBytes(30).toString('hex'),
+        instanceId = 'fixture-' + randomUUID();
+      const fixturePermissions = [
+        'ssf.configuration.tenant.manage',
+        'ssf.recording.access.transfer',
+      ];
+      for (const [realm, client] of [
+        [realmA, clientA],
+        [realmB, clientB],
+      ] as const) {
+        await api('POST', realm + '/clients', {
+          clientId,
+          secret,
+          publicClient: false,
+          standardFlowEnabled: true,
+          enabled: true,
+          redirectUris: [callback],
+          attributes: {
+            managed_by: 'studio',
+            instance_id: instanceId,
+            artifact_key: 'login_client',
+          },
+        });
+        await client.ensureSsfRecordingExchange(clientId, instanceId);
+        await client.ensureSsfExchangeAssuranceMapper(clientId, 'ssf-frontend');
+        await client.ensureAdminOnlyUserProfileAttributes([
+          { name: 'studio_tenant_id', multivalued: false },
+          { name: 'ssf_permissions', multivalued: true },
+        ]);
+        for (const name of ['studio_tenant_id', 'ssf_permissions'])
+          await client.ensureUserAttributeProtocolMapper({
+            clientId,
+            name: 'studio-' + name.replaceAll('_', '-'),
+            userAttribute: name,
+            claimName: name,
+            exclusiveClaim: true,
+            multivalued: name === 'ssf_permissions',
+          });
+        await client.ensureAudienceProtocolMapper({
+          clientId,
+          name: 'studio-ssf-recording-audience',
+          audience: 'ssf-frontend',
+        });
+        await client.ensureLoginMfaPolicy({
+          mode: oldMfa && realm === realmA ? 'required' : 'optional',
+          clientIds: [clientId, 'ssf-frontend', 'studio-client'],
+        });
+      }
+      if (omitAcr) {
+        const clients = await api<{ id: string }[]>(
+          'GET',
+          realmA + '/clients?clientId=' + clientId
+        );
+        const scopes = await api<{ id: string; name: string }[]>(
+          'GET',
+          realmA + '/clients/' + clients[0]!.id + '/default-client-scopes'
+        );
+        const acrScope = scopes.find((scope) => scope.name === 'acr');
+        if (!acrScope) throw new Error('Disposable client does not expose the default ACR scope');
+        await api(
+          'DELETE',
+          realmA + '/clients/' + clients[0]!.id + '/default-client-scopes/' + acrScope.id
+        );
+        const mappers = await clientA.listClientProtocolMappers(clientId);
+        const acr = mappers.find((mapper) => mapper.name === 'studio-login-mfa-acr');
+        if (!acr?.id) throw new Error('Disposable client has no managed ACR mapper');
+        await api(
+          'DELETE',
+          realmA + '/clients/' + clients[0]!.id + '/protocol-mappers/models/' + acr.id
+        );
+      }
+      const username = 'exchange-user';
+      await api('POST', realmA + '/users', {
+        username,
+        firstName: 'Fixture',
+        lastName: 'User',
+        email: username + '@example.org',
+        emailVerified: true,
+        enabled: true,
+        attributes: {
+          studio_tenant_id: [instanceId],
+          ssf_permissions: fixturePermissions,
+        },
+        credentials: [{ type: 'password', value: password, temporary: false }],
+      });
+      const current = await session(username);
+      const verifier = await authorize(current, realmA, {
+        client_id: clientId,
+      });
+      await enterPassword(current);
+      if (oldMfa) await enroll(current);
+      const tokens = await tokensForCode(current, realmA, verifier, clientId, secret);
+      let source = tokens.access_token;
+      const refresh = () =>
+        fetch(base + '/realms/' + realmA + '/protocol/openid-connect/token', {
+          method: 'POST',
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: clientId,
+            client_secret: secret,
+            refresh_token: tokens.refresh_token,
+          }),
+        });
+      const decode = (token: string) =>
+        JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString()) as Record<
+          string,
+          unknown
+        >;
+      const initial = decode(source);
+      expect(initial).toMatchObject({
+        azp: clientId,
+        studio_tenant_id: instanceId,
+        ssf_permissions: fixturePermissions,
+      });
+      expect(initial.acr).toBe(omitAcr ? undefined : oldMfa ? 'mfa' : 'pwd');
+      expect(initial.auth_time).toBeTypeOf('number');
+      const exchange = (realm: string, audience: string) =>
+        fetch(base + '/realms/' + realm + '/protocol/openid-connect/token', {
+          method: 'POST',
+          body: new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+            client_id: clientId,
+            client_secret: secret,
+            subject_token: source,
+            subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+            requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+            audience,
+          }),
+        });
+      if (oldMfa) {
+        const waitUntil =
+          Math.max(Number(initial.exp), Number(initial.auth_time) + 301) * 1000 + 200;
+        await new Promise((resolve) => setTimeout(resolve, Math.max(0, waitUntil - Date.now())));
+        expect((await exchange(realmA, 'ssf-frontend')).ok).toBe(false);
+        const refreshed = await refresh();
+        expect(refreshed.status).toBe(200);
+        const renewed = (await refreshed.json()) as typeof tokens;
+        tokens.refresh_token = renewed.refresh_token;
+        source = renewed.access_token;
+        expect(decode(source)).toMatchObject({
+          sid: initial.sid,
+          sub: initial.sub,
+          auth_time: initial.auth_time,
+          acr: 'mfa',
+        });
+        expect(Date.now() / 1000 - Number(initial.auth_time)).toBeGreaterThan(300);
+      }
+      const response = await exchange(realmA, 'ssf-frontend');
+      expect(response.status).toBe(200);
+      const result = decode(((await response.json()) as { access_token: string }).access_token);
+      expect(result).toMatchObject({
+        sub: initial.sub,
+        sid: initial.sid,
+        iss: initial.iss,
+        azp: clientId,
+        auth_time: initial.auth_time,
+        aud: 'ssf-frontend',
+        studio_tenant_id: instanceId,
+        ssf_permissions: fixturePermissions,
+      });
+      expect(result.acr).toBe(initial.acr);
+      expect((await exchange(realmB, 'ssf-frontend')).ok).toBe(false);
+      expect((await exchange(realmA, 'unprovisioned-audience')).ok).toBe(false);
+      const directory = process.env.SSF_RECORDING_JOURNEY_DIRECTORY,
+        seed = process.env.SSF_RECORDING_JOURNEY_SEED;
+      if (directory && seed) {
+        const otherTenant = 'fixture-' + randomUUID();
+        await api('POST', realmB + '/users', {
+          username,
+          firstName: 'Fixture',
+          lastName: 'User',
+          email: username + '@example.org',
+          emailVerified: true,
+          enabled: true,
+          attributes: { studio_tenant_id: [otherTenant], ssf_permissions: fixturePermissions },
+          credentials: [{ type: 'password', value: password, temporary: false }],
+        });
+        const other = await session(username),
+          otherVerifier = await authorize(other, realmB, {
+            client_id: clientId,
+          });
+        await enterPassword(other);
+        const otherSource = await tokenForCode(other, realmB, otherVerifier, clientId, secret),
+          otherClaims = decode(otherSource);
+        const { recordingGatewayJourney } =
+          await import('../../../plugin-ssf/tests/recording-gateway-journey.js');
+        const sessions = await import('../redis-session.js'),
+          config = await import('../config.js'),
+          host = await import('../ssf-recording-gateway.js');
+        const sessionStore = vi.spyOn(sessions, 'getSession'),
+          tenantConfig = vi.spyOn(config, 'resolveAuthConfigForInstance');
+        try {
+          await recordingGatewayJourney({
+            tenant: instanceId,
+            actor: String(initial.sub),
+            realm: realmA,
+            otherTenant,
+            otherActor: String(otherClaims.sub),
+            otherRealm: realmB,
+            directory,
+            seed,
+            forward: (which, handlerId, request, operation) => {
+              const sourceToken = which === 'current' ? source : otherSource,
+                claims = which === 'current' ? initial : otherClaims,
+                tenant = which === 'current' ? instanceId : otherTenant;
+              const issuer = String(claims.iss),
+                userId = String(claims.sub);
+              sessionStore.mockResolvedValue({
+                id: 'fixture-session',
+                userId,
+                createdAt: Date.now(),
+                accessToken: sourceToken,
+                auth: {
+                  kind: 'instance',
+                  instanceId: tenant,
+                  issuer,
+                  clientId,
+                  postLogoutRedirectUri: '/',
+                },
+              });
+              tenantConfig.mockResolvedValue({
+                kind: 'instance',
+                instanceId: tenant,
+                issuer,
+                clientId,
+                clientSecret: secret,
+              } as Awaited<ReturnType<typeof config.resolveAuthConfigForInstance>>);
+              return host.forwardSsfRecordingRequest(
+                {
+                  scope: 'tenant',
+                  sessionId: 'fixture-session',
+                  pluginId: 'ssf',
+                  handlerId,
+                  request,
+                  pathParams: {},
+                  actor: { id: userId, instanceId: tenant, roles: [] },
+                },
+                operation
+              );
+            },
+          });
+        } finally {
+          sessionStore.mockRestore();
+          tenantConfig.mockRestore();
+        }
+      }
+      await api('DELETE', realmA + '/sessions/' + String(initial.sid));
+      expect((await exchange(realmA, 'ssf-frontend')).ok).toBe(false);
+      expect((await refresh()).ok).toBe(false);
+    },
+    process.env.SSF_RECORDING_JOURNEY_AGED_MFA === '1' ? 450000 : 90000
+  );
+
+  it('enforces optional and required login factors and preserves SSO', async () => {
     const realm = realmA;
     const ordinary = await session('ordinary');
     let verifier = await authorize(ordinary, realm);
@@ -251,19 +562,10 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await enterOtp(voluntary, secret);
     await claims(voluntary, realm, verifier);
 
-    const stepUpStarted = Math.floor(Date.now() / 1000);
-    verifier = await authorize(voluntary, realm, { acr_values: 'mfa', max_age: '0' });
-    await enterPassword(voluntary);
-    await enterOtp(voluntary, secret);
-    const fresh = await claims(voluntary, realm, verifier);
-    expect(fresh.acr).toBe('mfa');
-    expect(fresh.auth_time).toBeTypeOf('number');
-    if (typeof fresh.auth_time !== 'number') throw new Error('MFA token has no authentication time');
-    expect(fresh.auth_time).toBeGreaterThanOrEqual(stepUpStarted - 1);
-    expect(Math.floor(Date.now() / 1000) - fresh.auth_time).toBeGreaterThanOrEqual(-60);
-    expect(Math.floor(Date.now() / 1000) - fresh.auth_time).toBeLessThanOrEqual(300);
-
-    await clientA.ensureLoginMfaPolicy({ mode: 'required', clientIds: ['studio-client', 'ssf-frontend'] });
+    await clientA.ensureLoginMfaPolicy({
+      mode: 'required',
+      clientIds: ['studio-client', 'ssf-frontend'],
+    });
     // The ordinary user's existing password-only SSO cookie must not bypass enrollment.
     verifier = await authorize(ordinary, realm);
     if (await ordinary.page.locator('#password').isVisible()) await enterPassword(ordinary);
@@ -272,8 +574,12 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     expect(ordinarySecret.length).toBeGreaterThan(0);
 
     await api('POST', `${realm}/users`, {
-      username: 'new-staff', enabled: true, firstName: 'Synthetic', lastName: 'New tester',
-      email: 'new-staff@example.org', emailVerified: true,
+      username: 'new-staff',
+      enabled: true,
+      firstName: 'Synthetic',
+      lastName: 'New tester',
+      email: 'new-staff@example.org',
+      emailVerified: true,
       credentials: [{ type: 'password', value: password, temporary: false }],
     });
     const newStaff = await session('new-staff');
@@ -286,7 +592,8 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     const staff = (await api<User[]>('GET', `${realm}/users?username=new-staff`))[0];
     if (!staff) throw new Error('Disposable staff user not found');
     const staffCredentials = await api<{ id: string; type: string }[]>(
-      'GET', `${realm}/users/${staff.id}/credentials`,
+      'GET',
+      `${realm}/users/${staff.id}/credentials`
     );
     const lostFactor = staffCredentials.find((credential) => credential.type === 'otp');
     if (!lostFactor) throw new Error('Disposable recovery factor not found');
@@ -303,32 +610,57 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await enterPassword(other);
     expect((await claims(other, realmB, verifier)).acr).not.toBe('mfa');
 
-    await clientA.ensureLoginMfaPolicy({ mode: 'optional', clientIds: ['studio-client', 'ssf-frontend'] });
+    await clientA.ensureLoginMfaPolicy({
+      mode: 'optional',
+      clientIds: ['studio-client', 'ssf-frontend'],
+    });
     const users = await api<User[]>('GET', `${realm}/users?username=ordinary`);
     const ordinaryUser = users[0];
     if (!ordinaryUser) throw new Error('Disposable ordinary user not found');
-    const credentials = await api<{ type: string }[]>('GET', `${realm}/users/${ordinaryUser.id}/credentials`);
+    const credentials = await api<{ type: string }[]>(
+      'GET',
+      `${realm}/users/${ordinaryUser.id}/credentials`
+    );
     expect(credentials.some((credential) => credential.type === 'otp')).toBe(true);
     verifier = await authorize(ordinary, realm);
     if (await ordinary.page.locator('#password').isVisible()) await enterPassword(ordinary);
     await enterOtp(ordinary, ordinarySecret);
     await claims(ordinary, realm, verifier);
-    const before = await api<{ id: string; alias: string }[]>('GET', `${realm}/authentication/flows`);
-    await clientA.ensureLoginMfaPolicy({ mode: 'optional', clientIds: ['studio-client', 'ssf-frontend'] });
+    const before = await api<{ id: string; alias: string }[]>(
+      'GET',
+      `${realm}/authentication/flows`
+    );
+    await clientA.ensureLoginMfaPolicy({
+      mode: 'optional',
+      clientIds: ['studio-client', 'ssf-frontend'],
+    });
     expect(await api('GET', `${realm}/authentication/flows`)).toEqual(before);
-    expect((await clientA.readLoginMfaPolicy({ mode: 'optional', clientIds: ['studio-client', 'ssf-frontend'] })).aligned).toBe(true);
+    expect(
+      (
+        await clientA.readLoginMfaPolicy({
+          mode: 'optional',
+          clientIds: ['studio-client', 'ssf-frontend'],
+        })
+      ).aligned
+    ).toBe(true);
   }, 180_000);
 
   it('preserves an unmanaged realm browser binding and reports the conflict', async () => {
     const realm = realmB;
     const alias = `${tag}-custom-browser`;
     await api('POST', `${realm}/authentication/flows`, {
-      alias, providerId: 'basic-flow', topLevel: true, builtIn: false,
+      alias,
+      providerId: 'basic-flow',
+      topLevel: true,
+      builtIn: false,
     });
     await api('PUT', realm, { realm, browserFlow: alias });
-    await expect(clientB.ensureLoginMfaPolicy({
-      mode: 'required', clientIds: ['studio-client', 'ssf-frontend'],
-    })).rejects.toThrow('login_mfa_binding_conflict');
+    await expect(
+      clientB.ensureLoginMfaPolicy({
+        mode: 'required',
+        clientIds: ['studio-client', 'ssf-frontend'],
+      })
+    ).rejects.toThrow('login_mfa_binding_conflict');
     expect((await api<{ browserFlow: string }>('GET', realm)).browserFlow).toBe(alias);
   });
 });

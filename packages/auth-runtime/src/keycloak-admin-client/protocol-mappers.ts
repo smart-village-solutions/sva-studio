@@ -101,6 +101,14 @@ export class KeycloakProtocolMapperOperations extends KeycloakTenantAdminAccessO
     );
   }
 
+  async ensureSsfExchangeAssuranceMapper(clientId: string, audience: string): Promise<void> {
+    await this.ensureProtocolMapper(clientId, {
+      name: 'studio-ssf-exchange-assurance',
+      protocol: 'openid-connect',
+      protocolMapper: 'ssf-exchange-assurance-mapper',
+      config: { 'gateway.audience': audience, 'access.token.claim': 'true' },
+    });
+  }
   async ensureAudienceProtocolMapper(input: {
     clientId: string;
     name: string;

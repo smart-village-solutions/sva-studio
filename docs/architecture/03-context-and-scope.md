@@ -160,3 +160,7 @@ Das optionale Suchplugin ergänzt den bestehenden Mainserver-Kontext um eine Suc
 Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendungen“ in der Kopfzeile. Alle angemeldeten Nutzer einer wirksam aktivierten Instanz erhalten denselben instanzweiten Katalog; einzelne Zielanwendungen prüfen ihre Rechte selbst. Die Übersicht `/plugins/application-workspace` verwendet die bestehende Shell ohne Seitenleiste, während die Einstellungsseite das normale Layout behält. Die Studio-Kachel ist fest an erster Stelle und führt nach `/`.
 
 Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.
+
+## SSF-Aufzeichnungszugänge
+
+Der Mandantenhost verbindet das Studio-Plugin mit dem SSF-Gateway und dem gemeinsamen Mandanten-Realm. Das Gateway führt öffentliche Organisationsschlüsselversionen, Zuordnungen zu Aufzeichnungsfenstern und Transferbelege. Die zuständige Person verwahrt die private Organisationsschlüsseldatei außerhalb beider Systeme.

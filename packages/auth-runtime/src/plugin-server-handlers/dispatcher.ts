@@ -1,3 +1,5 @@
+import { forwardSsfRecordingRequest } from '../ssf-recording-gateway.js';
+import type { SsfRecordingGatewayRequest } from '@sva/plugin-sdk';
 import type { UiResourceCapability } from '@sva/iam-core';
 import type {
   PluginServerExecutionHandler,
@@ -28,6 +30,11 @@ import {
   staticSegmentCount,
 } from './routes.js';
 
+export type BoundSsfRecordingRequest = Extract<
+  Parameters<PluginServerExecutionHandler>[0],
+  { sessionId: string }
+>;
+export type { SsfRecordingGatewayRequest };
 export { assertPluginServerHandlerCoverage } from './routes.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
@@ -218,6 +225,23 @@ export const createPluginServerHandlerDispatcher = (input: {
         return await handler({
           request,
           sessionId: context.sessionId,
+          ...(descriptor.ownerPluginId === 'ssf' && requirement.kind === 'tenant'
+            ? {
+                forwardSsfRecordingRequest: (operation: SsfRecordingGatewayRequest) =>
+                  forwardSsfRecordingRequest(
+                    {
+                      request,
+                      sessionId: context.sessionId,
+                      pluginId: descriptor.ownerPluginId,
+                      handlerId: descriptor.id,
+                      scope: 'tenant',
+                      actor: context.user,
+                      pathParams,
+                    },
+                    operation
+                  ),
+              }
+            : {}),
           pluginId: descriptor.ownerPluginId,
           handlerId: descriptor.id,
           scope: requirement.kind === 'authenticated' ? 'tenant' : requirement.kind,

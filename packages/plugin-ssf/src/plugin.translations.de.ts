@@ -1,3 +1,5 @@
+import { recordingKeyTranslationsDe } from './recording-key.translations.de.js';
+
 /** German SSF interface resources. */
 export const de = {
   ssf: {
@@ -8,6 +10,9 @@ export const de = {
         'Die neue Sprache benötigt vollständige Ausgangstexte. Nach dem Speichern bearbeitest du diese unter Standardinhalte.',
 
       pages: {
+        'organisation-keys': 'Organisationsschlüssel',
+        'access-transfers': 'Zugänge verwalten',
+
         overview: 'Übersicht',
         appearance: 'Erscheinungsbild und Inhalte',
         languages: 'Sprachen',
@@ -51,6 +56,7 @@ export const de = {
       open: 'Öffnen',
     },
     navigation: { system: 'SSF-Standards', tenant: 'Smart Speech Flow' },
+    ...recordingKeyTranslationsDe,
     readiness: { login: 'SSF-Anmeldung und Mandant bereit' },
     page: {
       systemTitle: 'SSF-Standards',
@@ -231,6 +237,7 @@ export const de = {
       recording_request: 'Aufnahme anfordern',
       recording_review: 'Aufnahmen prüfen',
       recording_review_sworn: 'Aufnahmen vereidigt prüfen',
+      recording_access_transfer: 'Zugänge zu Aufzeichnungen übertragen',
       recording_supervise: 'Aufnahmen beaufsichtigen',
       recording_recovery_custodian: 'Aufnahmewiederherstellung verwalten',
       systemRead: 'SSF-Systemstandards lesen',

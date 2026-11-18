@@ -44,9 +44,9 @@ describe('SSF plugin metadata', () => {
         },
       ],
     });
-    expect(new Set(contract?.systemRoles[0]?.permissionIds)).toEqual(
-      new Set(contract?.permissionIds)
-    );
+    expect(contract?.permissionIds).toContain('ssf.recording.access.transfer');
+    expect(contract?.systemRoles[0]?.permissionIds).not.toContain('ssf.recording.access.transfer');
+    expect(contract?.systemAdminPermissionExclusions).toContain('ssf.recording.access.transfer');
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.manage');
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.read');
   });
@@ -123,19 +123,24 @@ describe('SSF plugin metadata', () => {
       en: { ssf: { navigation: { tenant: 'Smart Speech Flow' } } },
     });
   });
-  it('registers eight addressable pages with six opt-in editor boundaries and V2 read guards', () => {
+  it('registers ten guarded pages including the two key workflows', () => {
     expect(() =>
       createPluginRegistry([ssfPlugin], { extensionTiers: new Map([['ssf', 'admin']]) })
     ).not.toThrow();
-    expect(ssfPlugin.routes).toHaveLength(8);
+    expect(ssfPlugin.routes).toHaveLength(10);
     expect(
       ssfPlugin.serverHandlers?.some((handler) =>
         /\/(system|tenant)-configuration$/u.test(handler.path)
       )
     ).toBe(false);
-    expect(ssfPlugin.routes.filter((route) => route.editorLeaveGuard)).toHaveLength(6);
+    expect(ssfPlugin.routes.filter((route) => route.editorLeaveGuard)).toHaveLength(8);
     expect(
-      ssfPlugin.routes.every((route) => route.serverHandlerId?.includes('content-v2.read'))
+      ssfPlugin.routes
+        .filter(
+          (route) =>
+            !['ssf-tenant-organisation-keys', 'ssf-tenant-access-transfers'].includes(route.id)
+        )
+        .every((route) => route.serverHandlerId?.includes('content-v2.read'))
     ).toBe(true);
     expect(
       ssfPlugin.navigation?.every((item) => item.section === 'applications' && item.group)
@@ -149,7 +154,7 @@ describe('SSF plugin metadata', () => {
       };
       expect(ssf.v2?.['installation']).toEqual(expect.any(String));
       expect(ssf.v2?.['template']).toEqual(expect.any(String));
-      expect(Object.keys(ssf.administration?.pages ?? {})).toHaveLength(8);
+      expect(Object.keys(ssf.administration?.pages ?? {})).toHaveLength(10);
     }
   });
 });
@@ -166,4 +171,19 @@ it('provides German and English passphrase policy labels and plaintext guidance'
   expect(ssfPluginTranslations.de.ssf.v2.recording.passphraseFileEnabled).not.toBe(
     ssfPluginTranslations.en.ssf.v2.recording.passphraseFileEnabled
   );
+});
+
+it('exposes each recording key workflow only through the corresponding tenant action', () => {
+  for (const [page, permission] of [
+    ['organisation-keys', 'ssf.configuration.tenant.manage'],
+    ['access-transfers', 'ssf.recording.access.transfer'],
+  ]) {
+    expect(ssfPlugin.routes.find((r) => r.path === '/plugins/ssf/' + page)).toMatchObject({
+      actionId: permission,
+      editorLeaveGuard: true,
+    });
+    expect(ssfPlugin.navigation?.find((r) => r.to === '/plugins/ssf/' + page)).toMatchObject({
+      actionId: permission,
+    });
+  }
 });

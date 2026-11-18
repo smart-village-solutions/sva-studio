@@ -1,3 +1,4 @@
+import { createSdkLogger } from '@sva/server-runtime';
 import { loadInstanceById } from '@sva/data-repositories/server';
 import {
   readPluginOidcClientAlignment,
@@ -7,6 +8,8 @@ import {
 
 import { readInstanceRegistryPluginOidcClientRequirements } from './iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-projection-tenant.js';
+
+const logger = createSdkLogger({ component: 'ssf-login-clients', level: 'info' });
 
 const resolveLoginContract = async (instanceId: string, authRealm?: string) => {
   const instance = await loadInstanceById(instanceId);
@@ -49,6 +52,35 @@ export const prepareInstanceSsfLoginClients = async (
     ...contract.input,
     pluginOidcClients,
   });
+  const client = contract.tenant.client;
+  const clientId = contract.input.authClientId;
+  const audience = process.env.SVA_STUDIO_SSF_GATEWAY_AUDIENCE?.trim() || contract.tenant.clientId;
+  try {
+    await client.ensureSsfRecordingExchange(clientId, instanceId);
+    await client.ensureSsfExchangeAssuranceMapper(clientId, audience);
+    await client.ensureAudienceProtocolMapper({
+      clientId,
+      name: 'studio-ssf-recording-audience',
+      audience,
+    });
+    for (const claimName of ['studio_tenant_id', 'ssf_permissions']) {
+      await client.ensureUserAttributeProtocolMapper({
+        clientId,
+        name: 'studio-' + claimName.replaceAll('_', '-'),
+        userAttribute: claimName,
+        claimName,
+        multivalued: claimName === 'ssf_permissions',
+        exclusiveClaim: true,
+      });
+    }
+  } catch {
+    // Recording management verifies the signed exchange independently. A missing mapper
+    // must not suspend ordinary SSF conversations during coordinated provider rollout.
+    logger.warn('ssf_recording_exchange_provisioning_unavailable', {
+      operation: 'prepare_recording_exchange',
+      instance_id: instanceId,
+    });
+  }
 };
 
 const readInstanceSsfLoginClientsReadyForStatuses = async (

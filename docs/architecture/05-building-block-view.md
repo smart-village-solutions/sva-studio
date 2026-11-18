@@ -1367,3 +1367,7 @@ den vom SDK abgeleiteten, konto-/mandantengebundenen Präferenzschlüssel. Die
 UI-Bibliothek greift nicht auf den breiten Plugin-SDK-Einstieg zu; die neutralen
 Kartenstil- und Ressourcenpfadkonstanten gehören zum vorhandenen Core-Vertrag für
 externe Schnittstellen.
+
+## Bausteine der SSF-Aufzeichnungsverwaltung
+
+Das SSF-Plugin stellt die beiden geschützten Routen, lokale WebCrypto-Funktionen und Serverhandler mit festen DTOs bereit. Der Auth-Runtime-Dispatcher bindet die Gateway-Capability an den aktuellen Request. Die Runtime prüft Sitzung, Realm, Mandant und Benutzer, tauscht das Access-Token und ruft den fest konfigurierten Gateway-Origin auf.

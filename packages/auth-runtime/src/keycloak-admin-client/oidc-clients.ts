@@ -82,6 +82,33 @@ export class KeycloakOidcClientOperations extends KeycloakUserRoleOperations {
     return reconcileOidcClient(this.oidcClientOperations(), input);
   }
 
+  /** Enable RFC 8693 only on the existing Studio-owned confidential tenant login. */
+  async ensureSsfRecordingExchange(clientId: string, instanceId: string): Promise<void> {
+    await this.assertWriteAvailability();
+    const client = await this.getOidcClientByClientId(clientId);
+    if (
+      !client ||
+      client.publicClient !== false ||
+      client.standardFlowEnabled !== true ||
+      client.attributes?.managed_by !== 'studio' ||
+      client.attributes.instance_id !== instanceId ||
+      client.attributes.artifact_key !== 'login_client'
+    )
+      throw new Error('ssf_exchange_client_invalid');
+    if (client.attributes['standard.token.exchange.enabled'] === 'true') return;
+    await this.updateOidcClient(
+      client,
+      { attributes: { ...client.attributes, 'standard.token.exchange.enabled': 'true' } },
+      clientId
+    );
+    if (
+      (await this.getOidcClientByClientId(clientId))?.attributes?.[
+        'standard.token.exchange.enabled'
+      ] !== 'true'
+    )
+      throw new Error('ssf_exchange_client_readback_failed');
+  }
+
   async setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void> {
     return reconcileOidcClientEnabled(this.oidcClientOperations(), clientId, enabled);
   }

@@ -145,19 +145,7 @@ const authorizeFirstAllowedAction = async (
 
 const withAuthenticatedMapUser = async <T>(
   request: Request,
-  actions: readonly (
-    | 'jobs.read'
-    | 'construction-sites.read'
-    | 'poi.read'
-    | 'poi.create'
-    | 'poi.update'
-    | 'events.read'
-    | 'events.create'
-    | 'events.update'
-    | 'generic-items.read'
-    | 'generic-items.create'
-    | 'generic-items.update'
-  )[],
+  actions: Parameters<typeof authorizeFirstAllowedAction>[1],
   run: (
     ctx: AuthenticatedMapGeocodingContext,
     diagnostics: MapGeocodingOperationDiagnostics

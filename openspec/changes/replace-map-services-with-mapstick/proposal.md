@@ -64,3 +64,20 @@ angewendet. Weder produktive Mandantenschnittstellen noch der Mapstick-Service w
 in diesem Arbeitszug verändert. Dieser Nachweisstand beschreibt die lokale Prüfung
 vor der freigegebenen PR-Erstellung; ein Rollout ist nicht beauftragt. Die tatsächliche Einbindung des externen Dienstes muss
 nach einem später freigegebenen Rollout separat live bestätigt werden.
+
+
+## PR-Korrekturen vom 18.11.2026
+
+Die drei Review-Befunde wurden gemeinsam an der Grenze zwischen gespeicherter
+Schnittstellenkonfiguration und ausgehenden Ressourcenaufrufen geprüft. Der behauptete
+Zugriff auf private Geocoding-Ziele bzw. automatische Redirects ist durch den bestehenden
+socketgebundenen Fetch-Pfad und seine Tests widerlegt. Die generische Speicher-API
+weist nun neue Mapstick-Datensätze und Änderungen der vier provisionierten Zieladressen
+zurück; Runtime-Schalter, Rate und Timeout bleiben editierbar. Der Ressourcenhandler
+validiert zusätzlich die kanonische gespeicherte HTTPS-Style-Adresse vor der Ableitung.
+
+Der Baustelleneditor übergibt die gespeicherte Stilpräferenz bereits an die erste
+Kartenerstellung. Die Komplexitätskorrekturen nutzen ausschließlich vorhandene Dateien:
+Datensatzaufbau im vorhandenen Mapping-Modul, Transaktion im vorhandenen DB-Modul,
+private Funktionen für Bereichsprüfung und Karteninitialisierung. Es gibt keine neue
+Konfigurationsschicht, zusätzliche Datei oder Abschwächung eines Quality Gates.

@@ -111,6 +111,46 @@ const syncStudioLocationMarker = ({
   markerRef.current.setLngLat(coordinates);
 };
 
+const createStudioLocationMap = (
+  runtime: StudioLocationMapRuntime,
+  container: HTMLDivElement,
+  initial: Pick<StudioLocationMapInput, 'styleUrl' | 'latitude' | 'longitude'>,
+  onCoordinatesChange: StudioLocationMapInput['onCoordinatesChange'],
+  onError: StudioLocationMapInput['onError']
+) => {
+  const center = resolveMapCenter(initial.latitude, initial.longitude);
+  const map = new runtime.Map({
+    container,
+    style: initial.styleUrl,
+    center: [center.longitude, center.latitude],
+    zoom:
+      initial.latitude && initial.longitude
+        ? studioLocationMapFocusedZoom
+        : studioLocationMapDefaultZoom,
+  });
+  map.on('click', (event) => {
+    onCoordinatesChange({
+      latitude: toStudioCoordinateString(event.lngLat.lat),
+      longitude: toStudioCoordinateString(event.lngLat.lng),
+    });
+  });
+  map.on('error', () => onError('map_error'));
+  return map;
+};
+
+const updateMapStyle = (
+  map: StudioLocationMapInstance | null, currentStyle: { current: string },
+  styleUrl: string, onError: StudioLocationMapInput['onError']
+) => {
+  if (!map || currentStyle.current === styleUrl) return;
+  try {
+    map.setStyle(styleUrl);
+    currentStyle.current = styleUrl;
+  } catch {
+    onError('map_error');
+  }
+};
+
 export const useStudioLocationMap = ({
   runtime,
   styleUrl,
@@ -128,54 +168,28 @@ export const useStudioLocationMap = ({
   const latestInputRef = React.useRef({ styleUrl, latitude, longitude });
   React.useEffect(() => {
     latestInputRef.current = { styleUrl, latitude, longitude };
-  }, [styleUrl, latitude, longitude]);
-  React.useEffect(() => {
     onCoordinatesChangeRef.current = onCoordinatesChange;
-  }, [onCoordinatesChange]);
-
-  React.useEffect(() => {
     onErrorRef.current = onError;
-  }, [onError]);
+  }, [styleUrl, latitude, longitude, onCoordinatesChange, onError]);
 
   const syncMarker = React.useCallback(
-    (nextLatitude: string, nextLongitude: string) => {
-      syncStudioLocationMarker({
-        latitude: nextLatitude,
-        longitude: nextLongitude,
-        mapRef,
-        markerRef,
-        onCoordinatesChangeRef,
-        runtime,
-      });
-    },
+    (latitude: string, longitude: string) => syncStudioLocationMarker({
+      latitude, longitude, mapRef, markerRef, onCoordinatesChangeRef, runtime,
+    }),
     [runtime]
   );
 
   React.useEffect(() => {
-    if (!runtime || !containerRef.current || mapRef.current) return;
+    if (!runtime || !containerRef.current) return;
 
     let active = true;
     const createMap = () => {
       if (!active || !containerRef.current) return;
       try {
         const initial = latestInputRef.current;
-        const center = resolveMapCenter(initial.latitude, initial.longitude);
-        const map = new runtime.Map({
-          container: containerRef.current,
-          style: initial.styleUrl,
-          center: [center.longitude, center.latitude],
-          zoom:
-            initial.latitude && initial.longitude
-              ? studioLocationMapFocusedZoom
-              : studioLocationMapDefaultZoom,
-        });
-        map.on('click', (event) => {
-          onCoordinatesChangeRef.current({
-            latitude: toStudioCoordinateString(event.lngLat.lat),
-            longitude: toStudioCoordinateString(event.lngLat.lng),
-          });
-        });
-        map.on('error', () => onErrorRef.current('map_error'));
+        const map = createStudioLocationMap(runtime, containerRef.current, initial,
+          (coordinates) => onCoordinatesChangeRef.current(coordinates),
+          (error) => onErrorRef.current(error));
         mapRef.current = map;
         currentStyleRef.current = initial.styleUrl;
         onErrorRef.current(null);
@@ -184,7 +198,6 @@ export const useStudioLocationMap = ({
         onErrorRef.current('map_error');
       }
     };
-    currentStyleRef.current = styleUrl;
     if (isStudioMapstickStyle(styleUrl)) {
       void prepareStudioMapRuntime(runtime)
         .then(createMap)
@@ -203,13 +216,7 @@ export const useStudioLocationMap = ({
   }, [runtime, syncMarker]);
 
   React.useEffect(() => {
-    if (!mapRef.current || currentStyleRef.current === styleUrl) return;
-    try {
-      mapRef.current.setStyle(styleUrl);
-      currentStyleRef.current = styleUrl;
-    } catch {
-      onErrorRef.current('map_error');
-    }
+    updateMapStyle(mapRef.current, currentStyleRef, styleUrl, onErrorRef.current);
   }, [styleUrl]);
 
   React.useEffect(() => {

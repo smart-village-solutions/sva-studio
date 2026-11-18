@@ -21,6 +21,8 @@ function useMap(props: MapProps) {
     readMapStylePreferenceKey
   );
   const mapStyle = useStudioMapStyle(defaultStyleUrl, preferenceKey);
+  const resolveStyle = useRef(mapStyle.resolveStyleUrl);
+  useEffect(() => { resolveStyle.current = mapStyle.resolveStyleUrl; }, [mapStyle.resolveStyleUrl]);
   const [state, setState] = useState<MapStatus>({
     ready: false,
     error: false,
@@ -39,7 +41,10 @@ function useMap(props: MapProps) {
       new ConstructionSiteMapRuntime(
         controller,
         () => setState((s) => ({ ...s, error: true })),
-        setDefaultStyleUrl
+        (style) => {
+          setDefaultStyleUrl(style);
+          return resolveStyle.current(style);
+        }
       )
   );
   const container = useRef<HTMLDivElement>(null);

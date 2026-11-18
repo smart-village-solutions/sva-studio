@@ -27,7 +27,7 @@ export const useStudioMapStyle = (defaultUrl: string, storageKey: string | null)
     }
   }, [storageKey]);
   const selected = preference?.key === storageKey ? preference?.style : undefined;
-  const styleUrl =
+  const resolveStyleUrl = (defaultUrl: string) =>
     isStudioMapstickStyle(defaultUrl) && selected
       ? `${mapstickResourcePath}/styles/${selected}/style.json`
       : defaultUrl;
@@ -42,7 +42,7 @@ export const useStudioMapStyle = (defaultUrl: string, storageKey: string | null)
       }
     }
   };
-  return { styleUrl, chooseStyle };
+  return { styleUrl: resolveStyleUrl(defaultUrl), chooseStyle, resolveStyleUrl };
 };
 
 export function StudioMapStyleControl({

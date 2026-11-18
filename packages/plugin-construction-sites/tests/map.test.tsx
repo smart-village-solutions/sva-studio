@@ -21,10 +21,12 @@ const host = vi.hoisted(() => ({
 vi.mock('@sva/plugin-sdk', async (original) => ({
   ...(await original<typeof import('@sva/plugin-sdk')>()),
   getHostMapGeocodingConfig: host.config,
+  readMapStylePreferenceKey: () => 'test-map-preference',
   usePluginTranslation: () => (key: string) => key,
 }));
 vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => ({ default: '/worker.js' }));
 vi.mock('maplibre-gl', () => ({
+  addProtocol: vi.fn(),
   setWorkerUrl: vi.fn(),
   AttributionControl: class {},
   Map: class {
@@ -33,6 +35,7 @@ vi.mock('maplibre-gl', () => ({
       host.created();
       host.options = options;
     }
+    setStyle = vi.fn();
     addControl = vi.fn();
     fitBounds = vi.fn();
     zoomIn = vi.fn();
@@ -575,4 +578,16 @@ describe('construction style replacement', () => {
     expect(result.layers.map(({ id }) => id)).toEqual(['background', 'td-point']);
     expect(preserveConstructionDrawingStyle(undefined, next)).toBe(next);
   });
+});
+
+it('creates the construction map with its saved style before loading the default basemap', async () => {
+  host.config.mockResolvedValue({ styleUrl: '/api/v1/iam/map-geocoding/mapstick/styles/osm-bright/style.json' });
+  window.localStorage.setItem('test-map-preference', 'fiord-color');
+  try {
+    render(<ConstructionSiteMap latitude={51} longitude={10} onChange={vi.fn()} />);
+    await waitFor(() => expect(host.options?.style).toBe('/api/v1/iam/map-geocoding/mapstick/styles/fiord-color/style.json'));
+    expect(host.created).toHaveBeenCalledTimes(1);
+  } finally {
+    window.localStorage.removeItem('test-map-preference');
+  }
 });

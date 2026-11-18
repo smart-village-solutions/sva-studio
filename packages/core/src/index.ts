@@ -162,9 +162,6 @@ export {
   type MailTransportSecurityMode,
   type MailTransportSmtpConfig,
   type MailTransportType,
-  mapstickResourcePath,
-  mapstickStyleIds,
-  type MapstickStyleId,
   type ResolvedExternalInterface,
 } from './external-interfaces-contract.js';
 export {
@@ -249,7 +246,7 @@ export {
   type CreateInstanceBusKey,
   type InstanceBusKeyCreated,
 } from './iam/account-instance-contract.js';
-
+export { mapstickResourcePath, mapstickStyleIds, type MapstickStyleId } from './external-interfaces-contract.js';
 export * from './app-translations.js';
 
 export {

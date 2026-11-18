@@ -5,17 +5,14 @@ const state = vi.hoisted(() => ({
   currentDefault: null as ExternalInterfaceRecord | null,
   saved: null as ExternalInterfaceRecord | null,
   query: vi.fn(),
-  transaction: vi.fn(),
   upsert: vi.fn(),
 }));
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
-vi.mock('./external-interfaces.db.js', () => ({
-  createExecutor: () => ({}),
-  withIamDb: async (input: { instanceId: string }, work: (client: unknown) => Promise<unknown>) => {
-    state.transaction(input);
-    return work({ query: state.query });
+vi.mock('pg', () => ({
+  Pool: class {
+    async connect() { return { query: state.query, release: vi.fn() }; }
   },
 }));
 vi.mock('./external-interfaces.js', () => ({
@@ -29,7 +26,7 @@ vi.mock('./external-interfaces.js', () => ({
     },
   }),
 }));
-import { ensureManagedMapGeocodingInterface } from './external-interfaces.server.js';
+import { ensureManagedMapGeocodingInterface } from './external-interfaces.db.js';
 const record = (patch: Partial<ExternalInterfaceRecord> = {}): ExternalInterfaceRecord => ({
   id: 'old-map',
   instanceId: 'tenant-a',
@@ -49,22 +46,20 @@ const record = (patch: Partial<ExternalInterfaceRecord> = {}): ExternalInterface
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('SVA_MANAGED_MAPSTICK_URL', '');
+  vi.stubEnv('IAM_DATABASE_URL', 'postgres://test-only.invalid/mapstick');
   state.existing = state.currentDefault = state.saved = null;
   state.query.mockResolvedValue({ rows: [{ id: 'tenant-a' }] });
 });
 describe('installation-owned Mapstick provisioning', () => {
   it('does nothing in installations without operator configuration', async () => {
     await ensureManagedMapGeocodingInterface('tenant-a');
-    expect(state.transaction).not.toHaveBeenCalled();
+    expect(state.query).not.toHaveBeenCalled();
     expect(state.upsert).not.toHaveBeenCalled();
   });
   it('creates a tenant-owned external interface and verifies its stored identity', async () => {
     await ensureManagedMapGeocodingInterface('tenant-a', {
       serviceUrl: 'https://maps.example/region',
     });
-    expect(state.transaction).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'tenant-a' })
-    );
     expect(state.query).toHaveBeenCalledWith(
       'SELECT id FROM iam.instances WHERE id=$1 FOR UPDATE',
       ['tenant-a']
@@ -116,6 +111,6 @@ describe('installation-owned Mapstick provisioning', () => {
     await expect(ensureManagedMapGeocodingInterface('tenant-a', { serviceUrl })).rejects.toThrow(
       'invalid_managed_mapstick_url'
     );
-    expect(state.transaction).not.toHaveBeenCalled();
+    expect(state.query).not.toHaveBeenCalled();
   });
 });

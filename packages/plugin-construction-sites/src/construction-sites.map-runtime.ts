@@ -151,7 +151,7 @@ export class ConstructionSiteMapRuntime {
   constructor(
     private drawing: ConstructionSiteDrawing,
     private onError: () => void,
-    private onStyleReady: (style: string) => void = () => undefined
+    private onStyleReady: (style: string) => string = (style) => style
   ) {}
   mount(container: HTMLElement) {
     this.active = true;
@@ -162,8 +162,7 @@ export class ConstructionSiteMapRuntime {
         const module = await load();
         if (isStudioMapstickStyle(config.styleUrl)) await prepareStudioMapRuntime(module);
         if (!this.active || generation !== this.generation) return;
-        this.createMap(module, container, config.styleUrl);
-        this.onStyleReady(config.styleUrl);
+        this.createMap(module, container, this.onStyleReady(config.styleUrl));
       })
       .catch(() => {
         if (this.active && generation === this.generation) this.onError();

@@ -1,5 +1,6 @@
 import {
   contentMediaUsagesToMainserver,
+  readMainserverMediaFocusPoint,
   type ContentMediaAssetSnapshot,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
@@ -22,6 +23,7 @@ export const poiMediaContentsToUsages = (
     altText: text(media.sourceUrl?.description),
     caption: text(media.captionText),
     credit: text(media.copyright),
+    focusPoint: readMainserverMediaFocusPoint(media.payload),
     role: 'gallery_item',
     sortOrder,
     referenceStatus:

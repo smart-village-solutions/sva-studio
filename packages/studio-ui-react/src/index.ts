@@ -65,6 +65,7 @@ export {
 export {
   contentMediaUsagesToMainserver,
   mainserverContentMediaToUsages,
+  readMainserverMediaFocusPoint,
   type MainserverContentMedia,
 } from './mainserver-content-media-adapter.js';
 export {

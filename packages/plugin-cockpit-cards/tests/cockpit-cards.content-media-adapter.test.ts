@@ -24,6 +24,16 @@ describe('cockpit card content media adapter', () => {
     expect(cockpitCardUsagesToMedia(cockpitCardMediaToUsages(media))).toEqual(media);
   });
 
+  it.each([{ x: 0.2, y: 0.8 }, null])('restores the saved focus %j', (focusPoint) => {
+    const payload = { focusPoint, retained: true };
+    const [usage] = cockpitCardMediaToUsages([
+      { sourceUrl: { url: 'https://media.test/photo.png' }, contentType: 'image', payload },
+    ]);
+
+    expect(usage?.focusPoint).toEqual(focusPoint);
+    expect(cockpitCardUsagesToMedia([usage!])[0]?.payload).toEqual(payload);
+  });
+
   it('uses the canonical gallery role and continuous ordering', () => {
     const usages = cockpitCardMediaToUsages(
       [

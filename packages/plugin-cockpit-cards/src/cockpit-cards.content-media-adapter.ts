@@ -1,4 +1,8 @@
-import { contentMediaUsagesToMainserver, type ContentMediaUsage } from '@sva/studio-ui-react';
+import {
+  contentMediaUsagesToMainserver,
+  readMainserverMediaFocusPoint,
+  type ContentMediaUsage,
+} from '@sva/studio-ui-react';
 
 import type { CockpitCardMedia } from './cockpit-cards.types.js';
 
@@ -32,6 +36,7 @@ export const cockpitCardMediaToUsages = (
       altText: item.sourceUrl.description ?? '',
       caption: item.captionText ?? '',
       credit: item.copyright ?? '',
+      focusPoint: readMainserverMediaFocusPoint(item.payload),
       role: 'gallery_item',
       sortOrder,
       additionalData,

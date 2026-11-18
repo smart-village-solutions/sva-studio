@@ -13,7 +13,7 @@ export type MainserverContentMedia = Readonly<Record<string, unknown>> & {
   };
 };
 
-const readFocusPoint = (payload: unknown): ContentMediaUsage['focusPoint'] => {
+export const readMainserverMediaFocusPoint = (payload: unknown): ContentMediaUsage['focusPoint'] => {
   if (!payload || typeof payload !== 'object' || !('focusPoint' in payload)) return undefined;
   const point = payload.focusPoint;
   if (point === null) return null;
@@ -42,7 +42,7 @@ export const mainserverContentMediaToUsages = (
     altText: media.sourceUrl?.description?.trim() ?? '',
     caption: media.captionText?.trim() ?? '',
     credit: media.copyright?.trim() ?? '',
-    focusPoint: readFocusPoint(media.payload),
+    focusPoint: readMainserverMediaFocusPoint(media.payload),
     role,
     sortOrder,
     referenceStatus:

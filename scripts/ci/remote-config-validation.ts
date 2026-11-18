@@ -5,6 +5,9 @@ const keyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const referencePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,127}$/u;
 const placeholderPattern = /^(?:__SET(?:_[A-Z0-9_]+)?__|changeme|todo)$/iu;
 
+const isValidManagedMapstickUrl = (url: URL): boolean =>
+  url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+
 type ParsedLayer = Readonly<{ name: string; values: ReadonlyMap<string, string> }>;
 
 const fail = (
@@ -125,9 +128,7 @@ export const validateRemoteConfigValue = (
   if (contract.type === 'url') {
     try {
       const url = new URL(normalizedValue);
-      if (key === 'SVA_MANAGED_MAPSTICK_URL' && (
-        url.protocol !== 'https:' || url.username || url.password || url.search || url.hash
-      )) throw new Error('invalid_managed_mapstick_url');
+      if (key === 'SVA_MANAGED_MAPSTICK_URL' && !isValidManagedMapstickUrl(url)) throw new Error('invalid_managed_mapstick_url');
     } catch {
       fail(
         environment,

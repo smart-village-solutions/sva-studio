@@ -17,7 +17,7 @@ Diese Richtlinie beschreibt den verbindlichen Melde- und Bearbeitungsprozess fü
 
 ## Schwachstellen melden
 
-Bitte keine öffentlichen GitHub Issues für Sicherheitslücken anlegen.
+Bitte keine öffentlichen GitHub Issues für neue, noch nicht veröffentlichte Sicherheitslücken anlegen. Nicht-sensitive Upgrade-Aufgaben zu bereits öffentlichen Advisories dürfen nach Triage öffentlich verfolgt werden.
 
 Bevorzugte Meldewege:
 
@@ -81,6 +81,18 @@ Die Zielwerte sind Service-Ziele, keine Garantien für einen Fix innerhalb eines
 - unbestätigte Hinweise auf DSGVO-relevante Vorfälle
 
 Für diese Fälle immer Advisory oder `security@smart-village.app` verwenden.
+
+## Bekannte Befunde und akzeptierte Ausnahmen
+
+Die [Risikoübersicht](../architecture/11-risks-and-technical-debt.md#bekannte-sicherheitsbefunde-und-akzeptierte-ausnahmen) führt relevante öffentlich dokumentierbare Sicherheitsbefunde und akzeptierte Ausnahmen. Sie ist keine vollständige Kopie aller Scanner-Meldungen und kein Nachweis für Schwachstellenfreiheit. README und GitHub-Einstieg verlinken die Übersicht, statt parallele Befundlisten zu pflegen.
+
+- **Dependency-Warnung:** Eine verwendete Version fällt in den Bereich einer Advisory; die Ausnutzbarkeit im Produkt ist noch nicht bestätigt oder wurde im geprüften Umfang nicht nachgewiesen.
+- **Bestätigte ausnutzbare Schwachstelle:** Ein konkreter Angriffspfad ist für den angegebenen Produktstand und Betriebsumfang nachgewiesen.
+- **Akzeptiertes Restrisiko:** Ein offener Befund wird mit dokumentierter Entscheidung und Endbedingung zeitweise toleriert. Das ist eine Behandlungsentscheidung zusätzlich zum technischen Befundstatus, kein Behebungsnachweis.
+
+Jeder aufgenommene Befund nennt Advisory oder Quelle, betroffene Versionen und Bereiche, Prüfstand und Datum, nachgewiesene Auswirkungen beziehungsweise offene Fragen, Gegenmaßnahmen und deren Grenzen, verantwortlichen Owner, Ticket und nächsten Prüftermin. Bei Ausnahmen werden zusätzlich die Freigabe und eine überprüfbare Endbedingung festgehalten. Der Owner prüft den Eintrag zum Termin sowie bei relevanten Updates und schreibt Behebung und Nachweise fort; ein Datum im Dokument löst keine automatische Erinnerung oder Sperre aus.
+
+Noch nicht veröffentlichte eigene Sicherheitsbefunde bleiben im privaten Melde-/Advisory-Verfahren. Öffentliche Übersicht und Tickets erhalten erst nach abgestimmter Offenlegung entsprechende Details. Bereits öffentliche Third-Party-Advisories dürfen nach Triage als nicht-sensitive Upgrade-Aufgaben verfolgt werden. Audit-Ausnahmen gelten nur für ausdrücklich benannte Advisories und dürfen nicht als pauschale Abschaltung der Sicherheitsprüfung verwendet werden.
 
 ## Bekannte Grenzen
 

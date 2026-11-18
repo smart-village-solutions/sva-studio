@@ -1,0 +1,4 @@
+{
+  "prNumber": 2232,
+  "body": "Die Mediathek zeigt Bilder vollständig und lässt den Fokuspunkt direkt per Maus, Touch oder Tastatur setzen. Der Fokus wird als Metadatum gespeichert. Bearbeitete Kopien entstehen in drei Schritten und erhalten beim Speichern eine eigene Medien-ID. Berechtigte Personen können vorhandene Bilder aus der eigenen S3-Schnittstelle durch Öffnen in die Mediathek aufnehmen. Die verwaltete Ausgabe wird nach erfolgreicher Prüfung öffentlich auslieferbar. Mehrere Fehler beim Zuschneiden, beim Speichern entfernter Bildverwendungen und beim Wiederholen privater Uploads sind behoben."
+}

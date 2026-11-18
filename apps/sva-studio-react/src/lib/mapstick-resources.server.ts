@@ -93,6 +93,33 @@ const completeMapStyle = (body: Uint8Array, origin: string, style: string): stri
   });
 };
 
+const parseMapstickServiceBase = (styleUrl: string): URL => {
+  const configured = new URL(styleUrl);
+  if (configured.protocol !== 'https:' || configured.username || configured.password ||
+    configured.search || configured.hash ||
+    !new RegExp(`/styles/(${styleNames})/style\\.json$`).test(configured.pathname))
+    throw createClientError('invalid_input');
+  return new URL('../../', configured);
+};
+
+const parseArchiveRange = (value: string) => {
+  const range = /^bytes=(\d+)-(\d+)$/.exec(value);
+  const start = Number(range?.[1]);
+  const end = Number(range?.[2]);
+  if (!range || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
+      end < start || end - start + 1 > MAX_BYTES) return null;
+  return { header: `bytes=${start}-${end}`, bytes: end - start + 1 };
+};
+
+const assertArchiveResponse = (
+  response: Response, range: string | null, body: Uint8Array, bytes: number | undefined
+) => {
+  const returned = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get('content-range') ?? '');
+  if (!returned || `bytes=${returned[1]}-${returned[2]}` !== range ||
+      Number(returned[3]) <= Number(returned[2]) || body.length !== bytes)
+    throw createClientError('provider_error');
+};
+
 /** Fixed resource grammar: this is not a general-purpose URL proxy. */
 export const getMapstickResourceHandler = async (request: Request): Promise<Response> => {
   if (request.method !== 'GET')
@@ -112,24 +139,15 @@ export const getMapstickResourceHandler = async (request: Request): Promise<Resp
         return config.styleUrl;
       }
     );
-    const serviceBase = new URL('../../', configuredStyle);
+    const serviceBase = parseMapstickServiceBase(configuredStyle);
     const target = new URL(path, serviceBase);
     const headers = new Headers();
     let expectedBytes: number | undefined;
     if (archive) {
-      const range = /^bytes=(\d+)-(\d+)$/.exec(request.headers.get('range') ?? '');
-      const start = Number(range?.[1]);
-      const end = Number(range?.[2]);
-      if (
-        !range ||
-        !Number.isSafeInteger(start) ||
-        !Number.isSafeInteger(end) ||
-        end < start ||
-        end - start + 1 > MAX_BYTES
-      )
-        return new Response(null, { status: 416 });
-      expectedBytes = end - start + 1;
-      headers.set('Range', `bytes=${start}-${end}`);
+      const range = parseArchiveRange(request.headers.get('range') ?? '');
+      if (!range) return new Response(null, { status: 416 });
+      expectedBytes = range.bytes;
+      headers.set('Range', range.header);
     }
     const { fetchPublicHttps } = await import('@sva/server-runtime');
     const upstream = await fetchPublicHttps(target, {
@@ -142,18 +160,7 @@ export const getMapstickResourceHandler = async (request: Request): Promise<Resp
       throw createClientError('provider_error');
     }
     const body = await readBoundedBody(upstream, expectedBytes ?? MAX_BYTES);
-    if (archive) {
-      const returnedRange = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
-        upstream.headers.get('content-range') ?? ''
-      );
-      if (
-        !returnedRange ||
-        `bytes=${returnedRange[1]}-${returnedRange[2]}` !== headers.get('Range') ||
-        Number(returnedRange[3]) <= Number(returnedRange[2]) ||
-        body.length !== expectedBytes
-      )
-        throw createClientError('provider_error');
-    }
+    if (archive) assertArchiveResponse(upstream, headers.get('Range'), body, expectedBytes);
     const resultHeaders = new Headers({
       'Content-Type':
         style || path.endsWith('.json')

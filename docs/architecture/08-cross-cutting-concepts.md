@@ -1614,6 +1614,10 @@ Kartenressourcen verwenden die vorhandene mandantengebundene Leseautorisierung;
 auch die bestehenden Verbraucher Jobs und Baustellen dürfen ihre Karte lesen.
 Es gibt keine freie Proxy-Ziel-URL: Der Host löst ausschließlich eine feste
 Ressourcen-Grammatik gegen die gespeicherte externe Mapstick-Style-Adresse auf.
+Die generische Speicher-API darf Mapstick-Ziele weder neu anlegen noch ändern;
+sie erhält provisionierte Style-/Photon-Adressen unverändert und erlaubt weiterhin
+Runtime-Schalter, Timeout und Rate. Gespeicherte Style-Adressen müssen HTTPS ohne
+Zugangsdaten, Query oder Fragment sowie einen bekannten Style-Pfad verwenden.
 Öffentliche HTTPS-Ziele werden mit `fetchPublicHttps` am Socket geprüft;
 Weiterleitungen werden verweigert. PMTiles erfordert einen geschlossenen einzelnen
 Bytebereich mit höchstens 8 MiB und eine passende 206-/Content-Range-Antwort. Auch

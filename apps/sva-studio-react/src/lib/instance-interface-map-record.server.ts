@@ -15,6 +15,13 @@ export const buildMapGeocodingRecord = (input: {
   readonly hasDefaultRecord: boolean;
   readonly previousSecrets: Record<string, string>;
 }): ExternalInterfaceRecord => {
+  if (input.draft.config.provider === 'mapstick') {
+    const existing = input.existing?.publicConfig;
+    const targets = ['styleUrl', 'suggestEndpoint', 'geocodeEndpoint', 'reverseGeocodeEndpoint'] as const;
+    if (existing?.provider !== 'mapstick' || targets.some(
+      (key) => input.draft.config[key].trim() !== existing[key]
+    )) throw new Error('invalid_config');
+  }
   const existingPublicConfig = { ...(input.existing?.publicConfig ?? {}) };
   const styleUrl = input.draft.config.styleUrl.trim();
   const suggestEndpoint = input.draft.config.suggestEndpoint.trim();

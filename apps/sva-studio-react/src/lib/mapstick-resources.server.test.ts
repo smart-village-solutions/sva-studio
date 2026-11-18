@@ -131,3 +131,20 @@ describe('Mapstick resources', () => {
     );
   });
 });
+
+
+it.each([
+  'http://maps.example/styles/osm-bright/style.json',
+  'https://user:password@maps.example/styles/osm-bright/style.json',
+  'https://maps.example/styles/osm-bright/style.json?token=secret',
+  'https://maps.example/styles/osm-bright/style.json#fragment',
+  'https://maps.example/arbitrary/path/style.json',
+  'not-a-url',
+])('rejects noncanonical stored Mapstick style %s before fetching', async (styleUrl) => {
+  state.authorize.mockImplementation(async (_req, _operation, run) =>
+    run({}, { provider: 'mapstick', styleUrl })
+  );
+  const result = await getMapstickResourceHandler(request('styles/osm-bright/style.json'));
+  expect(result.status).toBe(400);
+  expect(state.fetch).not.toHaveBeenCalled();
+});

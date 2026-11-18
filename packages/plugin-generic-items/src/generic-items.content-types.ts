@@ -31,6 +31,7 @@ export type GenericItemContact = {
 };
 
 export type GenericItemMediaContent = {
+  readonly payload?: Readonly<Record<string, unknown>>;
   readonly captionText?: string;
   readonly copyright?: string;
   readonly height?: number;

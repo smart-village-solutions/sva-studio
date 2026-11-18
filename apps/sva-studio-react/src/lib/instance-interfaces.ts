@@ -51,7 +51,7 @@ export type InstanceInterfaceMailTransportConfig = Readonly<{
 }>;
 
 export type InstanceInterfaceMapGeocodingConfig = Readonly<{
-  provider: 'geoapify' | 'custom';
+  provider: 'mapstick' | 'geoapify' | 'custom';
   styleUrl: string;
   autocompleteEnabled: boolean;
   geocodeEnabled: boolean;

@@ -246,7 +246,7 @@ export {
   type CreateInstanceBusKey,
   type InstanceBusKeyCreated,
 } from './iam/account-instance-contract.js';
-
+export { mapstickResourcePath, mapstickStyleIds, type MapstickStyleId } from './external-interfaces-contract.js';
 export * from './app-translations.js';
 
 export {

@@ -1601,3 +1601,31 @@ Der bereits registrierte Core-Inhaltstyp `GENERIC_CONTENT_TYPE` (`generic`) ben�
 ### SSF local passphrase file policy
 
 The existing SSF v2 recording policy includes `passphraseFileEnabled`: a strict boolean resolved from an explicit tenant override, then installation defaults, then `false`. Old policies without the field stay valid. The setting participates in the effective configuration revision and uses the existing recording administration permissions and JSON content storage. Studio transports only this policy flag; local plaintext passphrase TXT handling belongs to SSF. It does not change recording enablement, archive authorization, or private-key storage.
+
+### Mapstick-Ressourcen und lokale Stilpräferenzen
+
+Mapstick bleibt eine externe Schnittstelle ohne Einbettung seiner App-Oberfläche.
+Die automatische Einrichtung ist ein Betreiber-Opt-in über
+`SVA_MANAGED_MAPSTICK_URL`, keine technische Zugriffssperre am öffentlichen Dienst.
+Die benannten eigenen Portainer-Profile `studio` und `demo` setzen den Wert; das
+allgemeine Referenzprofil und Standalone besitzen keinen Service-Default.
+
+Kartenressourcen verwenden die vorhandene mandantengebundene Leseautorisierung;
+auch die bestehenden Verbraucher Jobs und Baustellen dürfen ihre Karte lesen.
+Es gibt keine freie Proxy-Ziel-URL: Der Host löst ausschließlich eine feste
+Ressourcen-Grammatik gegen die gespeicherte externe Mapstick-Style-Adresse auf.
+Die generische Speicher-API darf Mapstick-Ziele weder neu anlegen noch ändern;
+sie erhält provisionierte Style-/Photon-Adressen unverändert und erlaubt weiterhin
+Runtime-Schalter, Timeout und Rate. Gespeicherte Style-Adressen müssen HTTPS ohne
+Zugangsdaten, Query oder Fragment sowie einen bekannten Style-Pfad verwenden.
+Öffentliche HTTPS-Ziele werden mit `fetchPublicHttps` am Socket geprüft;
+Weiterleitungen werden verweigert. PMTiles erfordert einen geschlossenen einzelnen
+Bytebereich mit höchstens 8 MiB und eine passende 206-/Content-Range-Antwort. Auch
+chunked Bodies sind auf 8 MiB und Abrufe auf 15 Sekunden begrenzt. Antworten sind
+nur privat cachebar. Geocoding nutzt weiterhin das bestehende Requestbudget.
+
+Der Kartenstil wird optional unter einem konto- und mandantengebundenen
+LocalStorage-Schlüssel gespeichert. Gesperrter Speicher und unbekannte Werte
+verhindern die Kartenbenutzung nicht. Stiländerungen ändern keine Fachkoordinaten,
+keine Marker und keine Geometrien; die nativen Auswahlfelder sind benannt und der
+Popover gibt den Fokus beim Schließen zurück.

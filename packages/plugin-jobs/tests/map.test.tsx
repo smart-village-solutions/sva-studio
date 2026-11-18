@@ -2,11 +2,13 @@ import React from 'react';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const host = vi.hoisted(() => ({ config: vi.fn(), options: null as unknown }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (original) => ({
+  ...(await original<typeof import('@sva/plugin-sdk')>()),
   getHostMapGeocodingConfig: host.config,
   usePluginTranslation: () => (key: string) => key,
 }));
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (original) => ({
+  ...(await original<typeof import('@sva/studio-ui-react')>()),
   useStudioLocationMap: (options: unknown) => {
     host.options = options;
     return { containerRef: { current: null } };

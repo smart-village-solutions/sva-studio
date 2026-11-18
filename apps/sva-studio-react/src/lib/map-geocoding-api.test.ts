@@ -21,8 +21,10 @@ vi.stubGlobal('fetch', state.fetch);
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (_options?: unknown) => ({
     validator: (validate: (data: unknown) => unknown) => ({
-      handler: (handler: (input: { data: unknown }) => Promise<unknown>) =>
-        async ({ data }: { data: unknown }) => handler({ data: await validate(data) }),
+      handler:
+        (handler: (input: { data: unknown }) => Promise<unknown>) =>
+        async ({ data }: { data: unknown }) =>
+          handler({ data: await validate(data) }),
     }),
     handler: (handler: () => Promise<unknown>) => handler,
   }),
@@ -1228,5 +1230,58 @@ describe('map-geocoding-api', () => {
     await expect(
       dispatchMapGeocodingRequest(new Request('http://localhost/api/v1/iam/map-geocoding/unknown'))
     ).resolves.toBeNull();
+  });
+  it.each(['jobs.read', 'construction-sites.read'])(
+    'allows %s to read map configuration without granting geocoding writes',
+    async (allowedAction) => {
+      state.authorizeInstancePermissionForUser.mockImplementation(async ({ action }) =>
+        action === allowedAction ? { ok: true } : { ok: false, status: 403, error: 'forbidden' }
+      );
+      const { getMapGeocodingConfigServerFn, suggestMapAddressesServerFn } =
+        await import('./map-geocoding-api.js');
+      await expect(getMapGeocodingConfigServerFn()).resolves.toMatchObject({
+        provider: 'geoapify',
+      });
+      await expect(suggestMapAddressesServerFn({ data: { query: 'Berlin' } })).rejects.toThrow(
+        'forbidden'
+      );
+      expect(state.fetch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('serves Mapstick configuration and Photon results through the existing budgeted host path', async () => {
+    state.getStoredMapGeocodingRuntimeConfig.mockResolvedValue({
+      enabled: true,
+      provider: 'mapstick',
+      styleUrl: 'https://maps.example/styles/osm-bright/style.json',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+      suggestEndpoint: 'https://maps.example/api/',
+      geocodeEndpoint: 'https://maps.example/api/',
+      reverseGeocodeEndpoint: 'https://maps.example/reverse',
+      requestTimeoutMs: '3000',
+      rateLimitPerMinute: '60',
+    });
+    state.fetch.mockResolvedValue(
+      Response.json({
+        features: [{ geometry: { coordinates: [13, 52] }, properties: { name: 'Berlin' } }],
+      })
+    );
+    const { getMapGeocodingConfigServerFn, suggestMapAddressesServerFn } =
+      await import('./map-geocoding-api.js');
+    await expect(getMapGeocodingConfigServerFn()).resolves.toMatchObject({
+      provider: 'mapstick',
+      styleUrl: '/api/v1/iam/map-geocoding/mapstick/styles/osm-bright/style.json',
+    });
+    await expect(suggestMapAddressesServerFn({ data: { query: 'Berlin' } })).resolves.toEqual([
+      expect.objectContaining({ label: 'Berlin', source: 'mapstick' }),
+    ]);
+    expect(state.consumeGeocodingBudget).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      limit: 60,
+    });
+    expect(new URL(String(state.fetch.mock.calls[0]?.[0])).searchParams.get('q')).toBe('Berlin');
   });
 });

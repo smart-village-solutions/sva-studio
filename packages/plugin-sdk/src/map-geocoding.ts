@@ -1,4 +1,4 @@
-export type MapGeocodingProvider = 'geoapify' | 'custom';
+export type MapGeocodingProvider = 'mapstick' | 'geoapify' | 'custom';
 
 export type MapGeocodingCoordinates = Readonly<{
   latitude: number;
@@ -36,3 +36,5 @@ export type MapGeocodingRuntimeConfig = Readonly<{
   reverseGeocodeEnabled: boolean;
   killSwitchEnabled: boolean;
 }>;
+
+export { mapstickResourcePath, mapstickStyleIds, type MapstickStyleId } from '@sva/core';

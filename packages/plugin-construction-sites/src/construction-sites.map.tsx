@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  usePluginTranslation,
+  readMapStylePreferenceKey,
+  subscribeSessionAccessSnapshot,
+} from '@sva/plugin-sdk';
+import { Button, StudioMapStyleControl, useStudioMapStyle } from '@sva/studio-ui-react';
 import {
   ConstructionSiteDrawing,
   invalidDraft,
@@ -10,6 +14,15 @@ import {
 import { ConstructionSiteMapRuntime } from './construction-sites.map-runtime.js';
 import { MapTools, MapShapes } from './construction-sites.map-controls.js';
 function useMap(props: MapProps) {
+  const [defaultStyleUrl, setDefaultStyleUrl] = useState('');
+  const preferenceKey = useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readMapStylePreferenceKey,
+    readMapStylePreferenceKey
+  );
+  const mapStyle = useStudioMapStyle(defaultStyleUrl, preferenceKey);
+  const resolveStyle = useRef(mapStyle.resolveStyleUrl);
+  useEffect(() => { resolveStyle.current = mapStyle.resolveStyleUrl; }, [mapStyle.resolveStyleUrl]);
   const [state, setState] = useState<MapStatus>({
     ready: false,
     error: false,
@@ -24,7 +37,15 @@ function useMap(props: MapProps) {
   );
   controller.props = props;
   const [map] = useState(
-    () => new ConstructionSiteMapRuntime(controller, () => setState((s) => ({ ...s, error: true })))
+    () =>
+      new ConstructionSiteMapRuntime(
+        controller,
+        () => setState((s) => ({ ...s, error: true })),
+        (style) => {
+          setDefaultStyleUrl(style);
+          return resolveStyle.current(style);
+        }
+      )
   );
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -47,11 +68,15 @@ function useMap(props: MapProps) {
     state.tool,
     state.selected,
   ]);
-  return { state, controller, map, container };
+  useEffect(() => {
+    if (state.ready) map.setStyle(mapStyle.styleUrl);
+  }, [map, mapStyle.styleUrl, state.ready]);
+  return { state, controller, map, container, mapStyle };
 }
 export function ConstructionSiteMap(props: MapProps) {
   const pt = usePluginTranslation('construction-sites');
-  const { state, controller, map, container } = useMap(props);
+  const mapT = usePluginTranslation('shared');
+  const { state, controller, map, container, mapStyle } = useMap(props);
   const { error, ready } = state;
   const features = props.geometry?.features ?? [];
   const atLimit = features.length >= 10;
@@ -75,6 +100,12 @@ export function ConstructionSiteMap(props: MapProps) {
           <div
             ref={container}
             className="h-80 w-full overflow-hidden rounded-lg border border-border"
+          />
+          <StudioMapStyleControl
+            t={mapT}
+            styleUrl={mapStyle.styleUrl}
+            onChange={mapStyle.chooseStyle}
+            disabled={!ready}
           />
           {ready ? (
             <div className="absolute bottom-3 left-3 flex gap-1">

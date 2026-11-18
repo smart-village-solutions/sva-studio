@@ -335,6 +335,7 @@ describe('external interface repository', () => {
     expect(statements[0]?.text).toContain('INSERT INTO iam.external_interface_types');
     expect(statements[1]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
     expect(statements[1]?.text).toContain('UPDATE iam.instance_external_interfaces');
+    expect(statements[1]?.text).toContain('COALESCE((SELECT cleared FROM clear_defaults), $8)');
     expect(statements[1]?.values).toContain('media');
     expect(statements[1]?.values).toContain('cipher-1');
     expect(statements[2]?.text).toContain('UPDATE iam.instance_external_interfaces');

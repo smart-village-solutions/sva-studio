@@ -131,6 +131,7 @@ LIMIT 1;
   values: [instanceId, typeKey],
 });
 
+// The INSERT consumes the UPDATE result first. The default index permits at most one row.
 const upsertStatement = (input: ExternalInterfaceRecord): SqlStatement => ({
   text: `
 WITH clear_defaults AS (
@@ -140,7 +141,8 @@ WITH clear_defaults AS (
   WHERE instance_id = $1
     AND type_key = $3
     AND id <> $2
-    AND $8 = true
+    AND is_default = true AND $8 = true
+  RETURNING true AS cleared
 )
 INSERT INTO iam.instance_external_interfaces (
   id,
@@ -164,7 +166,8 @@ INSERT INTO iam.instance_external_interfaces (
   last_check_error_code,
   last_check_error_message
 )
-VALUES ($2, $1, $3, $4, $5, $6, $7, $9, $8, $10, $11, $12, $13::jsonb, $14, $15, $16, $17, $18, $19, $20)
+SELECT $2, $1, $3, $4, $5, $6, $7, $9, COALESCE((SELECT cleared FROM clear_defaults), $8),
+       $10, $11, $12, $13::jsonb, $14, $15, $16, $17, $18, $19, $20
 ON CONFLICT (id) DO UPDATE
 SET type_key = EXCLUDED.type_key,
     owner_kind = EXCLUDED.owner_kind,

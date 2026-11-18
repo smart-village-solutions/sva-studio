@@ -24,11 +24,9 @@ import {
   serializeTags,
 } from './poi.detail-form.serialization.metadata.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
-
 type MutablePartial<T> = {
   -readonly [Key in keyof T]?: T[Key];
 };
-
 const withoutUndefined = <T extends Record<string, unknown>>(value: T): MutablePartial<T> =>
   Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined)
@@ -174,6 +172,8 @@ const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
 
 const serializeMediaContent = (entry: PoiMediaContent): PoiMediaContent | undefined => {
   const result: MutablePartial<PoiMediaContent> = withoutUndefined({
+    id: compactString(entry?.id),
+    payload: entry?.payload,
     captionText: compactString(entry?.captionText),
     copyright: compactString(entry?.copyright),
     height: compactFiniteNumber(entry?.height),

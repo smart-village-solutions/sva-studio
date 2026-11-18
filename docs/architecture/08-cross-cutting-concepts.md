@@ -23,12 +23,12 @@ Präzisierung der Nutzerentscheidung: Der Mainserver darf für diesen Lieferumfa
 
 Der serverseitige JSON-Abgleich gehört in das bestehende Package `@sva/sva-mainserver`. Dessen Static-Content-Pfad wird erweitert; es entsteht weder ein eigener Sync-Dienst noch ein paralleler Konfigurationsbestand. Veröffentlichte App-Konfiguration bleibt im Mainserver führend.
 
-| Verantwortlicher Baustein | Zuständigkeit |
-| --- | --- |
-| Fachplugin | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage |
-| Studio-Host | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade |
-| `@sva/sva-mainserver` | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
-| Mainserver | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar |
+| Verantwortlicher Baustein | Zuständigkeit                                                                                                                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fachplugin                | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage                                                           |
+| Studio-Host               | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade                                           |
+| `@sva/sva-mainserver`     | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
+| Mainserver                | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar                                            |
 
 Plugins nutzen ausschließlich den gemeinsamen Host-Vertrag. Sie erhalten weder einen generischen GraphQL-Executor noch Credentials und implementieren keine eigenen Retry-, Merge- oder Readback-Verfahren. Gemeinsame clientfähige Typen und Aufrufe werden über die bestehenden öffentlichen SDK-Verträge bereitgestellt; Fachvalidierungen bleiben beim zuständigen Plugin und werden auch serverseitig ausgeführt.
 
@@ -115,6 +115,8 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 ### Medienmanagement
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
+- Der Bildfokus ist normalisiertes redaktionelles Metadatum, kein Auftrag zur Pixelverarbeitung. Der bestehende Mainserver-Vertrag übergibt ihn in `MediaContent.payload.focusPoint`; Beispiele im Studio verpflichten Zielanwendungen nicht zu einem Zuschnitt.
+- Die automatische Aufnahme benötigt einen expliziten POST nach bewusstem Öffnen und `media.read` plus `media.create`. Nur die aktive eigene S3-Schnittstelle ist als öffentlich auslieferbare Quelle freigegeben. Quellenidentität, begrenzte private Eingangsbytes, einmaliger Insert und der vorhandene Upload-Worker sichern den Abschluss; GET/Prefetch bleiben lesend.
 - Jeder Tenant besitzt genau einen extern isolierten öffentlichen Medien-Bucket. Innerhalb dieses Buckets sind beliebige Bestandspräfixe zulässig; generierte Varianten bleiben von manueller Registrierung ausgeschlossen. Für den gemeinsamen privaten Scan-Bucket gelten dagegen exakte Instanzpräfixe unter `.quarantine/` und `.protected/`. Diese internen Keys sind unabhängig vom Scan-Schalter vom normalen Bucket-Import ausgeschlossen; private Ausgaben erlauben ausschließlich geschützte Auslieferung.
 - Upload-Varianten liegen unter claim-isolierten Präfixen. Übernimmt ein neuer Verarbeitungs-Claim eine abgelaufene Session, bereinigt er das vollständige Präfix des ersetzten Claims vor dem Retry; damit benötigt dieser Recovery-Pfad weder Bucket-übergreifende Suche noch einen zusätzlichen Worker.
 - Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
@@ -1597,7 +1599,47 @@ Generische Core-Inhaltsaktionen prüfen für jeden konkreten Inhaltstyp zusätzl
 
 Der bereits registrierte Core-Inhaltstyp `GENERIC_CONTENT_TYPE` (`generic`) benötigt kein Plugin-Modul und bleibt von der Modulabfrage ausgenommen; seine normalen Core-Permissions und Ownership-Grenzen werden unverändert geprüft. Diese exakte Core-Ausnahme erlaubt keine beliebigen unbekannten Inhaltstypen.
 
-
 ### SSF local passphrase file policy
 
 The existing SSF v2 recording policy includes `passphraseFileEnabled`: a strict boolean resolved from an explicit tenant override, then installation defaults, then `false`. Old policies without the field stay valid. The setting participates in the effective configuration revision and uses the existing recording administration permissions and JSON content storage. Studio transports only this policy flag; local plaintext passphrase TXT handling belongs to SSF. It does not change recording enablement, archive authorization, or private-key storage.
+
+### Mapstick-Ressourcen und lokale Stilpräferenzen
+
+Mapstick bleibt eine externe Schnittstelle ohne Einbettung seiner App-Oberfläche.
+Die automatische Einrichtung ist ein Betreiber-Opt-in über
+`SVA_MANAGED_MAPSTICK_URL`, keine technische Zugriffssperre am öffentlichen Dienst.
+Die eigenen Remote-Profile `config/runtime/remote/{dev,staging,prod}.vars` setzen
+den Wert über den bestehenden autoritativen Konfigurationsvertrag. Der reguläre
+Promote-Pfad reicht ihn in `compose.yaml` an App und Provisioner weiter. Ohne
+expliziten Wert bleibt er leer; generische Installationen und Standalone besitzen
+keinen Service-Default. Die eigenen Portainer-Profile `studio` und `demo` setzen
+ihren Wert ebenfalls. Der Remote-Builder prüft die HTTPS-/Zieladressengrenzen vor
+jeder Mutation. Beim Provisioner verwendet die verwaltete Einrichtung dieselbe
+bestehende IAM-URL-Auflösung wie die Instanz-Registry: eine explizite URL oder die
+kodierten App-Datenbankkomponenten, unabhängig vom späteren App-Entrypoint.
+
+Kartenressourcen verwenden die vorhandene mandantengebundene Leseautorisierung;
+auch die bestehenden Verbraucher Jobs und Baustellen dürfen ihre Karte lesen.
+Es gibt keine freie Proxy-Ziel-URL: Der Host löst ausschließlich eine feste
+Ressourcen-Grammatik gegen die gespeicherte externe Mapstick-Style-Adresse auf.
+Die generische Speicher-API darf Mapstick-Ziele weder neu anlegen noch ändern;
+sie erhält provisionierte Style-/Photon-Adressen unverändert und erlaubt weiterhin
+Runtime-Schalter, Timeout und Rate. Gespeicherte Style-Adressen müssen HTTPS ohne
+Zugangsdaten, Query oder Fragment sowie einen bekannten Style-Pfad verwenden.
+Öffentliche HTTPS-Ziele werden mit `fetchPublicHttps` am Socket geprüft;
+Weiterleitungen werden verweigert. PMTiles erfordert einen geschlossenen einzelnen
+Bytebereich mit höchstens 8 MiB und eine passende 206-/Content-Range-Antwort. Auch
+chunked Bodies sind auf 8 MiB und Abrufe auf 15 Sekunden begrenzt. Antworten sind
+nur privat cachebar. Geocoding nutzt weiterhin das bestehende Requestbudget.
+
+Der Kartenstil wird optional unter einem konto- und mandantengebundenen
+LocalStorage-Schlüssel gespeichert. Gesperrter Speicher und unbekannte Werte
+verhindern die Kartenbenutzung nicht. Stiländerungen ändern keine Fachkoordinaten,
+keine Marker und keine Geometrien; die nativen Auswahlfelder sind benannt und der
+Popover gibt den Fokus beim Schließen zurück.
+
+## Schlüsselmaterial und Sitzung
+
+Private Organisationsschlüssel und entschlüsselte Inhaltsschlüssel werden im Browser verarbeitet. Download und temporäre Druckansicht sind bewusste Exporte. Das Gateway erhält öffentliche Metadaten, verschlüsselte Umschläge und einen an die konkrete Challenge gebundenen HMAC. Dieser bestätigt den Besitz des Organisationsschlüssels. Die lokale Prüfung jeder Quellsignatur und des vorbereiteten Umfangs sichert die Zuordnung der Inhaltsschlüssel. Die persönliche Richtlinie `passphraseFileEnabled` bleibt separat.
+
+Eine gültige Mandantensitzung reicht für alle berechtigten SSF-Aufzeichnungsaktionen. Passwortlogin bei optionaler MFA und Sitzungen mit älterer MFA sind zulässig. Das Ende einer Vorbereitung verlangt eine neue Challenge, das Ende der Sitzung einen normalen Login.

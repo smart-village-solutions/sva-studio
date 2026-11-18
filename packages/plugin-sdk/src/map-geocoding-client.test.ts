@@ -1,6 +1,8 @@
+import { publishSessionAccessSnapshot, resetSessionAccessSnapshot } from './session-access.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  readMapStylePreferenceKey,
   MapGeocodingClientError,
   geocodeHostMapAddress,
   getHostMapGeocodingConfig,
@@ -273,5 +275,27 @@ describe('map geocoding client', () => {
         value: originalLocalStorage,
       });
     }
+  });
+});
+
+describe('map style preference identity', () => {
+  it('provides no shared fallback and isolates both tenant and account', () => {
+    resetSessionAccessSnapshot();
+    expect(readMapStylePreferenceKey()).toBeNull();
+    const identity = {
+      isResolved: true,
+      subjectId: 'user-a',
+      instanceId: 'tenant-a',
+      permissionActions: [],
+      assignedModules: [],
+      roles: [],
+    };
+    publishSessionAccessSnapshot(identity);
+    expect(readMapStylePreferenceKey()).toBe('sva:map-style:tenant-a:user-a');
+    publishSessionAccessSnapshot({ ...identity, subjectId: 'user-b' });
+    expect(readMapStylePreferenceKey()).toBe('sva:map-style:tenant-a:user-b');
+    publishSessionAccessSnapshot({ ...identity, instanceId: 'tenant-b' });
+    expect(readMapStylePreferenceKey()).toBe('sva:map-style:tenant-b:user-a');
+    resetSessionAccessSnapshot();
   });
 });

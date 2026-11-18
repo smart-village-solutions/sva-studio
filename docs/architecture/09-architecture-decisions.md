@@ -758,3 +758,7 @@ itself establish production promotion or tenant recording readiness.
 ## Aktuelle Kontoprüfung persönlicher Bearer-Zugriffe
 
 [ADR-023](../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md) und [ADR-067](../adr/ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md) präzisieren die bestehende Zuständigkeit: aktueller Redis-/Tenant-Account-/Plattform-Keycloak-Status vor persönlichen API-Handlern, unabhängig von erhaltenen Grants oder JWT-Laufzeit. Die Änderungen betreffen Abschnitt 04/05/06/08; der bestehende Browser-/DSR-Vertrag bleibt erhalten.
+
+## Delegationsentscheidung für SSF-Aufzeichnungen
+
+Der genehmigte Change `add-ssf-organisation-key-management` konkretisiert die bestehende Mandantendelegation mit RFC 8693 im selben Realm. Der gemeinsame Vertrag im SSF-Change `update-recording-key-lifecycle` definiert Dateiformat, Transkripte, Versionsbezüge und Belege. Beide Implementierungen prüfen denselben deterministischen Testvektor.

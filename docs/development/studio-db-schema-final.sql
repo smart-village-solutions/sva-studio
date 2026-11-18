@@ -1,3 +1,4 @@
+-- Migration 0119 erweitert nur Provider-JSON-Metadaten um mapstick; keine DDL-Änderung.
 --
 -- PostgreSQL database dump
 --

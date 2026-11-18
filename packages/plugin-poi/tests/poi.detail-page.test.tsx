@@ -679,8 +679,18 @@ describe('PoiDetailPage', () => {
       )
     );
     fireEvent.click(screen.getByRole('button', { name: 'media.editor.cancelEditing' }));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
+    const reopened = screen.getByRole('dialog');
+    fireEvent.change(within(reopened).getByLabelText('Dateiname filtern'), {
+      target: { value: 'stadtpark' },
+    });
+    await waitFor(() =>
+      expect(within(reopened).getAllByRole('button', { name: 'Auswählen' })).toHaveLength(1)
+    );
+    fireEvent.click(within(reopened).getByRole('button', { name: 'Auswählen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
       expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();

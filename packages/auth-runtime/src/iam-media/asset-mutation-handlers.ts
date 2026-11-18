@@ -64,7 +64,13 @@ export const updateMedia = async (
     return mapAuthorizationFailure(authorization);
   }
 
-  const updatedAsset = await persistMediaMetadataUpdate(deps, ctx, instanceId, assetId, parsed.data);
+  const updatedAsset = await persistMediaMetadataUpdate(
+    deps,
+    ctx,
+    instanceId,
+    assetId,
+    parsed.data
+  );
   if (updatedAsset instanceof Response) return updatedAsset;
 
   const usageImpact = await deps.withMediaService(instanceId, (service) =>
@@ -77,12 +83,11 @@ export const updateMedia = async (
     instanceId,
     actionId: 'media.metadataUpdate',
     result: 'success',
-    reasonCode:
-      parsed.data.metadata.crop || parsed.data.metadata.focusPoint
-        ? 'image_edit_applied'
-        : usageImpact.totalReferences > 0
-          ? 'referenced_asset_updated'
-          : undefined,
+    reasonCode: parsed.data.metadata.crop
+      ? 'image_edit_applied'
+      : usageImpact.totalReferences > 0
+        ? 'referenced_asset_updated'
+        : undefined,
     resourceType: 'media_asset',
     resourceId: assetId,
   });

@@ -260,6 +260,40 @@ describe('media storage s3 adapter', () => {
       await expect(port.prepareUpload(input)).rejects.toThrow('media_storage_unavailable');
     }
   );
+  it('keeps a required quarantine scan when the current scan switch is disabled', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Owner: { ID: 'owner' },
+        Grants: [{ Grantee: { Type: 'CanonicalUser', ID: 'owner' } }],
+      })
+      .mockRejectedValueOnce(Object.assign(new Error(), { name: 'NoSuchBucketPolicy' }));
+    const signed = vi.fn(async () => 'https://private.example.test/put');
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://s3.example.test',
+        region: 'eu-central-1',
+        bucket: 'public',
+        accessKeyId: 'test',
+        secretAccessKey: 'test',
+        signedUrlTtlSeconds: 900,
+      },
+      { client: { send } as unknown as S3Client, getSignedUrl: signed }
+    );
+    const upload = await port.prepareUpload({
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      uploadSessionId: 'session-1',
+      mediaType: 'image',
+      mimeType: 'image/png',
+      byteSize: 12,
+      requireScan: true,
+    });
+    expect(upload.storageKey).toBe('.quarantine/tenant-a/asset-1/session-1');
+    expect(signed.mock.calls[0]?.[1].input.Bucket).toBe('intake');
+  });
   it('accepts only the canonical MinIO private ACL placeholder without owner identifiers', async () => {
     vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
     vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
@@ -369,6 +403,11 @@ describe('media storage s3 adapter', () => {
     const port = await createConfiguredMediaStoragePortForInstance('de-musterhausen');
 
     expect(port).toBeDefined();
+    expect(port.importSource).toMatchObject({
+      instanceId: 'de-musterhausen',
+      visibility: 'public',
+    });
+    expect(port.importSource?.id).toMatch(/^[a-f0-9]{64}$/);
     expect(listExternalInterfaceRecordsMock).toHaveBeenCalledWith('de-musterhausen');
     expect(resolveExternalInterfaceMock).toHaveBeenCalledWith(
       expect.objectContaining({

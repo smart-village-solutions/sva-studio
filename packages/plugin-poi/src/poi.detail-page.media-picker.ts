@@ -59,6 +59,7 @@ const toPoiMediaPickerDetail = (
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
       tags: asset.metadata.tags,
+      focusPoint: asset.metadata.focusPoint,
     },
     instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,

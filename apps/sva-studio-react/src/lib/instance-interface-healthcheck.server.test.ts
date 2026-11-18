@@ -737,6 +737,38 @@ describe('instance-interface-healthcheck.server', () => {
     );
   });
 
+  it('checks a Mapstick external interface without an API key', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'mapstick-1',
+      instanceId: 'de-test',
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Mapstick',
+      alias: 'operator-mapstick',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://maps.example/',
+      authMode: 'none',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: { provider: 'mapstick', geocodeEndpoint: 'https://maps.example/api/' },
+    });
+    state.fetch.mockResolvedValue(Response.json({ features: [] }));
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+    const result = await runStoredInterfaceHealthcheck({
+      instanceId: 'de-test',
+      interfaceId: 'mapstick-1',
+      fetchImpl: state.fetch,
+    });
+    expect(result).toMatchObject({ checkStatus: 'succeeded', visibleStatus: 'ok' });
+    const url = new URL(String(state.fetch.mock.calls[0]?.[0]));
+    expect(url.searchParams.get('q')).toBe('Berlin');
+    expect(url.searchParams.has('apiKey')).toBe(false);
+  });
+
   it('validates Geoapify credentials with a minimal geocoding request', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'map-geoapify',

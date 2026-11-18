@@ -182,11 +182,10 @@ export const resolveExternalInterface = async (
   }
 
   if (!record.secretConfigCiphertext) {
-    if (!interfaceTypeRequiresSecrets(record.typeKey)) {
-      return {
-        ...record,
-        secretConfig: {},
-      };
+    const keylessMap = record.typeKey === 'map_geocoding' &&
+      record.publicConfig.provider === 'mapstick' && record.authMode === 'none';
+    if (!interfaceTypeRequiresSecrets(record.typeKey) || keylessMap) {
+      return { ...record, secretConfig: {} };
     }
     throw new ExternalInterfaceRuntimeError({
       code: 'secret_missing',

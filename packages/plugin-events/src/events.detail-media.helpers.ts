@@ -93,6 +93,7 @@ export const toEventsMediaPickerDetail = (
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
       tags: asset.metadata.tags,
+      focusPoint: asset.metadata.focusPoint,
     },
     instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,
@@ -170,6 +171,7 @@ const createSelectedMediaUsage = (
     caption,
     credit: asset.metadata.copyright,
     license: asset.metadata.license,
+    focusPoint: asset.metadata.focusPoint,
     role: 'gallery_item',
     sortOrder,
     assetSnapshot: toContentMediaAssetSnapshot({

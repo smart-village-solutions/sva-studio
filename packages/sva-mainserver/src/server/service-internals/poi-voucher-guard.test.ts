@@ -172,3 +172,51 @@ it.each([
   expect(fields.has('lunches')).toBe(hasLunches);
   expect(fields.has('vouchers')).toBe(false);
 });
+
+it('roundtrips the POI focus through the upstream mutation without exposing internal source payloads', async () => {
+  const stored = {
+    id: '1',
+    name: 'Ort',
+    lunches: [],
+    mediaContents: [
+      {
+        id: 'media-1',
+        sourceUrl: { url: 'https://media.test/image.png' },
+        payload: { internalSource: 'private', focusPoint: { x: 0.2, y: 0.8 } },
+      },
+    ],
+  };
+  let written: Record<string, unknown> | undefined;
+  const execute = vi.fn(async (operation) => {
+    if (operation.operationName === 'SvaMainserverCreatePoi') {
+      written = operation.variables;
+      return { createPointOfInterest: stored };
+    }
+    if (operation.operationName === 'SvaMainserverPoiVoucherGuard')
+      return { pointOfInterest: { vouchers: [] } };
+    return { pointOfInterest: stored };
+  });
+  const service = createPoiService({
+    loadValidatedInstanceConfig: async () => config,
+    poiOperations: createPoiOperations(execute as GraphqlExecutor),
+  } as unknown as ServiceContext);
+  const detail = await service.getPoiDetail(input);
+  expect(detail.data.mediaContents[0]?.payload).toEqual({ focusPoint: { x: 0.2, y: 0.8 } });
+  await service.updatePoi({
+    ...input,
+    poi: {
+      name: 'Ort',
+      mediaContents: [
+        {
+          id: 'media-1',
+          sourceUrl: { url: 'https://media.test/image.png' },
+          payload: { focusPoint: null },
+        },
+      ],
+    },
+  });
+  expect(written?.mediaContents).toEqual([
+    expect.objectContaining({ payload: { internalSource: 'private', focusPoint: null } }),
+  ]);
+  expect((written?.mediaContents as unknown[])[0]).not.toHaveProperty('id');
+});

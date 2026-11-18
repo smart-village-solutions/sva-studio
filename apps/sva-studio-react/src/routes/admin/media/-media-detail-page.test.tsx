@@ -505,7 +505,7 @@ describe('MediaDetailPage', () => {
   it('offers creating an edited copy without requiring permission to change the original metadata', () => {
     accessState.deniedActions.add('media.update');
     render(<MediaDetailPage assetId="asset-2" />);
-    expect(screen.getByRole('button', { name: 'Bild bearbeiten' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kopie erstellen und bearbeiten' })).toBeTruthy();
     expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
     expect(
       screen.getByText(
@@ -517,7 +517,7 @@ describe('MediaDetailPage', () => {
   it('hides image editing without creation permission or protected source access', () => {
     accessState.deniedActions.add('media.create');
     const { unmount } = render(<MediaDetailPage assetId="asset-2" />);
-    expect(screen.queryByRole('button', { name: 'Bild bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Kopie erstellen und bearbeiten' })).toBeNull();
     unmount();
     accessState.deniedActions.clear();
     accessState.deniedActions.add('media.deliver.protected');
@@ -527,7 +527,7 @@ describe('MediaDetailPage', () => {
       asset: { ...current.asset, visibility: 'protected' },
     });
     render(<MediaDetailPage assetId="asset-2" />);
-    expect(screen.queryByRole('button', { name: 'Bild bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Kopie erstellen und bearbeiten' })).toBeNull();
   });
 
   it('preserves unsaved source metadata when opening and cancelling the image workspace', async () => {
@@ -537,7 +537,7 @@ describe('MediaDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Titel'), {
       target: { value: 'Noch nicht gespeichert' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Bild bearbeiten' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kopie erstellen und bearbeiten' }));
     await waitFor(() =>
       expect(getMediaEditingMock).toHaveBeenCalledWith(
         expect.objectContaining({ assetId: 'asset-2' })
@@ -545,10 +545,9 @@ describe('MediaDetailPage', () => {
     );
     fireEvent.click(
       screen.getByRole('button', {
-        name: /Bearbeitung verwerfen und zurück|media.editor.cancelEditing/,
+        name: /Abbrechen|media.editor.cancelEditing/,
       })
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Arbeitsraum schließen' }));
     expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
       'Noch nicht gespeichert'
     );

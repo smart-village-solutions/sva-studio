@@ -1,4 +1,8 @@
-import type { SvaMainserverEventInput, SvaMainserverEventItem } from '../../types.js';
+import type {
+  SvaMainserverEventInput,
+  SvaMainserverEventItem,
+  SvaMainserverMediaContent,
+} from '../../types.js';
 import { toSvaMainserverError } from './shared.js';
 
 /**
@@ -51,15 +55,15 @@ const withoutId = <T extends { readonly id?: string }>(value: T | undefined) => 
 // Media payloads follow their stored entry by Mainserver id, so removing, reordering or
 // duplicating URLs cannot move a payload to another entry. A payload describes its source image,
 // so it is re-attached only while the entry still points to the stored URL, and at most once.
-// Payloads are never taken from the client; the ids are references only and are removed before
-// the mutation.
-const reattachMediaPayloads = (
-  current: SvaMainserverEventItem,
+// Source payloads are never taken from the client. Only the validated editorial focus may be
+// merged into a matched source record; ids are removed before the mutation.
+export const reattachMediaPayloads = (
+  current: readonly SvaMainserverMediaContent[],
   submitted: SvaMainserverEventInput['mediaContents']
 ): SvaMainserverEventInput['mediaContents'] => {
   if (!submitted) return submitted;
   const stored = new Map(
-    current.mediaContents.flatMap((media) =>
+    current.flatMap((media) =>
       media.id && media.payload !== undefined ? [[media.id, media] as const] : []
     )
   );
@@ -70,7 +74,23 @@ const reattachMediaPayloads = (
       return media;
     }
     stored.delete(id);
-    return { ...media, payload: match.payload };
+    const focus =
+      typeof media.payload === 'object' && media.payload !== null && 'focusPoint' in media.payload
+        ? { focusPoint: media.payload.focusPoint }
+        : undefined;
+    if (!focus) return { ...media, payload: match.payload };
+    if (
+      typeof match.payload !== 'object' ||
+      match.payload === null ||
+      Array.isArray(match.payload)
+    ) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'media_focus_payload_conflict',
+        statusCode: 502,
+      });
+    }
+    return { ...media, payload: { ...match.payload, ...focus } };
   });
 };
 
@@ -80,5 +100,5 @@ export const preserveEventSourceData = (
 ): Pick<SvaMainserverEventInput, 'location' | 'repeatDuration' | 'mediaContents'> => ({
   location: submitted.location ?? withoutId(current.location),
   repeatDuration: submitted.repeatDuration ?? withoutId(current.repeatDuration),
-  mediaContents: reattachMediaPayloads(current, submitted.mediaContents),
+  mediaContents: reattachMediaPayloads(current.mediaContents, submitted.mediaContents),
 });

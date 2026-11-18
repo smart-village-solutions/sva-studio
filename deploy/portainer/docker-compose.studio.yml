@@ -15,6 +15,7 @@ services:
   app:
     image: ${SVA_IMAGE_REF}
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-https://mapstick.smart-village.app/}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
@@ -53,6 +54,7 @@ services:
       SVA_STUDIO_MCP_ISSUER: '${SVA_STUDIO_MCP_ISSUER:-}'
       SVA_STUDIO_MCP_AUDIENCE: '${SVA_STUDIO_MCP_AUDIENCE:-sva-studio-mcp}'
       SVA_STUDIO_MCP_CLIENT_ID: '${SVA_STUDIO_MCP_CLIENT_ID:-sva-studio-mcp}'
+      SVA_STUDIO_SSF_GATEWAY_AUDIENCE: '${SVA_STUDIO_SSF_GATEWAY_AUDIENCE:-ssf-frontend}'
       SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'
       SVA_STUDIO_SSF_RUNTIME_ENABLED: '${SVA_STUDIO_SSF_RUNTIME_ENABLED:-false}'
       SVA_STUDIO_SSF_RUNTIME_ISSUER: '${SVA_STUDIO_SSF_RUNTIME_ISSUER:-}'
@@ -141,11 +143,13 @@ services:
       - ./otel-bootstrap.mjs
       - .output/server/index.mjs
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-https://mapstick.smart-village.app/}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
       SVA_DEPLOY_REVISION: '${SVA_DEPLOY_REVISION:-unset}'
       SVA_RUNTIME_PROFILE: '${SVA_RUNTIME_PROFILE}'
+      SVA_STUDIO_SSF_GATEWAY_AUDIENCE: '${SVA_STUDIO_SSF_GATEWAY_AUDIENCE:-ssf-frontend}'
       SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'
       SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'
       SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'

@@ -20,7 +20,10 @@ describe('projects content media adapter', () => {
       },
     ];
     const usages = projectImagesToMediaUsages(images);
-    const reordered = [{ ...usages[0]!, sortOrder: 9 }, { ...usages[0]!, uiId: 'copy' }];
+    const reordered = [
+      { ...usages[0]!, sortOrder: 9 },
+      { ...usages[0]!, uiId: 'copy' },
+    ];
 
     expect(projectMediaUsagesToImages(reordered)).toEqual([
       expect.objectContaining({
@@ -41,23 +44,56 @@ describe('projects content media adapter', () => {
       persistentUrl: 'https://cdn.example.test/asset-1.jpg',
       previewUrl: 'https://preview.example.test/asset-1.jpg',
       metadata: {
-        title: 'Title', fileName: 'image.jpg', altText: 'Alt', description: 'Caption',
-        copyright: 'Credits', license: 'CC BY',
+        title: 'Title',
+        fileName: 'image.jpg',
+        altText: 'Alt',
+        description: 'Caption',
+        copyright: 'Credits',
+        license: 'CC BY',
       },
       sortOrder: 2,
     });
 
     expect(usage).toMatchObject({
-      assetId: 'asset-1', role: 'gallery_item', sortOrder: 2,
-      altText: 'Alt', caption: 'Caption', credit: 'Credits', license: 'CC BY',
+      assetId: 'asset-1',
+      role: 'gallery_item',
+      sortOrder: 2,
+      altText: 'Alt',
+      caption: 'Caption',
+      credit: 'Credits',
+      license: 'CC BY',
       referenceStatus: 'pending',
       assetSnapshot: { persistentUrl: 'https://cdn.example.test/asset-1.jpg' },
     });
   });
 
   it('accepts only explicitly public, non-signed delivery URLs', () => {
-    expect(resolveProjectPersistentDeliveryUrl({ deliveryUrl: 'https://cdn.example.test/image.jpg', isPublicUrl: true })).toBe('https://cdn.example.test/image.jpg');
-    expect(resolveProjectPersistentDeliveryUrl({ deliveryUrl: 'https://cdn.example.test/image.jpg', isPublicUrl: false })).toBeNull();
-    expect(resolveProjectPersistentDeliveryUrl({ deliveryUrl: 'https://cdn.example.test/image.jpg?X-Amz-Signature=secret', isPublicUrl: true })).toBeNull();
+    expect(
+      resolveProjectPersistentDeliveryUrl({
+        deliveryUrl: 'https://cdn.example.test/image.jpg',
+        isPublicUrl: true,
+      })
+    ).toBe('https://cdn.example.test/image.jpg');
+    expect(
+      resolveProjectPersistentDeliveryUrl({
+        deliveryUrl: 'https://cdn.example.test/image.jpg',
+        isPublicUrl: false,
+      })
+    ).toBeNull();
+    expect(
+      resolveProjectPersistentDeliveryUrl({
+        deliveryUrl: 'https://cdn.example.test/image.jpg?X-Amz-Signature=secret',
+        isPublicUrl: true,
+      })
+    ).toBeNull();
   });
+});
+
+it('preserves a selected focus in the project image contract', () => {
+  const [usage] = projectImagesToMediaUsages([
+    { url: 'https://media.test/photo.png', altText: 'Photo', position: 0 },
+  ]);
+  expect(
+    projectMediaUsagesToImages([{ ...usage!, focusPoint: { x: 0.2, y: 0.8 } }])[0]?.focusPoint
+  ).toEqual({ x: 0.2, y: 0.8 });
 });

@@ -10,6 +10,7 @@ type RemoteConfigKeyContract = Readonly<{
 
 const configKeys = [
   'BUS_API_BASE_URL',
+  'SVA_MANAGED_MAPSTICK_URL',
   'MEILI_SOURCES',
   'APP_DB_USER',
   'ENABLE_OTEL',
@@ -59,6 +60,8 @@ const configKeys = [
   'SVA_STUDIO_SSF_RUNTIME_CLIENT_ID',
   'SVA_STUDIO_SSF_RUNTIME_ENABLED',
   'SVA_STUDIO_SSF_LOGIN_ORIGIN',
+  'SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL',
+  'SVA_STUDIO_SSF_GATEWAY_AUDIENCE',
   'SVA_STUDIO_SSF_RUNTIME_ISSUER',
   'KEYCLOAK_OPERATOR_USER',
   'OTEL_EXPORTER_OTLP_ENDPOINT',
@@ -126,6 +129,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   ...Object.fromEntries(configKeys.map((key) => [key, { kind: 'config' as const }])),
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
   BUS_API_BASE_URL: { kind: 'config', type: 'url' },
+  SVA_MANAGED_MAPSTICK_URL: { kind: 'config', type: 'url' },
   MEILI_URL: { kind: 'config', type: 'url' },
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
   ENABLE_OTEL: { kind: 'config', type: 'boolean' },

@@ -21,6 +21,14 @@ describe('POI content media adapter', () => {
     expect(poiMediaUsagesToContents(poiMediaContentsToUsages(source))).toEqual(source);
   });
 
+  it.each([{ x: 0.2, y: 0.8 }, null])('restores the saved focus %j', (focusPoint) => {
+    const payload = { focusPoint, retained: true };
+    const [usage] = poiMediaContentsToUsages([{ payload }]);
+
+    expect(usage?.focusPoint).toEqual(focusPoint);
+    expect(poiMediaUsagesToContents([usage!])[0]?.payload).toEqual(payload);
+  });
+
   it('uses safe defaults for sparse media and reference alignments', () => {
     expect(poiMediaContentsToUsages([{}, {}], [{ status: 'synced' }])).toMatchObject([
       { assetId: undefined, persistentUrl: '', referenceStatus: 'synced' },

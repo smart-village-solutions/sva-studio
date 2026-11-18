@@ -23,7 +23,8 @@ import { NewsApiError } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 
 export type StatusMessage = Readonly<{
-  source: 'success' | 'recovered' | 'unknown' | 'load' | 'save' | 'delete' | 'reference' | 'navigation';
+  source:
+    'success' | 'recovered' | 'unknown' | 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
   requestId?: string;
   errorCode?: string;
@@ -161,6 +162,7 @@ export const toNewsMediaPickerDetail = (
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
       tags: asset.metadata.tags,
+      focusPoint: asset.metadata.focusPoint,
     },
     instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,

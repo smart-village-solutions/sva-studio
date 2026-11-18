@@ -18,12 +18,15 @@ const host = vi.hoisted(() => ({
   draw: undefined as unknown,
   drawEvents: {} as Record<string, (...args: unknown[]) => void>,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (original) => ({
+  ...(await original<typeof import('@sva/plugin-sdk')>()),
   getHostMapGeocodingConfig: host.config,
+  readMapStylePreferenceKey: () => 'test-map-preference',
   usePluginTranslation: () => (key: string) => key,
 }));
 vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => ({ default: '/worker.js' }));
 vi.mock('maplibre-gl', () => ({
+  addProtocol: vi.fn(),
   setWorkerUrl: vi.fn(),
   AttributionControl: class {},
   Map: class {
@@ -32,6 +35,7 @@ vi.mock('maplibre-gl', () => ({
       host.created();
       host.options = options;
     }
+    setStyle = vi.fn();
     addControl = vi.fn();
     fitBounds = vi.fn();
     zoomIn = vi.fn();
@@ -546,4 +550,44 @@ it('does not revive the first asynchronous initialization after a StrictMode rem
   });
   await start();
   expect(host.created).toHaveBeenCalledOnce();
+});
+
+describe('construction style replacement', () => {
+  it('keeps native draw sources and layers without retaining old basemap sources', async () => {
+    const { preserveConstructionDrawingStyle } =
+      await import('../src/construction-sites.map-runtime.js');
+    const data = { type: 'FeatureCollection' as const, features: [] };
+    const previous: import('maplibre-gl').StyleSpecification = {
+      version: 8,
+      sources: {
+        'td-point': { type: 'geojson', data },
+        old: { type: 'vector', url: 'https://old.example' },
+      },
+      layers: [{ id: 'td-point', type: 'circle', source: 'td-point' }],
+    };
+    const next: import('maplibre-gl').StyleSpecification = {
+      version: 8,
+      sources: {
+        openmaptiles: { type: 'vector', url: 'pmtiles://https://maps.example' },
+      },
+      layers: [{ id: 'background', type: 'background' }],
+    };
+    const result = preserveConstructionDrawingStyle(previous, next);
+    expect(result.sources['td-point']).toBe(previous.sources['td-point']);
+    expect(result.sources.old).toBeUndefined();
+    expect(result.layers.map(({ id }) => id)).toEqual(['background', 'td-point']);
+    expect(preserveConstructionDrawingStyle(undefined, next)).toBe(next);
+  });
+});
+
+it('creates the construction map with its saved style before loading the default basemap', async () => {
+  host.config.mockResolvedValue({ styleUrl: '/api/v1/iam/map-geocoding/mapstick/styles/osm-bright/style.json' });
+  window.localStorage.setItem('test-map-preference', 'fiord-color');
+  try {
+    render(<ConstructionSiteMap latitude={51} longitude={10} onChange={vi.fn()} />);
+    await waitFor(() => expect(host.options?.style).toBe('/api/v1/iam/map-geocoding/mapstick/styles/fiord-color/style.json'));
+    expect(host.created).toHaveBeenCalledTimes(1);
+  } finally {
+    window.localStorage.removeItem('test-map-preference');
+  }
 });

@@ -1,11 +1,5 @@
 import sharp from 'sharp';
-import {
-  defaultMediaPresets,
-  resolveMediaFocusCrop,
-  type MediaCrop,
-  type MediaFocusPoint,
-  type MediaPreset,
-} from '@sva/media';
+import { defaultMediaPresets, type MediaCrop, type MediaPreset } from '@sva/media';
 import type { MediaService } from './service.js';
 import type { MediaStoragePort } from './storage-port.js';
 import { mediaProcessingPrefix } from './storage-key-paths.js';
@@ -53,12 +47,6 @@ export const cleanupReplacedClaimVariants = async (input: {
   }
 };
 
-const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as { x?: unknown }).x === 'number' &&
-  typeof (value as { y?: unknown }).y === 'number';
-
 const isMediaCrop = (value: unknown): value is MediaCrop =>
   typeof value === 'object' &&
   value !== null &&
@@ -66,13 +54,6 @@ const isMediaCrop = (value: unknown): value is MediaCrop =>
   typeof (value as { y?: unknown }).y === 'number' &&
   typeof (value as { width?: unknown }).width === 'number' &&
   typeof (value as { height?: unknown }).height === 'number';
-
-const readMediaFocusPoint = (
-  metadata: Record<string, unknown> | undefined
-): MediaFocusPoint | undefined => {
-  const focusPoint = metadata?.focusPoint;
-  return isMediaFocusPoint(focusPoint) ? focusPoint : undefined;
-};
 
 const readMediaCrop = (metadata: Record<string, unknown> | undefined): MediaCrop | undefined => {
   const crop = metadata?.crop;
@@ -94,12 +75,8 @@ const createVariantBuffer = async (input: {
   readonly buffer: Uint8Array;
   readonly preset: MediaPreset;
   readonly crop?: MediaCrop;
-  readonly focusPoint?: MediaFocusPoint;
 }): Promise<Buffer> => {
   const image = sharp(input.buffer, { failOn: 'error' }).rotate();
-  const sourceMetadata = await image.metadata();
-  const sourceWidth = sourceMetadata.width;
-  const sourceHeight = sourceMetadata.height;
 
   if (input.crop) {
     image.extract({
@@ -108,16 +85,6 @@ const createVariantBuffer = async (input: {
       width: Math.max(1, Math.round(input.crop.width)),
       height: Math.max(1, Math.round(input.crop.height)),
     });
-  } else {
-    if (input.focusPoint && sourceWidth && sourceHeight) {
-      const focused = resolveMediaFocusCrop(
-        sourceWidth,
-        sourceHeight,
-        input.preset,
-        input.focusPoint
-      );
-      if (focused) image.extract(focused);
-    }
   }
 
   const resized = image.resize({
@@ -169,7 +136,6 @@ export const createMediaVariants = async (input: {
       buffer: input.body,
       preset,
       crop: readMediaCrop(input.asset.metadata),
-      focusPoint: readMediaFocusPoint(input.asset.metadata),
     });
     const storageKey = buildVariantStorageKey({
       instanceId: input.instanceId,

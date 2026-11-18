@@ -1,6 +1,10 @@
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { createExternalInterfaceRepository } from './external-interfaces.js';
+import { buildManagedMapstickRecord } from './external-interfaces.shared.js';
+import { resolveIamDatabaseUrl } from '../instance-registry/server-client.js';
+
 import type { SqlStatement } from '../iam/repositories/types.js';
 
 const logger = createSdkLogger({ component: 'external-interfaces-server', level: 'info' });
@@ -103,3 +107,32 @@ export const createExecutor = (client: QueryClient) => ({
     };
   },
 });
+
+/** Installation opt-in: provision the external map service on first tenant access, never globally. */
+export const ensureManagedMapGeocodingInterface = async (
+  instanceId: string,
+  options: { readonly serviceUrl?: string; readonly getDatabaseUrl?: () => string | undefined } = {}
+): Promise<void> => {
+  const configured = options.serviceUrl ?? process.env.SVA_MANAGED_MAPSTICK_URL;
+  if (!configured?.trim()) return;
+  const base = new URL(configured.trim());
+  if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash)
+    throw new Error('invalid_managed_mapstick_url');
+  base.pathname = `${base.pathname.replace(/\/$/, '')}/`;
+  await withIamDb({ instanceId, getDatabaseUrl: options.getDatabaseUrl ?? resolveIamDatabaseUrl }, async (client) => {
+    // Serialize automatic setup against itself and tenant deletion within the existing transaction.
+    const tenant = await client.query('SELECT id FROM iam.instances WHERE id=$1 FOR UPDATE', [
+      instanceId,
+    ]);
+    if (!tenant.rows[0]) return;
+    const repository = createExternalInterfaceRepository(createExecutor(client));
+    const existing = await repository.getByAlias(instanceId, 'map_geocoding', 'operator-mapstick');
+    if (existing) return; // Explicit edits, disablement and default changes remain authoritative.
+    const currentDefault = await repository.getDefaultByTypeKey(instanceId, 'map_geocoding');
+    const record = buildManagedMapstickRecord(instanceId, base, currentDefault);
+    await repository.upsert(record);
+    const stored = await repository.getById(instanceId, record.id);
+    if (!stored || stored.publicConfig.provider !== 'mapstick' || stored.baseUrl !== base.href)
+      throw new Error('managed_mapstick_readback_failed');
+  });
+};

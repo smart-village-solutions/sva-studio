@@ -5,6 +5,10 @@ import { projectStatuses } from './projects.api-types.js';
 const requiredText = (message: string) => z.string().trim().min(1, message);
 
 export const projectImageSchema = z.object({
+  focusPoint: z
+    .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+    .nullable()
+    .optional(),
   url: requiredText('Bild-URL ist erforderlich.'),
   altText: requiredText('Alternativtext ist erforderlich.'),
   caption: z.string().trim().optional(),

@@ -50,47 +50,55 @@ export const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPicker
   editableMetadataFields: readonly StudioMediaPickerMetadataField[] = allMetadataFields
 ) => {
   const { actions } = state;
-  return React.useCallback(async () => {
-    if (!reviewAsset) return;
-    actions.setErrorCode(null);
-    if (canAcceptAsset && !canAcceptAsset(reviewAsset)) {
-      actions.setErrorCode('asset_unavailable');
-      return;
-    }
-    actions.setIsSavingReviewAsset(true);
-    try {
-      const patch = toMetadataUpdate(metadataDraft, editableMetadataFields);
-      const changed = editableMetadataFields.some(
-        (key) => metadataDraft[key] !== createMetadataDraft(reviewAsset)[key]
-      );
-      const metadata = {
-        ...reviewAsset.metadata,
-        ...Object.fromEntries(editableMetadataFields.map((key) => [key, patch[key] ?? ''])),
-      };
-      const selected = {
-        ...reviewAsset,
-        ...(changed
-          ? { title: metadata.title, metadata, centralMetadata: reviewAsset.metadata }
-          : {}),
-        ...(reviewAsset.localDraft
-          ? {
-              localDraft: {
-                ...reviewAsset.localDraft,
-                metadata:
-                  reviewAsset.localDraft.metadata ??
-                  normalizeMediaMetadataPatch({ ...metadata, tags: reviewAsset.metadata.tags }),
-              },
-            }
-          : {}),
-      };
-      await onAccept(selected);
-      actions.close();
-    } catch {
-      actions.setErrorCode('metadata_save_failed');
-    } finally {
-      actions.setIsSavingReviewAsset(false);
-    }
-  }, [actions, canAcceptAsset, editableMetadataFields, metadataDraft, onAccept, reviewAsset]);
+  return React.useCallback(
+    async (tags?: readonly string[]) => {
+      if (!reviewAsset) return;
+      actions.setErrorCode(null);
+      if (canAcceptAsset && !canAcceptAsset(reviewAsset)) {
+        actions.setErrorCode('asset_unavailable');
+        return;
+      }
+      actions.setIsSavingReviewAsset(true);
+      try {
+        const patch = toMetadataUpdate(metadataDraft, editableMetadataFields);
+        const tagPatch = tags === undefined ? {} : normalizeMediaMetadataPatch({ tags });
+        const changed =
+          tags !== undefined ||
+          editableMetadataFields.some(
+            (key) => metadataDraft[key] !== createMetadataDraft(reviewAsset)[key]
+          );
+        const metadata = {
+          ...reviewAsset.metadata,
+          ...tagPatch,
+          ...Object.fromEntries(editableMetadataFields.map((key) => [key, patch[key] ?? ''])),
+        };
+        const selected = {
+          ...reviewAsset,
+          ...(changed
+            ? { title: metadata.title, metadata, centralMetadata: reviewAsset.metadata }
+            : {}),
+          ...(reviewAsset.localDraft
+            ? {
+                localDraft: {
+                  ...reviewAsset.localDraft,
+                  metadata: {
+                    ...(reviewAsset.localDraft.metadata ?? normalizeMediaMetadataPatch(metadata)),
+                    ...tagPatch,
+                  },
+                },
+              }
+            : {}),
+        };
+        await onAccept(selected);
+        actions.close();
+      } catch {
+        actions.setErrorCode('metadata_save_failed');
+      } finally {
+        actions.setIsSavingReviewAsset(false);
+      }
+    },
+    [actions, canAcceptAsset, editableMetadataFields, metadataDraft, onAccept, reviewAsset]
+  );
 };
 
 /** Explicit central save; content-specific form values are deliberately preserved. */
@@ -171,14 +179,14 @@ export const useApplyMediaImageEditAction = (
       const id = globalThis.crypto.randomUUID();
       const alreadyEdited = Boolean(asset.localDraft?.editing || asset.hasEditingDocument);
       const title = alreadyEdited
-        ? asset.metadata.title
+        ? state.metadataDraft.title
         : t('editor.editedTitle', {
             title: (asset.metadata.title || asset.title).slice(
               0,
               mediaMetadataLimits.title - t('editor.editedTitle', { title: '' }).length
             ),
           });
-      const metadata = { ...asset.metadata, title };
+      const metadata = { ...asset.metadata, title, focusPoint: { x: 0.5, y: 0.5 } };
       const previewUrl = URL.createObjectURL(result.file);
       state.actions.setReviewAsset({
         ...asset,
@@ -203,7 +211,7 @@ export const useApplyMediaImageEditAction = (
       state.actions.setMetadataDraft((current) => ({ ...current, title }));
       if (asset.localDraft) revokeBrowserObjectUrl(asset.previewUrl);
     },
-    [state.actions, state.reviewAsset, t]
+    [state.actions, state.reviewAsset, state.metadataDraft.title, t]
   );
 };
 
@@ -222,6 +230,7 @@ export const useMediaImageFocusAction = (
         asset?.localDraft
           ? {
               ...asset,
+              metadata: { ...asset.metadata, focusPoint },
               localDraft: {
                 ...asset.localDraft,
                 metadata: { ...asset.localDraft.metadata, focusPoint },

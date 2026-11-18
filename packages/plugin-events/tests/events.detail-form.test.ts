@@ -572,6 +572,7 @@ describe('events.detail-form', () => {
         },
       })
     ).toEqual({
+      mediaContents: [],
       title: 'Workshop',
       dates: [
         {
@@ -1015,6 +1016,7 @@ describe('events.detail-form', () => {
         settings: { visible: true, externalId: '', keywords: '', tags: '' },
       })
     ).toEqual({
+      mediaContents: [],
       title: 'Zeitgrenzen',
       dates: [
         {
@@ -1068,6 +1070,7 @@ describe('events.detail-form', () => {
         settings: { visible: true, externalId: '', keywords: '', tags: 'dritter, erster, zweiter' },
       })
     ).toEqual({
+      mediaContents: [],
       title: 'Reihenfolge',
       dates: [],
       addresses: [{ city: 'Zuerst' }, { city: 'Danach' }],
@@ -1086,4 +1089,10 @@ describe('events.detail-form', () => {
       visible: true,
     });
   });
+});
+
+it('sends an explicitly empty image list so removing the final image survives saving', () => {
+  const values = createDefaultEventsDetailFormValues();
+  values.content.mediaContents = [];
+  expect(mapEventsDetailFormValuesToInput(values)).toHaveProperty('mediaContents', []);
 });

@@ -156,7 +156,7 @@ export const mediaEditorResources = {
     'Metadata saved in the library. The configuration is not saved yet.',
   closeWorkspace: 'Close workspace',
 
-  saveCopy: 'Save as a new image',
+  saveCopy: 'Save copy',
   copyMetadataDescription: 'Review metadata for the new copy. The existing image is preserved.',
   newAssetMetadataHint: 'These values will be saved with the new copy in the media library.',
   pending: {
@@ -167,8 +167,24 @@ export const mediaEditorResources = {
       'The edited copy will be saved in the media library and selected now. The configuration still needs to be saved afterwards.',
   },
 
+  focusNotSet: 'No focus point is saved. The center is used only for illustration.',
+  focusPointHint:
+    'Click or drag the point. Use arrow keys to move the focus; hold Shift for larger steps.',
+  focusPosition: 'Focus: {{x}}% horizontal, {{y}}% vertical.',
+  clearFocus: 'Remove focus',
+  copyProgress: 'Image copy progress',
+  designStep: 'Design image',
+  focusStep: 'Set focus point',
+  reviewStep: 'Review result',
+  backToDesign: 'Back: Design image',
+  backToFocus: 'Back: Set focus point',
+  nextFocus: 'Next: Set focus point',
+  nextReview: 'Next: Review result',
+  copyReviewHint:
+    'Text and focus apply to this new copy. Review the alt text and description after changing the image.',
   focusTitle: 'Important image area and preview',
-  focusHint: 'Adjust the important image area to keep it visible across different image formats.',
+  focusHint:
+    'Illustrative examples only. The target application decides whether and how to use the focus.',
   focusAxis: { x: 'Horizontal image area', y: 'Vertical image area' },
   centerFocus: 'Use image center',
   presets: { thumbnail: 'Thumbnail', teaser: 'Teaser image', hero: 'Large header image' },
@@ -183,9 +199,9 @@ export const mediaEditorResources = {
     'Image editing is currently not fully usable with a keyboard or screen reader.',
   imageError: 'Image editing could not be completed. Please try again.',
   retry: 'Try again',
-  cancelEditing: 'Discard edits and return',
+  cancelEditing: 'Cancel',
   previewEditedImage: 'Continue to metadata and preview',
-  editImage: 'Edit image',
+  editImage: 'Create and edit a copy',
   editedTitle: '{{title}} – edited',
   localEditHint:
     'The edited copy will be saved with the content. Please review the alternative text and description.',

@@ -286,3 +286,9 @@ export {
   formatTimeOfDay,
   formatLocalDateTime,
 } from './temporal.js';
+
+export { mapstickResourcePath, mapstickStyleIds, type MapstickStyleId } from './map-geocoding.js';
+
+export { readMapStylePreferenceKey } from './map-geocoding-client.js';
+
+export type { SsfRecordingGatewayRequest } from './plugin-registry-types.js';

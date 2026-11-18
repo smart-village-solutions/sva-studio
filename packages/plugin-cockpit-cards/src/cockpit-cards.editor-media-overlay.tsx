@@ -67,7 +67,7 @@ export function CockpitCardMediaOverlay({
       onSearchValueChange={mediaPicker.setSearchValue}
       onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
       onUploadFile={(file) => void mediaPicker.uploadFile(file)}
-      onConfirmSelection={() => void mediaPicker.confirmSelection()}
+      onConfirmSelection={(tags) => void mediaPicker.confirmSelection(tags)}
       onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
       onOpenMediaManagement={(assetId) =>
         void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })

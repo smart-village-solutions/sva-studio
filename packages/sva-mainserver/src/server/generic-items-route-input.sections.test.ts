@@ -73,6 +73,13 @@ describe('generic-items-route-input sections', () => {
     ]);
   });
 
+  it('requires substantive content while preserving explicit removal of all media', () => {
+    expect((parseContentBlocks([{ mediaContents: [] }]) as Response).status).toBe(400);
+    expect(parseContentBlocks([{ title: 'Abschnitt', mediaContents: [] }])).toEqual([
+      { title: 'Abschnitt', mediaContents: [] },
+    ]);
+  });
+
   it('sanitizes rich-text content blocks before forwarding them', () => {
     expect(
       parseContentBlocks([

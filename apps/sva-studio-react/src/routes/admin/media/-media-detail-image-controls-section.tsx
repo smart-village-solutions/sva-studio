@@ -14,13 +14,6 @@ import {
   type StudioMediaPickerOverlayLabels,
   type StudioMediaPickerAssetDetail,
 } from '@sva/studio-ui-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamRegisteredMediaAsset } from '../../../lib/iam-api';
 
@@ -148,18 +141,12 @@ export const MediaDetailImageControlsSection = ({
     return null;
   return (
     <>
-      <Card className="border-border/70 bg-card/95 shadow-shell">
-        <CardHeader>
-          <CardTitle>{t('media.editor.imageTitle')}</CardTitle>
-          <CardDescription>{t('media.editor.originalPreserved')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button type="button" onClick={() => picker.openAsset(detail)}>
-            {t('media.editor.editImage')}
-          </Button>
-          <p className="text-sm text-muted-foreground">{t('media.editor.accessibilityHint')}</p>
-        </CardContent>
-      </Card>
+      <div className="max-w-sm space-y-2">
+        <Button type="button" onClick={() => picker.openAsset(detail)}>
+          {t('media.editor.editImage')}
+        </Button>
+        <p className="text-xs text-muted-foreground">{t('media.editor.accessibilityHint')}</p>
+      </div>
       <StudioMediaPickerOverlay
         open={picker.open}
         mode={picker.mode}

@@ -68,6 +68,7 @@ const createOptionalHttpsUrlSchema = (message: string) =>
   });
 
 const mediaContentFormValueSchema = z.object({
+  payload: z.record(z.string(), z.unknown()).optional(),
   captionText: z.string(),
   copyright: z.string(),
   contentType: z.string(),

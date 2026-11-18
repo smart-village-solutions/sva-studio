@@ -1,3 +1,4 @@
+import { operationSchemas } from '../src/organisation-key-contracts.js';
 import { createSsfAdminV2Handlers } from '../src/server/content-v2-admin.js';
 import type {
   PluginServerHandlerExecutionContext,
@@ -89,6 +90,8 @@ describe('SSF plugin server handler', () => {
     const handlers = createSsfPluginServerHandlers({ runtimeHandler });
 
     expect(Object.keys(handlers)).toEqual([
+      'ssf.access-transfer.people',
+      ...Object.values(operationSchemas).map((op) => op.id),
       'ssf.recording-directory-v2',
       SSF_RUNTIME_SERVER_HANDLER_ID,
       SSF_RUNTIME_V2_SERVER_HANDLER_ID,

@@ -1,3 +1,5 @@
+import { SsfOrganisationKeysPage } from './admin.organisation-keys.page.js';
+import { SsfAccessTransfersPage } from './admin.access-transfers.page.js';
 import type { PluginDefinition } from '@sva/plugin-sdk';
 
 import {
@@ -15,6 +17,8 @@ import { ssfPlugin as descriptor } from './descriptor.js';
 export { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from './descriptor.js';
 
 const routeComponents = {
+  'ssf-tenant-organisation-keys': SsfOrganisationKeysPage,
+  'ssf-tenant-access-transfers': SsfAccessTransfersPage,
   'ssf-system-overview': SsfSystemConfigurationPage,
   'ssf-system-default-configuration': SsfSystemDefaultsPage,
   'ssf-system-default-content': SsfSystemContentPage,

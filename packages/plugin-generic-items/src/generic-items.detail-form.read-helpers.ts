@@ -72,6 +72,7 @@ export const mapGenericItemAddresses = (item: GenericItemContentItem) =>
 const mapGenericItemMediaContent = (
   mediaContent: NonNullable<NonNullable<GenericItemContentItem['mediaContents']>[number]>
 ) => ({
+  ...(mediaContent.payload !== undefined ? { payload: mediaContent.payload } : {}),
   captionText: mediaContent.captionText ?? '',
   copyright: mediaContent.copyright ?? '',
   contentType: mediaContent.contentType ?? '',

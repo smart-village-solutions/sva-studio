@@ -42,31 +42,31 @@ it('renders actual square and wide crops and provides native keyboard focus cont
     [0, 125, 1200, 675, 0, 0, 1600, 900],
   ]);
   expect(screen.getAllByRole('img')).toHaveLength(3);
-  fireEvent.change(screen.getByRole('slider', { name: 'media.editor.focusAxis.x' }), {
-    target: { value: '30' },
-  });
-  expect(change).toHaveBeenLastCalledWith({ x: 0.3, y: 0.8 });
-  fireEvent.change(screen.getByRole('slider', { name: 'media.editor.focusAxis.y' }), {
-    target: { value: '40' },
-  });
-  expect(change).toHaveBeenLastCalledWith({ x: 0.2, y: 0.4 });
+  fireEvent.load(view.container.querySelector('img')!);
+  const point = screen.getByRole('button', { name: 'media.editor.focusTitle' });
+  fireEvent.keyDown(point, { key: 'ArrowRight' });
+  expect(change).toHaveBeenLastCalledWith({ x: 0.21000000000000002, y: 0.8 });
+  fireEvent.keyDown(point, { key: 'ArrowUp', shiftKey: true });
+  expect(change).toHaveBeenLastCalledWith({ x: 0.2, y: 0.7000000000000001 });
   fireEvent.click(screen.getByRole('button', { name: 'media.editor.centerFocus' }));
   expect(change).toHaveBeenLastCalledWith({ x: 0.5, y: 0.5 });
   view.rerender(<StudioMediaImagePreview {...props} disabled />);
-  expect(screen.getAllByRole('slider').every((input) => (input as HTMLInputElement).disabled)).toBe(
-    true
-  );
-  expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(true);
+  expect(
+    screen.getAllByRole('button').every((button) => (button as HTMLButtonElement).disabled)
+  ).toBe(true);
   expect(screen.getAllByRole('img')).toHaveLength(3);
 });
 
 it('warns about enlargement without blocking editorial controls', async () => {
   dimensions = { width: 120, height: 80 };
-  render(
+  const view = render(
     <StudioMediaImagePreview url="blob:small" focus={{ x: 0.5, y: 0.5 }} onFocusChange={vi.fn()} />
   );
   await waitFor(() => expect(screen.getAllByText('media.editor.smallImageHint')).toHaveLength(3));
-  expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.load(view.container.querySelector('img')!);
+  expect(
+    (screen.getByRole('button', { name: 'media.editor.centerFocus' }) as HTMLButtonElement).disabled
+  ).toBe(false);
 });
 
 it('keeps the workspace usable when a preview fails to load', async () => {
@@ -76,7 +76,7 @@ it('keeps the workspace usable when a preview fails to load', async () => {
   );
   await waitFor(() => expect(screen.getAllByText('media.editor.previewError')).toHaveLength(3));
   expect(draw).not.toHaveBeenCalled();
-  expect(screen.getAllByRole('slider')).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'media.editor.focusTitle' })).toBeDefined();
 });
 
 it('ignores image completions after the preview is unmounted', async () => {
@@ -92,4 +92,38 @@ it('ignores image completions after the preview is unmounted', async () => {
     await Promise.resolve();
   });
   expect(draw).not.toHaveBeenCalled();
+});
+
+it('maps pointer coordinates to the image and ignores its surrounding margins', () => {
+  const change = vi.fn();
+  const view = render(
+    <StudioMediaImagePreview url="blob:point" focus={{ x: 0, y: 1 }} onFocusChange={change} />
+  );
+  const image = view.container.querySelector('img')!;
+  fireEvent.load(image);
+  vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
+    left: 100,
+    top: 50,
+    width: 400,
+    height: 200,
+  } as DOMRect);
+  const point = screen.getByRole('button', { name: 'media.editor.focusTitle' });
+  const pointer = (x: number, y: number) => {
+    const event = new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      button: 0,
+    });
+    fireEvent(point, event);
+  };
+  pointer(200, 200);
+  expect(change).toHaveBeenLastCalledWith({ x: 0.25, y: 0.75 });
+  pointer(50, 150);
+  pointer(200, 300);
+  expect(change).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(point, { key: 'ArrowLeft' });
+  expect(change).toHaveBeenLastCalledWith({ x: 0, y: 1 });
+  fireEvent.keyDown(point, { key: 'ArrowDown' });
+  expect(change).toHaveBeenLastCalledWith({ x: 0, y: 1 });
 });

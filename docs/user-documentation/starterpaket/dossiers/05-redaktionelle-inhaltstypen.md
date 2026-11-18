@@ -306,3 +306,18 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Kontextabhängig:** Modulzuweisung, Fachrechte, DataProvider und ausgewählte Identität bestimmen den Zugriff. Laufzeit schaltet die Sichtbarkeit nicht automatisch um. Unklare Speicher- und Löschvorgänge werden mit derselben Operationsidentität geprüft, ohne zweite Mutation. Nicht vollständig erhaltbare Bestandsdaten sperren die Bearbeitung; die gesondert dokumentierte technische Importreferenz-Ausnahme wird über SVA-1786 behoben.
 - **Leitfragen / Stichwörter:** Wer bietet die Stelle an? Wer nimmt Bewerbungen entgegen? Welche Anstellungsart gilt? Bis wann läuft die Ausschreibung? Stellenanzeige, Arbeitgeber, Ansprechpartner, Sichtbarkeit, Speicherergebnis prüfen, Löschen.
 - **Evidenz:** [Stellenanzeigenreferenz](../../../reference/jobs.md), `packages/plugin-jobs/src/`, `packages/sva-mainserver/src/server/jobs-route.ts`.
+
+### Kartenstil wechseln / Change map style
+
+**Deutsch:** In einer Mapstick-Karte öffnet die Kartenschaltfläche oben rechts die
+Stilauswahl. Zur Auswahl stehen Standard, Hell, Schlicht, 3D und Fiord. Position,
+Zoom, Marker und eingezeichnete Geometrien bleiben erhalten. Der Stil wird für das
+aktuelle Konto und den Mandanten im Browser gemerkt; ohne Browserspeicher bleibt
+die Auswahl für die geöffnete Karte nutzbar. Die weiteren Menüs der Mapstick-App
+werden nicht eingebettet.
+
+**English:** On a Mapstick map, open the map button in the upper-right corner to
+choose Standard, Bright, Basic, 3D or Fiord. Position, zoom, markers and drawn
+geometries remain unchanged. The browser remembers the style for the current
+account and tenant; the current map also works when browser storage is blocked.
+The other Mapstick application menus are not embedded.

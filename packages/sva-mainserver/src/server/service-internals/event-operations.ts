@@ -1,3 +1,4 @@
+import { projectMediaFocus } from './mappers-shared-maps.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverEventInput,
@@ -85,7 +86,10 @@ const readEventDetail = async (
   if (!response.eventRecord) {
     return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
   }
-  return mapEventItemDetail(response.eventRecord);
+  const detail = mapEventItemDetail(response.eventRecord);
+  return query.operationName === 'SvaMainserverEventUpdateSnapshot'
+    ? detail
+    : { ...detail, data: projectMediaFocus(detail.data) };
 };
 
 export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
@@ -103,7 +107,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
       order: 'updatedAt_DESC',
       readItems: (response) => response.eventRecords ?? [],
       isVisible: (item) => input.includeInvisible === true || item.visible !== false,
-      mapItem: mapEventItem,
+      mapItem: (item) => projectMediaFocus(mapEventItem(item)),
     }),
 
   getEventWithConfig: async (
@@ -120,7 +124,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
       config
     );
 
-    return mapOptionalEventItem(response.eventRecord);
+    return projectMediaFocus(mapOptionalEventItem(response.eventRecord));
   },
 
   getEventDetailWithConfig: async (
@@ -161,7 +165,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
       config
     );
 
-    return mapOptionalEventItem(response.createEventRecord);
+    return projectMediaFocus(mapOptionalEventItem(response.createEventRecord));
   },
 
   destroyEventWithConfig: async (

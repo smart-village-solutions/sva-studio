@@ -10,6 +10,7 @@ import {
 } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createMediaHttpHandlers } from './core.js';
 import { createMediaInventoryScanHandler } from './inventory-scan-job.js';
 import { createS3MediaStoragePort } from './storage-s3.js';
 import { createMediaUploadProcessingService } from './processing.js';
@@ -302,6 +303,146 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       expect(response.ok).toBe(true);
       expect(Buffer.from(await response.arrayBuffer())).toEqual(original);
       expect((await fetch(source)).status).not.toBe(200);
+    }, 30000);
+    it.each([false, true])(
+      'imports only a private immutable snapshot through the real scanner (source changed later: %s)',
+      async (changedLater) => {
+        const sourceKey = `tenant-a/legacy/${crypto.randomUUID()}.jpg`;
+        await storage.writeObject({
+          instanceId: 'tenant-a',
+          storageKey: sourceKey,
+          body: original,
+          contentType: 'image/jpeg',
+        });
+        const sourceUrl = `${endpoint}/studio-public/${sourceKey}`;
+        let asset: MediaAssetRecord | undefined;
+        let session: MediaUploadSessionRecord | undefined;
+        const importStorage = {
+          ...storage,
+          importSource: {
+            id: 'fixture-active-interface',
+            instanceId: 'tenant-a',
+            prefix: 'tenant-a/',
+            visibility: 'public' as const,
+          },
+        };
+        const service = {
+          getAssetByStorageKey: async () => null,
+          getAssetById: async () => asset ?? null,
+          createAssetIfAbsent: async (input: MediaAssetRecord) => {
+            if (asset) return false;
+            asset = input;
+            return true;
+          },
+          upsertUploadSession: async (input: MediaUploadSessionRecord) => {
+            session = input;
+          },
+          getUploadSessionByAssetId: async () => session ?? null,
+          getUploadSessionById: async () => session ?? null,
+          wouldExceedStorageQuota: async () => ({ wouldExceed: false }),
+        };
+        const schedule = vi.fn(async () => 'queued');
+        const handlers = createMediaHttpHandlers({
+          withMediaService: async (_instance, work) => work(service as never),
+          storagePort: importStorage,
+          authorizeAction: async () => ({ ok: true }),
+          createId: () => crypto.randomUUID(),
+          now: () => new Date().toISOString(),
+          emitAuditEvent: async () => undefined,
+          scheduleUploadProcessing: schedule,
+        });
+        const request = () =>
+          new Request('http://localhost/api/v1/iam/media/register', {
+            method: 'POST',
+            body: JSON.stringify({
+              storageKey: sourceKey,
+              fileName: 'legacy.jpg',
+              byteSize: 1,
+              mimeType: 'image/png',
+              visibility: 'protected',
+            }),
+          });
+        expect(
+          (
+            await handlers.registerBucketMedia(request(), {
+              user: { id: 'actor', instanceId: 'tenant-a' },
+            } as never)
+          ).status
+        ).toBe(202);
+        expect(asset?.visibility).toBe('public');
+        expect(session?.storageKey).toMatch(/^\.quarantine\/tenant-a\//);
+        expect((await fetch(`${endpoint}/studio-intake/${session!.storageKey}`)).status).toBe(403);
+        const replacement = await sharp({
+          create: { width: 18, height: 18, channels: 3, background: 'red' },
+        })
+          .jpeg()
+          .toBuffer();
+        if (changedLater)
+          await storage.writeObject({
+            instanceId: 'tenant-a',
+            storageKey: sourceKey,
+            body: replacement,
+            contentType: 'image/jpeg',
+          });
+        const finalized = vi.fn(async (input) => {
+          asset = input.asset;
+          session = input.uploadSession;
+          return 'finalized' as const;
+        });
+        const result = await createMediaUploadProcessingService({
+          service: service as never,
+          storagePort: storage,
+          createId: () => crypto.randomUUID(),
+          finalizeUpload: finalized,
+          failUpload: async () => 'failed',
+        }).completeUpload({
+          instanceId: 'tenant-a',
+          uploadSessionId: session!.id,
+          claimToken: 'claim-import',
+        });
+        expect(result.ok).toBe(true);
+        expect(asset?.technical.scanStatus).toBe('clean');
+        const delivery = await storage.resolveDelivery({
+          instanceId: 'tenant-a',
+          assetId: asset!.id,
+          storageKey: asset!.storageKey,
+          visibility: 'public',
+        });
+        expect(Buffer.from(await (await fetch(delivery.deliveryUrl)).arrayBuffer())).toEqual(
+          original
+        );
+        expect(Buffer.from(await (await fetch(sourceUrl)).arrayBuffer())).toEqual(
+          changedLater ? replacement : original
+        );
+        const reopened = await handlers.registerBucketMedia(request(), {
+          user: { id: 'actor', instanceId: 'tenant-a' },
+        } as never);
+        expect(reopened.status).toBe(changedLater ? 409 : 200);
+        expect(schedule).toHaveBeenCalledOnce();
+      },
+      30000
+    );
+    it('keeps an established quarantine scan when retrying after the scan switch is disabled', async () => {
+      const upload = await initialize(original);
+      vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+      try {
+        const retried = await storage.prepareUpload({
+          instanceId: 'tenant-a',
+          assetId: upload.getAsset().id,
+          uploadSessionId: upload.getAsset().id,
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: original.length,
+          privateInput: true,
+          requireScan: true,
+        });
+        expect(retried.storageKey).toBe(upload.upload.storageKey);
+        expect((await fetch(`${endpoint}/studio-intake/${retried.storageKey}`)).status).toBe(403);
+        expect((await upload.run()).ok).toBe(true);
+        expect(upload.getAsset().technical.scanStatus).toBe('clean');
+      } finally {
+        vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
+      }
     }, 30000);
     it('keeps protected originals and variants private and delivers only through signed URLs', async () => {
       const upload = await initialize(original, 'protected');

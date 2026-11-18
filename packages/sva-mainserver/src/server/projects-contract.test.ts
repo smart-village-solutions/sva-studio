@@ -474,3 +474,18 @@ describe('projects contract', () => {
     );
   });
 });
+
+it.each([{ x: 0.2, y: 0.8 }, null])(
+  'passes project focus through its actual GenericItem media payload: %j',
+  (focusPoint) => {
+    const merged = mergeProjectIntoGenericItem({
+      project: { ...projectWithoutAuthor, images: [{ ...project.images[0]!, focusPoint }] },
+    });
+    expect(merged.mediaContents?.[0]?.payload).toEqual({ focusPoint });
+    const reread = mapGenericItemToProject({
+      ...existing,
+      mediaContents: merged.mediaContents as SvaMainserverGenericItem['mediaContents'],
+    });
+    expect(reread.images[0]?.focusPoint).toEqual(focusPoint);
+  }
+);

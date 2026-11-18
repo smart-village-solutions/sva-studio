@@ -26,6 +26,7 @@ type SerializableOrganizer = Readonly<{
 }>;
 
 type SerializableMediaContent = Readonly<{
+  payload?: Readonly<Record<string, unknown>>;
   id?: string | null;
   captionText?: string | null;
   copyright?: string | null;
@@ -161,6 +162,7 @@ const serializeEventMediaSource = (entry: SerializableMediaContent) => {
 function serializeEventMediaContent(entry: SerializableMediaContent) {
   const media = {
     ...serializeEventMediaText(entry),
+    ...(entry.payload !== undefined ? { payload: entry.payload } : {}),
     ...serializeEventMediaDimensions(entry),
     ...serializeEventMediaSource(entry),
   };

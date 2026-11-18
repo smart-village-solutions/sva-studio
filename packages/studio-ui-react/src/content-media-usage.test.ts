@@ -169,6 +169,30 @@ describe('content media usage', () => {
     expect(resolved).not.toHaveProperty('previewUrl');
   });
 
+  it('keeps the copy focus after replacing a local draft with its persisted asset', () => {
+    const [resolved] = resolveContentMediaUsageDrafts(
+      [
+        {
+          uiId: 'draft-focus',
+          persistentUrl: '',
+          altText: '',
+          caption: '',
+          credit: '',
+          role: 'gallery_item',
+          sortOrder: 0,
+          localDraft: {
+            id: 'draft-1',
+            file: new File(['image'], 'copy.png'),
+            metadata: { focusPoint: { x: 0.8, y: 0.3 } },
+          },
+        },
+      ],
+      [{ draftId: 'draft-1', assetId: 'asset-1', persistentUrl: 'https://media.test/copy.png' }]
+    );
+    expect(resolved?.focusPoint).toEqual({ x: 0.8, y: 0.3 });
+    expect(resolved).not.toHaveProperty('localDraft');
+  });
+
   it('skips object url cleanup when the runtime does not provide it', () => {
     vi.stubGlobal('URL', undefined);
 

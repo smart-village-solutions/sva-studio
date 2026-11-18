@@ -44,6 +44,10 @@ beforeEach(() => {
     instanceId: 'tenant-a',
     clientId: 'ssf-frontend',
     client: {
+      ensureSsfExchangeAssuranceMapper: vi.fn(),
+      ensureSsfRecordingExchange: vi.fn(),
+      ensureAudienceProtocolMapper: vi.fn(),
+      ensureUserAttributeProtocolMapper: vi.fn(),
       getOidcClientByClientId: mocks.readClient,
       listClientProtocolMappers: mocks.readMappers,
     },
@@ -116,4 +120,37 @@ it('fails closed without a configured browser contract or for a suspended tenant
   mocks.instance.mockResolvedValue({ status: 'suspended' });
   expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(false);
   expect(mocks.reconcile).not.toHaveBeenCalled();
+});
+it('provisions exchange on the existing tenant confidential client and projects only required user claims', async () => {
+  const ensure = vi.fn(),
+    audience = vi.fn(),
+    mapper = vi.fn();
+  mocks.resolveTenant.mockResolvedValue({
+    clientId: 'ssf-frontend',
+    client: {
+      ensureSsfExchangeAssuranceMapper: vi.fn(),
+      ensureSsfRecordingExchange: ensure,
+      ensureAudienceProtocolMapper: audience,
+      ensureUserAttributeProtocolMapper: mapper,
+    },
+  });
+  await prepareInstanceSsfLoginClients('tenant-a');
+  expect(ensure).toHaveBeenCalledWith('studio', 'tenant-a');
+  expect(audience).toHaveBeenCalledWith({
+    clientId: 'studio',
+    name: 'studio-ssf-recording-audience',
+    audience: 'ssf-frontend',
+  });
+  expect(mapper).toHaveBeenCalledWith(
+    expect.objectContaining({ clientId: 'studio', claimName: 'ssf_permissions', multivalued: true })
+  );
+});
+
+it('keeps ordinary tenant login available if the recording exchange provider is unavailable', async () => {
+  const tenant = await mocks.resolveTenant('tenant-a');
+  tenant.client.ensureSsfExchangeAssuranceMapper.mockRejectedValue(
+    new Error('provider unavailable')
+  );
+  await expect(prepareInstanceSsfLoginClients('tenant-a')).resolves.toBeUndefined();
+  expect(mocks.reconcile).toHaveBeenCalledTimes(1);
 });

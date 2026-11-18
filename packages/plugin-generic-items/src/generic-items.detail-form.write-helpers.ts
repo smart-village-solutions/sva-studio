@@ -153,6 +153,7 @@ export const mapMediaContentsToInput = (mediaContents: GenericItemsDetailFormVal
       const url = sanitizeOptionalString(mediaContent.sourceUrl.url);
 
       return {
+        ...(mediaContent.payload !== undefined ? { payload: mediaContent.payload } : {}),
         captionText: sanitizeOptionalString(mediaContent.captionText),
         copyright: sanitizeOptionalString(mediaContent.copyright),
         contentType: sanitizeOptionalString(mediaContent.contentType),

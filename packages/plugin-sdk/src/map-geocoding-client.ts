@@ -1,3 +1,4 @@
+import { readSessionAccessSnapshot } from './session-access.js';
 import {
   requestMainserverJson,
   type MainserverErrorFactory,
@@ -283,4 +284,12 @@ export const reverseGeocodeHostCoordinates = async (input: {
     logMapGeocodingFailure('reverse_geocode', error, responseMeta);
     throw error;
   }
+};
+
+/** Browser preferences remain isolated by the host's resolved account and tenant. */
+export const readMapStylePreferenceKey = (): string | null => {
+  const session = readSessionAccessSnapshot();
+  return session.subjectId && session.instanceId
+    ? `sva:map-style:${session.instanceId}:${session.subjectId}`
+    : null;
 };

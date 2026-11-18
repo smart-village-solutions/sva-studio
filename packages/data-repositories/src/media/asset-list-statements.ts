@@ -12,6 +12,7 @@ export const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limi
       OR lower(coalesce(metadata->>'altText', '')) LIKE $${values.length}
       OR lower(mime_type) LIKE $${values.length}
       OR lower(storage_key) LIKE $${values.length}
+      OR lower(coalesce(technical->>'importSourceKey', '')) LIKE $${values.length}
       OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(
         CASE WHEN jsonb_typeof(metadata->'tags') = 'array' THEN metadata->'tags' ELSE '[]'::jsonb END
       ) AS media_tag(value) WHERE lower(media_tag.value) LIKE $${values.length})

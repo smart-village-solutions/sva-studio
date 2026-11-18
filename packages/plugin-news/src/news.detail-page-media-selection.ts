@@ -84,6 +84,7 @@ export const acceptNewsMediaAsset = (
       caption: asset.metadata.description || asset.title,
       credit: asset.metadata.copyright,
       license: asset.metadata.license,
+      focusPoint: asset.metadata.focusPoint,
       role: 'gallery_item',
       sortOrder: current.length,
       assetSnapshot: toContentMediaAssetSnapshot({

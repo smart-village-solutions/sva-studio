@@ -3,6 +3,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { createExternalInterfaceRepository } from './external-interfaces.js';
 import { buildManagedMapstickRecord } from './external-interfaces.shared.js';
+import { resolveIamDatabaseUrl } from '../instance-registry/server-client.js';
 
 import type { SqlStatement } from '../iam/repositories/types.js';
 
@@ -118,7 +119,7 @@ export const ensureManagedMapGeocodingInterface = async (
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash)
     throw new Error('invalid_managed_mapstick_url');
   base.pathname = `${base.pathname.replace(/\/$/, '')}/`;
-  await withIamDb({ instanceId, getDatabaseUrl: options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL) }, async (client) => {
+  await withIamDb({ instanceId, getDatabaseUrl: options.getDatabaseUrl ?? resolveIamDatabaseUrl }, async (client) => {
     // Serialize automatic setup against itself and tenant deletion within the existing transaction.
     const tenant = await client.query('SELECT id FROM iam.instances WHERE id=$1 FOR UPDATE', [
       instanceId,

@@ -124,12 +124,17 @@ export const validateRemoteConfigValue = (
     );
   if (contract.type === 'url') {
     try {
-      new URL(normalizedValue);
+      const url = new URL(normalizedValue);
+      if (key === 'SVA_MANAGED_MAPSTICK_URL' && (
+        url.protocol !== 'https:' || url.username || url.password || url.search || url.hash
+      )) throw new Error('invalid_managed_mapstick_url');
     } catch {
       fail(
         environment,
         'PROMOTE_CONFIG_INVALID',
-        `Schluessel ${key} erwartet eine absolute URL.`,
+        key === 'SVA_MANAGED_MAPSTICK_URL'
+          ? `Schluessel ${key} erwartet HTTPS ohne Zugangsdaten, Query oder Fragment.`
+          : `Schluessel ${key} erwartet eine absolute URL.`,
         'Eine gueltige absolute URL setzen.'
       );
     }

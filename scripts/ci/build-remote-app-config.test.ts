@@ -335,6 +335,18 @@ describe('remote app config builder', () => {
     }
   );
 
+  it.each([
+    'http://maps.example/', 'ftp://maps.example/',
+    'https://user:synthetic@maps.example/',
+    'https://maps.example/?token=synthetic', 'https://maps.example/#fragment',
+  ])('rejects Mapstick URL constraints before deployment: %s', (url) => {
+    expect(() => buildRemoteAppConfig({
+      environment: 'dev',
+      profile: profile.replace(/^SVA_MANAGED_MAPSTICK_URL=.*$/m, `SVA_MANAGED_MAPSTICK_URL=${url}`),
+      overrides,
+    })).toThrow(PromoteContractError);
+  });
+
   it('fails compose interpolation when the deployment environment is missing', () => {
     const compose = readFileSync(
       new URL('../../deploy/portainer/docker-compose.studio.yml', import.meta.url),

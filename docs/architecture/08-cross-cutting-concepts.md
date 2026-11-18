@@ -1612,7 +1612,10 @@ den Wert über den bestehenden autoritativen Konfigurationsvertrag. Der regulär
 Promote-Pfad reicht ihn in `compose.yaml` an App und Provisioner weiter. Ohne
 expliziten Wert bleibt er leer; generische Installationen und Standalone besitzen
 keinen Service-Default. Die eigenen Portainer-Profile `studio` und `demo` setzen
-ihren Wert ebenfalls.
+ihren Wert ebenfalls. Der Remote-Builder prüft die HTTPS-/Zieladressengrenzen vor
+jeder Mutation. Beim Provisioner verwendet die verwaltete Einrichtung dieselbe
+bestehende IAM-URL-Auflösung wie die Instanz-Registry: eine explizite URL oder die
+kodierten App-Datenbankkomponenten, unabhängig vom späteren App-Entrypoint.
 
 Kartenressourcen verwenden die vorhandene mandantengebundene Leseautorisierung;
 auch die bestehenden Verbraucher Jobs und Baustellen dürfen ihre Karte lesen.

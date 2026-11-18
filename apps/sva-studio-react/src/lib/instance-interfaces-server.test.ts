@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
+  ensureManagedMapGeocodingInterface: vi.fn(async () => undefined),
   listExternalInterfaceRecords: state.listExternalInterfaceRecords,
   loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,

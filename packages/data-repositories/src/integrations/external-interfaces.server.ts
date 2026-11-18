@@ -232,3 +232,75 @@ export const saveDeepLInterfaceCheck = async (input: {
     if (result.rowCount !== 1) throw new Error('interface_conflict');
     await enqueueDeepLReconcile(client, input.instanceId);
   });
+
+/** Installation opt-in: provision the external map service on first tenant access, never globally. */
+export const ensureManagedMapGeocodingInterface = async (
+  instanceId: string,
+  options: { readonly serviceUrl?: string; readonly getDatabaseUrl?: () => string | undefined } = {}
+): Promise<void> => {
+  const configured = options.serviceUrl ?? process.env.SVA_MANAGED_MAPSTICK_URL;
+  if (!configured?.trim()) return;
+  const base = new URL(configured.trim());
+  if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash)
+    throw new Error('invalid_managed_mapstick_url');
+  base.pathname = `${base.pathname.replace(/\/$/, '')}/`;
+  await withDefaultDatabase(instanceId, options.getDatabaseUrl, async (client) => {
+    // Serialize automatic setup against itself and tenant deletion within the existing transaction.
+    const tenant = await client.query('SELECT id FROM iam.instances WHERE id=$1 FOR UPDATE', [
+      instanceId,
+    ]);
+    if (!tenant.rows[0]) return;
+    const repository = createExternalInterfaceRepository(createExecutor(client));
+    const existing = await repository.getByAlias(instanceId, 'map_geocoding', 'operator-mapstick');
+    if (existing) return; // Explicit edits, disablement and default changes remain authoritative.
+    const currentDefault = await repository.getDefaultByTypeKey(instanceId, 'map_geocoding');
+    const replacesLegacyDefault = currentDefault?.publicConfig.provider === 'geoapify';
+    const record: ExternalInterfaceRecord = {
+      id: `mapstick:${instanceId}`,
+      instanceId,
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Mapstick',
+      alias: 'operator-mapstick',
+      enabled: replacesLegacyDefault ? currentDefault.enabled : true,
+      isDefault: !currentDefault || replacesLegacyDefault,
+      category: 'api',
+      baseUrl: base.href,
+      authMode: 'none',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        provider: 'mapstick',
+        styleUrl: new URL('styles/osm-bright/style.json', base).href,
+        suggestEndpoint: new URL('api/', base).href,
+        geocodeEndpoint: new URL('api/', base).href,
+        reverseGeocodeEndpoint: new URL('reverse', base).href,
+        autocompleteEnabled: true,
+        geocodeEnabled: true,
+        reverseGeocodeEnabled: true,
+        requestTimeoutMs: 10000,
+        rateLimitPerMinute: 60,
+        killSwitchEnabled: false,
+        ...(replacesLegacyDefault
+          ? Object.fromEntries(
+              Object.entries(currentDefault.publicConfig).filter(([key]) =>
+                [
+                  'autocompleteEnabled',
+                  'geocodeEnabled',
+                  'reverseGeocodeEnabled',
+                  'requestTimeoutMs',
+                  'rateLimitPerMinute',
+                  'killSwitchEnabled',
+                ].includes(key)
+              )
+            )
+          : {}),
+      },
+    };
+    await repository.upsert(record);
+    const stored = await repository.getById(instanceId, record.id);
+    if (!stored || stored.publicConfig.provider !== 'mapstick' || stored.baseUrl !== base.href)
+      throw new Error('managed_mapstick_readback_failed');
+  });
+};

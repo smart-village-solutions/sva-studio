@@ -233,3 +233,14 @@ export const mailDispatchContract = {
   isMessageKind: (value: string): value is MailDispatchMessageKind =>
     (mailDispatchMessageKinds as readonly string[]).includes(value),
 } as const;
+
+/** Mapstick resources use the tenant-owned, same-origin host interface. */
+export const mapstickResourcePath = '/api/v1/iam/map-geocoding/mapstick';
+export const mapstickStyleIds = [
+  'openmaptiles',
+  'osm-bright',
+  'maptiler-basic',
+  'maptiler-3d',
+  'fiord-color',
+] as const;
+export type MapstickStyleId = (typeof mapstickStyleIds)[number];

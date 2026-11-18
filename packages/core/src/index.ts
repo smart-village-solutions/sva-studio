@@ -162,6 +162,9 @@ export {
   type MailTransportSecurityMode,
   type MailTransportSmtpConfig,
   type MailTransportType,
+  mapstickResourcePath,
+  mapstickStyleIds,
+  type MapstickStyleId,
   type ResolvedExternalInterface,
 } from './external-interfaces-contract.js';
 export {

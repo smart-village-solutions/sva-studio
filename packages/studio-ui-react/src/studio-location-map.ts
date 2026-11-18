@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { isStudioMapstickStyle, prepareStudioMapRuntime } from './studio-map-style.js';
 
 export const studioLocationMapDefaultCenter = {
   latitude: 51.163361,
@@ -21,6 +22,7 @@ type StudioLocationMapClickEvent = Readonly<{ lngLat: Readonly<{ lat: number; ln
 type StudioLocationMapInstance = {
   on(eventName: 'click', handler: (event: StudioLocationMapClickEvent) => void): unknown;
   on(eventName: 'error', handler: () => void): unknown;
+  setStyle(style: string): unknown;
   setCenter(center: [number, number]): unknown;
   setZoom(zoom: number): unknown;
   remove(): void;
@@ -35,6 +37,7 @@ type StudioLocationMapMarker = {
 };
 
 export type StudioLocationMapRuntime = {
+  readonly addProtocol?: Parameters<typeof prepareStudioMapRuntime>[0]['addProtocol'];
   readonly Map: new (options: {
     container: HTMLDivElement;
     style: string;
@@ -121,6 +124,11 @@ export const useStudioLocationMap = ({
   const markerRef = React.useRef<StudioLocationMapMarker | null>(null);
   const onCoordinatesChangeRef = React.useRef(onCoordinatesChange);
   const onErrorRef = React.useRef(onError);
+  const currentStyleRef = React.useRef(styleUrl);
+  const latestInputRef = React.useRef({ styleUrl, latitude, longitude });
+  React.useEffect(() => {
+    latestInputRef.current = { styleUrl, latitude, longitude };
+  }, [styleUrl, latitude, longitude]);
   React.useEffect(() => {
     onCoordinatesChangeRef.current = onCoordinatesChange;
   }, [onCoordinatesChange]);
@@ -146,35 +154,63 @@ export const useStudioLocationMap = ({
   React.useEffect(() => {
     if (!runtime || !containerRef.current || mapRef.current) return;
 
-    try {
-      const center = resolveMapCenter(latitude, longitude);
-      const map = new runtime.Map({
-        container: containerRef.current,
-        style: styleUrl,
-        center: [center.longitude, center.latitude],
-        zoom: latitude && longitude ? studioLocationMapFocusedZoom : studioLocationMapDefaultZoom,
-      });
-      map.on('click', (event) => {
-        onCoordinatesChangeRef.current({
-          latitude: toStudioCoordinateString(event.lngLat.lat),
-          longitude: toStudioCoordinateString(event.lngLat.lng),
+    let active = true;
+    const createMap = () => {
+      if (!active || !containerRef.current) return;
+      try {
+        const initial = latestInputRef.current;
+        const center = resolveMapCenter(initial.latitude, initial.longitude);
+        const map = new runtime.Map({
+          container: containerRef.current,
+          style: initial.styleUrl,
+          center: [center.longitude, center.latitude],
+          zoom:
+            initial.latitude && initial.longitude
+              ? studioLocationMapFocusedZoom
+              : studioLocationMapDefaultZoom,
         });
-      });
-      map.on('error', () => onErrorRef.current('map_error'));
-      mapRef.current = map;
-      onErrorRef.current(null);
-      syncMarker(latitude ?? '', longitude ?? '');
-    } catch {
-      onErrorRef.current('map_error');
-    }
+        map.on('click', (event) => {
+          onCoordinatesChangeRef.current({
+            latitude: toStudioCoordinateString(event.lngLat.lat),
+            longitude: toStudioCoordinateString(event.lngLat.lng),
+          });
+        });
+        map.on('error', () => onErrorRef.current('map_error'));
+        mapRef.current = map;
+        currentStyleRef.current = initial.styleUrl;
+        onErrorRef.current(null);
+        syncMarker(initial.latitude ?? '', initial.longitude ?? '');
+      } catch {
+        onErrorRef.current('map_error');
+      }
+    };
+    currentStyleRef.current = styleUrl;
+    if (isStudioMapstickStyle(styleUrl)) {
+      void prepareStudioMapRuntime(runtime)
+        .then(createMap)
+        .catch(() => {
+          if (active) onErrorRef.current('map_error');
+        });
+    } else createMap();
 
     return () => {
+      active = false;
       markerRef.current?.remove();
       markerRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [runtime, styleUrl, syncMarker]);
+  }, [runtime, syncMarker]);
+
+  React.useEffect(() => {
+    if (!mapRef.current || currentStyleRef.current === styleUrl) return;
+    try {
+      mapRef.current.setStyle(styleUrl);
+      currentStyleRef.current = styleUrl;
+    } catch {
+      onErrorRef.current('map_error');
+    }
+  }, [styleUrl]);
 
   React.useEffect(() => {
     if (!mapRef.current) return;

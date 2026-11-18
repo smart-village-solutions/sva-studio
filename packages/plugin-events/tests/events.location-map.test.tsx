@@ -13,7 +13,8 @@ vi.mock('../src/events.location-map.runtime.js', () => ({
   loadEventLocationMapRuntime: state.loadRuntime,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (original) => ({
+  ...(await original<typeof import('@sva/studio-ui-react')>()),
   useStudioLocationMap: state.useLocationMap,
 }));
 

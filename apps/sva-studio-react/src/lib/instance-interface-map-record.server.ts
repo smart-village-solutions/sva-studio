@@ -22,7 +22,10 @@ export const buildMapGeocodingRecord = (input: {
   const reverseGeocodeEndpoint = input.draft.config.reverseGeocodeEndpoint.trim();
   const timeoutMs = parseOptionalPositiveInteger(input.draft.config.requestTimeoutMs);
   const rateLimitPerMinute = parseOptionalPositiveInteger(input.draft.config.rateLimitPerMinute);
-  const nextApiKey = input.draft.config.apiKey.trim() || input.previousSecrets.apiKey || '';
+  const nextApiKey =
+    input.draft.config.provider === 'mapstick'
+      ? ''
+      : input.draft.config.apiKey.trim() || input.previousSecrets.apiKey || '';
 
   for (const key of [
     'provider',
@@ -60,7 +63,7 @@ export const buildMapGeocodingRecord = (input: {
     isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
     category: 'api',
     baseUrl: suggestEndpoint || geocodeEndpoint || reverseGeocodeEndpoint || styleUrl,
-    authMode: 'api_key',
+    authMode: input.draft.config.provider === 'mapstick' ? 'none' : 'api_key',
     publicConfig: {
       ...existingPublicConfig,
       provider: input.draft.config.provider,

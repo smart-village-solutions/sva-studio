@@ -1,3 +1,4 @@
+import { isStudioMapstickStyle, prepareStudioMapRuntime } from '@sva/studio-ui-react';
 import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import {
   TerraDraw,
@@ -15,6 +16,21 @@ import {
   featureInput,
   type MapProps,
 } from './construction-sites.map-drawing.js';
+export const preserveConstructionDrawingStyle = (
+  previous: import('maplibre-gl').StyleSpecification | undefined,
+  next: import('maplibre-gl').StyleSpecification
+): import('maplibre-gl').StyleSpecification => {
+  if (!previous) return next;
+  const sources = Object.fromEntries(
+    Object.entries(previous.sources).filter(([id]) => id.startsWith('td-'))
+  );
+  const layers = previous.layers.filter(
+    (layer) =>
+      'source' in layer && typeof layer.source === 'string' && layer.source.startsWith('td-')
+  );
+  return { ...next, sources: { ...next.sources, ...sources }, layers: [...next.layers, ...layers] };
+};
+
 type MapModule = typeof import('maplibre-gl');
 let runtime: Promise<MapModule> | undefined;
 const load = () =>
@@ -128,12 +144,14 @@ const coordinates = (props: MapProps) =>
 export class ConstructionSiteMapRuntime {
   map: import('maplibre-gl').Map | null = null;
   marker: import('maplibre-gl').Marker | null = null;
+  private styleUrl = '';
   private active = true;
   private generation = 0;
   private themeObserver?: MutationObserver;
   constructor(
     private drawing: ConstructionSiteDrawing,
-    private onError: () => void
+    private onError: () => void,
+    private onStyleReady: (style: string) => void = () => undefined
   ) {}
   mount(container: HTMLElement) {
     this.active = true;
@@ -142,8 +160,10 @@ export class ConstructionSiteMapRuntime {
       .then(async (config) => {
         if (config.killSwitchEnabled || !config.styleUrl) throw new Error('map_unavailable');
         const module = await load();
+        if (isStudioMapstickStyle(config.styleUrl)) await prepareStudioMapRuntime(module);
         if (!this.active || generation !== this.generation) return;
         this.createMap(module, container, config.styleUrl);
+        this.onStyleReady(config.styleUrl);
       })
       .catch(() => {
         if (this.active && generation === this.generation) this.onError();
@@ -161,6 +181,7 @@ export class ConstructionSiteMapRuntime {
       attributionControl: false,
     });
     this.map = map;
+    this.styleUrl = style;
     map.addControl(new module.AttributionControl({ compact: true }));
     const marker = new module.Marker({ draggable: false });
     this.marker = marker;
@@ -206,6 +227,15 @@ export class ConstructionSiteMapRuntime {
         Math.round(latitude * 1e6) / 1e6,
         Math.round(longitude * 1e6) / 1e6
       );
+  }
+  setStyle(style: string) {
+    if (!this.map || !style || style === this.styleUrl) return;
+    try {
+      this.map.setStyle(style, { transformStyle: preserveConstructionDrawingStyle });
+      this.styleUrl = style;
+    } catch {
+      this.onError();
+    }
   }
   updateMarker() {
     const { marker, map } = this;

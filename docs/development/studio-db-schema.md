@@ -650,3 +650,18 @@ Migration `0115_application_workspace_settings` ergänzt `iam.application_worksp
 ### Datenmigration 0116: Standard Redakteur
 
 `0116_iam_standard_editor_role.sql` ergänzt einmalig tenantlokale Rollen und redaktionelle Grants einschließlich Cache-Invalidierung. Die Migration verändert ausschließlich Daten; Tabellen, Constraints, RLS und Funktionen bleiben unverändert, daher bleibt der Schema-Snapshot unverändert. Sie ist hier als Repo-Soll dokumentiert; daraus folgt kein Nachweis einer Live-Ausführung. Rollen-/Grant-Kollisionen stoppen den Backfill atomar. Der Down-Pfad erhält inzwischen angepasste Rollen und Mitgliedschaften.
+
+### Mapstick-Anbieter — Migration 0119
+
+Migration `0119_iam_mapstick_provider.sql` erweitert ausschließlich das vorhandene
+Provider-Enum in den JSON-Metadaten von `iam.external_interface_types` um `mapstick`.
+Tabellen, Spalten, Indizes und RLS bleiben unverändert. Der SQL-Schemasnapshot erhält
+daher keine DDL-Erweiterung. Down lässt den additiven Anbieterwert bestehen, damit
+bereits eingerichtete externe Schnittstellen weiter gültig bleiben.
+
+Die Mandantenzuordnung erfolgt ausdrücklich nicht durch eine globale Seed-Migration:
+Nur Installationen mit `SVA_MANAGED_MAPSTICK_URL` richten die externe Schnittstelle
+automatisch über den vorhandenen Registry-Pfad ein. Neue Mandanten erhalten sie bei
+der Provisionierung, bestehende beim ersten Schnittstellen-/Kartenaufruf. Die
+Einrichtung sperrt die Mandantenzeile innerhalb der bestehenden RLS-Transaktion und
+prüft den gespeicherten Datensatz vor dem Commit unabhängig zurück.

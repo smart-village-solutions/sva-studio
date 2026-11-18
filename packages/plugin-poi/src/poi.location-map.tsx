@@ -1,5 +1,14 @@
+import {
+  readMapStylePreferenceKey,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import * as React from 'react';
-import { useStudioLocationMap } from '@sva/studio-ui-react';
+import {
+  useStudioLocationMap,
+  useStudioMapStyle,
+  StudioMapStyleControl,
+} from '@sva/studio-ui-react';
 
 import { loadPoiLocationMapRuntime, type PoiMapLibreModule } from './poi.location-map.runtime.js';
 
@@ -40,9 +49,16 @@ export function PoiLocationMap({
     };
   }, [onError]);
 
+  const preferenceKey = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readMapStylePreferenceKey,
+    readMapStylePreferenceKey
+  );
+  const mapStyle = useStudioMapStyle(styleUrl, preferenceKey);
+  const mapT = usePluginTranslation('shared');
   const { containerRef } = useStudioLocationMap({
     runtime,
-    styleUrl,
+    styleUrl: mapStyle.styleUrl,
     latitude,
     longitude,
     onCoordinatesChange,
@@ -50,9 +66,17 @@ export function PoiLocationMap({
   });
 
   return (
-    <div
-      ref={containerRef}
-      className="min-h-[320px] w-full overflow-hidden rounded-lg border border-border/70"
-    />
+    <div className="relative">
+      <div
+        ref={containerRef}
+        className="min-h-[320px] w-full overflow-hidden rounded-lg border border-border/70"
+      />
+      <StudioMapStyleControl
+        t={mapT}
+        styleUrl={mapStyle.styleUrl}
+        onChange={mapStyle.chooseStyle}
+        disabled={!runtime}
+      />
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  ensureManagedMapGeocodingInterface,
   deleteExternalInterfaceRecord,
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -30,6 +31,7 @@ const isMissingInterfaceTypeRegistration = (error: unknown): boolean =>
 export const isCustomInterfaceStorageAvailable = (): boolean => true;
 
 export const listStoredInterfaces = async (instanceId: string): Promise<readonly StoredEntry[]> => {
+  await ensureManagedMapGeocodingInterface(instanceId);
   const records = await listExternalInterfaceRecords(instanceId);
   return records
     .filter((record) => record.ownerKind !== 'plugin')
@@ -128,6 +130,7 @@ export const getStoredInterface = async (
 export const loadStoredMapGeocodingRuntimeConfig = async (
   instanceId: string
 ): Promise<StoredMapGeocodingRuntimeConfig | null> => {
+  await ensureManagedMapGeocodingInterface(instanceId);
   const record = await loadDefaultExternalInterfaceRecord(instanceId, 'map_geocoding');
   if (!record || record.typeKey !== 'map_geocoding') {
     return null;

@@ -1849,6 +1849,9 @@ importers:
       dompurify:
         specifier: ^3.4.17
         version: 3.4.17
+      pmtiles:
+        specifier: 4.5.0
+        version: 4.5.0
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -9364,6 +9367,10 @@ packages:
     resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
     engines: {node: '>=20'}
     hasBin: true
+
+  pmtiles@4.5.0:
+    resolution: {integrity: sha512-CBeD4SoUluFziGdy/8k7FOjQxQy486n+929W/tWophauvMICpkZ26vGBWhDt/6b1FZQWNaf4jFdT/5+q0Wii5w==}
+
 
   pngjs@5.0.0:
     resolution: {integrity: sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==}
@@ -19591,6 +19598,11 @@ snapshots:
       playwright-core: 1.62.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  pmtiles@4.5.0:
+    dependencies:
+      fflate: 0.8.3
+
 
   pngjs@5.0.0: {}
 

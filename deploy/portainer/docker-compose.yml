@@ -16,6 +16,7 @@ services:
   app:
     image: ${SVA_IMAGE_REF}
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
@@ -120,6 +121,7 @@ services:
     entrypoint:
       - ./provisioner-entrypoint.sh
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000

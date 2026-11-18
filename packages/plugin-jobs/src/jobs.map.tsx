@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react';
-import { getHostMapGeocodingConfig, usePluginTranslation } from '@sva/plugin-sdk';
-import { useStudioLocationMap, type StudioLocationMapRuntime } from '@sva/studio-ui-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  getHostMapGeocodingConfig,
+  readMapStylePreferenceKey,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
+import {
+  useStudioLocationMap,
+  useStudioMapStyle,
+  StudioMapStyleControl,
+  type StudioLocationMapRuntime,
+} from '@sva/studio-ui-react';
 
 let runtime: Promise<typeof import('maplibre-gl')> | undefined;
 const load = () =>
@@ -38,9 +48,16 @@ export function JobMap(
       active = false;
     };
   }, []);
+  const preferenceKey = useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readMapStylePreferenceKey,
+    readMapStylePreferenceKey
+  );
+  const mapStyle = useStudioMapStyle(styleUrl, preferenceKey);
+  const mapT = usePluginTranslation('shared');
   const { containerRef } = useStudioLocationMap({
     runtime: mapRuntime,
-    styleUrl,
+    styleUrl: mapStyle.styleUrl,
     latitude: props.latitude === null ? undefined : String(props.latitude),
     longitude: props.longitude === null ? undefined : String(props.longitude),
     onCoordinatesChange: ({ latitude, longitude }) => {
@@ -55,11 +72,19 @@ export function JobMap(
           {pt('messages.mapUnavailable')}
         </p>
       ) : null}
-      <div
-        ref={containerRef}
-        className="min-h-64 w-full overflow-hidden rounded-xl border border-border"
-        inert={props.disabled}
-      />
+      <div className="relative">
+        <div
+          ref={containerRef}
+          className="min-h-64 w-full overflow-hidden rounded-xl border border-border"
+          inert={props.disabled}
+        />
+        <StudioMapStyleControl
+          t={mapT}
+          styleUrl={mapStyle.styleUrl}
+          onChange={mapStyle.chooseStyle}
+          disabled={!mapRuntime}
+        />
+      </div>
     </div>
   );
 }

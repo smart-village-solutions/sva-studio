@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useStudioLocationMap, type StudioLocationMapRuntime } from './studio-location-map.js';
 
+const preparation = vi.hoisted(() => ({ run: vi.fn(async () => undefined) }));
+vi.mock('./studio-map-style.js', async (original) => ({
+  ...(await original<typeof import('./studio-map-style.js')>()),
+  prepareStudioMapRuntime: preparation.run,
+}));
+
 type Handler = (event?: { lngLat?: { lat: number; lng: number } }) => void;
 
 class FakeMap {
@@ -13,6 +19,10 @@ class FakeMap {
   readonly centers: Array<[number, number]> = [];
   readonly zooms: number[] = [];
   removed = false;
+  readonly styles: string[] = [];
+  setStyle(style: string) {
+    this.styles.push(style);
+  }
 
   constructor(options: { center: [number, number]; zoom: number }) {
     this.options = options;
@@ -74,16 +84,18 @@ const MapHarness = ({
   onCoordinatesChange = vi.fn(),
   onError = vi.fn(),
   mapRuntime = runtime,
+  styleUrl = 'https://tiles.example.test/style.json',
 }: Readonly<{
   latitude?: string;
   longitude?: string;
   onCoordinatesChange?: (coordinates: Readonly<{ latitude: string; longitude: string }>) => void;
   onError?: (message: string | null) => void;
   mapRuntime?: StudioLocationMapRuntime;
+  styleUrl?: string;
 }>) => {
   const { containerRef } = useStudioLocationMap({
     runtime: mapRuntime,
-    styleUrl: 'https://tiles.example.test/style.json',
+    styleUrl,
     latitude,
     longitude,
     onCoordinatesChange,
@@ -98,6 +110,48 @@ afterEach(() => {
 });
 
 describe('useStudioLocationMap', () => {
+  it('uses the latest committed coordinates and style after lazy protocol preparation', async () => {
+    let ready: (() => void) | undefined;
+    preparation.run.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        ready = resolve;
+      })
+    );
+    const base = '/api/v1/iam/map-geocoding/mapstick/styles/';
+    const view = render(
+      <MapHarness latitude="51" longitude="12" styleUrl={`${base}osm-bright/style.json`} />
+    );
+    expect(FakeMap.instances).toHaveLength(0);
+    view.rerender(
+      <MapHarness latitude="52" longitude="13" styleUrl={`${base}fiord-color/style.json`} />
+    );
+    await act(async () => ready?.());
+    await waitFor(() => expect(FakeMap.instances).toHaveLength(1));
+    expect(FakeMap.instances[0]?.options).toMatchObject({
+      center: [13, 52],
+      style: `${base}fiord-color/style.json`,
+    });
+    expect(FakeMarker.instances[0]?.lngLat).toEqual([13, 52]);
+  });
+
+  it('switches style without recreating the map, marker or resetting the camera', async () => {
+    const view = render(<MapHarness latitude="52" longitude="13" />);
+    await waitFor(() => expect(FakeMap.instances).toHaveLength(1));
+    const map = FakeMap.instances[0];
+    if (!map) throw new Error('missing_map_instance');
+    const initialCenters = map.centers.length;
+    const initialZooms = map.zooms.length;
+    view.rerender(
+      <MapHarness latitude="52" longitude="13" styleUrl="https://tiles.example.test/other.json" />
+    );
+    expect(map.styles).toEqual(['https://tiles.example.test/other.json']);
+    expect(FakeMap.instances).toHaveLength(1);
+    expect(FakeMarker.instances).toHaveLength(1);
+    expect(map.centers).toHaveLength(initialCenters);
+    expect(map.zooms).toHaveLength(initialZooms);
+    expect(map.removed).toBe(false);
+  });
+
   it('creates the map and propagates map clicks and marker drags', async () => {
     const onCoordinatesChange = vi.fn();
     const onError = vi.fn();

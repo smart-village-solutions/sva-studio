@@ -99,12 +99,11 @@ export const interfacesENResources = {
     healthcheck: {
       disabled: 'The map and geocoding interface is disabled by its kill switch.',
       secretMissing: 'The API key for this map and geocoding interface is missing.',
-      mapGeocodingProviderUnsupported:
-        'Automated connection checks currently support Geoapify only.',
+      mapGeocodingProviderUnsupported: 'Automated connection checks support Geoapify and Mapstick.',
       mapGeocodingAuthFailed: 'The Geoapify API key is invalid or not authorized.',
       mapGeocodingRateLimited: 'Geoapify rate-limited the connection check.',
-      mapGeocodingUnreachable: 'Geoapify cannot be reached for the connection check.',
-      mapGeocodingProviderError: 'Geoapify could not complete the connection check.',
+      mapGeocodingUnreachable: 'The map service cannot be reached for the connection check.',
+      mapGeocodingProviderError: 'The map service could not complete the connection check.',
     },
   },
   table: {
@@ -203,6 +202,11 @@ export const interfacesENResources = {
       rateLimitPerMinute: 'Rate limit per minute',
     },
     mapGeocoding: {
+      mapstick: {
+        title: 'Mapstick',
+        description:
+          'The operator automatically provides this external map and geocoding interface. No separate API key is required. Choose the map style directly on the map.',
+      },
       setup: {
         title: 'Recommended setup with Geoapify',
         description: 'A Geoapify API key is required for automatic postal code enrichment.',

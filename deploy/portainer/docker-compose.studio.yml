@@ -15,6 +15,7 @@ services:
   app:
     image: ${SVA_IMAGE_REF}
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-https://mapstick.smart-village.app/}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
@@ -141,6 +142,7 @@ services:
       - ./otel-bootstrap.mjs
       - .output/server/index.mjs
     environment:
+      SVA_MANAGED_MAPSTICK_URL: '${SVA_MANAGED_MAPSTICK_URL:-https://mapstick.smart-village.app/}'
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000

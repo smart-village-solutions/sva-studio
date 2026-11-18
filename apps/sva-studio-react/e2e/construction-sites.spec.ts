@@ -20,8 +20,8 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page.route('**/api/v1/iam/map-geocoding/config', (route) =>
     route.fulfill({
       json: {
-        provider: 'geoapify',
-        styleUrl: new URL('/__construction-map-style.json', route.request().url()).toString(),
+        provider: 'mapstick',
+        styleUrl: '/api/v1/iam/map-geocoding/mapstick/styles/osm-bright/style.json',
         autocompleteEnabled: false,
         geocodeEnabled: false,
         reverseGeocodeEnabled: false,
@@ -29,7 +29,7 @@ test('draws and edits construction site geometry and roundtrips the existing rec
       },
     })
   );
-  await page.route('**/__construction-map-style.json', (route) =>
+  await page.route('**/api/v1/iam/map-geocoding/mapstick/styles/*/style.json', (route) =>
     route.fulfill({
       json: {
         version: 8,
@@ -178,6 +178,18 @@ test('draws and edits construction site geometry and roundtrips the existing rec
     .click();
   await page.getByRole('button', { name: 'Fläche 2 auswählen', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Fläche 2', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Strecke 1 auswählen', exact: true }).click();
+  const drawnLatitude = await line.getByLabel('Punkt 3: Breitengrad', { exact: true }).inputValue();
+  await page.getByRole('button', { name: 'Kartenstil wählen', exact: true }).click();
+  const styleResponse = page.waitForResponse('**/mapstick/styles/fiord-color/style.json');
+  await page
+    .getByRole('combobox', { name: 'Kartenstil wählen', exact: true })
+    .selectOption('fiord-color');
+  await styleResponse;
+  await page.keyboard.press('Escape');
+  await expect(line.getByLabel('Punkt 3: Breitengrad', { exact: true })).toHaveValue(drawnLatitude);
+  await expect(page.locator('#cs-locations-0-latitude')).toHaveValue(primaryLatitude);
+  await expect(page.getByRole('button', { name: 'Fläche 2 auswählen', exact: true })).toBeVisible();
   await canvas.screenshot({ path: test.info().outputPath('construction-geometry-map.png') });
   await page.getByRole('button', { name: 'Strecke 1 auswählen', exact: true }).click();
   await line.getByLabel('Punkt 2: Längengrad', { exact: true }).fill('');

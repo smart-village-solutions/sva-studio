@@ -29,6 +29,25 @@ describe('external interfaces runtime', () => {
     secretConfigCiphertext: 'cipher-secret',
   };
 
+  it('resolves keyless Mapstick while retaining the secret boundary for other providers and auth modes', async () => {
+    const resolve = (provider: string, authMode: string) =>
+      resolveExternalInterface({
+        instanceId: 'tenant-a',
+        typeKey: 'map_geocoding',
+        loadDefault: async () => ({
+          ...baseRecord,
+          typeKey: 'map_geocoding',
+          authMode,
+          publicConfig: { provider },
+          secretConfigCiphertext: undefined,
+        }),
+        revealSecret: () => undefined,
+      });
+    await expect(resolve('mapstick', 'none')).resolves.toMatchObject({ secretConfig: {} });
+    await expect(resolve('geoapify', 'none')).rejects.toMatchObject({ code: 'secret_missing' });
+    await expect(resolve('mapstick', 'api_key')).rejects.toMatchObject({ code: 'secret_missing' });
+  });
+
   it('sanitizes persisted records without leaking ciphertexts', () => {
     expect(sanitizeExternalInterfaceRecord(baseRecord)).toEqual(
       expect.objectContaining({

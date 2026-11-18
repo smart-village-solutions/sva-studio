@@ -75,7 +75,7 @@ const mapGeocodingDraft = base
     type: z.literal('mapGeocoding'),
     config: z
       .object({
-        provider: z.enum(['geoapify', 'custom']),
+        provider: z.enum(['mapstick', 'geoapify', 'custom']),
         styleUrl: text,
         autocompleteEnabled: z.boolean(),
         geocodeEnabled: z.boolean(),

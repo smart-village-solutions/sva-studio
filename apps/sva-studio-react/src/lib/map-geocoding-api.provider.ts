@@ -1,4 +1,9 @@
-import type { MapGeocodingCoordinates, MapGeocodingFeature, MapGeocodingRuntimeConfig } from '@sva/plugin-sdk';
+import { mapstickResourcePath } from '@sva/plugin-sdk';
+import type {
+  MapGeocodingCoordinates,
+  MapGeocodingFeature,
+  MapGeocodingRuntimeConfig,
+} from '@sva/plugin-sdk';
 
 import {
   buildProviderUrl,
@@ -20,7 +25,7 @@ const shouldAllowPrivateMapGeocodingTargets = (): boolean =>
 
 const normalizeProviderRequestUrl = async (
   config: MapGeocodingRuntimeConfigWithSecrets,
-  url: URL,
+  url: URL
 ): Promise<URL> => {
   if (config.provider !== 'custom') {
     return url;
@@ -159,10 +164,13 @@ export const executeProviderRequest = async (input: {
 };
 
 export const getPublicMapGeocodingConfig = (
-  config: MapGeocodingRuntimeConfigWithSecrets,
+  config: MapGeocodingRuntimeConfigWithSecrets
 ): MapGeocodingRuntimeConfig => ({
   provider: config.provider,
-  styleUrl: config.styleUrl,
+  styleUrl:
+    config.provider === 'mapstick'
+      ? `${mapstickResourcePath}/styles/osm-bright/style.json`
+      : config.styleUrl,
   autocompleteEnabled: config.autocompleteEnabled,
   geocodeEnabled: config.geocodeEnabled,
   reverseGeocodeEnabled: config.reverseGeocodeEnabled,

@@ -18,7 +18,8 @@ const host = vi.hoisted(() => ({
   draw: undefined as unknown,
   drawEvents: {} as Record<string, (...args: unknown[]) => void>,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (original) => ({
+  ...(await original<typeof import('@sva/plugin-sdk')>()),
   getHostMapGeocodingConfig: host.config,
   usePluginTranslation: () => (key: string) => key,
 }));
@@ -546,4 +547,32 @@ it('does not revive the first asynchronous initialization after a StrictMode rem
   });
   await start();
   expect(host.created).toHaveBeenCalledOnce();
+});
+
+describe('construction style replacement', () => {
+  it('keeps native draw sources and layers without retaining old basemap sources', async () => {
+    const { preserveConstructionDrawingStyle } =
+      await import('../src/construction-sites.map-runtime.js');
+    const data = { type: 'FeatureCollection' as const, features: [] };
+    const previous: import('maplibre-gl').StyleSpecification = {
+      version: 8,
+      sources: {
+        'td-point': { type: 'geojson', data },
+        old: { type: 'vector', url: 'https://old.example' },
+      },
+      layers: [{ id: 'td-point', type: 'circle', source: 'td-point' }],
+    };
+    const next: import('maplibre-gl').StyleSpecification = {
+      version: 8,
+      sources: {
+        openmaptiles: { type: 'vector', url: 'pmtiles://https://maps.example' },
+      },
+      layers: [{ id: 'background', type: 'background' }],
+    };
+    const result = preserveConstructionDrawingStyle(previous, next);
+    expect(result.sources['td-point']).toBe(previous.sources['td-point']);
+    expect(result.sources.old).toBeUndefined();
+    expect(result.layers.map(({ id }) => id)).toEqual(['background', 'td-point']);
+    expect(preserveConstructionDrawingStyle(undefined, next)).toBe(next);
+  });
 });

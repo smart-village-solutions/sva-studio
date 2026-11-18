@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExternalInterfaceRecord } from '@sva/core';
 const state = vi.hoisted(() => ({
   existing: null as ExternalInterfaceRecord | null,
@@ -6,12 +6,14 @@ const state = vi.hoisted(() => ({
   saved: null as ExternalInterfaceRecord | null,
   query: vi.fn(),
   upsert: vi.fn(),
+  pool: vi.fn(),
 }));
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 vi.mock('pg', () => ({
   Pool: class {
+    constructor(options: { connectionString: string }) { state.pool(options); }
     async connect() { return { query: state.query, release: vi.fn() }; }
   },
 }));
@@ -50,6 +52,7 @@ beforeEach(() => {
   state.existing = state.currentDefault = state.saved = null;
   state.query.mockResolvedValue({ rows: [{ id: 'tenant-a' }] });
 });
+afterEach(() => vi.unstubAllEnvs());
 describe('installation-owned Mapstick provisioning', () => {
   it('does nothing in installations without operator configuration', async () => {
     await ensureManagedMapGeocodingInterface('tenant-a');
@@ -74,6 +77,20 @@ describe('installation-owned Mapstick provisioning', () => {
         reverseGeocodeEndpoint: 'https://maps.example/region/reverse',
       },
     });
+  });
+  it('uses the existing app-credential fallback in the provisioner worker before entrypoint derivation', async () => {
+    vi.stubEnv('IAM_DATABASE_URL', '');
+    vi.stubEnv('APP_DB_USER', 'sva_app');
+    vi.stubEnv('APP_DB_PASSWORD', 'synthetic p@ss:/?');
+    vi.stubEnv('POSTGRES_PASSWORD', 'synthetic-admin-not-used');
+    vi.stubEnv('POSTGRES_DB', 'worker_db');
+    vi.stubEnv('POSTGRES_HOST', 'worker-db.invalid');
+    vi.stubEnv('POSTGRES_PORT', '5432');
+    await ensureManagedMapGeocodingInterface('tenant-a', { serviceUrl: 'https://maps.example' });
+    expect(state.pool).toHaveBeenCalledWith(expect.objectContaining({
+      connectionString: 'postgres://sva_app:synthetic%20p%40ss%3A%2F%3F@worker-db.invalid:5432/worker_db',
+    }));
+    expect(state.saved?.publicConfig.provider).toBe('mapstick');
   });
   it('preserves explicit disablement and settings on repeat setup', async () => {
     state.existing = record({ enabled: false, publicConfig: { provider: 'mapstick' } });

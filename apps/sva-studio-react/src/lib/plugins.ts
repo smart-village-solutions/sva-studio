@@ -10,6 +10,7 @@ import {
   type StudioModuleCatalogEntry,
 } from './plugin-module-iam.js';
 import { appAdminResources } from '../routing/admin-resources';
+import { isPluginOwnedMessageKey } from './plugin-owned-message.js';
 
 import {
   i18nResources,
@@ -208,6 +209,14 @@ export const getStudioPluginTranslationNamespace = (pluginId: string): string =>
   );
   return sharedNamespaces.length === 1 ? (sharedNamespaces[0] ?? pluginId) : pluginId;
 };
+/** Text for a plugin-reported message key, or `undefined` unless the plugin owns that key. */
+export const resolveStudioPluginOwnedMessage = (
+  pluginId: string,
+  key: string | undefined
+): string | undefined =>
+  isPluginOwnedMessageKey(key, studioBuildTimeRegistry.pluginRegistry.get(pluginId)?.translations)
+    ? t(key)
+    : undefined;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
 export const studioContentTypes = studioBuildTimeRegistry.studioContentTypes;

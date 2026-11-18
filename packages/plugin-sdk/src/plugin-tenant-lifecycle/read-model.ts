@@ -9,6 +9,7 @@ import type {
 } from './types.js';
 import { reducePluginTenantReadinessStatus } from './snapshot.js';
 import { parsePluginTenantReadinessRevision } from './revision.js';
+import { isPluginTenantLifecycleMessageKey } from './error.js';
 
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
 
@@ -144,6 +145,9 @@ const buildError = (
   if (!evidence?.errorCode) return undefined;
   return {
     code: evidence.errorCode,
+    ...(isPluginTenantLifecycleMessageKey(evidence.errorMessageKey)
+      ? { messageKey: evidence.errorMessageKey }
+      : {}),
     ...(evidence.retryKind ? { retryKind: evidence.retryKind } : {}),
     ...(evidence.retryAfter ? { retryAfter: evidence.retryAfter } : {}),
   };

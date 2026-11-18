@@ -8,6 +8,7 @@ import {
   evaluatePluginTenantAccess,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,
+  isPluginTenantLifecycleMessageKey,
   type PluginDefinition,
   type PluginJobTypeDefinition,
   type PluginTenantLifecycleDefinition,
@@ -583,6 +584,49 @@ describe('plugin tenant lifecycle contracts', () => {
         },
       ],
     });
+  });
+
+  it('exposes a persisted lifecycle error message key only when it is a key path', () => {
+    const readModelWith = (errorMessageKey: string) =>
+      createPluginTenantReadinessReadModel({
+        definition: { pluginId: 'speech', ...tenantLifecycle },
+        activation: {
+          activationPolicy: 'required',
+          effectiveActive: true,
+          updatedAt: '2026-08-30T12:00:00.000Z',
+        },
+        evidence: {
+          accessState: 'active',
+          readinessStatus: 'blocked',
+          desiredOperation: 'reconcile',
+          desiredGeneration: 4,
+          completedGeneration: 3,
+          readinessChecks: [],
+          errorCode: 'speech.databaseUnavailable',
+          errorMessageKey,
+          retryKind: 'terminal',
+          updatedAt: '2026-08-30T12:05:00.000Z',
+        },
+      });
+
+    expect(readModelWith('speech.errors.databaseUnavailable')?.error).toEqual({
+      code: 'speech.databaseUnavailable',
+      messageKey: 'speech.errors.databaseUnavailable',
+      retryKind: 'terminal',
+    });
+    expect(
+      readModelWith('Call +49 123 and paste token=abc into the console')?.error
+    ).toEqual({ code: 'speech.databaseUnavailable', retryKind: 'terminal' });
+  });
+
+  it('accepts only bounded dot-separated lifecycle message key paths', () => {
+    expect(isPluginTenantLifecycleMessageKey('ssf.errors.rootDatabaseNotConfigured')).toBe(true);
+    expect(isPluginTenantLifecycleMessageKey('ssf.pages.installation-overview')).toBe(true);
+    expect(isPluginTenantLifecycleMessageKey('ssf')).toBe(false);
+    expect(isPluginTenantLifecycleMessageKey('ssf.errors.<b>x</b>')).toBe(false);
+    expect(isPluginTenantLifecycleMessageKey('ssf.errors with spaces')).toBe(false);
+    expect(isPluginTenantLifecycleMessageKey(`ssf.${'a'.repeat(160)}`)).toBe(false);
+    expect(isPluginTenantLifecycleMessageKey(42)).toBe(false);
   });
 
   it('binds readiness evidence to the current plugin lifecycle contract', () => {

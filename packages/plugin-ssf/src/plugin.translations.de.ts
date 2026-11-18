@@ -198,7 +198,7 @@ export const de = {
     errors: {
       authorizationReconcileUnavailable: 'Die SSF-Berechtigungen konnten nicht abgeglichen werden.',
       rootDatabaseNotConfigured:
-        'Die SSF-Datenbankverbindung ist nicht konfiguriert. Bitte die Konfiguration vervollständigen und den Abgleich erneut starten.',
+        'Die SSF-Root-Datenbankverbindung ist nicht konfiguriert. Bitten Sie den Plattformbetrieb, SVA_STUDIO_SSF_ROOT_DATABASE_URL zu setzen und Studio neu auszurollen. Starten Sie anschließend die Reparatur (Abgleich) erneut.',
       tenantInstanceIdInvalid:
         'Die Mandanten-ID ist ungültig. Entfernen Sie den fehlerhaften Mandanten und legen Sie ihn mit einer kleingeschriebenen ID neu an.',
       invalidAuthorizationReconcileContext:

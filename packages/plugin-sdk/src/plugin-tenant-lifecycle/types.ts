@@ -71,6 +71,8 @@ export type PluginTenantLifecycleReadEvidence = {
   readonly readinessRevision?: string;
   readonly readinessChecks: readonly Readonly<Record<string, unknown>>[];
   readonly errorCode?: string;
+  /** Translation key of the plugin lifecycle error; never free text. */
+  readonly errorMessageKey?: string;
   readonly retryKind?: 'terminal' | 'retryable';
   readonly retryAfter?: string;
   readonly updatedAt: string;
@@ -91,6 +93,8 @@ export type PluginTenantReadinessReadModel = {
   readonly checks: readonly PluginTenantReadinessReadModelCheck[];
   readonly error?: {
     readonly code: string;
+    /** Plugin translation key; hosts must verify plugin ownership before rendering it. */
+    readonly messageKey?: string;
     readonly retryKind?: PluginTenantLifecycleReadEvidence['retryKind'];
     readonly retryAfter?: string;
   };

@@ -21,6 +21,8 @@ export type PluginTenantLifecycleRecord = {
   readonly readinessRevision?: string;
   readonly readinessChecks: readonly Readonly<Record<string, unknown>>[];
   readonly errorCode?: string;
+  /** Validated plugin translation key for `errorCode`; never free text. */
+  readonly errorMessageKey?: string;
   readonly retryKind?: PluginTenantLifecycleRetryKind;
   readonly retryAfter?: string;
   readonly nextRecheckAt?: string;
@@ -80,6 +82,7 @@ export type PluginTenantLifecycleRepository = {
     readonly generation: number;
     readonly readinessStatus: Extract<PluginTenantReadinessStatus, 'degraded' | 'blocked'>;
     readonly errorCode: string;
+    readonly errorMessageKey?: string;
     readonly retryKind: PluginTenantLifecycleRetryKind;
     readonly retryAfter?: string;
   }) => Promise<PluginTenantLifecycleTransitionResult>;

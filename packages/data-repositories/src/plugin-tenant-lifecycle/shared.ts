@@ -20,6 +20,7 @@ type PluginTenantLifecycleRow = {
   readonly readiness_revision: string | null;
   readonly readiness_checks: readonly Readonly<Record<string, unknown>>[];
   readonly error_code: string | null;
+  readonly error_message_key?: string | null;
   readonly retry_kind: PluginTenantLifecycleRetryKind | null;
   readonly retry_after: Date | string | null;
   readonly next_recheck_at: Date | string | null;
@@ -52,6 +53,7 @@ const mapRow = (row: PluginTenantLifecycleRow): PluginTenantLifecycleRecord => (
   ...(row.readiness_revision ? { readinessRevision: row.readiness_revision } : {}),
   readinessChecks: row.readiness_checks,
   ...(row.error_code ? { errorCode: row.error_code } : {}),
+  ...(row.error_code && row.error_message_key ? { errorMessageKey: row.error_message_key } : {}),
   ...(row.retry_kind ? { retryKind: row.retry_kind } : {}),
   ...(row.retry_after ? { retryAfter: toIso(row.retry_after) } : {}),
   ...(row.next_recheck_at ? { nextRecheckAt: toIso(row.next_recheck_at) } : {}),

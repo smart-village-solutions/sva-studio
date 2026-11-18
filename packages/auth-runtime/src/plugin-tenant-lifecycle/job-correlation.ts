@@ -6,13 +6,16 @@ import type {
 import {
   createPluginTenantReadinessSnapshot,
   definePluginTenantLifecycleError,
+  isPluginTenantLifecycleMessageKey,
   pluginTenantLifecycleOperations,
   type PluginJobExecutionResult,
   type PluginTenantLifecycleError,
   type PluginTenantLifecycleOperation,
   type PluginTenantLifecycleRegistryEntry,
 } from '@sva/plugin-sdk';
+import { createSdkLogger } from '@sva/server-runtime';
 
+const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
 const lifecycleOperations = new Set<string>(pluginTenantLifecycleOperations);
 const pluginTenantLifecycleDefaultRetryDelayMs = 60_000;
 
@@ -141,6 +144,7 @@ const resolveLifecycleFailure = (
 ): {
   readonly readinessStatus: 'degraded' | 'blocked';
   readonly errorCode: string;
+  readonly errorMessageKey?: string;
   readonly retryKind: 'terminal' | 'retryable';
   readonly retryAfter?: string;
 } => {
@@ -162,9 +166,25 @@ const resolveLifecycleFailure = (
       pluginId,
       pluginError as PluginTenantLifecycleError
     );
+    // Only a key path is persisted; plugin ownership of the key is verified by the rendering host.
+    const keyAccepted = isPluginTenantLifecycleMessageKey(lifecycleError.messageKey);
+    if (!keyAccepted) {
+      // The rejected value may be free text, so only its owner and error code are logged.
+      logger.warn('plugin_tenant_lifecycle_message_key_rejected', {
+        operation: 'plugin_tenant_lifecycle_fail',
+        plugin_id: pluginId,
+        error_code: lifecycleError.code,
+      });
+    }
+    const messageKey = keyAccepted ? { errorMessageKey: lifecycleError.messageKey } : {};
     // The worker's final classification includes its authoritative retry budget.
     if (error.category === 'permanent') {
-      return { readinessStatus: 'blocked', errorCode: lifecycleError.code, retryKind: 'terminal' };
+      return {
+        readinessStatus: 'blocked',
+        errorCode: lifecycleError.code,
+        ...messageKey,
+        retryKind: 'terminal',
+      };
     }
     const retryAfterMs =
       lifecycleError.retry.kind === 'retryable'
@@ -179,6 +199,7 @@ const resolveLifecycleFailure = (
     return {
       readinessStatus: lifecycleError.retry.kind === 'retryable' ? 'degraded' : 'blocked',
       errorCode: lifecycleError.code,
+      ...messageKey,
       retryKind: lifecycleError.retry.kind,
       ...(retryAfter ? { retryAfter } : {}),
     };

@@ -1,3 +1,4 @@
+import { reattachMediaPayloads } from './event-source-preservation.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverPoiInput,
@@ -43,12 +44,14 @@ export const createPoiService = ({
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const current = await poiOperations.getPoiDetailWithConfig(input, config);
+    const current = await poiOperations.getPoiDetailWithConfig(input, config, true);
+    const merged = mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations);
     return poiOperations.writePoiWithConfig(
       {
         ...input,
         poi: {
-          ...mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
+          ...merged,
+          mediaContents: reattachMediaPayloads(current.data.mediaContents, merged.mediaContents),
           payload: withUpdatedPayload(input.poi.payload, current.data.payload),
         },
         forceCreate: true,

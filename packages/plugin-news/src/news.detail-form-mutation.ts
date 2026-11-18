@@ -39,20 +39,26 @@ const buildCategoryMutation = (
   };
 };
 
+const compactMediaDimension = (value: number | string | undefined): number | undefined => {
+  const parsed = Number(typeof value === 'string' ? compactString(value) : value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   const captionText = compactString(media.captionText);
   const copyright = compactString(media.copyright);
   const contentType = compactString(media.contentType);
-  const height = media.height.trim().length > 0 ? Number(media.height) : undefined;
-  const width = media.width.trim().length > 0 ? Number(media.width) : undefined;
+  const height = compactMediaDimension(media.height);
+  const width = compactMediaDimension(media.width);
   const sourceUrl = compactWebUrl(media.sourceUrl.url, media.sourceUrl.description);
 
   return {
+    ...(media.payload !== undefined ? { payload: media.payload } : {}),
     ...(captionText ? { captionText } : {}),
     ...(copyright ? { copyright } : {}),
     ...(contentType ? { contentType } : {}),
-    ...(Number.isFinite(height) ? { height } : {}),
-    ...(Number.isFinite(width) ? { width } : {}),
+    ...(height !== undefined ? { height } : {}),
+    ...(width !== undefined ? { width } : {}),
     ...(sourceUrl ? { sourceUrl } : {}),
   };
 };

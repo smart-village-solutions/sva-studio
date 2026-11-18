@@ -24,8 +24,12 @@ export const PROJECTS_CONTENT_TYPE = 'projects.project' as const;
 export const PROJECTS_GENERIC_TYPE = 'FeaturedProject' as const;
 
 const requiredText = z.string().trim().min(1);
+const focusPointSchema = z
+  .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+  .nullable();
 const imageSchema = z
   .object({
+    focusPoint: focusPointSchema.optional(),
     url: requiredText,
     altText: requiredText,
     caption: z.string().trim().optional(),
@@ -89,6 +93,7 @@ const normalizeProjectFullText = (value: string): string => {
 const toMediaContents = (input: SvaMainserverProjectInput) =>
   input.images.map((image) => ({
     contentType: 'image',
+    ...(image.focusPoint !== undefined ? { payload: { focusPoint: image.focusPoint } } : {}),
     sourceUrl: { url: image.url.trim(), description: image.altText.trim() },
     ...(image.caption?.trim() ? { captionText: image.caption.trim() } : {}),
     ...(image.credits?.trim() ? { copyright: image.credits.trim() } : {}),
@@ -254,6 +259,9 @@ export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMain
       altText: media.sourceUrl?.description?.trim() ?? '',
       ...(media.captionText?.trim() ? { caption: media.captionText.trim() } : {}),
       ...(media.copyright?.trim() ? { credits: media.copyright.trim() } : {}),
+      ...(focusPointSchema.safeParse(payloadRecord(media.payload).focusPoint).success
+        ? { focusPoint: focusPointSchema.parse(payloadRecord(media.payload).focusPoint) }
+        : {}),
       position,
     })),
     status,

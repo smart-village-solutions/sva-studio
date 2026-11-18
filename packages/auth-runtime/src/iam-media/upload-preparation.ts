@@ -3,6 +3,7 @@ import { asApiItem, createApiError, toPayloadHash } from '../shared/request-help
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { uploadInitializationSchema } from './schemas.js';
+import { isMediaQuarantineKey, isPrivateMediaStorageKey } from './storage-key-paths.js';
 import type { MediaStoragePort, MediaUploadPreparation } from './storage-port.js';
 import { getMediaRequestId as getRequestId } from './request-context.js';
 import {
@@ -150,7 +151,10 @@ const retryExistingUpload = async (
     mediaType: input.data.mediaType,
     mimeType: input.data.mimeType,
     byteSize: input.data.byteSize,
-    ...(input.data.editing ? { privateInput: true } : {}),
+    ...(input.data.editing || isPrivateMediaStorageKey(uploadSession.storageKey)
+      ? { privateInput: true }
+      : {}),
+    ...(isMediaQuarantineKey(uploadSession.storageKey) ? { requireScan: true } : {}),
   });
   const sourceUpload = await prepareSourceUpload(
     storagePort,

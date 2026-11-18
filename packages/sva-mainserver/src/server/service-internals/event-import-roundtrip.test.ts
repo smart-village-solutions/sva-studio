@@ -365,7 +365,7 @@ describe('event import round trip against the Mainserver contract', () => {
     expect(validate(schema, parse(document)).map((error) => error.message)).toEqual([]);
   });
 
-  it('selects media payloads only in the server-side read before an update', () => {
+  it('selects event media payloads for focus projection and server-side source preservation', () => {
     expect(selectsMediaPayload(svaMainserverEventUpdateSnapshotDocument)).toBe(true);
     for (const document of [
       svaMainserverEventListDocument,
@@ -374,9 +374,38 @@ describe('event import round trip against the Mainserver contract', () => {
       svaMainserverPoiListDocument,
       svaMainserverPoiDetailDocument,
     ]) {
-      expect(selectsMediaPayload(document)).toBe(false);
+      expect(selectsMediaPayload(document)).toBe(true);
     }
   });
+
+  it.each([{ x: 0.2, y: 0.8 }, null])(
+    'hands the focus to Mainserver while retaining internal source metadata: %j',
+    async (focusPoint) => {
+      const stored = importedEvent();
+      const { service, writes } = createHarness(stored);
+      const submitted = editorSubmission();
+      await service.updateEvent({
+        ...connection,
+        eventId: stored.id,
+        event: {
+          ...submitted,
+          mediaContents: submitted.mediaContents?.map((media) => ({
+            ...media,
+            payload: { focusPoint },
+          })),
+        },
+      });
+      expect(writes[0]?.mediaContents).toEqual([
+        expect.objectContaining({ payload: { sourceImageId: 'img-1', focusPoint } }),
+      ]);
+      assertValidMutationVariables(writes[0]!);
+      const persisted = { ...stored, mediaContents: writes[0]?.mediaContents };
+      const independentReader = createHarness(persisted).service;
+      const detail = await independentReader.getEventDetail({ ...connection, eventId: stored.id });
+      expect(detail.data.mediaContents[0]?.payload).toEqual({ focusPoint });
+      expect(detail.data.mediaContents[0]?.payload).not.toHaveProperty('sourceImageId');
+    }
+  );
 
   it('reads registration requirement, participant limit and source relations into the projection', async () => {
     const { service } = createHarness(importedEvent());

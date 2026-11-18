@@ -1,3 +1,8 @@
+import { studioContentTypes } from '../../../lib/plugins';
+import {
+  resolveStudioContentEditPath,
+  resolveStudioContentTypeLabel,
+} from '../../../lib/studio-content-types';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import {
@@ -83,28 +88,47 @@ export const MediaDetailUsageSection = ({ usage }: MediaDetailUsageSectionProps)
 
       {usage.references.length ? (
         <div className="space-y-3">
-          {usage.references.map((reference) => (
-            <div
-              key={reference.id}
-              className="rounded-lg border border-border-subtle bg-surface-inset p-4"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1">
-                  <p className="font-medium text-foreground">{reference.targetType}</p>
-                  <p className="text-sm text-muted-foreground">{reference.targetId}</p>
-                  <p className="text-xs text-muted-foreground">{reference.id}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{formatMediaRole(reference.role)}</Badge>
-                  {typeof reference.sortOrder === 'number' ? (
-                    <Badge variant="secondary">
-                      {t('media.usage.sortOrder', { value: String(reference.sortOrder) })}
-                    </Badge>
-                  ) : null}
+          {usage.references.map((reference) => {
+            const definition = studioContentTypes.find(
+              (type) => type.contentType === reference.targetType
+            );
+            const editPath = resolveStudioContentEditPath(
+              { id: reference.targetId, contentType: reference.targetType },
+              studioContentTypes
+            );
+            const label = definition
+              ? resolveStudioContentTypeLabel(definition)
+              : reference.targetType;
+            return (
+              <div
+                key={reference.id}
+                className="rounded-lg border border-border-subtle bg-surface-inset p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">
+                      {editPath ? (
+                        <Link to={editPath} className="text-primary underline underline-offset-4">
+                          {label}
+                        </Link>
+                      ) : (
+                        label
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{reference.targetId}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{formatMediaRole(reference.role)}</Badge>
+                    {typeof reference.sortOrder === 'number' ? (
+                      <Badge variant="secondary">
+                        {t('media.usage.sortOrder', { value: String(reference.sortOrder) })}
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <Alert>

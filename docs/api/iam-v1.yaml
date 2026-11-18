@@ -2100,8 +2100,25 @@ paths:
       responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/register:
     post:
-      summary: Vorhandenes Bucket-Medium registrieren
-      responses: { default: { description: 'Antwort des Endpunkts.' } }
+      summary: Vorhandenes Bild sicher aufnehmen
+      description: >-
+        Erfordert media.read und media.create sowie CSRF-Schutz. Ausschließlich die aktive
+        eigene S3-Schnittstelle ist als öffentlich auslieferbare Aufnahmequelle freigegeben;
+        ENV-Fallback, fremde Instanzen, interne Eingänge und Varianten sind ausgeschlossen.
+        Maximal 64 MiB werden anhand tatsächlicher Bildsignatur und unveränderter ETag/Größe
+        in einen privaten Eingang übernommen. Der bestehende Worker validiert, scannt bei
+        Scanpflicht und finalisiert Quote und Freigabe atomar. Parallelität und Wiederholung
+        verwenden dieselbe Medienidentität und Upload-Sitzung. Original und bisherige URL
+        bleiben erhalten. MIME-Typ und Sichtbarkeit des Browsers bestimmen die Freigabe nicht.
+      responses:
+        '200': { description: Bereits fertiggestelltes Medium im API-Item-Format. }
+        '202': { description: Aufnahme dauerhaft vorbereitet und bestehender Medienjob angenommen; Medium noch nicht freigegeben. }
+        '403': { description: Fehlende Rechte oder Quellobjekt außerhalb des eigenen Storage-Scope. }
+        '404': { description: Quellobjekt nicht mehr vorhanden. }
+        '409': { description: Quelle nicht freigegeben oder verändert, fehlende Quote oder blockierte Aufnahme. }
+        '413': { description: Größenlimit überschritten. }
+        '415': { description: Tatsächlicher Dateiinhalt ist kein unterstütztes Bild. }
+        default: { description: Fehler im bestehenden IAM-Fehlerformat. }
   /api/v1/iam/media/references:
     get:
       summary: Medienreferenzen lesen
@@ -2187,9 +2204,15 @@ paths:
     parameters: [{ name: assetId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Medium lesen
+      description: Enthält den gespeicherten normalisierten metadata.focusPoint, sofern gesetzt; keine interne Aufnahmeidentität oder private Bearbeitungsgrundlage.
       responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
       summary: Medium ändern
+      description: >-
+        Erfordert media.update und ein bereites Medium. metadata.focusPoint enthält x und y
+        als endliche Zahlen zwischen 0 und 1 auf der orientierten Bildfläche. null entfernt
+        den Fokus, ein fehlendes Feld lässt ihn unverändert. Fokusänderungen verändern keine
+        Dateien, Varianten, URLs oder Referenzen und planen keine Bildverarbeitung ein.
       responses: { default: { description: 'Antwort des Endpunkts.' } }
     delete:
       summary: Medium löschen

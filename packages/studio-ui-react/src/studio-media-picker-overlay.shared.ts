@@ -34,7 +34,8 @@ export type StudioMediaPickerAssetSummary = Readonly<{
 export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary &
   Readonly<{
     instanceId?: string;
-    metadata: StudioMediaPickerMetadataDraft & { tags?: readonly string[] };
+    metadata: StudioMediaPickerMetadataDraft &
+      Pick<HostMediaUploadMetadata, 'focusPoint'> & { tags?: readonly string[] };
     centralMetadata?: StudioMediaPickerMetadataDraft;
     hasEditingDocument?: boolean;
     persistentUrl?: string | null;

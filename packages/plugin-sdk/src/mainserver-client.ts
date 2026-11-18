@@ -47,7 +47,6 @@ export {
   type MainserverActingPrincipalType,
 } from './mainserver-request.js';
 export type { MainserverResponseMeta } from './mainserver-request.js';
-
 export type MainserverCrudClientOptions<
   TItem,
   TMutationInput,
@@ -65,7 +64,6 @@ export type MainserverCrudClientOptions<
   createHeaders?: () => HeadersInit;
   updateHeaders?: () => HeadersInit;
 }>;
-
 type ApiItemResponse<T> = Readonly<{
   data: T;
   meta?: Readonly<{
@@ -73,10 +71,8 @@ type ApiItemResponse<T> = Readonly<{
     deviations?: readonly MainserverDataDeviation[];
   }>;
 }>;
-
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
-
 const createMainserverItemLoader = <TItem, TError extends Error>(input: {
   readonly basePath: string;
   readonly fetch?: typeof fetch;
@@ -103,7 +99,6 @@ const createMainserverItemLoader = <TItem, TError extends Error>(input: {
       access: response.meta?.access ?? {},
     };
   };
-
   return {
     loadDetail,
     loadItem: async (
@@ -252,7 +247,10 @@ const createMainserverCrudMutations = <
   ): Promise<void> => {
     await input.ensureContextBinding(contentId, actingPrincipalType);
     try {
-      await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
+      const response = await requestMainserverJson<
+        ApiItemResponse<{ readonly id: string; readonly reconciliationRequired?: boolean } | null>,
+        TError
+      >({
         url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: input.options.fetch,
         errorFactory: input.options.errorFactory,
@@ -261,6 +259,8 @@ const createMainserverCrudMutations = <
           headers: input.contextBindingStore.mutationHeaders(contentId, actingPrincipalType),
         },
       });
+      if (response.data?.reconciliationRequired)
+        throw input.options.errorFactory('reconciliation_required', 'reconciliation_required');
     } catch (error) {
       return invalidateBindingOnStaleContext(
         error as TError,

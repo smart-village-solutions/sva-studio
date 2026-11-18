@@ -1,7 +1,9 @@
 import type { SqlStatement } from '../iam/repositories/types.js';
 import type { MediaAssetRecord } from './model-types.js';
-
-export const upsertAssetStatement = (input: MediaAssetRecord): SqlStatement => ({
+export const upsertAssetStatement = (
+  input: MediaAssetRecord,
+  insertOnly = false
+): SqlStatement => ({
   text: `
 INSERT INTO iam.media_assets (
   id,
@@ -29,7 +31,10 @@ VALUES (
   $12, $13::uuid, $14, $15::uuid, $16::timestamptz,
   $17::uuid, $18, $19::jsonb
 )
-ON CONFLICT (id) DO UPDATE
+${
+  insertOnly
+    ? 'ON CONFLICT DO NOTHING RETURNING id'
+    : `ON CONFLICT (id) DO UPDATE
 SET storage_key = EXCLUDED.storage_key,
     media_type = EXCLUDED.media_type,
     mime_type = EXCLUDED.mime_type,
@@ -47,7 +52,8 @@ SET storage_key = EXCLUDED.storage_key,
     editing_source_asset_id = EXCLUDED.editing_source_asset_id,
     editing_source_key = EXCLUDED.editing_source_key,
     editing_document = EXCLUDED.editing_document,
-    updated_at = NOW();
+    updated_at = NOW()`
+};
 `,
   values: [
     input.id,
@@ -71,7 +77,6 @@ SET storage_key = EXCLUDED.storage_key,
     input.editingDocument ? JSON.stringify(input.editingDocument) : null,
   ],
 });
-
 export const getAssetByIdStatement = (instanceId: string, assetId: string): SqlStatement => ({
   text: `
 SELECT
@@ -104,7 +109,6 @@ LIMIT 1;
 `,
   values: [instanceId, assetId],
 });
-
 export const getAssetByStorageKeyStatement = (
   instanceId: string,
   storageKey: string
@@ -240,4 +244,15 @@ WHERE instance_id = $1
   AND asset_id = $2;
 `,
   values: [instanceId, assetId],
+});
+
+export const listAssetsByIdsStatement = (
+  instanceId: string,
+  assetIds: readonly string[]
+): SqlStatement => ({
+  text: getAssetByIdStatement(instanceId, '').text.replace(
+    'id = $2\nLIMIT 1',
+    'id = ANY($2::uuid[])'
+  ),
+  values: [instanceId, [...assetIds]],
 });

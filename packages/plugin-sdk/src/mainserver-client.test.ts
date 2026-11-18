@@ -623,3 +623,34 @@ describe('mainserver-client', () => {
     });
   });
 });
+
+it('does not report an incomplete media reference reconciliation as successful deletion', async () => {
+  const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) =>
+    Response.json(
+      {
+        data: {
+          id: 'event-1',
+          ...(init?.method === 'DELETE' ? { reconciliationRequired: true } : {}),
+        },
+      },
+      {
+        status: init?.method === 'DELETE' ? 202 : 200,
+        headers: { 'X-SVA-Context-Binding': 'v1.fixture' },
+      }
+    )
+  );
+  const client = createMainserverCrudClient<
+    { id: string },
+    { title: string },
+    { data: { id: string }[] },
+    unknown
+  >({
+    basePath: '/events',
+    fetch,
+    errorFactory: (code, message) => new MainserverApiError(code, message),
+    mapListResponse: (response) => response,
+  });
+  await expect(client.remove('event-1', 'user')).rejects.toMatchObject({
+    code: 'reconciliation_required',
+  });
+});

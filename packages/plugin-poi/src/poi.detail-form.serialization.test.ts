@@ -5,9 +5,7 @@ import { mapPoiDetailFormValuesToInput } from './poi.detail-form.serialization.j
 import type { PoiDetailFormValues } from './poi.detail-form.types.js';
 
 const serializeRows = (
-  content: Partial<
-    Pick<PoiDetailFormValues['content'], 'openingHours' | 'prices'>
-  >
+  content: Partial<Pick<PoiDetailFormValues['content'], 'openingHours' | 'prices'>>
 ) => {
   const defaults = createDefaultPoiDetailFormValues();
 
@@ -89,4 +87,31 @@ describe('POI detail form row serialization', () => {
       { amount: Number.NaN },
     ]);
   });
+});
+
+it('retains the media identity and editorial focus through a POI form save', () => {
+  const defaults = createDefaultPoiDetailFormValues();
+  const input = mapPoiDetailFormValuesToInput(
+    {
+      ...defaults,
+      content: {
+        ...defaults.content,
+        mediaContents: [
+          {
+            id: 'media-1',
+            sourceUrl: { url: 'https://media.test/image.png' },
+            payload: { focusPoint: { x: 0.2, y: 0.8 } },
+          },
+        ],
+      },
+    },
+    {}
+  );
+  expect(input.mediaContents).toEqual([
+    {
+      id: 'media-1',
+      sourceUrl: { url: 'https://media.test/image.png' },
+      payload: { focusPoint: { x: 0.2, y: 0.8 } },
+    },
+  ]);
 });

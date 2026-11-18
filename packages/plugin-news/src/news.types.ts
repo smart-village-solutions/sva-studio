@@ -40,6 +40,7 @@ export type NewsCategory = {
 };
 
 type NewsMediaContent = {
+  readonly payload?: Readonly<Record<string, unknown>>;
   readonly captionText?: string;
   readonly copyright?: string;
   readonly contentType?: string;
@@ -49,6 +50,7 @@ type NewsMediaContent = {
 };
 
 export type NewsMediaContentFormValue = {
+  readonly payload?: Readonly<Record<string, unknown>>;
   captionText: string;
   copyright: string;
   contentType: string;

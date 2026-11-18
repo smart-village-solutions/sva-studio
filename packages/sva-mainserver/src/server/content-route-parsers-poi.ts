@@ -166,10 +166,33 @@ export const parseMediaContents = (
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }
+    let payload: { focusPoint: { x: number; y: number } | null } | undefined;
+    if (isRecord(media.payload) && media.payload.focusPoint !== undefined) {
+      const point = media.payload.focusPoint;
+      if (
+        point !== null &&
+        (!isRecord(point) ||
+          typeof point.x !== 'number' ||
+          typeof point.y !== 'number' ||
+          ![point.x, point.y].every(
+            (coordinate) => Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 1
+          ))
+      ) {
+        return errorJson(
+          400,
+          'invalid_request',
+          'Der Fokuspunkt muss innerhalb des Bildes liegen.'
+        );
+      }
+      payload = {
+        focusPoint: point === null ? null : { x: point.x as number, y: point.y as number },
+      };
+    }
     mediaContents.push(
       omitUndefined({
         id: options.includeStoredIds ? readString(media.id) : undefined,
         captionText: readString(media.captionText),
+        payload,
         copyright: readString(media.copyright),
         contentType: readString(media.contentType),
         height: readNumber(media.height),

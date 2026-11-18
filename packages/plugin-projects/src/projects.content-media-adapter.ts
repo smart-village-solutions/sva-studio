@@ -34,6 +34,7 @@ export const projectImagesToMediaUsages = (
     altText: text(image.altText),
     caption: text(image.caption),
     credit: text(image.credits),
+    ...(image.focusPoint !== undefined ? { focusPoint: image.focusPoint } : {}),
     role: 'gallery_item',
     sortOrder,
     referenceStatus:
@@ -48,6 +49,7 @@ export const projectMediaUsagesToImages = (
     ...(typeof usage.additionalData?.original === 'object' && usage.additionalData.original !== null
       ? (usage.additionalData.original as ProjectImageRecord)
       : {}),
+    ...(usage.focusPoint !== undefined ? { focusPoint: usage.focusPoint } : {}),
     url: usage.persistentUrl,
     altText: usage.altText,
     ...(usage.caption.trim() ? { caption: usage.caption } : { caption: undefined }),
@@ -66,6 +68,7 @@ export const projectAssetToMediaUsage = (input: {
     description: string;
     copyright: string;
     license: string;
+    focusPoint?: ContentMediaUsage['focusPoint'];
   }>;
   readonly centralMetadata?: Readonly<{
     title: string;
@@ -73,6 +76,7 @@ export const projectAssetToMediaUsage = (input: {
     description: string;
     copyright: string;
     license: string;
+    focusPoint?: ContentMediaUsage['focusPoint'];
   }>;
   readonly sortOrder: number;
 }): ContentMediaUsage => {
@@ -92,6 +96,7 @@ export const projectAssetToMediaUsage = (input: {
     caption: assetSnapshot.caption,
     credit: assetSnapshot.credit,
     license: assetSnapshot.license,
+    focusPoint: input.metadata.focusPoint,
     role: 'gallery_item',
     sortOrder: input.sortOrder,
     assetSnapshot: input.centralMetadata

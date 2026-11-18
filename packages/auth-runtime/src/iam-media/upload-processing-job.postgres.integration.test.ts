@@ -761,5 +761,223 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
           ?.processingStatus
       ).toBe('ready');
     });
+    it('persists and independently reads focus metadata without changing files, variants or references', async () => {
+      const before = await readyAsset();
+      await withRepositories(tenant, async ({ media }) => {
+        await media.upsertVariant(tenant, {
+          id: randomUUID(),
+          assetId,
+          variantKey: 'test-thumb',
+          presetKey: 'thumbnail',
+          format: 'webp',
+          width: 20,
+          height: 20,
+          storageKey: `${tenant}/variants/existing-${assetId}.webp`,
+          generationStatus: 'ready',
+        });
+        await media.replaceReferences({
+          instanceId: tenant,
+          targetType: 'events.event-record',
+          targetId: 'event-focus',
+          references: [
+            {
+              id: randomUUID(),
+              assetId,
+              targetType: 'events.event-record',
+              targetId: 'event-focus',
+              role: 'gallery_item',
+              sortOrder: 0,
+            },
+          ],
+        });
+      });
+      const variantsBefore = await withRepositories(tenant, ({ media }) =>
+        media.listVariantsByAssetId(tenant, assetId)
+      );
+      const referencesBefore = await withRepositories(tenant, ({ media }) =>
+        media.listReferencesByAssetId(tenant, assetId)
+      );
+      const handlers = createMediaHttpHandlers({
+        withMediaService: (instance, work) =>
+          withRepositories(instance, ({ media }) => work(media)),
+        storagePort: {} as never,
+        authorizeAction: async () => ({ ok: true }),
+        emitAuditEvent: async () => undefined,
+      });
+      for (const focusPoint of [{ x: 0.2, y: 0.8 }, null]) {
+        const updated = await handlers.updateMedia(
+          new Request(`http://localhost/api/v1/iam/media/${assetId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ metadata: { focusPoint } }),
+          }),
+          { user: { id: 'actor', instanceId: tenant } } as never
+        );
+        expect(updated.status).toBe(200);
+        const readback = await handlers.getMedia(
+          new Request(`http://localhost/api/v1/iam/media/${assetId}`),
+          { user: { id: 'actor', instanceId: tenant } } as never
+        );
+        const body = await readback.json();
+        expect(body.data.metadata.focusPoint ?? null).toEqual(focusPoint);
+        expect(body.data.storageKey).toBe(before.storageKey);
+        expect(body.data.byteSize).toBe(before.byteSize);
+        expect(body.data.technical).toEqual(before.technical);
+        expect(
+          await withRepositories(tenant, ({ media }) =>
+            media.listVariantsByAssetId(tenant, assetId)
+          )
+        ).toEqual(variantsBefore);
+        expect(
+          await withRepositories(tenant, ({ media }) =>
+            media.listReferencesByAssetId(tenant, assetId)
+          )
+        ).toEqual(referencesBefore);
+      }
+    });
+    it.each([false, true])(
+      'imports one source concurrently and finalizes quota atomically (quota exceeded: %s)',
+      async (quotaExceeded) => {
+        const original = await sharp({
+          create: { width: 20, height: 20, channels: 3, background: 'blue' },
+        })
+          .png()
+          .toBuffer();
+        const sourceKey = `${tenant}/source-${randomUUID()}.png`;
+        const objects = new Map<string, Uint8Array>([[sourceKey, original]]);
+        const storage = {
+          importSource: {
+            id: 'own-s3',
+            instanceId: tenant,
+            prefix: `${tenant}/`,
+            visibility: 'public' as const,
+          },
+          listObjects: async () => ({ items: [], nextCursor: null }),
+          statObject: async () => ({
+            byteSize: original.length,
+            etag: 'immutable-fixture-version',
+          }),
+          readObject: async ({ storageKey }: { storageKey: string }) => {
+            const body = objects.get(storageKey);
+            if (!body) throw new Error('fixture_object_missing');
+            return {
+              body,
+              byteSize: body.length,
+              etag: 'immutable-fixture-version',
+              contentType: 'image/png',
+            };
+          },
+          prepareUpload: async ({
+            assetId,
+            uploadSessionId,
+          }: {
+            assetId: string;
+            uploadSessionId: string;
+          }) => ({
+            storageKey: `.protected/${tenant}/${assetId}/intake/${uploadSessionId}`,
+            uploadUrl: 'https://private.invalid/unused',
+            method: 'PUT' as const,
+            expiresAt: new Date(Date.now() + 60_000).toISOString(),
+          }),
+          writeObject: async ({ storageKey, body }: { storageKey: string; body: Uint8Array }) => {
+            objects.set(storageKey, body);
+            return { byteSize: body.length };
+          },
+          deleteObject: async ({ storageKey }: { storageKey: string }) => {
+            expect(storageKey).not.toBe(sourceKey);
+            objects.delete(storageKey);
+          },
+        };
+        const handlers = createMediaHttpHandlers({
+          withMediaService: (instance, work) =>
+            withRepositories(instance, ({ media }) => work(media)),
+          storagePort: storage as never,
+          createId: randomUUID,
+          now: () => new Date().toISOString(),
+          authorizeAction: async () => ({ ok: true }),
+          emitAuditEvent: async () => undefined,
+          scheduleUploadProcessing: (input) =>
+            scheduleMediaUploadProcessing(input, withRepositories),
+        });
+        const request = () =>
+          new Request('http://localhost/api/v1/iam/media/register', {
+            method: 'POST',
+            body: JSON.stringify({
+              storageKey: sourceKey,
+              fileName: 'source.png',
+              byteSize: original.length,
+              mimeType: 'image/png',
+              visibility: 'public',
+            }),
+          });
+        const responses = await Promise.all(
+          Array.from({ length: 8 }, () =>
+            handlers.registerBucketMedia(request(), {
+              user: { id: 'actor', instanceId: tenant },
+            } as never)
+          )
+        );
+        expect(responses.every((response) => response.status === 202)).toBe(true);
+        const payloads = await Promise.all(responses.map((response) => response.json()));
+        const importedId = payloads[0].data.id as string;
+        expect(payloads.every((payload) => payload.data.id === importedId)).toBe(true);
+        const session = await withRepositories(tenant, ({ media }) =>
+          media.getUploadSessionByAssetId(tenant, importedId)
+        );
+        if (!session) throw new Error('fixture_import_session_missing');
+        expect(
+          (await pool.query('SELECT id FROM iam.media_assets WHERE id=$1', [importedId])).rowCount
+        ).toBe(1);
+        expect(
+          (
+            await pool.query('SELECT id FROM iam.media_upload_sessions WHERE asset_id=$1', [
+              importedId,
+            ])
+          ).rowCount
+        ).toBe(1);
+        expect(
+          (await pool.query('SELECT id FROM iam.studio_jobs WHERE id=$1', [session.id])).rowCount
+        ).toBe(1);
+        if (quotaExceeded)
+          await withRepositories(tenant, ({ media }) =>
+            media.upsertStorageQuota({ instanceId: tenant, maxBytes: 1 })
+          );
+        const worker = createMediaUploadProcessingHandler({
+          withMediaService: (instance, work) =>
+            withRepositories(instance, ({ media }) => work(media)),
+          resolveStoragePort: async () => storage as never,
+          createId: randomUUID,
+          emitAuditEvent: vi.fn(),
+          getJobAttempts: async () => 1,
+        });
+        const job = await withRepositories(tenant, ({ jobs }) =>
+          jobs.getJobById(tenant, session.id)
+        );
+        const context = { job, progressReporter: { reportProgress: vi.fn() } };
+        if (quotaExceeded) await expect(worker(context as never)).rejects.toThrow();
+        else {
+          await worker(context as never);
+          await worker(context as never);
+        }
+        const saved = await withRepositories(tenant, ({ media }) =>
+          media.getAssetById(tenant, importedId)
+        );
+        const usage = await withRepositories(tenant, ({ media }) => media.getStorageUsage(tenant));
+        expect(saved?.processingStatus).toBe(quotaExceeded ? 'failed' : 'ready');
+        expect(usage?.assetCount).toBe(quotaExceeded ? 0 : 1);
+        expect(Number(usage?.totalBytes)).toBe(
+          quotaExceeded ? 0 : original.length + Number(saved?.technical.variantBytes)
+        );
+        expect(objects.get(sourceKey)).toEqual(original);
+        if (!quotaExceeded) expect(objects.get(saved!.storageKey)).toEqual(original);
+        expect(
+          await withRepositories(tenant, ({ media }) => media.listAssetsByIds(tenant, [importedId]))
+        ).toHaveLength(1);
+        expect(
+          await withRepositories('media-test-b', ({ media }) =>
+            media.listAssetsByIds('media-test-b', [importedId])
+          )
+        ).toHaveLength(0);
+      }
+    );
   }
 );

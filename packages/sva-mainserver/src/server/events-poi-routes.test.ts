@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
+  replaceReferences: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   authorizeMainserverDataProviderAccess: vi.fn(),
   validateCsrf: vi.fn(),
@@ -37,6 +38,8 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  withMediaService: (_instanceId: string, execute: (service: unknown) => unknown) =>
+    execute({ replaceReferences: state.replaceReferences }),
   authorizeMainserverCreatePrincipal: vi.fn(() => ({
     allowed: true,
     authorizationMode: 'exact',
@@ -593,7 +596,7 @@ describe('mainserver content route contracts', () => {
     );
   });
 
-  it('forwards stored media ids for the event merge but never for POI', async () => {
+  it('forwards stored media ids to the host source merge for events and POI', async () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
     state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
@@ -622,7 +625,7 @@ describe('mainserver content route contracts', () => {
     expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
       expect.objectContaining({
         poi: expect.objectContaining({
-          mediaContents: [{ sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
+          mediaContents: [{ id: 'media-1', sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
         }),
       })
     );
@@ -944,29 +947,41 @@ describe('mainserver content route contracts', () => {
       data: { id: 'poi-1', visible: !visible, active: false, dataProvider: { id: 'dp-org-1' } },
       deviations: [],
     });
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ visible }),
-    }));
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ visible }),
+      })
+    );
     expect(response?.status).toBe(200);
-    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ poiId: 'poi-1', visible }));
+    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ poiId: 'poi-1', visible })
+    );
     expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
-    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(expect.objectContaining({
-      action: visible ? 'content.publish' : 'content.changeStatus',
-    }));
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: visible ? 'content.publish' : 'content.changeStatus',
+      })
+    );
   });
 
   it('does not change POI visibility when publication is denied', async () => {
     mockAuthorizedMutation();
     state.getSvaMainserverPoiDetail.mockResolvedValue({
-      data: { id: 'poi-1', visible: false, dataProvider: { id: 'dp-org-1' } }, deviations: [],
+      data: { id: 'poi-1', visible: false, dataProvider: { id: 'dp-org-1' } },
+      deviations: [],
     });
     state.authorizeMainserverDataProviderAccess.mockImplementation(async ({ action }) => ({
-      allowed: action !== 'content.publish', authorizationMode: 'exact',
+      allowed: action !== 'content.publish',
+      authorizationMode: 'exact',
       reason: action === 'content.publish' ? 'data_provider_mismatch' : 'allowed',
     }));
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ visible: true }),
-    }));
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ visible: true }),
+      })
+    );
     expect(response?.status).toBe(403);
     expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
     expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
@@ -975,43 +990,78 @@ describe('mainserver content route contracts', () => {
   it('creates a hidden POI using the same visibility choice as the editor', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', visible: true });
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi', {
-      method: 'POST', body: JSON.stringify({ name: 'Ort', visible: false }),
-    }));
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Ort', visible: false }),
+      })
+    );
     expect(response?.status).toBe(201);
-    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledWith(expect.objectContaining({ poiId: 'poi-1', visible: false }));
-    await expect(response?.json()).resolves.toMatchObject({ data: { visible: false, status: 'draft' } });
+    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ poiId: 'poi-1', visible: false })
+    );
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { visible: false, status: 'draft' },
+    });
   });
 
-  it.each([null, 'true', 1])('rejects invalid POI visibility %s before writing', async (visible) => {
-    mockAuthorizedMutation();
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ visible }),
-    }));
-    expect(response?.status).toBe(400);
-    expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
-    expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
-  });
+  it.each([null, 'true', 1])(
+    'rejects invalid POI visibility %s before writing',
+    async (visible) => {
+      mockAuthorizedMutation();
+      const response = await dispatchSvaMainserverPoiRequest(
+        createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+          method: 'PATCH',
+          body: JSON.stringify({ visible }),
+        })
+      );
+      expect(response?.status).toBe(400);
+      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+      expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
+    }
+  );
 
   it.each(['dp-org-1', 'dp-other-owner'])(
     'updates an authorized POI owned by %s without requesting voucher rights or transferring ownership',
     async (dataProviderId) => {
       mockAuthorizedMutation();
       state.getSvaMainserverPoiDetail.mockResolvedValue({
-        data: { id: 'poi-1', dataProvider: { id: dataProviderId } }, deviations: [],
+        data: { id: 'poi-1', dataProvider: { id: dataProviderId } },
+        deviations: [],
       });
-      state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', dataProvider: { id: dataProviderId } });
-      const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-        method: 'PATCH', body: JSON.stringify({ name: 'Ort', vouchers: [{ id: '2' }], dataProviderId: 'injected-owner' }),
-      }));
+      state.updateSvaMainserverPoi.mockResolvedValue({
+        id: 'poi-1',
+        dataProvider: { id: dataProviderId },
+      });
+      const response = await dispatchSvaMainserverPoiRequest(
+        createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: 'Ort',
+            vouchers: [{ id: '2' }],
+            dataProviderId: 'injected-owner',
+          }),
+        })
+      );
       expect(response?.status).toBe(200);
-      expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(expect.objectContaining({
-        action: 'poi.update', contentId: 'poi-1', dataProviderId,
-      }));
-      expect(state.authorizeContentPrimitiveForUser.mock.calls.some(([call]) => call.action.startsWith('vouchers.'))).toBe(false);
-      expect(state.updateSvaMainserverPoi).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        poiId: 'poi-1', poi: { name: 'Ort' },
-      }));
+      expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'poi.update',
+          contentId: 'poi-1',
+          dataProviderId,
+        })
+      );
+      expect(
+        state.authorizeContentPrimitiveForUser.mock.calls.some(([call]) =>
+          call.action.startsWith('vouchers.')
+        )
+      ).toBe(false);
+      expect(state.updateSvaMainserverPoi).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          poiId: 'poi-1',
+          poi: { name: 'Ort' },
+        })
+      );
       const written = state.updateSvaMainserverPoi.mock.calls[0]![0];
       expect(written).not.toHaveProperty('dataProviderId');
       expect(written).not.toHaveProperty('voucherResetFingerprint');
@@ -1020,52 +1070,86 @@ describe('mainserver content route contracts', () => {
 
   it('denies a foreign POI when the actor lacks provider-scoped update access', async () => {
     mockAuthorizedMutation();
-    state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1', dataProvider: { id: 'foreign' } }, deviations: [] });
-    state.authorizeMainserverDataProviderAccess.mockResolvedValue({ allowed: false, reason: 'access_scope_mismatch', authorizationMode: 'exact' });
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ name: 'Ort' }),
-    }));
+    state.getSvaMainserverPoiDetail.mockResolvedValue({
+      data: { id: 'poi-1', dataProvider: { id: 'foreign' } },
+      deviations: [],
+    });
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+      allowed: false,
+      reason: 'access_scope_mismatch',
+      authorizationMode: 'exact',
+    });
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Ort' }),
+      })
+    );
     expect(response?.status).toBe(403);
     expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
     expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
   });
 
-  it.each(['X-SVA-Voucher-Reset-Mode', 'X-SVA-Voucher-Reset-Id', 'X-SVA-Voucher-Reset-Fingerprint'])(
-    'rejects stale editor header %s before any mutation', async (header) => {
-      mockAuthorizedMutation();
-      const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-        method: 'PATCH', headers: { [header]: 'prepare' }, body: JSON.stringify({ name: 'Ort' }),
-      }));
-      expect(response?.status).toBe(409);
-      await expect(response?.json()).resolves.toMatchObject({ error: 'poi_editor_reload_required' });
-      expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
-      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
-      expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
-    }
-  );
+  it.each([
+    'X-SVA-Voucher-Reset-Mode',
+    'X-SVA-Voucher-Reset-Id',
+    'X-SVA-Voucher-Reset-Fingerprint',
+  ])('rejects stale editor header %s before any mutation', async (header) => {
+    mockAuthorizedMutation();
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        headers: { [header]: 'prepare' },
+        body: JSON.stringify({ name: 'Ort' }),
+      })
+    );
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({ error: 'poi_editor_reload_required' });
+    expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
+    expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+    expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+  });
 
   it('applies editor visibility after saving POI content', async () => {
     mockAuthorizedMutation();
-    state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1', visible: true }, deviations: [] });
+    state.getSvaMainserverPoiDetail.mockResolvedValue({
+      data: { id: 'poi-1', visible: true },
+      deviations: [],
+    });
     state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', visible: true });
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ name: 'Ort', visible: false }),
-    }));
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Ort', visible: false }),
+      })
+    );
     expect(response?.status).toBe(200);
-    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledWith(expect.objectContaining({ poiId: 'poi-1', visible: false }));
+    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ poiId: 'poi-1', visible: false })
+    );
     await expect(response?.json()).resolves.toMatchObject({ data: { visible: false } });
   });
 
   it('reports partial success when editor visibility fails after the content write', async () => {
     mockAuthorizedMutation();
-    state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1', visible: true }, deviations: [] });
+    state.getSvaMainserverPoiDetail.mockResolvedValue({
+      data: { id: 'poi-1', visible: true },
+      deviations: [],
+    });
     state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', visible: true });
     state.changeSvaMainserverPoiVisibility.mockRejectedValue(new Error('failed'));
-    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
-      method: 'PATCH', body: JSON.stringify({ name: 'Ort', visible: false }),
-    }));
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Ort', visible: false }),
+      })
+    );
     expect(response?.status).toBe(502);
-    await expect(response?.json()).resolves.toMatchObject({ partialSuccess: true, error: 'poi_visibility_failed', details: { contentId: 'poi-1' } });
+    await expect(response?.json()).resolves.toMatchObject({
+      partialSuccess: true,
+      error: 'poi_visibility_failed',
+      details: { contentId: 'poi-1' },
+    });
   });
 
   it('updates POI with parsed optional fields, payload, contact, URLs and addresses', async () => {
@@ -1325,6 +1409,11 @@ describe('mainserver content route contracts', () => {
   it('deletes event and POI items after delete authorization', async () => {
     mockAuthorizedMutation();
     state.deleteSvaMainserverEvent.mockResolvedValue({ id: 'event-1', deleted: true });
+    state.getSvaMainserverEventDetail
+      .mockResolvedValueOnce({ data: { id: 'event-1' }, deviations: [] })
+      .mockRejectedValueOnce(
+        new SvaMainserverError({ code: 'not_found', message: 'Gone', statusCode: 404 })
+      );
     state.deleteSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', deleted: true });
 
     const eventResponse = await dispatchSvaMainserverEventsRequest(
@@ -1335,6 +1424,12 @@ describe('mainserver content route contracts', () => {
     );
 
     expect(eventResponse?.status).toBe(200);
+    expect(state.replaceReferences).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      targetType: 'events.event-record',
+      targetId: 'event-1',
+      references: [],
+    });
     expect(poiResponse?.status).toBe(200);
     expect(state.deleteSvaMainserverEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: 'event-1', instanceId: 'de-musterhausen' })
@@ -1343,6 +1438,41 @@ describe('mainserver content route contracts', () => {
       expect.objectContaining({ poiId: 'poi-1', instanceId: 'de-musterhausen' })
     );
   });
+
+  it.each(['still_visible', 'read_failed', 'reference_cleanup_failed'])(
+    'keeps reconciliation pending after an incomplete event deletion: %s',
+    async (failure) => {
+      mockAuthorizedMutation();
+      state.deleteSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+      state.getSvaMainserverEventDetail.mockResolvedValueOnce({
+        data: { id: 'event-1' },
+        deviations: [],
+      });
+      if (failure === 'read_failed')
+        state.getSvaMainserverEventDetail.mockRejectedValueOnce(new Error('unavailable'));
+      if (failure === 'reference_cleanup_failed') {
+        state.getSvaMainserverEventDetail.mockRejectedValueOnce(
+          new SvaMainserverError({ code: 'not_found', message: 'Gone', statusCode: 404 })
+        );
+        state.replaceReferences.mockRejectedValueOnce(new Error('unavailable'));
+      }
+      const response = await dispatchSvaMainserverEventsRequest(
+        createRequest('https://studio.test/api/v1/mainserver/events/event-1', { method: 'DELETE' })
+      );
+      expect(response?.status).toBe(202);
+      expect(await response?.json()).toMatchObject({
+        meta: { reconciliationStatus: 'reconciliation_required' },
+      });
+      if (failure !== 'reference_cleanup_failed')
+        expect(state.replaceReferences).not.toHaveBeenCalled();
+      expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerOutcome: 'succeeded',
+          reconciliationStatus: 'reconciliation_required',
+        })
+      );
+    }
+  );
 
   it.each([
     ['events', dispatchSvaMainserverEventsRequest],

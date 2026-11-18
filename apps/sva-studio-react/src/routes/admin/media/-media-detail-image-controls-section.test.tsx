@@ -99,7 +99,7 @@ it('retains the initialized upload and fixes copy inputs before transfer without
       metadataDraft={{ altText: 'Neuer Alttext' }}
     />
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Bild bearbeiten' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Kopie erstellen und bearbeiten' }));
   fireEvent.click(screen.getByRole('button', { name: 'Export übernehmen' }));
   fireEvent.click(screen.getByRole('button', { name: 'Kopie speichern' }));
   await waitFor(() => expect(screen.getByTestId('transfer-state').textContent).toBe('fixed'));

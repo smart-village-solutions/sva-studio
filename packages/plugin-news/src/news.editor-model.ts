@@ -7,10 +7,7 @@ import type {
   NewsMediaContentFormValue,
   NewsSavePlan,
 } from './news.types.js';
-import {
-  deduplicateWasteLocationKeys,
-  mergeNewsWasteLocationKeys,
-} from './news.waste-payload.js';
+import { deduplicateWasteLocationKeys, mergeNewsWasteLocationKeys } from './news.waste-payload.js';
 
 type NewsEditorialStatus = NewsSavePlan['editorialStatus'];
 type NewsLegacyCompatibilitySnapshot = NonNullable<
@@ -21,6 +18,7 @@ type NewsItemMediaContent = NonNullable<
 >[number];
 
 const mapNewsItemMediaContent = (media: NewsItemMediaContent): NewsMediaContentFormValue => ({
+  ...(media.payload !== undefined ? { payload: media.payload } : {}),
   captionText: media.captionText ?? '',
   copyright: media.copyright ?? '',
   contentType: media.contentType ?? 'image',

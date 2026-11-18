@@ -51,10 +51,22 @@ export function StudioConfirmDialog({
         </AlertDialogHeader>
         {children ? <div className="mt-4">{children}</div> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel} disabled={cancelDisabled}>
+          <AlertDialogCancel
+            onClick={(event) => {
+              event.preventDefault();
+              onCancel();
+            }}
+            disabled={cancelDisabled}
+          >
             {cancelLabel}
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              onConfirm();
+            }}
+            disabled={confirmDisabled}
+          >
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

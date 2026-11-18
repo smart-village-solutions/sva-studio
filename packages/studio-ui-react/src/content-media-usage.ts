@@ -27,6 +27,7 @@ export type ContentMediaUsage = Readonly<{
   caption: string;
   credit: string;
   license?: string;
+  focusPoint?: HostMediaUploadMetadata['focusPoint'];
   role: string;
   sortOrder: number;
   additionalData?: Readonly<Record<string, unknown>>;

@@ -82,6 +82,7 @@ export type SvaMainserverAccessibilityInformationFragment = {
 };
 
 export type SvaMainserverMediaContentFragment = {
+  readonly payload?: unknown;
   readonly id?: string | null;
   readonly captionText?: string | null;
   readonly copyright?: string | null;
@@ -246,6 +247,7 @@ const accessibilityInformationFields = `
 `;
 
 const mediaContentFields = `
+  payload
   id
   captionText
   copyright

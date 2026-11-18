@@ -57,6 +57,8 @@ export type PoiPriceInformation = {
 };
 
 export type PoiMediaContent = {
+  readonly id?: string;
+  readonly payload?: Readonly<Record<string, unknown>>;
   readonly captionText?: string;
   readonly copyright?: string;
   readonly height?: number;

@@ -39,7 +39,7 @@ const { waitForHostMediaUploadMock, getHostMediaAssetMock } = vi.hoisted(() => (
   getHostMediaAssetMock: vi.fn(),
 }));
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@sva/plugin-sdk')>(),
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   waitForHostMediaUpload: waitForHostMediaUploadMock,
   getHostMediaAsset: getHostMediaAssetMock,
 }));
@@ -754,13 +754,30 @@ describe('useSingleFileMediaUpload', () => {
   it('keeps finalizing until the accepted background job becomes ready', async () => {
     const pending = createDeferred<void>();
     waitForHostMediaUploadMock.mockReturnValue(pending.promise);
-    initializeMediaUploadMock.mockResolvedValue({ data: { assetId: 'asset-1', uploadSessionId: 'upload-1', uploadUrl: 'https://uploads.test/file', method: 'PUT', headers: {} } });
-    completeMediaUploadMock.mockResolvedValue({ data: { assetId: 'asset-1', uploadSessionId: 'upload-1', status: 'processing' } });
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })));
+    initializeMediaUploadMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        uploadUrl: 'https://uploads.test/file',
+        method: 'PUT',
+        headers: {},
+      },
+    });
+    completeMediaUploadMock.mockResolvedValue({
+      data: { assetId: 'asset-1', uploadSessionId: 'upload-1', status: 'processing' },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 200 }))
+    );
     render(<SingleFileUploadProbe />);
-    fireEvent.change(screen.getByTestId('file-input'), { target: { files: [new File(['image'], 'fixture.jpg', { type: 'image/jpeg' })] } });
+    fireEvent.change(screen.getByTestId('file-input'), {
+      target: { files: [new File(['image'], 'fixture.jpg', { type: 'image/jpeg' })] },
+    });
     await waitFor(() => expect(screen.getByTestId('upload-phase').textContent).toBe('finalizing'));
-    expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'asset-1' }));
+    expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(
+      expect.objectContaining({ assetId: 'asset-1' })
+    );
     pending.resolve();
     await waitFor(() => expect(screen.getByTestId('upload-phase').textContent).toBe('success'));
   });
@@ -1027,15 +1044,32 @@ describe('useMediaDetail', () => {
   it('keeps unfinished media out of delivery and refreshes after background processing finishes', async () => {
     const pending = createDeferred<void>();
     waitForHostMediaUploadMock.mockReturnValue(pending.promise);
-    const asset = { id: 'asset-1', mimeType: 'image/jpeg', uploadStatus: 'pending', processingStatus: 'pending', metadata: {}, technical: {} };
-    getMediaMock.mockResolvedValueOnce({ data: asset }).mockResolvedValue({ data: { ...asset, uploadStatus: 'processed', processingStatus: 'ready' } });
-    getMediaUsageMock.mockResolvedValue({ data: { assetId: 'asset-1', totalReferences: 0, references: [] } });
+    const asset = {
+      id: 'asset-1',
+      mimeType: 'image/jpeg',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      metadata: {},
+      technical: {},
+    };
+    getMediaMock.mockResolvedValueOnce({ data: asset }).mockResolvedValue({
+      data: { ...asset, uploadStatus: 'processed', processingStatus: 'ready' },
+    });
+    getMediaUsageMock.mockResolvedValue({
+      data: { assetId: 'asset-1', totalReferences: 0, references: [] },
+    });
     getMediaDeliveryMock.mockResolvedValue({ data: { deliveryUrl: 'https://cdn.test/ready.jpg' } });
     render(<MediaDetailProbe assetId="asset-1" />);
-    await waitFor(() => expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'asset-1', signal: expect.any(AbortSignal) })));
+    await waitFor(() =>
+      expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(
+        expect.objectContaining({ assetId: 'asset-1', signal: expect.any(AbortSignal) })
+      )
+    );
     expect(getMediaDeliveryMock).not.toHaveBeenCalled();
     pending.resolve();
-    await waitFor(() => expect(screen.getByTestId('delivery-url').textContent).toBe('https://cdn.test/ready.jpg'));
+    await waitFor(() =>
+      expect(screen.getByTestId('delivery-url').textContent).toBe('https://cdn.test/ready.jpg')
+    );
   });
 
   describe('processing beyond the initial wait', () => {
@@ -1056,7 +1090,9 @@ describe('useMediaDetail', () => {
       getMediaUsageMock.mockResolvedValue({
         data: { assetId: 'asset-1', totalReferences: 0, references: [] },
       });
-      getMediaDeliveryMock.mockResolvedValue({ data: { deliveryUrl: 'https://cdn.test/ready.jpg' } });
+      getMediaDeliveryMock.mockResolvedValue({
+        data: { deliveryUrl: 'https://cdn.test/ready.jpg' },
+      });
       getHostMediaAssetMock.mockResolvedValue(pendingAsset);
       const view = render(<MediaDetailProbe assetId="asset-1" />);
       await act(async () => undefined);
@@ -1125,11 +1161,9 @@ describe('useMediaDetail', () => {
       waitForHostMediaUploadMock.mockRejectedValue(
         Object.assign(new Error('media_processing_failed'), { code: 'media_processing_failed' })
       );
-      getMediaMock
-        .mockResolvedValueOnce({ data: pendingAsset })
-        .mockResolvedValue({
-          data: { ...pendingAsset, uploadStatus: 'failed', processingStatus: 'failed' },
-        });
+      getMediaMock.mockResolvedValueOnce({ data: pendingAsset }).mockResolvedValue({
+        data: { ...pendingAsset, uploadStatus: 'failed', processingStatus: 'failed' },
+      });
       getMediaUsageMock.mockResolvedValue({
         data: { assetId: 'asset-1', totalReferences: 0, references: [] },
       });
@@ -1385,6 +1419,39 @@ describe('useMediaDetail', () => {
     });
 
     expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains the loaded detail and reports a failed independent readback after updating', async () => {
+    getMediaMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'asset-2',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-2',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: { title: 'Before' },
+          technical: {},
+        },
+      })
+      .mockRejectedValueOnce({ status: 503, code: 'unavailable', message: 'Readback failed' });
+    getMediaUsageMock.mockResolvedValue({
+      data: { assetId: 'asset-2', totalReferences: 2, references: [] },
+    });
+    updateMediaMock.mockResolvedValue({ data: { id: 'asset-2' } });
+    render(<MediaDetailProbe assetId="asset-2" />);
+    await waitFor(() => expect(screen.getByTestId('asset-id').textContent).toBe('asset-2'));
+    fireEvent.click(screen.getByRole('button', { name: 'update' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('mutation-error').textContent).toBe('unavailable')
+    );
+    expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
+    expect(screen.getByTestId('usage-count').textContent).toBe('2');
+    expect(screen.getByTestId('loading').textContent).toBe('false');
   });
 
   it.each([

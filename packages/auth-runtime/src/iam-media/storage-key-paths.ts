@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export type DeriveMediaPathInfoInput = Readonly<{
   instanceId: string;
   storageKey: string;
@@ -44,4 +46,16 @@ export const deriveMediaPathInfo = (input: DeriveMediaPathInfoInput): MediaPathI
 export const isListableMediaStorageKey = (input: DeriveMediaPathInfoInput): boolean => {
   const { relativePath } = deriveMediaPathInfo(input);
   return relativePath.length > 0 && !relativePath.endsWith('/');
+};
+
+/** Stable, source-scoped UUID; the primary key prevents duplicate concurrent imports. */
+export const deriveMediaImportAssetId = (
+  instanceId: string,
+  sourceId: string,
+  storageKey: string
+): string => {
+  const hex = createHash('sha256')
+    .update(JSON.stringify([instanceId, sourceId, storageKey]))
+    .digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 };

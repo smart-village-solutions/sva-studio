@@ -23,12 +23,12 @@ Präzisierung der Nutzerentscheidung: Der Mainserver darf für diesen Lieferumfa
 
 Der serverseitige JSON-Abgleich gehört in das bestehende Package `@sva/sva-mainserver`. Dessen Static-Content-Pfad wird erweitert; es entsteht weder ein eigener Sync-Dienst noch ein paralleler Konfigurationsbestand. Veröffentlichte App-Konfiguration bleibt im Mainserver führend.
 
-| Verantwortlicher Baustein | Zuständigkeit |
-| --- | --- |
-| Fachplugin | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage |
-| Studio-Host | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade |
-| `@sva/sva-mainserver` | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
-| Mainserver | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar |
+| Verantwortlicher Baustein | Zuständigkeit                                                                                                                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fachplugin                | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage                                                           |
+| Studio-Host               | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade                                           |
+| `@sva/sva-mainserver`     | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
+| Mainserver                | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar                                            |
 
 Plugins nutzen ausschließlich den gemeinsamen Host-Vertrag. Sie erhalten weder einen generischen GraphQL-Executor noch Credentials und implementieren keine eigenen Retry-, Merge- oder Readback-Verfahren. Gemeinsame clientfähige Typen und Aufrufe werden über die bestehenden öffentlichen SDK-Verträge bereitgestellt; Fachvalidierungen bleiben beim zuständigen Plugin und werden auch serverseitig ausgeführt.
 
@@ -115,6 +115,8 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 ### Medienmanagement
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
+- Der Bildfokus ist normalisiertes redaktionelles Metadatum, kein Auftrag zur Pixelverarbeitung. Der bestehende Mainserver-Vertrag übergibt ihn in `MediaContent.payload.focusPoint`; Beispiele im Studio verpflichten Zielanwendungen nicht zu einem Zuschnitt.
+- Die automatische Aufnahme benötigt einen expliziten POST nach bewusstem Öffnen und `media.read` plus `media.create`. Nur die aktive eigene S3-Schnittstelle ist als öffentlich auslieferbare Quelle freigegeben. Quellenidentität, begrenzte private Eingangsbytes, einmaliger Insert und der vorhandene Upload-Worker sichern den Abschluss; GET/Prefetch bleiben lesend.
 - Jeder Tenant besitzt genau einen extern isolierten öffentlichen Medien-Bucket. Innerhalb dieses Buckets sind beliebige Bestandspräfixe zulässig; generierte Varianten bleiben von manueller Registrierung ausgeschlossen. Für den gemeinsamen privaten Scan-Bucket gelten dagegen exakte Instanzpräfixe unter `.quarantine/` und `.protected/`. Diese internen Keys sind unabhängig vom Scan-Schalter vom normalen Bucket-Import ausgeschlossen; private Ausgaben erlauben ausschließlich geschützte Auslieferung.
 - Upload-Varianten liegen unter claim-isolierten Präfixen. Übernimmt ein neuer Verarbeitungs-Claim eine abgelaufene Session, bereinigt er das vollständige Präfix des ersetzten Claims vor dem Retry; damit benötigt dieser Recovery-Pfad weder Bucket-übergreifende Suche noch einen zusätzlichen Worker.
 - Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
@@ -1596,7 +1598,6 @@ Die API-Grenze bleibt beim bestehenden fachlichen Adapter: Er verantwortet Offse
 Generische Core-Inhaltsaktionen prüfen für jeden konkreten Inhaltstyp zusätzlich die bestehende Modulaktivierung; Core-Grants erlauben keinen Zugriff auf deaktivierte Module. Bei Berechtigungsauflösung ohne aktive Organisation werden explizite `own`-/`organization`-Datensatzgrants auf persönliches Eigentum reduziert, ohne Organisationsbedingungen aus bloßen Mitgliedschaften zu übernehmen. Legacy-Grants ohne expliziten Datensatzscope bleiben unverändert.
 
 Der bereits registrierte Core-Inhaltstyp `GENERIC_CONTENT_TYPE` (`generic`) benötigt kein Plugin-Modul und bleibt von der Modulabfrage ausgenommen; seine normalen Core-Permissions und Ownership-Grenzen werden unverändert geprüft. Diese exakte Core-Ausnahme erlaubt keine beliebigen unbekannten Inhaltstypen.
-
 
 ### SSF local passphrase file policy
 

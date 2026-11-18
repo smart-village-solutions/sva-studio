@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { listExternalInterfaceRecords } from '@sva/data-repositories/server';
 import { type S3ClientConfig } from '@aws-sdk/client-s3';
 import { resolveExternalInterface } from '@sva/server-runtime';
@@ -19,6 +20,12 @@ export type MediaStorageConfig = Readonly<{
   accessKeyId: string;
   secretAccessKey: string;
   publicBaseUrl?: string;
+  importSource?: Readonly<{
+    id: string;
+    instanceId: string;
+    prefix: string;
+    visibility: 'protected' | 'public';
+  }>;
   signedUrlTtlSeconds: number;
 }>;
 
@@ -70,6 +77,9 @@ export const resolveMediaStorageConfig = (): MediaStorageConfig | null => {
   };
 };
 
+const readRegion = (value: unknown) =>
+  (typeof value === 'string' && value.trim()) || 'eu-central-1';
+
 export const resolveMediaStorageConfigFromInterface = async (
   instanceId: string
 ): Promise<MediaStorageConfig | null> => {
@@ -81,9 +91,7 @@ export const resolveMediaStorageConfigFromInterface = async (
     s3Records[0] ??
     null;
 
-  if (!selectedRecord) {
-    return null;
-  }
+  if (!selectedRecord) return null;
 
   const resolved = await resolveExternalInterface({
     instanceId,
@@ -105,11 +113,7 @@ export const resolveMediaStorageConfigFromInterface = async (
     typeof resolved.secretConfig.secretAccessKey === 'string'
       ? resolved.secretConfig.secretAccessKey.trim()
       : '';
-  const region =
-    typeof resolved.publicConfig.region === 'string' &&
-    resolved.publicConfig.region.trim().length > 0
-      ? resolved.publicConfig.region.trim()
-      : 'eu-central-1';
+  const region = readRegion(resolved.publicConfig.region);
 
   if (
     !resolved.enabled ||
@@ -128,6 +132,14 @@ export const resolveMediaStorageConfigFromInterface = async (
     accessKeyId,
     secretAccessKey,
     publicBaseUrl: createBucketPublicBaseUrl(endpoint, bucket),
+    importSource: {
+      id: createHash('sha256')
+        .update(JSON.stringify([selectedRecord.id, endpoint, bucket]))
+        .digest('hex'),
+      instanceId,
+      prefix: bucket === instanceId ? '' : `${instanceId}/`,
+      visibility: 'public',
+    },
     signedUrlTtlSeconds: getMediaStorageSignedUrlTtlSeconds(),
   };
 };

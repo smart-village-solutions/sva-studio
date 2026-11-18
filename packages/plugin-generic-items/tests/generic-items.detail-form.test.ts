@@ -559,6 +559,7 @@ describe('generic items detail form mapping', () => {
           mediaContents: [
             {
               captionText: 'Blockbild',
+              payload: { focusPoint: { x: 0.2, y: 0.8 } },
               contentType: 'image',
               sourceUrl: {
                 url: 'https://example.org/block-image.jpg',
@@ -579,6 +580,7 @@ describe('generic items detail form mapping', () => {
         mediaContents: [
           {
             captionText: 'Blockbild',
+            payload: { focusPoint: { x: 0.2, y: 0.8 } },
             copyright: '',
             contentType: 'image',
             height: '',
@@ -600,6 +602,7 @@ describe('generic items detail form mapping', () => {
         mediaContents: [
           {
             captionText: 'Blockbild',
+            payload: { focusPoint: { x: 0.2, y: 0.8 } },
             contentType: 'image',
             sourceUrl: {
               url: 'https://example.org/block-image.jpg',

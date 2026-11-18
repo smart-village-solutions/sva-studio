@@ -47,7 +47,6 @@ const mergeObject = (base: Record<string, unknown>, overrides: Record<string, un
     if (
       !Object.prototype.hasOwnProperty.call(base, key) &&
       key !== 'enabled' &&
-        key !== 'passphraseFileEnabled' &&
       !optionalFields.has(key) &&
       key !== 'icon' &&
       key !== 'legalTexts'
@@ -57,8 +56,7 @@ const mergeObject = (base: Record<string, unknown>, overrides: Record<string, un
   }
   return Object.fromEntries(
     [...new Set([...Object.keys(base), ...Object.keys(overrides)])]
-      .filter((key) => key !== 'enabled' &&
-        key !== 'passphraseFileEnabled' && !(optionalFields.has(key) && overrides[key] === null))
+      .filter((key) => key !== 'enabled' && !(optionalFields.has(key) && overrides[key] === null))
       .map((key) => [key, mergeSsfContentV2(base[key], overrides[key])])
   );
 };

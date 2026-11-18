@@ -102,3 +102,13 @@ describe('recording passphrase file policy', () => {
     }
   });
 });
+
+
+it.each([
+  { branding: { passphraseFileEnabled: true } },
+  { staff: { dashboard: { passphraseFileEnabled: false } } },
+  { guestLanguages: [{ locale: 'en', passphraseFileEnabled: true }] },
+])('rejects a passphrase file policy misplaced outside recording (%j)', (overrides) => {
+  expect(() => resolveSsfRuntimeContentV2({ tenant, template: template(), overrides }))
+    .toThrow('ssf_v2_override_field_unknown');
+});

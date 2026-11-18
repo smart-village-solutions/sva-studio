@@ -23,11 +23,11 @@ privaten Schlüsselblob; ihr Dateiformat wird hier nicht geändert.
 
 - `/plugins/ssf/organisation-keys`: Zustand und öffentliche Versionshistorie,
   Ersteinrichtung und Ersatz. Verwaltung verwendet die vorhandene Berechtigung
-  `ssf.configuration.tenant.manage` und bei Mutationen frische Gateway-MFA.
+  `ssf.configuration.tenant.manage` in einer gültigen Sitzung.
 - `/plugins/ssf/access-transfers`: Quellperson, verfügbare Aufzeichnungen,
   Zielperson, Begründung, lokale Organisationsschlüsseldatei, Umfangsbestätigung
   und Ergebnis. Jede Datenabfrage und Mutation benötigt
-  `ssf.recording.access.transfer`; sensible Schritte verlangen frische MFA.
+  `ssf.recording.access.transfer` in einer gültigen Sitzung.
 - `descriptor.ts` registriert Actions, Routen, Serverhandler und Navigation.
   Die neue Transferberechtigung wird aus automatischen `system_admin`-
   Vollberechtigungen ausgeschlossen und bewusst über bestehendes IAM vergeben.
@@ -62,9 +62,7 @@ und die erforderlichen Audience-/Claim-Mapper. Der Zielwert ist die bestehende
 Gateway-Audience (aktuell standardmäßig `ssf-frontend`), keine neue implizite
 Audience. Die resultierende Identität erhält ursprüngliches `sub`, passenden
 Mandanten-Issuer und `studio_tenant_id`, aktuelle `ssf_permissions` sowie das
-ursprüngliche `acr`/`auth_time`. Ein Austausch erneuert keine MFA. Bei fehlender
-oder abgelaufener MFA führt Studio die vorhandene frische Reauthentisierung aus
-und beginnt anschließend eine neue Vorbereitung mit aktueller Identität.
+ursprüngliche optionale `acr`/`auth_time`. Fehlen diese Claims, bleiben sie im ausgetauschten Token abwesend. Das Alter der Anmeldung begrenzt keine Aktion. Abgelaufene Tokens erneuert die vorhandene Sitzungsverwaltung. Eine beendete Sitzung erfordert einen normalen Mandantenlogin.
 
 Keycloaks Standard-Token-Exchange V2 funktioniert nur innerhalb desselben
 Realms. Die Studio-Benutzersitzung, der vertrauliche anfragende Studio-Client
@@ -80,7 +78,7 @@ Grundlagen: [Keycloak Standard Token Exchange](https://www.keycloak.org/securing
 und [RFC 8693](https://www.rfc-editor.org/rfc/rfc8693.html).
 
 Das Gateway prüft das ausgetauschte Token mit seiner bestehenden
-`require_ssf_user`-Authentisierung und erzwingt Berechtigungen und MFA selbst.
+`require_ssf_user`-Authentisierung und prüft die wirksamen Berechtigungen selbst.
 Studio sendet keine selbst behaupteten Actor-/Permission-Header; insbesondere
 verwendet es nicht die Client-Credentials-Identität des bestehenden
 Session-Revocation-Clients als Benutzerersatz. Token-Endpunkt und Gateway-Ziel
@@ -177,15 +175,15 @@ ausgewählten Inhaltsschlüssel und schützt sie für die geprüfte Zielversion.
 Die Bestätigung nennt Quellperson, exakte Aufzeichnungen, Zielperson, Vergleichs-
 code/-version und Begründung. Änderungen daran verwerfen die Vorbereitung.
 
-Das Gateway prüft bei Commit aktuellen Actor und Berechtigung, MFA, Ablauf,
+Das Gateway prüft bei Commit aktuellen Actor und Berechtigung, Ablauf der Vorbereitung,
 Quelle, Zielversion, Sperr-/Löschzustand und exakte Schlüsselabdeckung erneut.
 Ein Konflikt verändert keine Zugänge. Studio unterscheidet fehlende Rechte,
-notwendige Reauthentisierung, falsche lokale Datei, abgelaufene Vorbereitung,
+beendete Sitzung, falsche lokale Datei, abgelaufene Vorbereitung,
 geänderten Zielschlüssel, geänderte aktive Organisationsversion, nicht mehr
 verfügbare Aufzeichnung und vorübergehend ausgefallenes Gateway anhand stabiler
 Lifecycle-Fehlercodes. Nach Konflikten muss Umfang/Empfänger erneut bestätigt
 werden; ein automatischer Retry darf nie still einen anderen Schlüssel wählen.
-Die stabilen Codes sind `PERMISSION_REQUIRED`, `STEP_UP_REQUIRED`,
+Die stabilen Codes sind `PERMISSION_REQUIRED`, `AUTHENTICATION_REQUIRED`,
 `PREPARATION_NOT_FOUND`, `KEY_VERSION_CHANGED`, `SCOPE_CHANGED`,
 `PREPARATION_USED`, `PREPARATION_EXPIRED`, `INVALID_KEY`, `INVALID_PROOF`,
 `TRANSFER_SCOPE_TOO_LARGE` und `RECORDING_UNAVAILABLE`. Auswahlgrenzen sind
@@ -213,7 +211,7 @@ erhalten. Es entstehen keine neuen Studio-Tabellen für Schlüsselmaterial.
 | Invariante | Geplanter Nachweis |
 | --- | --- |
 | Private Organisations- und rohe Inhaltsschlüssel verlassen den Browser nicht. | HTTP-/SSR-/Logging-Assertions mit eindeutigen geheimen Testmarkern; Download-/Print-Tests; Reload-/Kontextwechseltests. |
-| Jeder Gateway-Aufruf ist der echten Benutzeridentität und dem Tenant zugeordnet. | Exchange-/JWT-Integration mit falscher Audience, falschem Tenant, Service-Token, geändertem `sub`, alter MFA und verweigerter Exchange-Policy. |
+| Jeder Gateway-Aufruf ist der echten Benutzeridentität und dem Tenant zugeordnet. | Exchange-/JWT-Integration mit falscher Audience, falschem Tenant, Service-Token, geändertem `sub` und verweigerter Exchange-Policy. Positive Fälle umfassen Passwortlogin und ältere MFA-Sitzungen. |
 | Übertragung entspricht bestätigtem Umfang und Zielschlüssel. | Gemeinsame Python-/Browser-Testvektoren, manipulierte Wraps/Proofs, fehlende/zusätzliche Schlüssel, Zielrotation zwischen Vorbereitung und Commit. |
 | Abbruch und Versionskonflikt ändern keine aktive Version/Zugänge. | UI-/Gateway-Vertragstests für parallelen Ersatz, Ablauf, Netzwerkverlust und erneute Statusabfrage. |
 | Reine Administration erhält keinen Transferzugriff. | Action-/Handler-/Direktroutentests einschließlich automatischer Rollenberechtigung und expliziter Vergabe. |
@@ -228,3 +226,7 @@ zweiter Recovery-Pfad. Neue Seiten erst bereitstellen, wenn Gateway-Vertrag,
 Exchange-Provisionierung und Integrationsnachweise gemeinsam vorhanden sind.
 Der bestehende kanonische Studio-Rollout bleibt maßgeblich. Bei Rollback keine
 aktive Schlüsselversion oder bestehende Zugänge automatisch zurücksetzen.
+
+## Abgleich mit dem implementierten Gateway-Vertrag
+
+Die Zielschlüsselabfrage `GET /api/admin/recording/v2/access-transfer/targets/{userSub}` liefert Version, Fingerabdruck und öffentliche Zielschlüssel. Jedes Listenelement enthält in `keyScopes` die Zuordnung von Inhaltsschlüssel-ID zu Organisationsschlüssel-ID. Eine Unterhaltung mit mehreren Versionsgruppen kann pro Bestätigung ausschließlich die Schlüssel der gewählten Version beitragen. Der gemeinsame Vektor `packages/plugin-ssf/tests/fixtures/lifecycle_v2.json` stammt aus dem SSF-Repository. Der Besitznachweis bestätigt die Challenge und das gebundene Transkript. Er belegt für das Gateway keine Gleichheit der verschlüsselten Klartexte.

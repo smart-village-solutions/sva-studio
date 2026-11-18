@@ -13,6 +13,8 @@ von Organisationsschlüsseln und keine gezielte Zugangsübertragung. Die neuen
 Seiten erweitern dieses Plugin für Organisationsverantwortliche; ein neues
 Package oder eine zweite Verwaltung von Aufzeichnungsdaten ist nicht nötig.
 
+Der zusätzlich genehmigte SSF-Change `remove-sensitive-action-reauthentication` ersetzt die frühere Forderung nach aktionsbezogener MFA. Eine gültige Mandantensitzung genügt für berechtigte Aktionen.
+
 ## Why
 
 Organisationsverantwortliche sollen den Organisationsschlüssel selbst verwahren
@@ -33,8 +35,8 @@ verbindlichen Schlüsselversionen, Aufzeichnungen und Zugangsrechte verwaltet.
 - Die explizite Berechtigung `ssf.recording.access.transfer` einführen; reine
   Organisationsadministration gewährt sie nicht automatisch.
 - Einen serverseitigen Gateway-Client mit einem per Token Exchange erhaltenen
-  Benutzer-Token integrieren. Gateway-Autorisierung und frische MFA bleiben
-  zwingend; technische Service-Tokens ersetzen keine Benutzerberechtigung.
+  Benutzer-Token integrieren. Das Gateway prüft die gültige Sitzung und die aktuelle Berechtigung.
+  Die MFA-Richtlinie gilt beim Mandantenlogin.
 - Die bestehende persönliche Passphrase und `recording.passphraseFileEnabled`
   unverändert weiterverwenden. Keine persönliche Private-Key-Importfunktion.
 
@@ -58,6 +60,6 @@ verbindlichen Schlüsselversionen, Aufzeichnungen und Zugangsrechte verwaltet.
 - Gateway besitzt Schlüsselversionen und Zugangsentscheidungen; Studio besitzt
   weder eine konkurrierende aktive Version noch private Schlüssel.
 - Token Exchange muss das ursprüngliche Benutzer-Subjekt und die ursprüngliche
-  MFA-Zeit erhalten und wird mit passenden Keycloak-Policies ausgeliefert.
+  Anmeldezeit erhalten, sofern diese im Session-Token vorhanden ist.
 - Zugangsübertragung benötigt eine explizite Berechtigung und bestätigt den
   genauen Umfang sowie die tatsächliche Zielschlüsselversion.

@@ -409,14 +409,7 @@ The provisioner manages `studio-login-mfa-v1-optional` and
 on Studio and registered browser-capable plugin clients. Client default ACR is
 `pwd` for optional and `mfa` for required. Cookie/password identity authentication
 is followed by the policy's OTP phase; a cookie cannot bypass required OTP.
-The password LoA remains valid for 36,000 seconds for ordinary SSO. The MFA LoA
-uses zero maximum age, and the request's `max_age=0` requires
-fresh authentication for sensitive step-up. The step-up OTP challenge skips only
-an OTP already supplied in that same authentication. A required Allow access marker
-after the conditional challenge lets Keycloak complete the LoA callback when OTP
-was already supplied; it cannot bypass an active required challenge. Optional ordinary-login tokens
-may conservatively report `pwd` even after an enrolled OTP challenge; sensitive
-actions explicitly request `acr_values=mfa&max_age=0` and verify the **access token**.
+Das Login-Profil verwendet getrennte LoA-Stufen für Passwort und MFA. Bei optionaler MFA ist ein Passwortlogin gültig. Bei vorgeschriebener MFA fordert Keycloak den zweiten Faktor beim Login. SSF-Aufzeichnungsaktionen verwenden die bestehende gültige Sitzung.
 
 Existing administrator-managed realm/browser-client bindings produce
 `LOGIN_MFA_BINDING_CONFLICT`; they are not overwritten. Review and explicitly
@@ -424,8 +417,7 @@ return the relevant binding to the default `browser`/inherited binding before
 retrying if Studio should manage it. Unrelated realm attributes, other clients,
 and enrolled credentials remain intact. Required policy applies to subsequent
 browser authentication; existing access tokens retain their existing lifetime.
-SSF continues rejecting missing `acr=mfa`, missing/stale `auth_time`, and the
-existing clock-skew violations for sensitive actions.
+Der genehmigte Change `remove-sensitive-action-reauthentication` ersetzt die frühere SSF-Prüfung auf frische MFA. Das Alter der Anmeldung und fehlende optionale Angaben zu `acr` oder `auth_time` sperren berechtigte Aktionen nicht.
 
 The existing provisioner service identity needs target-realm authentication-flow,
 required-action and realm-setting management (`manage-realm` plus read visibility),
@@ -438,13 +430,10 @@ For factor replacement, use Keycloak's account security page while a valid facto
 is available. For a lost factor, an authorized Keycloak administrator must follow
 the existing identity-verification/recovery process, reset the affected OTP
 credential and require `CONFIGURE_TOTP`; required mode still forces re-enrollment.
-Revoke compromised sessions as part of that established recovery process. Never
-relax SSF's `acr` or freshness checks to work around recovery.
+Revoke compromised sessions as part of that established recovery process.
 
 The flow configuration was checked against Keycloak 26.7.2. Re-run the disposable
-real-browser MFA integration matrix after provider upgrades, including optional
-password SSO, voluntary enrollment, required enrollment, both browser clients,
-existing-cookie fresh step-up access-token claims, policy reversal, and retries.
+real-browser MFA integration matrix after provider upgrades, including optional password SSO, voluntary and required enrollment, both browser clients, session continuity, policy reversal and retries.
 Keycloak's [step-up authentication documentation](https://www.keycloak.org/docs/26.7.0/server_admin/index.html)
 and [26.7.2 LoA authenticator implementation](https://github.com/keycloak/keycloak/blob/26.7.2/services/src/main/java/org/keycloak/authentication/authenticators/conditional/ConditionalLoaAuthenticator.java)
 describe the conditional-flow callbacks and zero-age behavior used here.
@@ -465,3 +454,11 @@ differ from the synthetic fixture defaults in the test. Install Playwright
 Chromium, or set `KEYCLOAK_MFA_TEST_BROWSER_EXECUTABLE`. The test rejects
 non-loopback targets and creates/removes its own prefixed realms and provisioner
 client. It must never target production. No runtime dependency is added by this test.
+
+## SSF-Aufzeichnungsverwaltung
+
+Für die Aufzeichnungsverwaltung benötigt der SSF-Mandanten-Realm das SSF-Keycloak-Image mit dem Provider `RecordingExchangeAssuranceMapper`. Die Referenzimplementierung bindet ihn an Keycloak 26.8.1. App und Provisioner verwenden dieselbe Gateway-Audience aus `SVA_STUDIO_SSF_GATEWAY_AUDIENCE` (Standard `ssf-frontend`). Die App benötigt außerdem den reinen HTTPS-Origin in `SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL`.
+
+Der SSF-Login-Abgleich konfiguriert am verwalteten vertraulichen Studio-Mandantenclient den Standard-Token-Exchange, die Ziel-Audience und die Mapper für `studio_tenant_id`, `ssf_permissions` und die verifizierte Sitzungssicherheit. Nur die administrative Projektion pflegt die beiden Benutzerattribute. Der Exchange bindet das Ausgabetoken an die ursprüngliche Benutzerkennung, Sitzung, optionale Authentifizierungsstufe und optionale Anmeldezeit. Das Gateway prüft für jede Aktion die Berechtigung und die Gültigkeit des Tokens. Für Besitznachweise gilt weiterhin die eigene Vorbereitungsfrist. Ein Cross-Realm-Token ist für diesen Ablauf ungeeignet. Bei `ssf_recording_exchange_provisioning_unavailable` zuerst Client-Zuordnung, Provider-Version und Adminrechte prüfen und den vorhandenen SSF-Login-Abgleich erneut ausführen.
+
+Für die Schlüsselverwaltung ist `ssf.configuration.tenant.manage` erforderlich. Zugänge dürfen nur mit ausdrücklich zugewiesenem `ssf.recording.access.transfer` übertragen werden. Die Rolle `system_admin` erhält dieses Recht ausschließlich bei eigener Vergabe. Die Person exportiert die Organisationsschlüsseldatei vor Aktivierung und verwahrt auch frühere Versionen. Eine Richtlinienaktivierung allein bestätigt weder eine aktive Organisationsversion noch die Verfügbarkeit eines persönlichen Schlüssels.

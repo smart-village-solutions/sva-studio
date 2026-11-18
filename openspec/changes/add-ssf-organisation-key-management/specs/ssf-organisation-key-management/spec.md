@@ -30,7 +30,7 @@ Private Schlüssel MUST NOT an Studio- oder SSF-Server übertragen werden.
 #### Scenario: Erfolgreiche Ersteinrichtung
 
 - **WHEN** die berechtigte Person einen Schlüssel erzeugt, sichert, die Sicherung bestätigt und die Gateway-Challenge korrekt beantwortet
-- **THEN** wird genau die vorbereitete öffentliche Version mit frischer MFA aktiviert
+- **THEN** wird genau die vorbereitete öffentliche Version in der gültigen Sitzung aktiviert
 - **AND** die private Datei bleibt unter Verwahrung der Organisation.
 
 #### Scenario: Abbruch vor Aktivierung
@@ -65,8 +65,7 @@ Studio SHALL `ssf.recording.access.transfer` als explizite mandantengebundene
 Berechtigung für die Zugangsübertragung verwenden. Sie MUST von automatischen
 Administrationsvollrechten ausgeschlossen werden. Gateway-Aufrufe MUST mit
 einem validierbaren Benutzer-Token erfolgen, das serverseitig über konfigurierten
-RFC-8693-Token-Exchange gewonnen wird; ursprüngliches Subjekt, Tenant und
-MFA-Zeit MUST erhalten bleiben.
+RFC-8693-Token-Exchange gewonnen wird. Ursprüngliches Subjekt, Tenant, Sitzung und vorhandene Authentifizierungskontext-Claims MUST erhalten bleiben. Fehlende optionale Claims sowie das Alter der Anmeldung SHALL die Aktion nicht sperren.
 
 Studio-Benutzersitzung, vertraulicher Exchange-Client und Gateway-Zielclient
 MUST im selben SSF-Mandanten-Realm liegen. Die notwendige tenantlokale
@@ -78,7 +77,7 @@ Mittel zum Hinzufügen zuvor fehlender Client-Scopes verwendet werden.
 
 - **WHEN** eine transferberechtigte Person einen Gateway-Vorgang startet
 - **THEN** verwendet der Studio-Host das serverseitige Session-Token für den ausdrücklich konfigurierten Exchange zur Gateway-Audience
-- **AND** das Gateway prüft echte Benutzeridentität, Tenant, aktuelle Berechtigung und notwendige frische MFA selbst.
+- **AND** das Gateway prüft echte Benutzeridentität, Tenant, aktuelle Berechtigung und Sitzungsgültigkeit selbst.
 
 #### Scenario: Service-Token oder fehlende Exchange-Policy
 

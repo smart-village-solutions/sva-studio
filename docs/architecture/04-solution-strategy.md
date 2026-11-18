@@ -413,3 +413,7 @@ Der Arbeitsplatz erweitert bestehende Plugin-, Host-, IAM- und Studio-UI-Verträ
 ### Standard Redakteur
 
 Die redaktionelle Standardrolle erweitert die bestehenden IAM- und Mandantenpfade: `standard_editor` wird einmal bei Neuanlage beziehungsweise per einmaliger Datenmigration angelegt. Der laufende Reconcile erzwingt ihre Existenz nicht. Das Profil trennt redaktionelle Actions explizit von Administration und verwendet den vorhandenen Ownership-Scope `organization` als Vereinigungsmenge von aktiver eigener Organisation und persönlichem Eigentum.
+
+## Benutzergebundene SSF-Delegation
+
+Die Aufzeichnungsverwaltung verwendet den vorhandenen Tenant-Login, die IAM-Aktionsprojektion und den Plugin-Dispatcher. Die explizite Vergabe von `ssf.recording.access.transfer` gehört zur Rollenverwaltung. Der technische Abgleich und die fachliche Benutzeraktion besitzen getrennte Berechtigungen.

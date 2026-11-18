@@ -118,3 +118,16 @@ apps/sva-studio-react/.generated/chunk-provenance/
 .claude/worktrees
 concepts/internes/*
 docs/operations/kundenkonto-zugang-freigabe-checkliste.md
+
+# Local customer concepts and assets (keep out of GitHub)
+/docs/reports/*-goslar-jugendangebote-*.md
+/docs/reports/*-osnabrueck-app-*.md
+/docs/reports/*-osnabrueck-strategieabgleich.md
+/docs/reports/assets/goslar-jugendangebote/
+/docs/reports/assets/osnabrueck-app-*/
+/tmp/pdfs/goslar-*
+/tmp/pdfs/osnabrueck-*
+/tmp/osnabrueck-strategien/
+
+# Interner Sicherheitsbericht
+/docs/reports/2026-11-11-svs-automations-forensische-liveanalyse.md

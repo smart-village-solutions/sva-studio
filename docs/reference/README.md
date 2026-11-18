@@ -25,6 +25,7 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 
 - [Komponenten-Mapping für die Account-UI](./account-ui-komponenten-mapping.md)
 - [Content-Management-Core-Vertrag](./content-management-core-contract.md)
+- [Static JSONs im SVA Mainserver und in der App](./static-jsons-mainserver-app.md)
 - [Inhaber von Inhalten übertragen](./content-ownership-transfer.md)
 - [Gutscheine im Studio](./vouchers.md)
 - [Baustellen im Studio](./construction-sites.md)

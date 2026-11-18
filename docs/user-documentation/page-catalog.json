@@ -619,6 +619,15 @@
       }
     },
     {
+      "id": "ssf.tenant-access-transfers",
+      "path": "/plugins/ssf/access-transfers",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
       "id": "ssf.tenant-appearance",
       "path": "/plugins/ssf/appearance",
       "pageType": "setup",
@@ -639,6 +648,15 @@
     {
       "id": "ssf.tenant-languages",
       "path": "/plugins/ssf/languages",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-organisation-keys",
+      "path": "/plugins/ssf/organisation-keys",
       "pageType": "setup",
       "owner": {
         "kind": "plugin",

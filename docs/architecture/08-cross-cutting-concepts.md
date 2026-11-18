@@ -1596,3 +1596,8 @@ Die API-Grenze bleibt beim bestehenden fachlichen Adapter: Er verantwortet Offse
 Generische Core-Inhaltsaktionen prüfen für jeden konkreten Inhaltstyp zusätzlich die bestehende Modulaktivierung; Core-Grants erlauben keinen Zugriff auf deaktivierte Module. Bei Berechtigungsauflösung ohne aktive Organisation werden explizite `own`-/`organization`-Datensatzgrants auf persönliches Eigentum reduziert, ohne Organisationsbedingungen aus bloßen Mitgliedschaften zu übernehmen. Legacy-Grants ohne expliziten Datensatzscope bleiben unverändert.
 
 Der bereits registrierte Core-Inhaltstyp `GENERIC_CONTENT_TYPE` (`generic`) benötigt kein Plugin-Modul und bleibt von der Modulabfrage ausgenommen; seine normalen Core-Permissions und Ownership-Grenzen werden unverändert geprüft. Diese exakte Core-Ausnahme erlaubt keine beliebigen unbekannten Inhaltstypen.
+
+
+### SSF local passphrase file policy
+
+The existing SSF v2 recording policy includes `passphraseFileEnabled`: a strict boolean resolved from an explicit tenant override, then installation defaults, then `false`. Old policies without the field stay valid. The setting participates in the effective configuration revision and uses the existing recording administration permissions and JSON content storage. Studio transports only this policy flag; local plaintext passphrase TXT handling belongs to SSF. It does not change recording enablement, archive authorization, or private-key storage.

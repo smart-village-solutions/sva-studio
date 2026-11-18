@@ -39,6 +39,53 @@ const RecordingRetentionStatus = (props: Props) => {
   );
 };
 
+const RecordingPassphraseFileField = (props: Props) => {
+  const pt = usePluginTranslation('ssf');
+  const settings = props.value.recording ?? {};
+  const set = (passphraseFileEnabled: boolean | undefined) =>
+    props.onChange({ ...props.value, recording: { ...settings, passphraseFileEnabled } });
+  return (
+    <>
+      <StudioField
+        id="ssf-v2-recording-passphrase-file"
+        label={pt('v2.recording.passphraseFileEnabled')}
+        error={props.errors?.['recording.passphraseFileEnabled']}
+      >
+        {props.inherited ? (
+          <Select
+            id="ssf-v2-recording-passphrase-file"
+            disabled={props.disabled}
+            aria-describedby="ssf-v2-recording-passphrase-file-notice"
+            value={
+              settings.passphraseFileEnabled === undefined
+                ? ''
+                : String(settings.passphraseFileEnabled)
+            }
+            onChange={(event) =>
+              set(
+                event.currentTarget.value === '' ? undefined : event.currentTarget.value === 'true'
+              )
+            }
+          >
+            <option value="">{pt('v2.inherited')}</option>
+            <option value="true">{pt('administration.enabled')}</option>
+            <option value="false">{pt('administration.disabled')}</option>
+          </Select>
+        ) : (
+          <Checkbox
+            id="ssf-v2-recording-passphrase-file"
+            disabled={props.disabled}
+            aria-describedby="ssf-v2-recording-passphrase-file-notice"
+            checked={settings.passphraseFileEnabled === true}
+            onChange={(event) => set(event.currentTarget.checked)}
+          />
+        )}
+      </StudioField>
+      <p id="ssf-v2-recording-passphrase-file-notice">{pt('v2.recording.passphraseFileNotice')}</p>
+    </>
+  );
+};
+
 const RecordingChoices = (props: Props) => {
   const pt = usePluginTranslation('ssf');
   const settings = props.value.recording ?? {};
@@ -139,6 +186,7 @@ export const RecordingFields = (
       ) : null}
       {!props.section || props.section === 'settings' ? (
         <>
+          <RecordingPassphraseFileField {...props} />
           <RecordingChoices {...props} />
           <Field
             {...editor}

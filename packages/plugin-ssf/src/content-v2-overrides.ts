@@ -110,11 +110,14 @@ const diffRecording = (base: unknown, current: Record<string, unknown>): unknown
       ([key, value]) =>
         key !== 'retentionHours' &&
         key !== 'enabled' &&
+        key !== 'passphraseFileEnabled' &&
         JSON.stringify(value) !== JSON.stringify(isSsfContentRecord(base) ? base[key] : undefined)
     )
   );
   // Enablement is tenant-only, even when it happens to equal the installation value.
   if (typeof current['enabled'] === 'boolean') result['enabled'] = current['enabled'];
+  // Keep explicit convenience choices pinned even when equal to the current default.
+  if (typeof current['passphraseFileEnabled'] === 'boolean') result['passphraseFileEnabled'] = current['passphraseFileEnabled'];
   if (current['retentionHours'] != null) result['retentionHours'] = current['retentionHours'];
   return Object.keys(result).length ? result : undefined;
 };

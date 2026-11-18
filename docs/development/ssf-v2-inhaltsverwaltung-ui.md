@@ -125,3 +125,12 @@ No schema, data migration, production setting, archive expiry or deployment was
 changed. Any later legacy data transfer requires explicit precedence, conflict
 handling, repeatability and rollback evidence. Any downgrade must account for the
 currently stored JSON schema, including legal text fields.
+
+
+## Local passphrase files
+
+In the system recording settings, **Allow local passphrase file export and import** sets the installation default. It defaults to disabled. Tenant administrators choose **Inherited**, **Enabled**, or **Disabled** in the existing recording settings. Returning to **Inherited** removes the explicit tenant choice; an explicit choice remains in effect even when it matches the current installation default. Existing administration permissions apply, including read-only access.
+
+The effective `recording.passphraseFileEnabled` boolean is included in the existing v2 runtime policy. Older complete policies without the field resolve to `false`; absent or incomplete recording policy remains omitted. Only literal booleans are accepted. Changes to the effective setting change `configurationRevision`; a default change masked by a tenant override does not. No database migration or additional service is required.
+
+Enabling this setting allows SSF staff to explicitly download or import an unencrypted local TXT file containing their passphrase. Keep that file private, especially on shared computers. It is not a backup of private keys or recordings. Studio stores only the permission flag, never the passphrase or file. This setting neither enables recording nor grants archive access.

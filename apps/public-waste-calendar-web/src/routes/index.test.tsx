@@ -216,30 +216,40 @@ describe('PublicWasteIndexPage', () => {
     ).toBe(true);
   });
 
-  it('skips an automatic city when navigating back within a bound region', async () => {
-    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
-    fetchMock.mockImplementation(async (input) => {
-      const url = new URL(String(input), window.location.origin);
-      expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
-      const payload = url.searchParams.has('streetId')
-        ? selectionPayloads.street
-        : url.searchParams.has('cityId')
-          ? selectionPayloads.city
-          : { ...selectionPayloads.root, options: [selectionPayloads.root.options[1]] };
-      return new Response(JSON.stringify(payload));
-    });
-    render(<PublicWasteIndexPage />);
-    await screen.findByRole('combobox', { name: 'Straße suchen' });
-    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Ort ändern' })).toBeNull();
-    expect(screen.getByText('Rathenow')).toBeTruthy();
-    fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
-    await screen.findByRole('combobox', { name: 'Hausnummer suchen' });
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByRole('combobox', { name: 'Straße suchen' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
-    expect(screen.queryByRole('combobox', { name: 'Region suchen' })).toBeNull();
-  });
+  it.each([BOUND_REGION_ID, null])(
+    'keeps the automatic city when going back (region %s)',
+    async (regionId) => {
+      if (regionId) window.history.replaceState({}, '', `/?regionId=${regionId}`);
+      fetchMock.mockImplementation(async (input) => {
+        const url = new URL(String(input), window.location.origin);
+        expect(url.searchParams.get('regionId')).toBe(regionId);
+        const payload = url.searchParams.has('streetId')
+          ? selectionPayloads.street
+          : url.searchParams.has('cityId')
+            ? selectionPayloads.city
+            : { ...selectionPayloads.root, options: [selectionPayloads.root.options[1]] };
+        return new Response(JSON.stringify(payload));
+      });
+      render(<PublicWasteIndexPage />);
+      await screen.findByRole('combobox', { name: 'Straße suchen' });
+      expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Ort ändern' })).toBeNull();
+      expect(screen.getByText('Rathenow')).toBeTruthy();
+      fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
+      await screen.findByRole('combobox', { name: 'Hausnummer suchen' });
+      fetchMock.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+      expect(await screen.findByRole('combobox', { name: 'Straße suchen' })).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin).searchParams.get(
+          'cityId'
+        )
+      ).toBe(selectionPayloads.root.options[1].id);
+      expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+      expect(screen.queryByRole('combobox', { name: 'Region suchen' })).toBeNull();
+    }
+  );
 
   it('fails closed when a readable region path is unknown or ambiguous', async () => {
     window.history.replaceState({}, '', '/amt-bad-wilsnack');

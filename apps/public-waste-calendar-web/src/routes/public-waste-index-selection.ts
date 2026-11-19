@@ -161,9 +161,10 @@ export const trimSelectionToStep = (
   stepIndex: number,
   boundRegionId?: string
 ): PublicWasteSelectionState => {
-  const keysInOrder: readonly SelectionStepKey[] = boundRegionId
-    ? ['cityId', 'streetId', 'houseNumberId']
-    : ['regionId', 'cityId', 'streetId', 'houseNumberId'];
+  const keysInOrder: readonly SelectionStepKey[] =
+    selection.regionId && !boundRegionId
+      ? ['regionId', 'cityId', 'streetId', 'houseNumberId']
+      : ['cityId', 'streetId', 'houseNumberId'];
   const nextSelection: PublicWasteSelectionState = boundRegionId ? { regionId: boundRegionId } : {};
 
   for (let index = 0; index < stepIndex; index += 1) {

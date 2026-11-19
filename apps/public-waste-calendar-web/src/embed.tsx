@@ -5,6 +5,7 @@ import { PublicWasteApiOriginContext } from './lib/public-waste-api-context.js';
 import { isPublicWasteUuid } from './lib/public-waste-contract.js';
 import { createPublicWasteTranslator } from './lib/public-waste-translations.js';
 import { PublicWasteIndexPage, readPublicWasteRegionBinding } from './routes/index.js';
+import type { PublicWasteRegionBinding } from './routes/public-waste-index-binding.js';
 import styles from './styles.css?inline';
 
 const mountedCalendars = new WeakMap<HTMLElement, Root>();
@@ -16,12 +17,15 @@ export const mountPublicWasteCalendar = (container: HTMLElement, apiOrigin: stri
   if (!['https:', 'http:'].includes(origin.protocol) || origin.username || origin.password) {
     throw new Error('invalid_public_waste_api_origin');
   }
-  const region = container.dataset.region?.trim() ?? '';
-  const binding = !region
-    ? { status: 'invalid' as const }
-    : isPublicWasteUuid(region)
+  const region = container.dataset.region?.trim();
+  let binding: PublicWasteRegionBinding = { status: 'unbound' };
+  if (region !== undefined) {
+    binding = isPublicWasteUuid(region)
       ? readPublicWasteRegionBinding(`?regionId=${encodeURIComponent(region)}`)
-      : readPublicWasteRegionBinding('', `/${encodeURIComponent(region)}`);
+      : region
+        ? readPublicWasteRegionBinding('', `/${encodeURIComponent(region)}`)
+        : { status: 'invalid' };
+  }
   const shadow = container.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent =

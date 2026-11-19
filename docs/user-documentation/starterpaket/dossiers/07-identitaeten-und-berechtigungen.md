@@ -44,7 +44,10 @@ nur lesbar sein.
 - **Produktfakten:** Tabs umfassen persönliche Daten, Verwaltung, Organisationen, Berechtigungen
   und Historie. Bearbeitbar sind unter anderem Rollen, Gruppen, Organisationsmitgliedschaften,
   Default-Kontext, technische Klassifikation, Notizen und Mainserver-Credentials. Effektive und
-  inaktive Berechtigungsquellen werden schreibgeschützt aufgelöst.
+  inaktive Berechtigungsquellen werden schreibgeschützt aufgelöst. Im Tab Verwaltung steht der
+  Kontostatus mit technischer Klassifikation getrennt vor den Rollen- und Gruppenzuweisungen.
+  Inaktive Konten können sich nicht anmelden; beim Speichern dieses Status werden bestehende
+  Sitzungen beendet, Rollen und Gruppen bleiben erhalten.
 - **Gefährliche Aktionen:** Physisches Löschen entfernt das Tenant-Konto in Studio und Keycloak;
   Inhalte folgen der wirksamen Regel. Aktive System-Administrator-Rolle blockiert Löschen.
 - **Leitfragen / Stichwörter:** Woher stammt ein Recht? Welche Änderung erfordert Speichern? Wie

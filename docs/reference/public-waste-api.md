@@ -11,11 +11,12 @@ Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonne
 Die bestehende Kalenderoberfläche lässt sich ohne iframe mit einem div und einem JavaScript-Modul einbetten:
 
 ```html
-<div data-public-waste-calendar data-region="amt-bad-wilsnack-weisen"></div>
-<script type="module" src="https://abfallkalender.example/embed.js"></script>
+<h2>Abfallkalender für Frankfurt (Oder)</h2>
+<div data-public-waste-calendar></div>
+<script type="module" src="https://frankfurt-oder.abfallkalender.pro/embed.js"></script>
 ```
 
-Die Script-Adresse muss auf die öffentliche Kalender-Instanz zeigen. `data-region` ist verpflichtend und akzeptiert einen eindeutigen Regions-Slug aus `GET /api/public-waste/regions` oder die UUID der Region. Fehlende oder unbekannte Regionen erzeugen einen zugänglichen Fehlerzustand statt einer ungefilterten Auswahl. Die URL der externen Website hat keinen Einfluss auf die Regionsbindung.
+Die Script-Adresse muss auf die öffentliche Kalender-Instanz zeigen. Ohne `data-region` startet die normale Adressauswahl der Instanz, auch bei einer leeren Regionsliste. Für eine feste Region kann der Container beispielsweise `data-region="amt-bad-wilsnack-weisen"` angeben, sofern dieser Slug zur eingebundenen Instanz gehört. Zulässig sind eindeutige Regions-Slugs aus `GET /api/public-waste/regions` und Regions-UUIDs. Ein vorhandenes leeres, ungültiges oder unbekanntes Attribut zeigt eine zugängliche Fehlermeldung. Die URL der externen Website hat keinen Einfluss auf die Regionsbindung.
 
 Der Moduleinstieg startet beim Laden alle bereits vorhandenen Container mit `data-public-waste-calendar`. Mehrere Container können unterschiedliche Regionen derselben Kalender-Instanz verwenden. Das Script einmal pro Seite einbinden; dynamisch später erzeugte Container gehören nicht zu dieser automatischen Initialisierung.
 

@@ -68,8 +68,18 @@ describe('direct calendar embedding', () => {
     expect(writeCookie).not.toHaveBeenCalled();
   });
 
-  it('fails closed on missing region rather than using host URL parameters', async () => {
-    const fetchMock = vi.fn();
+  it('starts with unbound selection when the attribute is absent, independently of the host URL', async () => {
+    window.history.replaceState({}, '', '/external/article?regionId=invalid');
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        status: 'incomplete',
+        step: 'city',
+        options: [
+          { id: 'city-a', label: 'Booßen' },
+          { id: 'city-b', label: 'Frankfurt (Oder)' },
+        ],
+      })
+    );
     vi.stubGlobal('fetch', fetchMock);
     const container = document.createElement('div');
     document.body.append(container);
@@ -78,11 +88,65 @@ describe('direct calendar embedding', () => {
     });
     await waitFor(() =>
       expect(
-        within(container.shadowRoot?.lastElementChild as HTMLElement).getByRole('alert')
+        within(container.shadowRoot?.lastElementChild as HTMLElement).getByRole('combobox', {
+          name: 'Ort suchen',
+        })
       ).toBeTruthy()
+    );
+    expect(
+      fetchMock.mock.calls.map(([input]) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        return [url.origin, url.pathname, url.search];
+      })
+    ).toEqual([['https://calendar.example', '/api/public-waste/selection', '']]);
+  });
+
+  it.each(['', '  ', 'kein/slug'])('fails closed on invalid region %j', async (region) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const container = document.createElement('div');
+    container.dataset.region = region;
+    document.body.append(container);
+    await act(async () => {
+      roots.push(mountPublicWasteCalendar(container, 'https://calendar.example'));
+    });
+    await waitFor(() =>
+      expect(
+        within(container.shadowRoot?.lastElementChild as HTMLElement).getByRole('alert').textContent
+      ).toContain('Die angegebene Region ist ungültig')
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['unbekannt', 'regions', { items: [] }],
+    [
+      '33333333-3333-4333-8333-333333333333',
+      'selection?regionId=33333333-3333-4333-8333-333333333333',
+      { status: 'incomplete', step: 'city', options: [] },
+    ],
+  ])(
+    'keeps unknown region %s from falling back to all locations',
+    async (region, endpoint, payload) => {
+      const fetchMock = vi.fn<typeof fetch>(async () => Response.json(payload));
+      vi.stubGlobal('fetch', fetchMock);
+      const container = document.createElement('div');
+      container.dataset.region = region;
+      document.body.append(container);
+      await act(async () => {
+        roots.push(mountPublicWasteCalendar(container, 'https://calendar.example'));
+      });
+      await waitFor(() =>
+        expect(
+          within(container.shadowRoot?.lastElementChild as HTMLElement).getByRole('alert')
+            .textContent
+        ).toContain('Die angegebene Region ist ungültig')
+      );
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        `https://calendar.example/api/public-waste/${endpoint}`,
+      ]);
+    }
+  );
 
   it('rejects non-http API URLs before modifying the host element', () => {
     const container = document.createElement('div');

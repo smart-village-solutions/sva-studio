@@ -1331,6 +1331,47 @@ describe('UserEditPage', () => {
     expect(screen.queryByRole('checkbox', { name: 'instance_registry_admin' })).toBeNull();
   });
 
+  it('presents the explained account status ahead of the permission assignments', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+
+    const statusSection = screen.getByRole('heading', { name: 'Kontostatus' }).closest('section');
+    const assignmentSection = screen
+      .getByRole('heading', { name: 'Rollen und Gruppen' })
+      .closest('section');
+    const statusSelect = screen.getByRole('combobox', { name: 'Status' });
+    const roleCheckbox = screen.getByRole('checkbox', { name: 'system_admin' });
+
+    expect(statusSection?.contains(statusSelect)).toBe(true);
+    expect(assignmentSection?.contains(roleCheckbox)).toBe(true);
+    expect(statusSection?.contains(roleCheckbox)).toBe(false);
+    expect(
+      statusSelect.compareDocumentPosition(roleCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const descriptionId = statusSelect.getAttribute('aria-describedby');
+    expect(
+      descriptionId ? document.getElementById(descriptionId)?.textContent : null
+    ).toContain('Inaktive Konten können sich nicht anmelden');
+  });
+
   it('filters inactive groups from the management selection', async () => {
     useUserMock.mockReturnValue({
       user: baseUser,

@@ -147,6 +147,18 @@ export const usersAdminENResources = {
       'Technical accounts are excluded from automatic rules for deactivation, removal of personal details, and deletion. Sign-in, roles, and groups are unaffected.',
     removeTechnicalAccountWarning:
       'If you remove this label, the automatic deletion rules will apply to this account again from the next check. Earlier changes to the account status will not be undone.',
+    statusSection: {
+      title: 'Account status',
+      inactiveHint:
+        'Inactive accounts cannot sign in. Saving this status ends existing sessions. Roles and groups are kept.',
+    },
+    assignmentsSection: {
+      title: 'Roles and groups',
+      description: 'These assignments determine which permissions the account receives.',
+    },
+    additionalSection: {
+      title: 'Additional settings',
+    },
     rolesLabel: 'Choose roles',
     groupsLabel: 'Choose groups',
     competenceLanguages: 'Competence languages',

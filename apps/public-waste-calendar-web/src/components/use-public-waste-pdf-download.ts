@@ -33,17 +33,13 @@ export const usePublicWastePdfDownload = ({
   );
   const [pdfRunningYear, setPdfRunningYear] = React.useState<number | null>(null);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
-  const selectedFractionsByYear = new Map<number, boolean>();
+  const downloadableYears = new Set<number>();
   for (const { date, fractionId } of calendarModel.listEntries) {
-    const year = Number(date.slice(0, 4));
-    if (!selectedFractionsByYear.get(year)) {
-      selectedFractionsByYear.set(year, selectedFractions.includes(fractionId));
+    if (selectedFractions.includes(fractionId)) {
+      downloadableYears.add(Number(date.slice(0, 4)));
     }
   }
-  const pdfYears = Array.from(selectedFractionsByYear, ([year, hasSelectedFractions]) => ({
-    year,
-    hasSelectedFractions,
-  })).sort((left, right) => left.year - right.year);
+  const pdfYears = [...downloadableYears].sort((left, right) => left - right);
 
   React.useEffect(() => {
     setSelectedFractions(calendarModel.fractionOptions.map((fraction) => fraction.id));
@@ -62,7 +58,7 @@ export const usePublicWastePdfDownload = ({
   };
 
   const downloadPdf = async (year: number) => {
-    if (!selectedFractionsByYear.get(year) || pdfRunningYear !== null) {
+    if (!downloadableYears.has(year) || pdfRunningYear !== null) {
       return;
     }
 

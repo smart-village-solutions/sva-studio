@@ -345,12 +345,14 @@ describe('PublicWasteApp', () => {
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:public-waste-pdf');
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
-    expect(
-      screen.getByRole('button', { name: 'PDF für 2027 herunterladen' }).hasAttribute('disabled')
-    ).toBe(true);
+    expect(screen.queryByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeNull();
     expect(
       screen.getByRole('button', { name: 'PDF für 2026 herunterladen' }).hasAttribute('disabled')
     ).toBe(false);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
+    expect(screen.queryByRole('button', { name: /^PDF für/ })).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
+    expect(screen.getByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeTruthy();
   });
 
   it('offers no PDF action for an address without pickup dates', () => {
@@ -358,7 +360,9 @@ describe('PublicWasteApp', () => {
       calendarModel: createPublicWasteCalendarModelFixture({ listEntries: [] }),
     });
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
-    expect(screen.getByText('Für diese Adresse sind keine Abfuhrtermine verfügbar.')).toBeTruthy();
+    expect(
+      screen.getByText('Für die aktuelle Auswahl sind keine PDF-Kalender verfügbar.')
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^PDF für/ })).toBeNull();
   });
 

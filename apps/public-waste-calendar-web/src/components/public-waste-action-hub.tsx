@@ -18,7 +18,7 @@ type Props = Readonly<{
   selectedFractions: readonly string[];
   calendarReminderOptions?: PublicWasteCalendarResponse['calendarReminderOptions'];
   reminderSignup?: PublicWasteCalendarResponse['reminderSignup'];
-  pdfYears: readonly { readonly year: number; readonly hasSelectedFractions: boolean }[];
+  pdfYears: readonly number[];
   pdfRunningYear: number | null;
   pdfError: string | null;
   downloadPdf: (year: number) => Promise<void>;
@@ -105,15 +105,12 @@ const PdfAction = ({ props }: { props: Props }) => (
       </p>
     ) : null}
     {props.pdfYears.length === 0 ? <p className="action-panel-copy">{t('pdf.noYears')}</p> : null}
-    {props.pdfYears.some(({ hasSelectedFractions }) => !hasSelectedFractions) ? (
-      <p className="action-panel-copy">{t('pdf.inactiveYears')}</p>
-    ) : null}
-    {props.pdfYears.map(({ year, hasSelectedFractions }) => (
+    {props.pdfYears.map((year) => (
       <button
         key={year}
         type="button"
         className="action-cta-button"
-        disabled={!hasSelectedFractions || props.pdfRunningYear !== null}
+        disabled={props.pdfRunningYear !== null}
         onClick={() => void props.downloadPdf(year)}
       >
         {t(props.pdfRunningYear === year ? 'pdf.downloadingYear' : 'pdf.downloadYear').replace(

@@ -2,6 +2,7 @@ import * as wasteOutput from '@sva/waste-management-contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
+import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
@@ -321,7 +322,7 @@ describe('public waste endpoints', () => {
         streetId: '33333333-3333-4333-8333-333333333333',
         houseNumberId: '44444444-4444-4444-8444-444444444444',
       },
-      referenceDate: '2026-01-01',
+      referenceDate: '2026-12-31',
     });
     expect(buildDocumentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -329,6 +330,62 @@ describe('public waste endpoints', () => {
           expect.objectContaining({
             date: '2026-05-19',
             fractions: [expect.objectContaining({ id: 'bio', shortLabel: 'BIO' })],
+          }),
+        ],
+      })
+    );
+  });
+
+  it('includes a pickup advanced from January in the PDF for the previous year', async () => {
+    const buildDocumentSpy = vi.spyOn(wasteOutput, 'buildWasteCalendarPdfDocument');
+    const response = await handlePublicWastePdfRequest({
+      repository: {
+        loadCalendarEntries: (query) =>
+          Promise.resolve(
+            calculatePublicWasteCalendarEntries({
+              ...query,
+              linkedTours: [
+                {
+                  linkId: 'link-1',
+                  locationId: 'location-1',
+                  tour: {
+                    id: 'tour-1',
+                    name: 'Biotour',
+                    recurrence: 'weekly',
+                    firstDate: '2027-01-02',
+                    endDate: '2027-01-02',
+                    fractions: [{ id: 'bio', label: 'Bioabfall' }],
+                  },
+                },
+              ],
+              tourDateShifts: [
+                {
+                  id: 'shift-1',
+                  tourId: 'tour-1',
+                  originalDate: '2027-01-02',
+                  actualDate: '2026-12-31',
+                  hasYear: true,
+                },
+              ],
+              globalDateShifts: [],
+            })
+          ),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio'
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({}),
+    });
+
+    expect(response.status).toBe(200);
+    expect(buildDocumentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        year: 2026,
+        pickups: [
+          expect.objectContaining({
+            date: '2026-12-31',
+            fractions: [expect.objectContaining({ id: 'bio', isShifted: true })],
           }),
         ],
       })

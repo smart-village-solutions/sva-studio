@@ -141,7 +141,8 @@ export const handlePublicWastePdfRequest = async (input: {
     const [entries, selectionSummary, staticConfig] = await Promise.all([
       input.repository.loadCalendarEntries({
         selection,
-        referenceDate: `${year}-01-01`,
+        // Include next-year occurrences that may be advanced into the requested year.
+        referenceDate: `${year}-12-31`,
       }),
       input.repository.loadSelectionSummary({ selection }),
       input.loadPdfStaticConfig(),

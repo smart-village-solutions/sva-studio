@@ -878,6 +878,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(state.logger.warn).toHaveBeenCalledWith(
       'tenant_ingress_publish_failed',
       expect.objectContaining({
+        event_role: 'boundary_diagnostic',
         operation: 'publish_tenant_ingress',
         result: 'failed',
         request_id: 'request-ingress-1',
@@ -886,7 +887,6 @@ describe('tenant provisioning parent orchestrator', () => {
         step_key: 'ingress',
         error_type: 'Error',
         error_code: 'EPERM',
-        classification: 'tenant_provisioning_step_failed',
         diagnostic_error: expect.objectContaining({
           name: 'Error',
           code: 'EPERM',
@@ -905,6 +905,75 @@ describe('tenant provisioning parent orchestrator', () => {
       completedAt: now.toISOString(),
     });
   });
+
+  it.each([
+    {
+      name: 'a Node system error',
+      publishError: Object.assign(new Error('open failed'), {
+        code: 'EACCES',
+        syscall: 'open',
+        path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
+      }),
+      boundaryCode: 'EACCES',
+      canonicalCode: 'tenant_provisioning_step_failed',
+    },
+    {
+      name: 'an invalid publish result',
+      publishError: new TypeError('invalid response'),
+      boundaryCode: 'tenant_provisioning_step_failed',
+      canonicalCode: 'tenant_ingress_publish_invalid',
+    },
+    {
+      name: 'a validated domain error',
+      publishError: new Error('kassel_traefik_dynamic_dir_missing'),
+      boundaryCode: 'kassel_traefik_dynamic_dir_missing',
+      canonicalCode: 'kassel_traefik_dynamic_dir_missing',
+    },
+  ])(
+    'separates the canonical event from the correlated ingress boundary diagnostic for $name',
+    async ({ publishError, boundaryCode, canonicalCode }) => {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), {
+        status: 'provisioning',
+        stepKey: 'ingress',
+        requestId: 'request-ingress-roles',
+      });
+      vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
+
+      await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+      const warnings = (event: string) =>
+        state.logger.warn.mock.calls.filter(([name]) => name === event).map(([, meta]) => meta);
+      const correlation = {
+        request_id: 'request-ingress-roles',
+        instance_id: 'tenant-a',
+        run_id: '00000000-0000-4000-8000-000000000001',
+        step_key: 'ingress',
+      };
+      const boundaryEvents = warnings('tenant_ingress_publish_failed');
+      const canonicalEvents = warnings('tenant_provisioning_step_exception');
+      expect(boundaryEvents).toHaveLength(1);
+      expect(canonicalEvents).toHaveLength(1);
+      expect(boundaryEvents[0]).toMatchObject({
+        ...correlation,
+        event_role: 'boundary_diagnostic',
+        error_code: boundaryCode,
+      });
+      expect(boundaryEvents[0]).not.toHaveProperty('classification');
+      expect(canonicalEvents[0]).toMatchObject({
+        ...correlation,
+        event_role: 'canonical',
+        failure_phase: 'step_execution',
+        error_code: canonicalCode,
+        classification: canonicalCode,
+      });
+      expect(state.logger.error).toHaveBeenCalledWith(
+        'tenant_provisioning_failed',
+        expect.objectContaining({ error_code: canonicalCode })
+      );
+      expect(harness.getRun()).toMatchObject({ status: 'failed', errorCode: canonicalCode });
+    }
+  );
 
   it('uses the validated domain message as the ingress error code fallback', async () => {
     const harness = createHarness();
@@ -957,6 +1026,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(state.logger.warn).toHaveBeenCalledWith(
       'tenant_provisioning_step_exception',
       expect.objectContaining({
+        event_role: 'canonical',
         operation: 'create_instance',
         result: 'failed',
         request_id: 'request-ingress-persist-1',
@@ -1143,6 +1213,7 @@ describe('tenant provisioning parent orchestrator', () => {
       expect(state.logger.warn).toHaveBeenCalledWith(
         'tenant_provisioning_step_exception',
         expect.objectContaining({
+          event_role: 'canonical',
           operation: 'create_instance',
           result: 'failed',
           instance_id: 'tenant-a',

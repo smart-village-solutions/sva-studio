@@ -89,21 +89,16 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
 
 function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
-  const [visibleCalendarYear, setVisibleCalendarYear] = React.useState(() =>
-    new Date().getFullYear()
-  );
   const pdf = usePublicWastePdfDownload({
     selection: props.selection,
     calendarModel: props.calendarModel,
-    year: visibleCalendarYear,
   });
   const deferredFractions = React.useDeferredValue(pdf.selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
+  const calendarFractions = props.calendarModel.fractionOptions
+    .map(({ id }) => id)
+    .filter((id) => pdf.selectedFractions.includes(id));
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
-
-  React.useEffect(() => {
-    setVisibleCalendarYear(new Date().getFullYear());
-  }, [props.calendarModel.locationKey]);
 
   return (
     <section className="selection-panel">
@@ -111,7 +106,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         cityLine={cityLine}
         streetLine={streetLine}
         houseNumberLine={houseNumberLine}
-        fractionOptions={props.calendarModel.fractionOptions}
+        fractionOptions={pdf.fractionOptions}
         activeFractionIds={pdf.selectedFractions}
         emailReminderAvailable={props.reminderSignup?.enabled === true}
         onChangeLocation={props.onChangeLocation}
@@ -122,10 +117,11 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         selectionSummary={props.selectionSummary}
         locationKey={props.calendarModel.locationKey}
         fractionOptions={props.calendarModel.fractionOptions}
-        selectedFractions={pdf.selectedFractions}
+        selectedFractions={calendarFractions}
         calendarReminderOptions={props.calendarReminderOptions}
         reminderSignup={props.reminderSignup}
-        pdfRunning={pdf.pdfRunning}
+        pdfYears={pdf.pdfYears}
+        pdfRunningYear={pdf.pdfRunningYear}
         pdfError={pdf.pdfError}
         downloadPdf={pdf.downloadPdf}
       />
@@ -133,7 +129,6 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         key={filteredModel.locationKey}
         model={filteredModel}
         onActivateEntry={setSelectedEntry}
-        onVisibleYearChange={setVisibleCalendarYear}
       />
       <PublicWasteEventDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </section>

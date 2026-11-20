@@ -41,6 +41,7 @@ export type PublicWasteRuntimeRepository = Pick<
   | 'listPublicRegions'
   | 'listSelectionOptions'
   | 'loadCalendarEntries'
+  | 'loadCalendarEntriesForDates'
   | 'loadSelectionSummary'
   | 'loadReminderOptions'
 >;

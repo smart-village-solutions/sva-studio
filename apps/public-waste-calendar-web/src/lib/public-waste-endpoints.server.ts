@@ -1,8 +1,8 @@
 import { type WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
-import {
-  loadNextPublicWasteSelection,
-  loadResolvedPublicWasteCalendar,
-} from './public-waste-api.js';
+import { loadNextPublicWasteSelection } from './public-waste-api.js';
+import { buildPublicWasteLocationKey } from './public-waste-contract.js';
+import { isPublicWastePdfYear, publicWastePdfReferenceDate } from './public-waste-date-utils.js';
+import { deriveFractionOptions, projectPublicWasteCalendar } from './public-waste-projection.js';
 import { projectPublicWasteRegions } from './public-waste-regions-api.js';
 import {
   readPublicWasteReferenceDate,
@@ -50,7 +50,7 @@ export const handlePublicWasteRegionsRequest = async (input: {
 export const handlePublicWasteCalendarRequest = async (input: {
   readonly repository: Pick<
     PublicWasteRepository,
-    'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
+    'loadCalendarEntriesForDates' | 'loadSelectionSummary' | 'loadReminderOptions'
   >;
   readonly request: Request;
   readonly reminderConfig?: WasteManagementEmailReminderConfig;
@@ -58,15 +58,17 @@ export const handlePublicWasteCalendarRequest = async (input: {
   try {
     const url = new URL(input.request.url);
     const selection = readPublicWasteResolvedSelection(url);
-    const [payload, selectionSummary, emailReminderFractions, calendarReminderFractions] =
+    const referenceDate = readPublicWasteReferenceDate(url);
+    const referenceYear = Number(referenceDate.slice(0, 4));
+    const pdfYears = [referenceYear - 1, referenceYear, referenceYear + 1].filter(
+      isPublicWastePdfYear
+    );
+    const referenceDates = [
+      ...new Set([referenceDate, ...pdfYears.map(publicWastePdfReferenceDate)]),
+    ];
+    const [entries, selectionSummary, emailReminderFractions, calendarReminderFractions] =
       await Promise.all([
-        loadResolvedPublicWasteCalendar({
-          repository: input.repository,
-          input: {
-            selection,
-            referenceDate: readPublicWasteReferenceDate(url),
-          },
-        }),
+        input.repository.loadCalendarEntriesForDates({ selection, referenceDates }),
         input.repository.loadSelectionSummary({ selection }),
         input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled
           ? input.repository.loadReminderOptions({ selection, channel: 'email' })
@@ -82,7 +84,15 @@ export const handlePublicWasteCalendarRequest = async (input: {
     }).toString()}`;
 
     return jsonResponse({
-      ...payload,
+      locationKey: buildPublicWasteLocationKey(selection),
+      ...projectPublicWasteCalendar({ referenceDate, entries: entries.get(referenceDate) ?? [] }),
+      pdfAvailability: pdfYears.flatMap((year) => {
+        const annualEntries = entries.get(publicWastePdfReferenceDate(year)) ?? [];
+        const fractionOptions = deriveFractionOptions(
+          annualEntries.filter((entry) => entry.date.startsWith(`${year}-`))
+        );
+        return fractionOptions.length ? [{ year, fractionOptions }] : [];
+      }),
       selectionSummary,
       ...(calendarReminderFractions.length > 0
         ? {

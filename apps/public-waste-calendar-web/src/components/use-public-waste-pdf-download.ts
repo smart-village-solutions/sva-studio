@@ -3,12 +3,14 @@ import { PublicWasteApiOriginContext } from '../lib/public-waste-api-context.js'
 
 import type { PublicWasteResolvedSelection } from '../lib/public-waste-contract.js';
 import { requestPublicWastePdf } from '../lib/public-waste-api.js';
-import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
+import {
+  combinePublicWastePdfFractionOptions,
+  type PublicWasteCalendarViewModel,
+} from '../lib/public-waste-view-model.js';
 
 type UsePublicWastePdfDownloadInput = {
   readonly selection: PublicWasteResolvedSelection;
   readonly calendarModel: PublicWasteCalendarViewModel;
-  readonly year: number;
 };
 
 const downloadBlob = (blob: Blob, filename: string) => {
@@ -27,18 +29,31 @@ const downloadBlob = (blob: Blob, filename: string) => {
 export const usePublicWastePdfDownload = ({
   selection,
   calendarModel,
-  year,
 }: UsePublicWastePdfDownloadInput) => {
   const apiOrigin = React.useContext(PublicWasteApiOriginContext);
-  const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
-    calendarModel.fractionOptions.map((fraction) => fraction.id)
+  const fractionOptions = React.useMemo(
+    () =>
+      combinePublicWastePdfFractionOptions(calendarModel.fractionOptions, calendarModel.pdfAvailability),
+    [calendarModel.fractionOptions, calendarModel.pdfAvailability]
   );
-  const [pdfRunning, setPdfRunning] = React.useState(false);
+  const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
+    fractionOptions.map((fraction) => fraction.id)
+  );
+  const [pdfRunningYear, setPdfRunningYear] = React.useState<number | null>(null);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
+  const downloadableYears = new Set(
+    calendarModel.pdfAvailability
+      ?.filter((entry) => entry.fractionOptions.some(({ id }) => selectedFractions.includes(id)))
+      .map(({ year }) => year) ??
+      calendarModel.listEntries
+        .filter(({ fractionId }) => selectedFractions.includes(fractionId))
+        .map(({ date }) => Number(date.slice(0, 4)))
+  );
+  const pdfYears = [...downloadableYears].sort((left, right) => left - right);
 
   React.useEffect(() => {
-    setSelectedFractions(calendarModel.fractionOptions.map((fraction) => fraction.id));
-  }, [calendarModel.locationKey, calendarModel.fractionOptions]);
+    setSelectedFractions(fractionOptions.map((fraction) => fraction.id));
+  }, [calendarModel.locationKey, fractionOptions]);
 
   React.useEffect(() => {
     setPdfError(null);
@@ -52,12 +67,12 @@ export const usePublicWastePdfDownload = ({
     );
   };
 
-  const downloadPdf = async () => {
-    if (selectedFractions.length === 0 || pdfRunning) {
+  const downloadPdf = async (year: number) => {
+    if (!downloadableYears.has(year) || pdfRunningYear !== null) {
       return;
     }
 
-    setPdfRunning(true);
+    setPdfRunningYear(year);
     setPdfError(null);
 
     try {
@@ -75,13 +90,15 @@ export const usePublicWastePdfDownload = ({
         error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.'
       );
     } finally {
-      setPdfRunning(false);
+      setPdfRunningYear(null);
     }
   };
 
   return {
+    fractionOptions,
     selectedFractions,
-    pdfRunning,
+    pdfYears,
+    pdfRunningYear,
     pdfError,
     toggleFraction,
     downloadPdf,

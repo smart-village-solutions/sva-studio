@@ -18,9 +18,9 @@ import type {
   PublicWasteResolvedSelection,
 } from './public-waste-contract.js';
 import {
-  addYearsUtc,
-  normalizeDateOnly,
-  startOfPreviousYearUtc,
+  formatDateOnlyUtc,
+  parseDateOnlyUtc,
+  resolvePublicWasteCalendarWindow,
 } from './public-waste-date-utils.js';
 import { createStreetSelectionFilter } from './public-waste-repository-selection.server.js';
 
@@ -182,26 +182,14 @@ const loadHolidayRuleRows = (
       })
     : Promise.resolve({ rowCount: 0, rows: [] });
 
-const resolveCalendarWindow = (
-  referenceDate: string
-): Readonly<{ start: string; end: string }> | null => {
-  const normalizedReferenceDate = normalizeDateOnly(referenceDate);
-  return normalizedReferenceDate
-    ? {
-        start: startOfPreviousYearUtc(normalizedReferenceDate),
-        end: addYearsUtc(normalizedReferenceDate, 1),
-      }
-    : null;
-};
-
-export const loadPublicWasteCalendarEntries = async (input: {
+export const loadPublicWasteCalendarEntriesForDates = async (input: {
   readonly schemaName: string;
   readonly execute: SqlExecutor;
   readonly query: {
     readonly selection: PublicWasteResolvedSelection;
-    readonly referenceDate: string;
+    readonly referenceDates: readonly string[];
   };
-}): Promise<readonly PublicWasteCalendarEntry[]> => {
+}): Promise<ReadonlyMap<string, readonly PublicWasteCalendarEntry[]>> => {
   const context: CalendarQueryContext = {
     execute: input.execute,
     schemaName: input.schemaName,
@@ -209,34 +197,55 @@ export const loadPublicWasteCalendarEntries = async (input: {
     streetFilter: createStreetSelectionFilter(input.query.selection.streetId),
   };
   const linkedToursResult = await loadLinkedTourRows(context);
-  const window = resolveCalendarWindow(input.query.referenceDate);
+  const windows = input.query.referenceDates.map(
+    (referenceDate) => [referenceDate, resolvePublicWasteCalendarWindow(referenceDate)] as const
+  );
+  const starts = windows.flatMap(([, window]) => (window ? [window.start] : [])).sort();
+  const ends = windows.flatMap(([, window]) => (window ? [window.end] : [])).sort();
+  const start = starts[0];
+  const end = ends.at(-1);
   const [tourDateShifts, globalDateShifts, tourAssignments, holidayRulesResult] = await Promise.all(
     [
       loadTourDateShiftRows(context),
       loadGlobalDateShiftRows(context),
       loadTourAssignmentRows(context),
-      loadHolidayRuleRows(context, window),
+      loadHolidayRuleRows(context, start && end ? { start, end } : null),
     ]
   );
+  const linkedTours = mapCalendarLinkedTours(linkedToursResult.rows);
+  const tourShifts = mapCalendarTourDateShifts(tourDateShifts.rows);
+  const globalShifts = mapCalendarGlobalDateShifts(globalDateShifts.rows);
   const holidayRules = mapCalendarHolidayRules(holidayRulesResult.rows);
-  const calculatedEntries = calculatePublicWasteCalendarEntries({
-    referenceDate: input.query.referenceDate,
-    selection: input.query.selection,
-    linkedTours: mapCalendarLinkedTours(linkedToursResult.rows),
-    tourDateShifts: mapCalendarTourDateShifts(tourDateShifts.rows),
-    globalDateShifts: mapCalendarGlobalDateShifts(globalDateShifts.rows),
-    holidayRules,
-  });
 
-  return window
-    ? mergeCalendarAssignmentEntries({
-        calculatedEntries,
-        assignmentRows: tourAssignments.rows,
-        tourDateShiftRows: tourDateShifts.rows,
-        globalDateShiftRows: globalDateShifts.rows,
-        holidayRules,
-        windowStart: window.start,
-        windowEnd: window.end,
-      })
-    : calculatedEntries;
+  return new Map(
+    windows.map(([referenceDate, window]) => {
+      if (!window) return [referenceDate, []];
+      const firstHolidayDate = parseDateOnlyUtc(window.start);
+      firstHolidayDate.setUTCDate(firstHolidayDate.getUTCDate() - 7);
+      const holidayStart = formatDateOnlyUtc(firstHolidayDate);
+      const windowHolidayRules = holidayRules.filter(
+        (rule) => rule.holidayDate >= holidayStart && rule.holidayDate <= window.end
+      );
+      const calculatedEntries = calculatePublicWasteCalendarEntries({
+        referenceDate,
+        selection: input.query.selection,
+        linkedTours,
+        tourDateShifts: tourShifts,
+        globalDateShifts: globalShifts,
+        holidayRules: windowHolidayRules,
+      });
+      return [
+        referenceDate,
+        mergeCalendarAssignmentEntries({
+          calculatedEntries,
+          assignmentRows: tourAssignments.rows,
+          tourDateShiftRows: tourDateShifts.rows,
+          globalDateShiftRows: globalDateShifts.rows,
+          holidayRules: windowHolidayRules,
+          windowStart: window.start,
+          windowEnd: window.end,
+        }),
+      ];
+    })
+  );
 };

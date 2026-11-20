@@ -157,10 +157,10 @@ describe('PublicWasteApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
     expect(screen.queryByRole('link', { name: 'Kalender exportieren' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'PDF herunterladen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'PDF für 2026 herunterladen' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
-    expect(screen.queryByRole('button', { name: 'PDF herunterladen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'PDF für 2026 herunterladen' })).toBeNull();
     expect(
       screen.getByRole('button', { name: 'PDF / Druckversion' }).getAttribute('aria-expanded')
     ).toBe('false');
@@ -286,47 +286,98 @@ describe('PublicWasteApp', () => {
     ).toBeTruthy();
   });
 
-  it('downloads a pdf for the active fractions and year visible in the calendar', async () => {
+  it('offers each year with pickup dates and downloads the chosen year directly', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date('2026-05-18T12:00:00Z'));
     const createObjectUrlSpy = vi
       .spyOn(URL, 'createObjectURL')
       .mockReturnValue('blob:public-waste-pdf');
     const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    fetchMock.mockResolvedValue(
-      new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
-        status: 200,
-        headers: {
-          'content-disposition': 'attachment; filename="abfallkalender-2027-rathenow.pdf"',
-        },
-      })
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
+          status: 200,
+          headers: {
+            'content-disposition': 'attachment; filename="abfallkalender-2027-rathenow.pdf"',
+          },
+        })
     );
 
-    renderCompletePublicWasteApp();
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Jahr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Nächstes Jahr' }));
-    expect(screen.getByRole('heading', { name: '2027' })).toBeTruthy();
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        fractionOptions: [
+          { id: 'bio', label: 'Bioabfall' },
+          { id: 'paper', label: 'Papier' },
+        ],
+        listEntries: [
+          createPublicWasteCalendarEntryFixture(),
+          createPublicWasteCalendarEntryFixture({
+            id: 'pickup-2027',
+            date: '2027-05-25',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+          }),
+        ],
+      }),
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
-    expect(screen.queryByLabelText('PDF-Jahr')).toBeNull();
+    expect(
+      screen.getAllByRole('button', { name: /^PDF für/ }).map((button) => button.textContent)
+    ).toEqual(['PDF für 2026 herunterladen', 'PDF für 2027 herunterladen']);
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'PDF herunterladen' }));
-    });
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-    expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=bio');
-    expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=paper');
-    expect(fetchMock.mock.calls[0]?.[0]).toContain('year=2027');
-    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    for (const year of [2027, 2026]) {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: `PDF für ${year} herunterladen` }));
+      });
+    }
+    expect(
+      fetchMock.mock.calls.map(([request]) => {
+        const query = new URL(String(request), 'https://calendar.example').searchParams;
+        return [query.get('year'), query.getAll('fractionId')];
+      })
+    ).toEqual([
+      ['2027', ['bio', 'paper']],
+      ['2026', ['bio', 'paper']],
+    ]);
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(2);
     await vi.runAllTimersAsync();
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:public-waste-pdf');
 
-    createObjectUrlSpy.mockRestore();
-    revokeObjectUrlSpy.mockRestore();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
+    expect(screen.queryByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'PDF für 2026 herunterladen' }).hasAttribute('disabled')
+    ).toBe(false);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
+    expect(screen.queryByRole('button', { name: /^PDF für/ })).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
+    expect(screen.getByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeTruthy();
+  });
+
+  it('offers a year and its fraction even if it has no entries in the rolling calendar', () => {
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [],
+        fractionOptions: [],
+        pdfAvailability: [{ year: 2027, fractionOptions: [{ id: 'bio', label: 'Bioabfall' }] }],
+      }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
+    expect(screen.getByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
+    expect(screen.queryByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeNull();
+  });
+
+  it('offers no PDF action for an address without pickup dates', () => {
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({ listEntries: [] }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
+    expect(
+      screen.getByText('Für die aktuelle Auswahl sind keine PDF-Kalender verfügbar.')
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^PDF für/ })).toBeNull();
   });
 
   it('shows the running state and reports a failed pdf request in the same panel', async () => {
@@ -340,12 +391,12 @@ describe('PublicWasteApp', () => {
     renderCompletePublicWasteApp();
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'PDF herunterladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'PDF für 2026 herunterladen' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'PDF wird erstellt…' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'PDF für 2026 wird erstellt…' })).toBeTruthy();
     });
     expect(
-      screen.getByRole('button', { name: 'PDF wird erstellt…' }).hasAttribute('disabled')
+      screen.getByRole('button', { name: 'PDF für 2026 wird erstellt…' }).hasAttribute('disabled')
     ).toBe(true);
 
     await act(async () => {
@@ -353,9 +404,9 @@ describe('PublicWasteApp', () => {
     });
 
     expect(screen.getByRole('alert').textContent).toContain('PDF-Dienst nicht erreichbar');
-    expect(screen.getByRole('button', { name: 'PDF herunterladen' }).hasAttribute('disabled')).toBe(
-      false
-    );
+    expect(
+      screen.getByRole('button', { name: 'PDF für 2026 herunterladen' }).hasAttribute('disabled')
+    ).toBe(false);
   });
 
   it('submits the e-mail signup from the active fractions with automatic default reminder slots', async () => {

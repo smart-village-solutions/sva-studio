@@ -1,5 +1,5 @@
 import {
-  loadPublicWasteCalendarEntries,
+  loadPublicWasteCalendarEntriesForDates,
   type SqlExecutor,
 } from './public-waste-calendar-loader.server.js';
 import type {
@@ -34,8 +34,12 @@ export const createPublicWasteRepository = (input: {
   readonly execute: SqlExecutor;
 }) => {
   const schemaName = quoteIdentifier(input.schemaName);
+  const loadCalendarEntriesForDates = (
+    query: Parameters<typeof loadPublicWasteCalendarEntriesForDates>[0]['query']
+  ) => loadPublicWasteCalendarEntriesForDates({ schemaName, execute: input.execute, query });
 
   return {
+    loadCalendarEntriesForDates,
     async listPublicRegions(): Promise<readonly PublicWasteSelectableEntry[]> {
       const result = await input.execute<SelectionRow>({
         text: `
@@ -222,11 +226,11 @@ export const createPublicWasteRepository = (input: {
       readonly selection: PublicWasteResolvedSelection;
       readonly referenceDate: string;
     }): Promise<readonly PublicWasteCalendarEntry[]> {
-      return loadPublicWasteCalendarEntries({
-        schemaName,
-        execute: input.execute,
-        query,
+      const entries = await loadCalendarEntriesForDates({
+        selection: query.selection,
+        referenceDates: [query.referenceDate],
       });
+      return entries.get(query.referenceDate) ?? [];
     },
     loadSelectionSummary: (query: { readonly selection: PublicWasteResolvedSelection }) =>
       loadSelectionSummary(schemaName, input.execute, query),

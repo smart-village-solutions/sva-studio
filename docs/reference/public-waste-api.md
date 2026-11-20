@@ -46,6 +46,8 @@ Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regi
 
 ## PDF-Legende und Landkreislogo pflegen
 
+Die Weboberfläche zeigt unter „PDF / Druckversion“ einen Download-Button für jedes Jahr mit Abfuhrterminen an der gewählten Adresse und für die ausgewählten Abfallarten. Die Jahresauswahl berücksichtigt das Vorjahr, das laufende Jahr und das Folgejahr vollständig. Die Buttons bleiben unabhängig von der gerade angezeigten Kalenderansicht verfügbar.
+
 Das PDF wird im bestehenden Endpunkt `/api/public-waste/pdf` für Adresse, Jahr und gewählte Abfallarten erzeugt. Die Legende ist aus vorhandenen Fachdaten abgeleitet, kein separat bearbeitbares Textdokument:
 
 | Inhalt                                        | Bestehender Pflegeweg im Studio-Abfallkalender           |
@@ -132,6 +134,8 @@ Accept: application/json
 Fehlt `regionId` in `calendarQuery`, wird der Parameter ausgelassen. `cityId` und `streetId` sind immer vorhanden; `houseNumberId` wird nur bei einer konkreten Hausnummer übertragen.
 
 Der Verbraucher verbindet jede Kalenderantwort mit dem zugehörigen Katalogeintrag. Der Kalender behält dabei unverändert seine bestehende Terminberechnung, Fraktionsbezeichnungen, Verschiebungen und Vererbung über übergeordnete Abholorte.
+
+`pdfAvailability` enthält für das Jahr des Referenztags, sein Vorjahr und sein Folgejahr die Jahre mit PDF-Terminen und die jeweils verfügbaren `fractionOptions`. Für die Verfügbarkeit zählt das vollständige Kalenderjahr nach wirksamem Abholdatum. Die Terminlisten und die Monats- und Jahresgruppen in derselben Antwort verwenden weiterhin den rollierenden Kalenderzeitraum.
 
 Die angebotenen E-Mail- und Kalendererinnerungen berücksichtigen Abfallarten aus direkten Tourverknüpfungen und aus datierten Tourzuweisungen für den ausgewählten Abholort. Eine Abfallart erscheint nur dann als Erinnerungsoption, wenn ihr jeweiliger Kanal aktiv ist und gültige Erinnerungszeitpunkte konfiguriert sind.
 

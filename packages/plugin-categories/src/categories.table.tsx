@@ -8,6 +8,8 @@ import {
   type StudioDataTableLabels,
 } from '@sva/studio-ui-react';
 
+import type { DataTypeCatalog } from './categories.data-types.js';
+import { CategoryDetailsDialog } from './categories.details-dialog.js';
 import type { Translator } from './categories.page-support.js';
 import type { CategoryManagementItem, CategoryTableRow } from './categories.types.js';
 
@@ -20,13 +22,24 @@ const labels = (pt: Translator): StudioDataTableLabels => ({
   selectMobileRow: ({ label }) => label,
 });
 
-const columns = (pt: Translator): readonly StudioColumnDef<CategoryTableRow>[] => [
+const columns = (
+  pt: Translator,
+  dataTypeLabel: DataTypeCatalog['label'],
+  categoryById: ReadonlyMap<string, CategoryManagementItem>
+): readonly StudioColumnDef<CategoryTableRow>[] => [
   {
     id: 'active',
     header: pt('fields.status'),
     cell: (row) => (row.active === false ? pt('values.inactive') : pt('values.active')),
   },
-  { id: 'name', header: pt('fields.name'), cell: (row) => row.name },
+  {
+    id: 'name',
+    header: pt('fields.name'),
+    cell: (row) => {
+      const item = categoryById.get(row.id);
+      return item ? <CategoryDetailsDialog category={item} pt={pt} /> : row.name;
+    },
+  },
   { id: 'hierarchy', header: pt('fields.hierarchy'), cell: (row) => row.hierarchyLabel },
   {
     id: 'position',
@@ -36,7 +49,7 @@ const columns = (pt: Translator): readonly StudioColumnDef<CategoryTableRow>[] =
   {
     id: 'tags',
     header: pt('fields.dataTypes'),
-    cell: (row) => row.tags.join(', ') || pt('values.notAvailable'),
+    cell: (row) => row.tags.map(dataTypeLabel).join(', ') || pt('values.notAvailable'),
   },
 ];
 
@@ -55,7 +68,7 @@ const CategoryActions = ({
   onCreateChild: (item: CategoryManagementItem) => void;
   onDelete: (item: CategoryManagementItem) => void;
 }>) => (
-  <div className="flex gap-2">
+  <div className="flex flex-wrap justify-end gap-2 md:flex-nowrap">
     <Button
       type="button"
       size="sm"
@@ -92,33 +105,37 @@ const CategoryTable = (
     categories: readonly CategoryManagementItem[];
     can: (action: string) => boolean;
     pt: Translator;
+    dataTypeLabel: DataTypeCatalog['label'];
     onEdit: (item: CategoryManagementItem) => void;
     onCreateChild: (item: CategoryManagementItem) => void;
     onDelete: (item: CategoryManagementItem) => void;
   }>
-) => (
-  <StudioDataTable
-    sorting={{ mode: 'disabled' }}
-    ariaLabel={props.pt('table.ariaLabel')}
-    caption={props.pt('table.caption')}
-    labels={labels(props.pt)}
-    data={props.rows}
-    columns={columns(props.pt)}
-    rowActions={(row) => (
-      <CategoryActions
-        item={props.categories.find((candidate) => candidate.id === row.id)}
-        can={props.can}
-        pt={props.pt}
-        onEdit={props.onEdit}
-        onCreateChild={props.onCreateChild}
-        onDelete={props.onDelete}
-      />
-    )}
-    emptyState={null}
-    getRowId={(row) => row.id}
-    selectionMode="none"
-  />
-);
+) => {
+  const categoryById = new Map(props.categories.map((category) => [category.id, category]));
+  return (
+    <StudioDataTable
+      sorting={{ mode: 'disabled' }}
+      ariaLabel={props.pt('table.ariaLabel')}
+      caption={props.pt('table.caption')}
+      labels={labels(props.pt)}
+      data={props.rows}
+      columns={columns(props.pt, props.dataTypeLabel, categoryById)}
+      rowActions={(row) => (
+        <CategoryActions
+          item={categoryById.get(row.id)}
+          can={props.can}
+          pt={props.pt}
+          onEdit={props.onEdit}
+          onCreateChild={props.onCreateChild}
+          onDelete={props.onDelete}
+        />
+      )}
+      emptyState={null}
+      getRowId={(row) => row.id}
+      selectionMode="none"
+    />
+  );
+};
 
 export function CategoriesTableView(
   props: Readonly<{
@@ -128,6 +145,7 @@ export function CategoriesTableView(
     categories: readonly CategoryManagementItem[];
     can: (action: string) => boolean;
     pt: Translator;
+    dataTypeLabel: DataTypeCatalog['label'];
     onReload: () => void;
     onEdit: (item: CategoryManagementItem) => void;
     onCreateChild: (item: CategoryManagementItem) => void;

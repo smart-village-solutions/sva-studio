@@ -7,6 +7,7 @@ import {
   StudioOverviewPageTemplate,
 } from '@sva/studio-ui-react';
 
+import { createDataTypeCatalog } from './categories.data-types.js';
 import { CategoryDeleteDialog } from './categories.delete-dialog.js';
 import { CategoryEditor } from './categories.editor.js';
 import { useCategoryPageState } from './categories.page-state.js';
@@ -83,6 +84,20 @@ const usePageSelection = () => {
   };
 };
 
+const useSaveNotice = (reload: () => Promise<unknown>, pt: Translator) => {
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const reloadAfterSave = async (affectedIds: readonly string[]) => {
+    const reloaded = (await reload()) !== null;
+    const key = reloaded
+      ? affectedIds.length
+        ? 'messages.savedWithDescendants'
+        : 'messages.saved'
+      : 'messages.savedReloadFailed';
+    setNotice(pt(key, { count: affectedIds.length }));
+  };
+  return { notice, setNotice, reloadAfterSave };
+};
+
 const useCategoryMutationAccess = (enabledMutationActions?: readonly string[]) => {
   const access = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
@@ -111,16 +126,7 @@ export function CategoriesPage({
   const can = useCategoryMutationAccess(enabledMutationActions);
   const state = useCategoryPageState(pt);
   const selection = usePageSelection();
-  const [notice, setNotice] = React.useState<string | null>(null);
-  const reloadAfterSave = async (affectedIds: readonly string[]) => {
-    const reloaded = (await state.reload()) !== null;
-    const key = reloaded
-      ? affectedIds.length
-        ? 'messages.savedWithDescendants'
-        : 'messages.saved'
-      : 'messages.savedReloadFailed';
-    setNotice(pt(key, { count: affectedIds.length }));
-  };
+  const { notice, setNotice, reloadAfterSave } = useSaveNotice(state.reload, pt);
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
@@ -145,6 +151,7 @@ export function CategoriesPage({
         {...state}
         can={can}
         pt={pt}
+        dataTypeLabel={createDataTypeCatalog(dataTypeOptions, pt).label}
         onReload={() => void state.reload()}
         onEdit={selection.setEditing}
         onCreateChild={selection.createChild}

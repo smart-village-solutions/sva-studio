@@ -92,7 +92,7 @@ Vorhandene hostgeführte Action-Audit- und Observability-Pfade werden wiederverw
 
 ### Die UI erweitert die vorhandene Seite statt einen parallelen Editor einzuführen
 
-Die Management-Tabelle zeigt mindestens Name, Status, Parent, Position und Datentypen. Create, Edit und „Neue Unterkategorie“ öffnen denselben formularbasierten Dialog beziehungsweise Sheet-Vertrag; „Neue Unterkategorie“ setzt den Parent vor. Delete verwendet einen getrennten Bestätigungsdialog.
+Die Management-Tabelle zeigt mindestens Name, Status, Parent, Position und Datentypen. Datentypen werden über denselben Katalog wie im Formular lokalisiert; unbekannte Kennungen bleiben mit dem vorhandenen Hinweis „nicht mehr verfügbar“ sichtbar. ID, Icon, Benachrichtigungs-E-Mail und Zeitstempel überladen die Tabelle nicht, sondern stehen in einem schreibgeschützten Detaildialog. Der Kategoriename ist dessen Auslöser, damit die Aktionsspalte nicht breiter wird und der Fokus nach dem Schließen zum Namen zurückkehrt; der Dialog ist unabhängig von Schreibrechten erreichbar. Create, Edit und „Neue Unterkategorie“ öffnen denselben formularbasierten Dialog beziehungsweise Sheet-Vertrag; „Neue Unterkategorie“ setzt den Parent vor. Delete verwendet einen getrennten Bestätigungsdialog.
 
 Alle Texte liegen in den Plugin-Übersetzungen für Deutsch und Englisch. Formularfelder besitzen Labels, Beschreibungen und feldbezogene Fehler. Dialoge führen Fokus korrekt, sind per Tastatur bedienbar und verwenden vorhandene shadcn/ui- beziehungsweise Studio-Komponenten. Erfolg, Mutation läuft, Validierungsfehler, Berechtigungsfehler, Vertragsfehler und unbekannter Ausgang bleiben unterscheidbar.
 

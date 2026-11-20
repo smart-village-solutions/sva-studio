@@ -5,10 +5,14 @@
 - **Route / Typ / Owner:** `/categories`, Übersicht, Host.
 - **Nutzerziel:** Mainserver-Kategorien und ihre Hierarchie verwalten.
 - **Produktfakten:** Die Seite zeigt aktive und inaktive Kategorien mit Hierarchie, Position und
-  Datentypen. Je nach Berechtigung lassen sich Kategorien anlegen, bearbeiten, als Unterkategorie
-  einordnen und nach einer Bestätigung sicher löschen. Statusänderungen mit Unterkategorien werden
-  vor dem Speichern bestätigt; bestehende Verwendungen blockieren das Löschen und werden nach Art
-  und Anzahl angezeigt.
+  Datentypen. Datentypen erscheinen mit ihrer lokalisierten Bezeichnung; nicht mehr registrierte
+  Typen bleiben mit ihrer Kennung und dem Hinweis „nicht mehr verfügbar“ sichtbar. Ein Klick auf den
+  Kategorienamen öffnet schreibgeschützte Details mit ID, Icon, Benachrichtigungs-E-Mail sowie
+  Erstellungs- und Änderungszeitpunkt; fehlende Angaben werden als „—“ angezeigt. Die Details sind
+  auch mit reiner Leseberechtigung erreichbar. Je nach Berechtigung lassen sich Kategorien anlegen,
+  bearbeiten, als Unterkategorie einordnen und nach einer Bestätigung sicher löschen.
+  Statusänderungen mit Unterkategorien werden vor dem Speichern bestätigt; bestehende Verwendungen
+  blockieren das Löschen und werden nach Art und Anzahl angezeigt.
 - **Kontextabhängig:** Laden erfordert `categories.read`, aktive Mainserver-Integration und passende
   persönliche oder organisatorische Credentials.
 - **Redaktionelle Leitfragen:** Wie liest man die flache Hierarchiedarstellung? Welche Auswirkungen

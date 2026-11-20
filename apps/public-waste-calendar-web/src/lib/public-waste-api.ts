@@ -10,6 +10,7 @@ import {
 } from './public-waste-contract.js';
 import { projectPublicWasteCalendar } from './public-waste-projection.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
+import type { PublicWastePdfAvailability } from './public-waste-view-model.js';
 
 // Keep URL resolution instance-local; standalone calls retain their relative URLs.
 export const resolvePublicWasteApiUrl = (path: string, apiOrigin = ''): string =>
@@ -78,6 +79,7 @@ export type PublicWasteCalendarResponse = Awaited<
   readonly icalUrl: string;
   readonly calendarReminderOptions?: PublicWasteCalendarReminderView;
   readonly reminderSignup?: PublicWasteReminderSignupView;
+  readonly pdfAvailability?: PublicWastePdfAvailability;
 };
 
 const toSearchParams = (selection: PublicWasteSelectionState): URLSearchParams => {

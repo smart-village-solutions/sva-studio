@@ -95,6 +95,9 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   });
   const deferredFractions = React.useDeferredValue(pdf.selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
+  const calendarFractions = props.calendarModel.fractionOptions
+    .map(({ id }) => id)
+    .filter((id) => pdf.selectedFractions.includes(id));
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
 
   return (
@@ -103,7 +106,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         cityLine={cityLine}
         streetLine={streetLine}
         houseNumberLine={houseNumberLine}
-        fractionOptions={props.calendarModel.fractionOptions}
+        fractionOptions={pdf.fractionOptions}
         activeFractionIds={pdf.selectedFractions}
         emailReminderAvailable={props.reminderSignup?.enabled === true}
         onChangeLocation={props.onChangeLocation}
@@ -114,7 +117,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         selectionSummary={props.selectionSummary}
         locationKey={props.calendarModel.locationKey}
         fractionOptions={props.calendarModel.fractionOptions}
-        selectedFractions={pdf.selectedFractions}
+        selectedFractions={calendarFractions}
         calendarReminderOptions={props.calendarReminderOptions}
         reminderSignup={props.reminderSignup}
         pdfYears={pdf.pdfYears}

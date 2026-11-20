@@ -1,5 +1,10 @@
 import type { PublicWasteCalendarEntry, PublicWasteFractionOption } from './public-waste-contract.js';
 
+export type PublicWastePdfAvailability = readonly {
+  readonly year: number;
+  readonly fractionOptions: readonly PublicWasteFractionOption[];
+}[];
+
 export type PublicWasteCalendarViewModel = {
   readonly locationKey: string;
   readonly nextPickupDate: string | null;
@@ -13,6 +18,7 @@ export type PublicWasteCalendarViewModel = {
     readonly entries: readonly PublicWasteCalendarEntry[];
   }[];
   readonly fractionOptions: readonly PublicWasteFractionOption[];
+  readonly pdfAvailability?: PublicWastePdfAvailability;
 };
 
 export type FilteredPublicWasteCalendarViewModel = PublicWasteCalendarViewModel & {

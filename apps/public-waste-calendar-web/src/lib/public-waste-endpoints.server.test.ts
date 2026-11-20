@@ -12,6 +12,7 @@ import {
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from './public-waste-endpoints.server.js';
+import { createPublicWasteRepository } from './public-waste-repository.server.js';
 
 describe('public waste endpoints', () => {
   afterEach(() => {
@@ -110,15 +111,22 @@ describe('public waste endpoints', () => {
   it('returns the resolved calendar model as json', async () => {
     const response = await handlePublicWasteCalendarRequest({
       repository: {
-        loadCalendarEntries: vi.fn().mockResolvedValue([
-          {
-            id: 'pickup-1',
-            date: '2026-05-19',
-            fractionId: 'bio',
-            fractionLabel: 'Bioabfall',
-            note: null,
-          },
-        ]),
+        loadCalendarEntriesForDates: vi.fn().mockResolvedValue(
+          new Map([
+            [
+              '2026-05-18',
+              [
+                {
+                  id: 'pickup-1',
+                  date: '2026-05-19',
+                  fractionId: 'bio',
+                  fractionLabel: 'Bioabfall',
+                  note: null,
+                },
+              ],
+            ],
+          ])
+        ),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
         loadReminderOptions: vi.fn().mockImplementation(async ({ channel }) =>
           channel === 'email'
@@ -201,6 +209,46 @@ describe('public waste endpoints', () => {
     });
   });
 
+  it('advertises full PDF years while keeping the rolling calendar entries unchanged', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            tour_id: 'tour-1',
+            tour_name: 'Sonderabfuhr',
+            tour_custom_dates: [{ date: '2027-12-01' }],
+            fraction_id: 'bio',
+            fraction_label: 'Bioabfall',
+          },
+        ],
+      })
+      .mockResolvedValue({ rowCount: 0, rows: [] });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+    const response = await handlePublicWasteCalendarRequest({
+      repository: {
+        ...repository,
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&referenceDate=2026-11-20'
+      ),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      nextPickupDate: null,
+      listEntries: [],
+      fractionOptions: [],
+      pdfAvailability: [{ year: 2027, fractionOptions: [{ id: 'bio', label: 'Bioabfall' }] }],
+    });
+    expect(execute).toHaveBeenCalledTimes(5);
+  });
+
   it('returns a binary pdf for the resolved selection and chosen fractions', async () => {
     const loadBrandingImage = vi.fn().mockResolvedValue({
       width: 2,
@@ -281,13 +329,16 @@ describe('public waste endpoints', () => {
       },
     ];
     const loadCalendarEntries = vi.fn().mockResolvedValue(entries);
+    const loadCalendarEntriesForDates = vi
+      .fn()
+      .mockResolvedValue(new Map([['2026-01-01', entries]]));
     const loadSelectionSummary = vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1');
     const selectionQuery =
       'cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444';
 
     const webResponse = await handlePublicWasteCalendarRequest({
       repository: {
-        loadCalendarEntries,
+        loadCalendarEntriesForDates,
         loadSelectionSummary,
         loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
@@ -308,15 +359,15 @@ describe('public waste endpoints', () => {
 
     expect(webPayload.listEntries).toEqual(entries);
     expect(pdfResponse.status).toBe(200);
-    expect(loadCalendarEntries).toHaveBeenNthCalledWith(1, {
+    expect(loadCalendarEntriesForDates).toHaveBeenCalledWith({
       selection: {
         cityId: '22222222-2222-4222-8222-222222222222',
         streetId: '33333333-3333-4333-8333-333333333333',
         houseNumberId: '44444444-4444-4444-8444-444444444444',
       },
-      referenceDate: '2026-01-01',
+      referenceDates: ['2026-01-01', '2025-12-31', '2026-12-31', '2027-12-31'],
     });
-    expect(loadCalendarEntries).toHaveBeenNthCalledWith(2, {
+    expect(loadCalendarEntries).toHaveBeenCalledWith({
       selection: {
         cityId: '22222222-2222-4222-8222-222222222222',
         streetId: '33333333-3333-4333-8333-333333333333',
@@ -580,12 +631,12 @@ describe('public waste endpoints', () => {
   });
 
   it('accepts the catch-all street sentinel for resolved calendar requests', async () => {
-    const loadCalendarEntries = vi.fn().mockResolvedValue([]);
+    const loadCalendarEntriesForDates = vi.fn().mockResolvedValue(new Map());
     const loadSelectionSummary = vi.fn().mockResolvedValue('Musterstadt, Alle Straßen');
 
     const response = await handlePublicWasteCalendarRequest({
       repository: {
-        loadCalendarEntries,
+        loadCalendarEntriesForDates,
         loadSelectionSummary,
         loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
@@ -595,7 +646,7 @@ describe('public waste endpoints', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(loadCalendarEntries).toHaveBeenCalledWith(
+    expect(loadCalendarEntriesForDates).toHaveBeenCalledWith(
       expect.objectContaining({
         selection: expect.objectContaining({
           streetId: 'all',

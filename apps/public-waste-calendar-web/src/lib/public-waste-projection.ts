@@ -55,7 +55,7 @@ const groupEntriesByYear = (
     entries: bucket,
   }));
 
-const deriveFractionOptions = (entries: readonly PublicWasteCalendarEntry[]): readonly PublicWasteFractionOption[] =>
+export const deriveFractionOptions = (entries: readonly PublicWasteCalendarEntry[]): readonly PublicWasteFractionOption[] =>
   Array.from(
     new Map(
       entries.map((entry) => [

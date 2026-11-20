@@ -28,22 +28,36 @@ export const usePublicWastePdfDownload = ({
   calendarModel,
 }: UsePublicWastePdfDownloadInput) => {
   const apiOrigin = React.useContext(PublicWasteApiOriginContext);
+  const fractionOptions = React.useMemo(
+    () =>
+      Array.from(
+        new Map(
+          [
+            ...calendarModel.fractionOptions,
+            ...(calendarModel.pdfAvailability ?? []).flatMap((entry) => entry.fractionOptions),
+          ].map((option) => [option.id, option])
+        ).values()
+      ).sort((left, right) => left.label.localeCompare(right.label, 'de')),
+    [calendarModel.fractionOptions, calendarModel.pdfAvailability]
+  );
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
-    calendarModel.fractionOptions.map((fraction) => fraction.id)
+    fractionOptions.map((fraction) => fraction.id)
   );
   const [pdfRunningYear, setPdfRunningYear] = React.useState<number | null>(null);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
-  const downloadableYears = new Set<number>();
-  for (const { date, fractionId } of calendarModel.listEntries) {
-    if (selectedFractions.includes(fractionId)) {
-      downloadableYears.add(Number(date.slice(0, 4)));
-    }
-  }
+  const downloadableYears = new Set(
+    calendarModel.pdfAvailability
+      ?.filter((entry) => entry.fractionOptions.some(({ id }) => selectedFractions.includes(id)))
+      .map(({ year }) => year) ??
+      calendarModel.listEntries
+        .filter(({ fractionId }) => selectedFractions.includes(fractionId))
+        .map(({ date }) => Number(date.slice(0, 4)))
+  );
   const pdfYears = [...downloadableYears].sort((left, right) => left - right);
 
   React.useEffect(() => {
-    setSelectedFractions(calendarModel.fractionOptions.map((fraction) => fraction.id));
-  }, [calendarModel.locationKey, calendarModel.fractionOptions]);
+    setSelectedFractions(fractionOptions.map((fraction) => fraction.id));
+  }, [calendarModel.locationKey, fractionOptions]);
 
   React.useEffect(() => {
     setPdfError(null);
@@ -85,6 +99,7 @@ export const usePublicWastePdfDownload = ({
   };
 
   return {
+    fractionOptions,
     selectedFractions,
     pdfYears,
     pdfRunningYear,

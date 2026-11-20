@@ -32,6 +32,11 @@ const startOfYearUtc = (value: string): string => {
 
 export const startOfPreviousYearUtc = (value: string): string => startOfYearUtc(addYearsUtc(value, -1));
 
+export const isPublicWastePdfYear = (year: number): boolean =>
+  Number.isInteger(year) && year >= 2000 && year <= 2100;
+
+export const publicWastePdfReferenceDate = (year: number): string => `${year}-12-31`;
+
 export const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
   date >= startDate && date <= endDate;
 

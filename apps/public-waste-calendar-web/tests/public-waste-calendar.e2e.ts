@@ -443,6 +443,23 @@ test('embeds the built calendar on another origin with isolated styles, keyboard
   const requestedRegions: (string | undefined)[] = [];
   const date = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const year = Number(date.slice(0, 4));
+  const calendarEntries = [
+    {
+      id: 'pickup-1',
+      date,
+      fractionId: 'bio',
+      fractionLabel: 'Bioabfall',
+      fractionShortLabel: 'BIO',
+      note: 'Bitte bereitstellen.',
+    },
+    {
+      id: 'pickup-next-year',
+      date: `${year + 1}-05-19`,
+      fractionId: 'bio',
+      fractionLabel: 'Bioabfall',
+      fractionShortLabel: 'BIO',
+    },
+  ];
   const runtime = await createPublicWasteRuntime({
     assetsDir: resolve('dist/client'),
     env: {
@@ -471,23 +488,9 @@ test('embeds the built calendar on another origin with isolated styles, keyboard
             return { step: 'street', options: [{ id: streetId, label: 'Hauptstraße' }] };
           return { step: 'houseNumber', options: [] };
         },
-        loadCalendarEntries: async () => [
-          {
-            id: 'pickup-1',
-            date,
-            fractionId: 'bio',
-            fractionLabel: 'Bioabfall',
-            fractionShortLabel: 'BIO',
-            note: 'Bitte bereitstellen.',
-          },
-          {
-            id: 'pickup-next-year',
-            date: `${year + 1}-05-19`,
-            fractionId: 'bio',
-            fractionLabel: 'Bioabfall',
-            fractionShortLabel: 'BIO',
-          },
-        ],
+        loadCalendarEntries: async () => calendarEntries,
+        loadCalendarEntriesForDates: async ({ referenceDates }) =>
+          new Map(referenceDates.map((referenceDate) => [referenceDate, calendarEntries])),
         loadSelectionSummary: async () => 'Ort A, Hauptstraße',
         loadReminderOptions: async () => [],
       },

@@ -355,6 +355,20 @@ describe('PublicWasteApp', () => {
     expect(screen.getByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeTruthy();
   });
 
+  it('offers a year and its fraction even if it has no entries in the rolling calendar', () => {
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [],
+        fractionOptions: [],
+        pdfAvailability: [{ year: 2027, fractionOptions: [{ id: 'bio', label: 'Bioabfall' }] }],
+      }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
+    expect(screen.getByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
+    expect(screen.queryByRole('button', { name: 'PDF für 2027 herunterladen' })).toBeNull();
+  });
+
   it('offers no PDF action for an address without pickup dates', () => {
     renderCompletePublicWasteApp({
       calendarModel: createPublicWasteCalendarModelFixture({ listEntries: [] }),

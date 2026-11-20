@@ -6,6 +6,7 @@ import {
 } from '@sva/waste-management-contracts';
 import { renderWasteCalendarPdf } from '@sva/waste-management-contracts/pdf';
 import type { PublicWasteCalendarEntry } from './public-waste-contract.js';
+import { isPublicWastePdfYear, publicWastePdfReferenceDate } from './public-waste-date-utils.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';
 import {
   readPublicWasteFractionIds,
@@ -18,7 +19,7 @@ const NO_PDF_ENTRIES_MESSAGE = 'Für diese Auswahl konnten keine PDF-Termine erm
 
 const readRequiredYear = (url: URL): number => {
   const value = Number.parseInt(url.searchParams.get('year') ?? '', 10);
-  if (!Number.isInteger(value) || value < 2000 || value > 2100) {
+  if (!isPublicWastePdfYear(value)) {
     throw new Error('invalid_query_param:year');
   }
   return value;
@@ -142,7 +143,7 @@ export const handlePublicWastePdfRequest = async (input: {
       input.repository.loadCalendarEntries({
         selection,
         // Include next-year occurrences that may be advanced into the requested year.
-        referenceDate: `${year}-12-31`,
+        referenceDate: publicWastePdfReferenceDate(year),
       }),
       input.repository.loadSelectionSummary({ selection }),
       input.loadPdfStaticConfig(),

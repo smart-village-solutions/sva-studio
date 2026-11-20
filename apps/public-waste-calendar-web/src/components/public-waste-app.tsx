@@ -89,21 +89,13 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
 
 function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
-  const [visibleCalendarYear, setVisibleCalendarYear] = React.useState(() =>
-    new Date().getFullYear()
-  );
   const pdf = usePublicWastePdfDownload({
     selection: props.selection,
     calendarModel: props.calendarModel,
-    year: visibleCalendarYear,
   });
   const deferredFractions = React.useDeferredValue(pdf.selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
-
-  React.useEffect(() => {
-    setVisibleCalendarYear(new Date().getFullYear());
-  }, [props.calendarModel.locationKey]);
 
   return (
     <section className="selection-panel">
@@ -125,7 +117,8 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         selectedFractions={pdf.selectedFractions}
         calendarReminderOptions={props.calendarReminderOptions}
         reminderSignup={props.reminderSignup}
-        pdfRunning={pdf.pdfRunning}
+        pdfYears={pdf.pdfYears}
+        pdfRunningYear={pdf.pdfRunningYear}
         pdfError={pdf.pdfError}
         downloadPdf={pdf.downloadPdf}
       />
@@ -133,7 +126,6 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         key={filteredModel.locationKey}
         model={filteredModel}
         onActivateEntry={setSelectedEntry}
-        onVisibleYearChange={setVisibleCalendarYear}
       />
       <PublicWasteEventDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </section>

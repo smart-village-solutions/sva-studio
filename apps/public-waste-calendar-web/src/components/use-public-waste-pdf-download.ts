@@ -8,7 +8,6 @@ import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-mode
 type UsePublicWastePdfDownloadInput = {
   readonly selection: PublicWasteResolvedSelection;
   readonly calendarModel: PublicWasteCalendarViewModel;
-  readonly year: number;
 };
 
 const downloadBlob = (blob: Blob, filename: string) => {
@@ -27,14 +26,24 @@ const downloadBlob = (blob: Blob, filename: string) => {
 export const usePublicWastePdfDownload = ({
   selection,
   calendarModel,
-  year,
 }: UsePublicWastePdfDownloadInput) => {
   const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
     calendarModel.fractionOptions.map((fraction) => fraction.id)
   );
-  const [pdfRunning, setPdfRunning] = React.useState(false);
+  const [pdfRunningYear, setPdfRunningYear] = React.useState<number | null>(null);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
+  const selectedFractionsByYear = new Map<number, boolean>();
+  for (const { date, fractionId } of calendarModel.listEntries) {
+    const year = Number(date.slice(0, 4));
+    if (!selectedFractionsByYear.get(year)) {
+      selectedFractionsByYear.set(year, selectedFractions.includes(fractionId));
+    }
+  }
+  const pdfYears = Array.from(selectedFractionsByYear, ([year, hasSelectedFractions]) => ({
+    year,
+    hasSelectedFractions,
+  })).sort((left, right) => left.year - right.year);
 
   React.useEffect(() => {
     setSelectedFractions(calendarModel.fractionOptions.map((fraction) => fraction.id));
@@ -52,12 +61,12 @@ export const usePublicWastePdfDownload = ({
     );
   };
 
-  const downloadPdf = async () => {
-    if (selectedFractions.length === 0 || pdfRunning) {
+  const downloadPdf = async (year: number) => {
+    if (!selectedFractionsByYear.get(year) || pdfRunningYear !== null) {
       return;
     }
 
-    setPdfRunning(true);
+    setPdfRunningYear(year);
     setPdfError(null);
 
     try {
@@ -75,13 +84,14 @@ export const usePublicWastePdfDownload = ({
         error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.'
       );
     } finally {
-      setPdfRunning(false);
+      setPdfRunningYear(null);
     }
   };
 
   return {
     selectedFractions,
-    pdfRunning,
+    pdfYears,
+    pdfRunningYear,
     pdfError,
     toggleFraction,
     downloadPdf,

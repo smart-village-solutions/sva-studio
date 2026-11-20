@@ -18,16 +18,17 @@ type Props = Readonly<{
   selectedFractions: readonly string[];
   calendarReminderOptions?: PublicWasteCalendarResponse['calendarReminderOptions'];
   reminderSignup?: PublicWasteCalendarResponse['reminderSignup'];
-  pdfRunning: boolean;
+  pdfYears: readonly { readonly year: number; readonly hasSelectedFractions: boolean }[];
+  pdfRunningYear: number | null;
   pdfError: string | null;
-  downloadPdf: () => Promise<void>;
+  downloadPdf: (year: number) => Promise<void>;
 }>;
 type State = ReturnType<typeof usePublicWasteActionState>;
 
 const REMINDER_ERROR_ID = 'public-waste-reminder-error';
 const triggerId = (panel: ActionPanel): string => `public-waste-action-trigger-${panel}`;
 const panelId = (panel: ActionPanel): string => `public-waste-action-panel-${panel}`;
-const reminderText = (key: PublicWasteTranslationKey): string =>
+const t = (key: PublicWasteTranslationKey): string =>
   createPublicWasteTranslator(
     typeof document === 'undefined' ? 'de' : document.documentElement.lang || 'de'
   )(key);
@@ -42,7 +43,7 @@ const ActionToolbar = ({
       [
         ['calendar', IconCalendarPlus, 'Kalender exportieren'],
         ['pdf', IconFileTypePdf, 'PDF / Druckversion'],
-        ['email', IconMail, reminderText('reminder.action')],
+        ['email', IconMail, t('reminder.action')],
       ] as const
     )
       .filter(([panel]) => panel !== 'email' || emailAvailable)
@@ -103,29 +104,39 @@ const PdfAction = ({ props }: { props: Props }) => (
         {props.pdfError}
       </p>
     ) : null}
-    <button
-      type="button"
-      className="action-cta-button"
-      disabled={props.selectedFractions.length === 0 || props.pdfRunning}
-      onClick={() => void props.downloadPdf()}
-    >
-      {props.pdfRunning ? 'PDF wird erstellt…' : 'PDF herunterladen'}
-    </button>
+    {props.pdfYears.length === 0 ? <p className="action-panel-copy">{t('pdf.noYears')}</p> : null}
+    {props.pdfYears.some(({ hasSelectedFractions }) => !hasSelectedFractions) ? (
+      <p className="action-panel-copy">{t('pdf.inactiveYears')}</p>
+    ) : null}
+    {props.pdfYears.map(({ year, hasSelectedFractions }) => (
+      <button
+        key={year}
+        type="button"
+        className="action-cta-button"
+        disabled={!hasSelectedFractions || props.pdfRunningYear !== null}
+        onClick={() => void props.downloadPdf(year)}
+      >
+        {t(props.pdfRunningYear === year ? 'pdf.downloadingYear' : 'pdf.downloadYear').replace(
+          '{year}',
+          String(year)
+        )}
+      </button>
+    ))}
   </div>
 );
 
 const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
   <>
-    <p className="action-panel-copy">{reminderText('reminder.description')}</p>
+    <p className="action-panel-copy">{t('reminder.description')}</p>
     <ul className="action-panel-copy">
       {state.emailContext.supportedFractions.map((fraction) => {
         const days = fraction.slots[0]?.defaultLeadDays ?? 0;
         const timing =
           days === 0
-            ? reminderText('reminder.sameDay')
+            ? t('reminder.sameDay')
             : days === 1
-              ? reminderText('reminder.oneDayBefore')
-              : reminderText('reminder.daysBefore').replace('{days}', String(days));
+              ? t('reminder.oneDayBefore')
+              : t('reminder.daysBefore').replace('{days}', String(days));
         return (
           <li key={fraction.id}>
             {fraction.label}: {timing}
@@ -133,11 +144,11 @@ const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
         );
       })}
     </ul>
-    <p className="action-panel-copy">{reminderText('reminder.sendTime')}</p>
+    <p className="action-panel-copy">{t('reminder.sendTime')}</p>
     <label className="action-field">
-      <span>{reminderText('reminder.email')}</span>
+      <span>{t('reminder.email')}</span>
       <input
-        aria-label={reminderText('reminder.email')}
+        aria-label={t('reminder.email')}
         aria-describedby={state.error ? REMINDER_ERROR_ID : undefined}
         aria-invalid={state.error ? 'true' : undefined}
         type="email"
@@ -154,10 +165,10 @@ const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
         checked={state.consentAccepted}
         onChange={(event) => state.setConsentAccepted(event.target.checked)}
       />
-      <span>{props.reminderSignup?.consentLabel ?? reminderText('reminder.consentFallback')}</span>
+      <span>{props.reminderSignup?.consentLabel ?? t('reminder.consentFallback')}</span>
       {props.reminderSignup?.privacyPolicyUrl ? (
         <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
-          {reminderText('reminder.privacy')}
+          {t('reminder.privacy')}
         </a>
       ) : null}
     </label>
@@ -169,7 +180,7 @@ const ReminderForm = ({ props, state }: { props: Props; state: State }) => (
     {state.emailContext.isFullySupported ? (
       <ReminderFields props={props} state={state} />
     ) : (
-      <p className="action-warning">{reminderText('reminder.unsupported')}</p>
+      <p className="action-warning">{t('reminder.unsupported')}</p>
     )}
     {state.error ? (
       <p id={REMINDER_ERROR_ID} className="action-warning" role="alert">
@@ -182,7 +193,7 @@ const ReminderForm = ({ props, state }: { props: Props; state: State }) => (
       disabled={!state.canSubmit}
       onClick={() => void state.submit()}
     >
-      {state.submitting ? reminderText('reminder.submitting') : reminderText('reminder.submit')}
+      {state.submitting ? t('reminder.submitting') : t('reminder.submit')}
     </button>
   </>
 );

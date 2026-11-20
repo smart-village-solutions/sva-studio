@@ -2,6 +2,11 @@ const publicWasteMessages = {
   de: {
     'calendar.title': 'Abfallkalender',
     'calendar.loading': 'Abfallkalender wird geladen.',
+    'pdf.downloadYear': 'PDF für {year} herunterladen',
+    'pdf.downloadingYear': 'PDF für {year} wird erstellt…',
+    'pdf.noYears': 'Für diese Adresse sind keine Abfuhrtermine verfügbar.',
+    'pdf.inactiveYears':
+      'Ein PDF ist nur für Jahre mit Terminen der ausgewählten Abfallarten verfügbar.',
     'selection.back': 'Zurück',
     'selection.fractionsWithEmailReminder':
       'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.',
@@ -33,6 +38,10 @@ const publicWasteMessages = {
   en: {
     'calendar.title': 'Waste calendar',
     'calendar.loading': 'Loading waste calendar.',
+    'pdf.downloadYear': 'Download PDF for {year}',
+    'pdf.downloadingYear': 'Preparing PDF for {year}…',
+    'pdf.noYears': 'No collection dates are available for this address.',
+    'pdf.inactiveYears': 'PDFs are available for years with collection dates for the selected waste types.',
     'selection.back': 'Back',
     'selection.fractionsWithEmailReminder':
       'This selection controls the list, calendar export, PDF/print version and email reminders.',

@@ -26,7 +26,6 @@ export function PublicWasteCalendarPanels(
   props: Readonly<{
     model: FilteredPublicWasteCalendarViewModel;
     onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
-    onVisibleYearChange?: (year: number) => void;
   }>
 ) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
@@ -82,10 +81,6 @@ export function PublicWasteCalendarPanels(
   React.useEffect(() => {
     setVisibleYear((current) => Math.min(maxYear, Math.max(minYear, current)));
   }, [maxYear, minYear]);
-
-  React.useEffect(() => {
-    props.onVisibleYearChange?.(activeTab === 'month' ? visibleMonth.getFullYear() : visibleYear);
-  }, [activeTab, props.onVisibleYearChange, visibleMonth, visibleYear]);
 
   const handleTabKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,

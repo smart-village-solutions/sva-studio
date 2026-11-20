@@ -306,7 +306,9 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
         nextPickupDate: '2026-05-19',
         selectionSummary: 'Rathenow, Am alten Hafen 12',
         icalUrl: `/api/public-waste/ical?regionId=${regionId}&cityId=${cityId}&streetId=${streetId}&houseNumberId=${houseNumberId}`,
-        listEntries: [],
+        listEntries: [
+          { id: 'pickup-1', date: '2026-05-19', fractionId: 'bio', fractionLabel: 'Bioabfall' },
+        ],
         monthBuckets: [],
         yearBuckets: [],
         fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
@@ -387,7 +389,7 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
 
   await page.getByRole('button', { name: 'PDF / Druckversion' }).click();
   const pdfRequest = page.waitForRequest('**/api/public-waste/pdf**');
-  await page.getByRole('button', { name: 'PDF herunterladen' }).click();
+  await page.getByRole('button', { name: 'PDF für 2026 herunterladen' }).click();
   await expect(pdfRequest).resolves.toBeTruthy();
 
   await page.getByRole('button', { name: 'E-Mail-Erinnerung' }).click();
@@ -440,6 +442,7 @@ test('embeds the built calendar on another origin with isolated styles, keyboard
   const streetId = '33333333-3333-4333-8333-333333333333';
   const requestedRegions: (string | undefined)[] = [];
   const date = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const year = Number(date.slice(0, 4));
   const runtime = await createPublicWasteRuntime({
     assetsDir: resolve('dist/client'),
     env: {
@@ -476,6 +479,13 @@ test('embeds the built calendar on another origin with isolated styles, keyboard
             fractionLabel: 'Bioabfall',
             fractionShortLabel: 'BIO',
             note: 'Bitte bereitstellen.',
+          },
+          {
+            id: 'pickup-next-year',
+            date: `${year + 1}-05-19`,
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
           },
         ],
         loadSelectionSummary: async () => 'Ort A, Hauptstraße',
@@ -549,13 +559,22 @@ test('embeds the built calendar on another origin with isolated styles, keyboard
     expect((await icalResponse).status()).toBe(200);
     await icalDownload;
     await widget.getByRole('button', { name: 'PDF / Druckversion' }).click();
-    const pdfResponse = page.waitForResponse((response) =>
-      response.url().startsWith(`${calendarOrigin}/api/public-waste/pdf?`)
-    );
-    const download = page.waitForEvent('download');
-    await widget.getByRole('button', { name: 'PDF herunterladen' }).click();
-    expect((await pdfResponse).status()).toBe(200);
-    expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+    for (const pdfYear of [year, year + 1]) {
+      const pdfResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          url.origin === calendarOrigin &&
+          url.pathname === '/api/public-waste/pdf' &&
+          url.searchParams.get('year') === String(pdfYear)
+        );
+      });
+      const download = page.waitForEvent('download');
+      await widget.getByRole('button', { name: `PDF für ${pdfYear} herunterladen` }).click();
+      expect((await pdfResponse).status()).toBe(200);
+      expect((await download).suggestedFilename()).toMatch(
+        new RegExp(`^abfallkalender-${pdfYear}-.*\\.pdf$`)
+      );
+    }
     await expectNoAccessibilityViolations(page);
     expect(page.url()).toBe(hostUrl);
     expect(requestedRegions.every((id) => id === regionId || id === secondRegionId)).toBe(true);

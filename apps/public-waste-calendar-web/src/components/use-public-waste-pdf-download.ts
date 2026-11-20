@@ -3,7 +3,10 @@ import { PublicWasteApiOriginContext } from '../lib/public-waste-api-context.js'
 
 import type { PublicWasteResolvedSelection } from '../lib/public-waste-contract.js';
 import { requestPublicWastePdf } from '../lib/public-waste-api.js';
-import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
+import {
+  combinePublicWastePdfFractionOptions,
+  type PublicWasteCalendarViewModel,
+} from '../lib/public-waste-view-model.js';
 
 type UsePublicWastePdfDownloadInput = {
   readonly selection: PublicWasteResolvedSelection;
@@ -30,14 +33,7 @@ export const usePublicWastePdfDownload = ({
   const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const fractionOptions = React.useMemo(
     () =>
-      Array.from(
-        new Map(
-          [
-            ...calendarModel.fractionOptions,
-            ...(calendarModel.pdfAvailability ?? []).flatMap((entry) => entry.fractionOptions),
-          ].map((option) => [option.id, option])
-        ).values()
-      ).sort((left, right) => left.label.localeCompare(right.label, 'de')),
+      combinePublicWastePdfFractionOptions(calendarModel.fractionOptions, calendarModel.pdfAvailability),
     [calendarModel.fractionOptions, calendarModel.pdfAvailability]
   );
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>

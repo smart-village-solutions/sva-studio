@@ -37,6 +37,18 @@ export const isPublicWastePdfYear = (year: number): boolean =>
 
 export const publicWastePdfReferenceDate = (year: number): string => `${year}-12-31`;
 
+export const resolvePublicWasteCalendarWindow = (
+  referenceDate: string
+): Readonly<{ start: string; end: string }> | null => {
+  const normalizedReferenceDate = normalizeDateOnly(referenceDate);
+  return normalizedReferenceDate
+    ? {
+        start: startOfPreviousYearUtc(normalizedReferenceDate),
+        end: addYearsUtc(normalizedReferenceDate, 1),
+      }
+    : null;
+};
+
 export const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
   date >= startDate && date <= endDate;
 

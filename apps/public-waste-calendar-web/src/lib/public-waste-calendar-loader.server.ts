@@ -18,11 +18,9 @@ import type {
   PublicWasteResolvedSelection,
 } from './public-waste-contract.js';
 import {
-  addYearsUtc,
   formatDateOnlyUtc,
-  normalizeDateOnly,
   parseDateOnlyUtc,
-  startOfPreviousYearUtc,
+  resolvePublicWasteCalendarWindow,
 } from './public-waste-date-utils.js';
 import { createStreetSelectionFilter } from './public-waste-repository-selection.server.js';
 
@@ -184,18 +182,6 @@ const loadHolidayRuleRows = (
       })
     : Promise.resolve({ rowCount: 0, rows: [] });
 
-const resolveCalendarWindow = (
-  referenceDate: string
-): Readonly<{ start: string; end: string }> | null => {
-  const normalizedReferenceDate = normalizeDateOnly(referenceDate);
-  return normalizedReferenceDate
-    ? {
-        start: startOfPreviousYearUtc(normalizedReferenceDate),
-        end: addYearsUtc(normalizedReferenceDate, 1),
-      }
-    : null;
-};
-
 export const loadPublicWasteCalendarEntriesForDates = async (input: {
   readonly schemaName: string;
   readonly execute: SqlExecutor;
@@ -212,7 +198,7 @@ export const loadPublicWasteCalendarEntriesForDates = async (input: {
   };
   const linkedToursResult = await loadLinkedTourRows(context);
   const windows = input.query.referenceDates.map(
-    (referenceDate) => [referenceDate, resolveCalendarWindow(referenceDate)] as const
+    (referenceDate) => [referenceDate, resolvePublicWasteCalendarWindow(referenceDate)] as const
   );
   const starts = windows.flatMap(([, window]) => (window ? [window.start] : [])).sort();
   const ends = windows.flatMap(([, window]) => (window ? [window.end] : [])).sort();

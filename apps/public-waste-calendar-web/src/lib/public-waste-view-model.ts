@@ -25,6 +25,19 @@ export type FilteredPublicWasteCalendarViewModel = PublicWasteCalendarViewModel 
   readonly activeFractionIds: readonly string[];
 };
 
+export const combinePublicWastePdfFractionOptions = (
+  calendarFractions: readonly PublicWasteFractionOption[],
+  pdfAvailability?: PublicWastePdfAvailability
+): readonly PublicWasteFractionOption[] => {
+  const options = new Map(calendarFractions.map((fraction) => [fraction.id, fraction]));
+  for (const { fractionOptions } of pdfAvailability ?? []) {
+    for (const fraction of fractionOptions) {
+      if (!options.has(fraction.id)) options.set(fraction.id, fraction);
+    }
+  }
+  return [...options.values()].sort((left, right) => left.label.localeCompare(right.label, 'de'));
+};
+
 const matchesFractionFilter = (entry: PublicWasteCalendarEntry, activeFractionIds: readonly string[]): boolean =>
   activeFractionIds.includes(entry.fractionId);
 

@@ -1,6 +1,6 @@
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { buttonVariants } from '@sva/studio-ui-react';
+import { Button, buttonVariants } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import {
   WasteSchedulingContent,
@@ -55,29 +55,34 @@ export const WasteSchedulingListView = ({
 
   return (
     <div className="space-y-4">
-      {search.tourId ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-card p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Button
+          type="button"
+          variant="tertiary"
+          disabled={!search.q && search.shiftContext === 'all' && !search.tourId}
+          onClick={navigation.resetFilters}
+        >
+          {pt('filters.reset')}
+        </Button>
+        {search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+        {search.shiftContext !== 'all' ? (
+          <span>{pt(`filters.shiftContext.${search.shiftContext}`)}</span>
+        ) : null}
+        {search.tourId ? (
           <span className="mr-auto font-medium">
             {pt('scheduling.tourContext.active', { name: selectedTour?.name ?? search.tourId })}
           </span>
-          {selectedTour ? (
-            <Link
-              to="/plugins/waste-management"
-              search={toWasteTourEditSearch(search, selectedTour.id)}
-              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-            >
-              {pt('scheduling.tourContext.back')}
-            </Link>
-          ) : null}
+        ) : null}
+        {selectedTour ? (
           <Link
             to="/plugins/waste-management"
-            search={{ ...search, tourId: undefined, shiftContext: 'all', page: 1 }}
-            className={buttonVariants({ variant: 'tertiary', size: 'sm' })}
+            search={toWasteTourEditSearch(search, selectedTour.id)}
+            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
           >
-            {pt('scheduling.tourContext.clear')}
+            {pt('scheduling.tourContext.back')}
           </Link>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       {content}
     </div>
   );

@@ -2,7 +2,6 @@ export const wasteManagementPluginTranslationsENSchedulingSections = {
   tourContext: {
     active: 'Tour: {{name}}',
     back: 'Back to tour',
-    clear: 'Show all tours',
   },
   assignments: {
     title: 'Tour assignments',

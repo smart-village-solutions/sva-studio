@@ -1,5 +1,5 @@
 import { Activity, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import {
@@ -21,6 +21,7 @@ import { WasteManagementPageDescription } from './waste-management.page.descript
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import {
   toMasterDataTab,
+  useWasteManagementTabNavigation,
   useWasteManagementVisibleTabRedirect,
 } from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
@@ -179,9 +180,13 @@ export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const rawSearch = useSearch({ strict: false });
-  const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
+  const routeSearch = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
+  const locationKey = useLocation({ select: (location) => location.state.__TSR_key ?? location.href });
+  const uiAccess = useWasteManagementUiAccess(routeSearch.tab);
+  const { search, changeTab } = useWasteManagementTabNavigation(
+    navigate, routeSearch, uiAccess, locationKey
+  );
   const isAssignmentPage = search.tab === 'tours' && search.toursView === 'assignments';
-  const uiAccess = useWasteManagementUiAccess(search.tab);
   const calendarWebUrl = useWasteManagementCalendarWebUrl(uiAccess);
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
   const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead);
@@ -250,7 +255,7 @@ export const WasteManagementPage = () => {
               access={tabsAccess}
               visibleTabIds={tabsAccess.visibleTabIds}
               assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
-              onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+              onTabChange={changeTab}
               onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
             />
           </Activity>

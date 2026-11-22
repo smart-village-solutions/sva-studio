@@ -122,6 +122,7 @@ export const WasteMasterDataFractionsTableSection = ({
         toolbarStart={
           <WasteFractionsFilterAction
             fractionsStatus={fractionsStatus}
+            query={search?.q ?? ''}
             filterDialogOpen={filterDialogOpen}
             draftFractionsStatus={draftFractionsStatus}
             onOpenFilterDialog={onOpenFilterDialog}

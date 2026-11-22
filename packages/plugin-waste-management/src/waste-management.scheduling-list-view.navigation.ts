@@ -111,6 +111,14 @@ export const useWasteSchedulingListNavigation = (
   const navigate = useNavigate();
 
   return {
+    resetFilters: () =>
+      void navigateToSchedulingSearch(navigate, search, {
+        ...search,
+        q: '',
+        shiftContext: 'all',
+        tourId: undefined,
+        page: 1,
+      }),
     openLinkedTour: (tourId: string) => {
       void navigateToSchedulingSearch(navigate, search, toWasteTourEditSearch(search, tourId));
     },

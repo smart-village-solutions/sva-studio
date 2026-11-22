@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { Button, StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { WasteOverviewContent } from './waste-management.overview-content.js';
@@ -19,29 +19,47 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
   }
 
   return (
-    <WasteOverviewContent
-      overview={overview}
-      page={search.page}
-      pageSize={search.pageSize}
-      onPageChange={(page) => {
-        void navigate({
-          to: '/plugins/waste-management',
-          search: {
-            ...search,
-            page,
-          },
-        });
-      }}
-      onPageSizeChange={(pageSize) => {
-        void navigate({
-          to: '/plugins/waste-management',
-          search: {
-            ...search,
-            page: 1,
-            pageSize,
-          },
-        });
-      }}
-    />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Button
+          type="button"
+          variant="tertiary"
+          disabled={!search.q}
+          onClick={() =>
+            void navigate({
+              to: '/plugins/waste-management',
+              search: { ...search, q: '', page: 1 },
+            })
+          }
+        >
+          {pt('filters.reset')}
+        </Button>
+        {search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+      </div>
+      <WasteOverviewContent
+        overview={overview}
+        page={search.page}
+        pageSize={search.pageSize}
+        onPageChange={(page) => {
+          void navigate({
+            to: '/plugins/waste-management',
+            search: {
+              ...search,
+              page,
+            },
+          });
+        }}
+        onPageSizeChange={(pageSize) => {
+          void navigate({
+            to: '/plugins/waste-management',
+            search: {
+              ...search,
+              page: 1,
+              pageSize,
+            },
+          });
+        }}
+      />
+    </div>
   );
 };

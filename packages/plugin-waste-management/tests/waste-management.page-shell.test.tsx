@@ -76,6 +76,7 @@ const useWasteManagementUiAccessMock = vi.fn(() => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
   useNavigate: () => navigateMock,
+  useLocation: () => 'current-location',
   useSearch: () => searchState,
 }));
 
@@ -215,7 +216,7 @@ describe('WasteManagementPage shell', () => {
     searchState.masterDataTab = 'locations';
   });
 
-  it('renders the shell without the global toolbar and resets pagination for tab changes', async () => {
+  it('renders the shell without the global toolbar and opens another tab with its own defaults', async () => {
     getWasteManagementSettingsMock.mockResolvedValue({
       calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
     });
@@ -253,6 +254,10 @@ describe('WasteManagementPage shell', () => {
         schedulingView: 'list',
         tab: 'settings',
         page: 1,
+        q: '',
+        pageSize: 100,
+        status: 'all',
+        shiftContext: 'all',
         tourDateShiftId: undefined,
       },
     });
@@ -300,6 +305,10 @@ describe('WasteManagementPage shell', () => {
           tab: 'fractions',
           masterDataTab: 'fractions',
           page: 1,
+          q: '',
+          pageSize: 100,
+          status: 'all',
+          shiftContext: 'all',
           tourDateShiftId: undefined,
         },
         replace: true,

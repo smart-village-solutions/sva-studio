@@ -54,6 +54,7 @@ vi.mock('@tanstack/react-router', () => ({
     to: string;
   }) => <a href={params?.jobId ? to.replace('$jobId', params.jobId) : to}>{children}</a>,
   useNavigate: () => navigateMock,
+  useLocation: () => JSON.stringify(searchMock()),
   useSearch: () => searchMock(),
 }));
 

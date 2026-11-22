@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Input, Select, StudioField, StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { Button, Input, Select, StudioField, StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 
 import { normalizeAddressSortField } from './search-params.address.js';
 import { parentOptionsFor } from './waste-management.master-data-addresses.helpers.js';
@@ -123,6 +123,18 @@ const AddressFilters = ({
           placeholder={pt('masterData.locationsWorkspace.addresses.searchPlaceholder')}
         />
       </StudioField>
+      <Button
+        type="button"
+        variant="tertiary"
+        className="justify-self-start self-end"
+        disabled={!query && !search.q && !search.addressParentId}
+        onClick={() => {
+          setQuery('');
+          onSearchChange({ addressParentId: undefined, q: '', page: 1 });
+        }}
+      >
+        {pt('masterData.locationsWorkspace.addresses.resetFilters')}
+      </Button>
     </div>
   );
 };

@@ -154,12 +154,11 @@ const AddressRowsTable = ({
   canManage,
   allRows,
   pageItems,
-  onSearchChange,
   onOpenDelete,
   sorting,
   onSortingChange,
 }: Pick<Props, 'pt' | 'controller' | 'canManage' | 'allRows' | 'pageItems' |
-  'onSearchChange' | 'onOpenDelete' | 'sorting' | 'onSortingChange'> &
+  'onOpenDelete' | 'sorting' | 'onSortingChange'> &
   Readonly<{ type: WasteAddressEntityType }>) => {
   const cities = controller.overview?.cities ?? [];
   const streets = controller.overview?.streets ?? [];
@@ -200,16 +199,9 @@ const AddressRowsTable = ({
         row={row} onOpenDelete={onOpenDelete} /> : null}
       emptyState={
         allRows.length > 0 ? (
-          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-            <p>{pt('masterData.locationsWorkspace.addresses.emptySearch')}</p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onSearchChange({ addressParentId: undefined, q: '', page: 1 })}
-            >
-              {pt('masterData.locationsWorkspace.addresses.resetFilters')}
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            {pt('masterData.locationsWorkspace.addresses.emptySearch')}
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">
             {pt(`masterData.locationsWorkspace.addresses.empty.${type}`)}
@@ -231,7 +223,6 @@ export const WasteMasterDataAddressesTable = (props: Props) => {
         canManage={props.canManage}
         allRows={props.allRows}
         pageItems={props.pageItems}
-        onSearchChange={props.onSearchChange}
         onOpenDelete={props.onOpenDelete}
         sorting={props.sorting}
         onSortingChange={props.onSortingChange}

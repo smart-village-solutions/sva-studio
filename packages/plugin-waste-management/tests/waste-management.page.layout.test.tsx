@@ -3,6 +3,35 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPageTabs } from '../src/waste-management.page.layout.js';
+import { useWasteManagementTabNavigation } from '../src/waste-management.page.navigation.js';
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
+
+type TabNavigation = Parameters<typeof useWasteManagementTabNavigation>;
+
+const TabNavigationHarness = ({
+  navigate,
+  rawSearch,
+  access,
+}: {
+  navigate: TabNavigation[0];
+  rawSearch: Record<string, unknown>;
+  access: TabNavigation[2];
+}) => {
+  const { search, changeTab } = useWasteManagementTabNavigation(
+    navigate,
+    normalizeWasteManagementSearchParams(rawSearch),
+    access,
+    JSON.stringify(rawSearch)
+  );
+  return (
+    <WasteManagementPageTabs
+      pt={(key) => key}
+      search={search}
+      onTabChange={changeTab}
+      onAddressSearchChange={() => undefined}
+    />
+  );
+};
 
 vi.mock('../src/waste-management.master-data-panel.js', () => ({
   WasteMasterDataPanel: ({ tab }: { readonly tab: string }) => (
@@ -49,6 +78,143 @@ vi.mock('../src/waste-management.overview-panel.js', () => ({
 describe('WasteManagementPageTabs', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('restores each tab’s own filters and keeps a reset confined to its tab', () => {
+    const navigate = vi.fn();
+    const access = { contextKey: 'subject-1:tenant-1', canRead: true, isResolved: true };
+    const locations = {
+      tab: 'locations',
+      q: 'Perleberg',
+      regionId: 'region-1',
+      tourId: 'location-tour',
+      locationYear: 2027,
+      locationTourStatus: 'published',
+      pageSize: 25,
+      page: 3,
+    };
+    const tours = {
+      tab: 'tours',
+      q: 'Papier',
+      tourStatus: 'draft',
+      tourValidityPeriod: 'next',
+      tourWasteFractionId: 'paper',
+      toursView: 'edit',
+      tourId: 'edit-tour',
+    };
+    const view = render(
+      <TabNavigationHarness navigate={navigate} rawSearch={locations} access={access} />
+    );
+    const selectTab = (tab: string) =>
+      fireEvent.click(screen.getByRole('tab', { name: `tabs.${tab}.title` }));
+    const checkSearch = (search: Record<string, unknown>) =>
+      expect(navigate).toHaveBeenLastCalledWith({
+        to: '/plugins/waste-management',
+        search: expect.objectContaining(search),
+      });
+
+    selectTab('tours');
+    checkSearch({ tab: 'tours', q: '', regionId: undefined, tourId: undefined, pageSize: 100 });
+    view.rerender(<TabNavigationHarness navigate={navigate} rawSearch={tours} access={access} />);
+    selectTab('locations');
+    checkSearch({ ...locations, page: 1, tourWasteFractionId: undefined });
+    view.rerender(
+      <TabNavigationHarness
+        navigate={navigate}
+        rawSearch={{ tab: 'locations', pageSize: 25 }}
+        access={access}
+      />
+    );
+    selectTab('tours');
+    checkSearch({ ...tours, toursView: 'list', tourId: undefined });
+    expect(navigate.mock.lastCall?.[0].search.locationYear).toBeUndefined();
+    view.rerender(<TabNavigationHarness navigate={navigate} rawSearch={tours} access={access} />);
+    selectTab('locations');
+    checkSearch({ tab: 'locations', q: '', tourId: undefined, page: 1, pageSize: 25 });
+  });
+
+  it('keeps filters through passive reauthentication and forgets the active route on logout', () => {
+    const navigate = vi.fn();
+    const access = { contextKey: 'subject-1:tenant-1', canRead: true, isResolved: true };
+    const locations = { tab: 'locations', q: 'vorheriger Filter' };
+    const explicitTourLink = { tab: 'tours', q: 'Deep Link', tourValidityPeriod: 'current' };
+    const view = render(
+      <TabNavigationHarness navigate={navigate} rawSearch={locations} access={access} />
+    );
+    const showTours = (nextAccess: TabNavigation[2]) =>
+      view.rerender(
+        <TabNavigationHarness navigate={navigate} rawSearch={explicitTourLink} access={nextAccess} />
+      );
+    const selectTab = (tab: string) =>
+      fireEvent.click(screen.getByRole('tab', { name: `tabs.${tab}.title` }));
+    const checkLocationsQuery = (q: string) =>
+      expect(navigate).toHaveBeenLastCalledWith({
+        to: '/plugins/waste-management',
+        search: expect.objectContaining({ tab: 'locations', q }),
+      });
+
+    selectTab('tours');
+    showTours({ ...access, canRead: false, isResolved: false });
+    showTours(access);
+    selectTab('locations');
+    checkLocationsQuery('vorheriger Filter');
+
+    showTours({ contextKey: null, canRead: false, isResolved: true });
+    showTours(access);
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ tab: 'tours', q: '', tourValidityPeriod: 'all' }),
+      replace: true,
+    });
+    selectTab('locations');
+    checkLocationsQuery('');
+    view.rerender(
+      <TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'locations' }} access={access} />
+    );
+    selectTab('tours');
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({
+        tab: 'tours',
+        q: '',
+        tourValidityPeriod: 'all',
+      }),
+    });
+
+    const nextAccess = { ...access, contextKey: 'subject-1:tenant-2' };
+    const nextLink = { ...explicitTourLink, q: 'Frisch geöffneter Link' };
+    view.rerender(<TabNavigationHarness navigate={navigate} rawSearch={nextLink} access={nextAccess} />);
+    selectTab('locations');
+    checkLocationsQuery('');
+    view.rerender(
+      <TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'locations' }} access={nextAccess} />
+    );
+    selectTab('tours');
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining(nextLink),
+    });
+  });
+
+  it('does not restore another browser tab’s previously used filters', () => {
+    const navigate = vi.fn();
+    const access = { contextKey: 'subject-1:tenant-1', canRead: true, isResolved: true };
+    const firstTab = render(
+      <TabNavigationHarness
+        navigate={navigate}
+        rawSearch={{ tab: 'locations', q: 'Perleberg' }}
+        access={access}
+      />
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.tours.title' }));
+    firstTab.unmount();
+
+    render(<TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'tours' }} access={access} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.locations.title' }));
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ tab: 'locations', q: '' }),
+    });
   });
 
   it('keeps visited panels and their input mounted across route-driven tab changes', () => {

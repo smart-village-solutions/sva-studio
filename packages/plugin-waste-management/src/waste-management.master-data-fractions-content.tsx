@@ -180,7 +180,7 @@ export const WasteMasterDataFractionsContent = ({
           setFilterDialogOpen(false);
         }}
         onResetFractionsStatus={() => {
-          onFractionsStatusChange('all');
+          onFractionsStatusChange('all', { resetQuery: true });
         }}
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}

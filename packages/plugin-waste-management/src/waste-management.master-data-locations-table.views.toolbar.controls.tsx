@@ -111,11 +111,11 @@ export const WasteLocationsResetControl = ({
     search.status !== 'all' ||
     search.locationYear ||
     search.locationTourStatus;
-  return active ? (
-    <Button type="button" variant="tertiary" onClick={onResetFilters}>
+  return (
+    <Button type="button" variant="tertiary" disabled={!active} onClick={onResetFilters}>
       {pt('masterData.locationsWorkspace.filters.resetFilters')}
     </Button>
-  ) : null;
+  );
 };
 
 export const WasteLocationsYearControl = ({

@@ -1,6 +1,7 @@
 export const wasteManagementPluginTranslationsDEFilters = {
   "filters": {
     "searchLabel": "Suche",
+    "reset": "Filter zurücksetzen",
     "searchPlaceholder": "Nach Ort, Straße, Tour oder Abfallart suchen",
     "statusLabel": "Status",
     "shiftContextLabel": "Abweichungskontext",

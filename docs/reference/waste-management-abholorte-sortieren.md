@@ -41,6 +41,13 @@ Ein geteilter oder neu geladener Link stellt deshalb dieselbe Ansicht wieder
 her. Ungültige UI-Werte werden auf die Defaults normalisiert; unbekannte oder
 widersprüchliche Direktparameter weist der Server mit `400 invalid_request` ab.
 
+Jeder Tab verwendet seine eigenen Filter. Beim Wechsel über die Tab-Leiste
+erscheinen die zuletzt verwendeten Filter des Ziel-Tabs. **Filter zurücksetzen**
+setzt nur die Filter der geöffneten Liste zurück. Das Studio hält die zuletzt
+verwendeten Filter im Arbeitsspeicher für den laufenden Anmeldekontext.
+Nach Abmeldung oder einem neuen Browser-Tab gelten die Standardwerte oder die
+ausdrücklich in der geöffneten URL gesetzten Filter.
+
 ## Auswahl über mehrere Seiten
 
 Ausgewählte Abholpunkte werden anhand ihrer IDs gehalten. Sie bleiben bei

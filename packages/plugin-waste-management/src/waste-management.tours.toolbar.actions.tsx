@@ -144,16 +144,15 @@ const WasteToursFilterActions = ({
   const pt = usePluginTranslation('wasteManagement');
   return (
     <>
-      {hasActiveFilters ? (
-        <Button
-          type="button"
-          variant="tertiary"
-          className="h-11 rounded-md px-3"
-          onClick={onResetFilters}
-        >
-          {pt('tours.filters.reset')}
-        </Button>
-      ) : null}
+      <Button
+        type="button"
+        variant="tertiary"
+        className="h-11 rounded-md px-3"
+        disabled={!hasActiveFilters}
+        onClick={onResetFilters}
+      >
+        {pt('tours.filters.reset')}
+      </Button>
       <Button
         type="button"
         variant="secondary"

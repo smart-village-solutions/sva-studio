@@ -397,7 +397,7 @@ describe('WasteMasterDataFractionsContent', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
-    expect(onFractionsStatusChange).toHaveBeenCalledWith('all');
+    expect(onFractionsStatusChange).toHaveBeenCalledWith('all', { resetQuery: true });
 
     fireEvent.click(
       screen.getByRole('switch', {
@@ -485,7 +485,10 @@ describe('WasteMasterDataFractionsContent', () => {
       'fraction-2',
       'fraction-1',
     ]);
-    expect(screen.queryByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'masterData.fractions.filters.reset' })
+        .disabled
+    ).toBe(true);
 
     const [, pdfShortLabelColumn, , , statusColumn] = tableProps.columns as Array<{
       id: string;

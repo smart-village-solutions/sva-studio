@@ -779,6 +779,13 @@ Das System SHALL explizite Einsätze für normale Waste-Touren mit Datum, option
 - **THEN** werden Datum, optionaler Hinweis und alle ausgewählten Abholorte atomar gespeichert
 - **AND** die Pflege verwendet die bestehende Tour-/Scheduling-Oberfläche ohne Schadstoffmobil-Sonderpfad
 
+#### Scenario: Redaktion öffnet den Arbeitsbereich für Tour-Einsätze
+
+- **WHEN** ein Benutzer den Tab **Tour-Einsätze** oder den entsprechenden Link einer Tour öffnet
+- **THEN** zeigt das System die vorhandenen Einsätze, bei einem Tour-Link gefiltert nach der betreffenden Tour
+- **AND** Anlegen, Bearbeiten und Löschen stehen Benutzern mit `waste-management.scheduling.manage` zur Verfügung
+- **AND** der Tab **Ausweichtermine** zeigt Feiertagsregeln sowie globale und tourbezogene Verschiebungen über seine bestehende Route
+
 #### Scenario: Mehrere Einsätze teilen Tour und Datum
 
 - **WHEN** mehrere Einsätze derselben Tour dasselbe Datum tragen
@@ -906,6 +913,14 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 - **AND** verlängert eine auf die konkrete Abholung wirkende Feiertagsverschiebung das Fenster entsprechend
 - **AND** bleibt ein späterer oder fehlender Ersttermin als Anfangslücke sichtbar
 - **AND** genügt für die Prüfung der gemeinsame Terminstand des Zieljahres mit den einschlägigen Verschiebungen
+
+#### Scenario: Benutzer prüft die Zuordnung nach Ortschaft
+
+- **WHEN** die Fraktionszuordnung ausgewertet wird
+- **THEN** zeigt das System je Orts-ID eine Zeile mit der Anzahl zugeordneter und relevanter Abholpunkte
+- **AND** unterscheidet das System vollständige, teilweise und fehlende Zuordnung einschließlich Ortschaften ohne aktive Abholpunkte
+- **AND** unterscheidet das System gleich benannte Ortschaften anhand ihrer Region
+- **AND** nennt das System im aufklappbaren Bereich die Abholpunkte ohne Zuordnung und listet zeitliche Lücken separat
 
 #### Scenario: Unbegrenzte Tourgrenze deckt den Prüfzeitraum ab
 

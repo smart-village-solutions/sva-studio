@@ -1,7 +1,9 @@
 import type {
+  WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
+  WasteRegionRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
@@ -40,6 +42,8 @@ import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-st
 type CoverageCheckProps = Readonly<{
   search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
+  cities?: readonly WasteCityRecord[];
+  regions?: readonly WasteRegionRecord[];
   fractions: readonly WasteFractionRecord[];
   fractionsStatus?: WasteLocationCoverageDataStatus;
   toursStatus?: WasteLocationCoverageDataStatus;
@@ -100,9 +104,11 @@ const useResetResult = (
     includeDrafts,
     invalidateCheck,
     props.fractions,
+    props.cities,
     props.fractionsStatus,
     props.links,
     props.locations,
+    props.regions,
     props.tours,
     props.toursStatus,
     setChecking,
@@ -271,6 +277,8 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
             result={form.result}
             search={props.search}
             locationsById={locationsById}
+            cities={props.cities}
+            regions={props.regions}
             onAssign={assignIssues}
             onEdit={props.onOpenEditLocation}
             getLocationLabel={props.getLocationLabel}

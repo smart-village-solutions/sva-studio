@@ -77,10 +77,15 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       invalidDateRange: 'The end date must not be before the start date.',
       complete:
         'All {{value}} active collection locations are fully assigned during the selected period.',
+      noActiveLocations: 'There are no active collection locations to check.',
       summary:
         '{{checked}} active collection locations checked: {{missing}} without an assignment, {{incomplete}} with date gaps.',
       missing: 'No assignment',
       incomplete: 'Period incomplete',
+      localityTitle: 'Localities',
+      localityComplete: 'Fully assigned ({{assigned}} of {{total}} collection locations)',
+      localityPartial: 'Partially assigned ({{assigned}} of {{total}} collection locations)',
+      localityMissing: 'Unassigned ({{assigned}} of {{total}} collection locations)',
       gap: 'Not covered: {{startDate}} to {{endDate}}',
       edit: 'Edit assignments',
       selectAndAssign: 'Select {{value}} collection locations and assign a tour',

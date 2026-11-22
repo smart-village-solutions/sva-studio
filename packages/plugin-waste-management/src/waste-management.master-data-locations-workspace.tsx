@@ -10,6 +10,8 @@ export const WasteMasterDataLocationsWorkspace = (
       <WasteLocationFractionCoverageCheck
         search={props.search}
         locations={props.auditCollectionLocations ?? props.collectionLocations}
+        cities={props.auditCities ?? props.cities}
+        regions={props.auditRegions ?? props.regions}
         fractions={props.fractions ?? []}
         fractionsStatus={props.fractionsStatus}
         toursStatus={props.toursStatus}

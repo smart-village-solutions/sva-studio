@@ -78,10 +78,15 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       invalidDateRange: 'Das Enddatum darf nicht vor dem Startdatum liegen.',
       complete:
         'Alle {{value}} aktiven Abholpunkte sind im gewählten Zeitraum vollständig zugeordnet.',
+      noActiveLocations: 'Im Prüfumfang gibt es keine aktiven Abholpunkte.',
       summary:
         '{{checked}} aktive Abholpunkte geprüft: {{missing}} ohne Zuordnung, {{incomplete}} mit zeitlichen Lücken.',
       missing: 'Keine Zuordnung',
       incomplete: 'Zeitraum unvollständig',
+      localityTitle: 'Ortschaften',
+      localityComplete: 'Vollständig zugeordnet ({{assigned}} von {{total}} Abholpunkten)',
+      localityPartial: 'Teilweise zugeordnet ({{assigned}} von {{total}} Abholpunkten)',
+      localityMissing: 'Ohne Zuordnung ({{assigned}} von {{total}} Abholpunkten)',
       gap: 'Nicht abgedeckt: {{startDate}} bis {{endDate}}',
       edit: 'Zuordnungen bearbeiten',
       selectAndAssign: '{{value}} Abholpunkte auswählen und Tour zuordnen',

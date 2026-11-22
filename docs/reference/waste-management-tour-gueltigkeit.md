@@ -55,6 +55,8 @@ Beginnt die Prüfung am 1. Januar, berechnet Studio für regelmäßig verknüpft
 
 Die Filter **Tourenjahr** und **Tourstatus** begrenzen Tourauswahl und Tourangaben in der Abholpunktliste auf Touren mit Gültigkeit im gewählten Jahr und dem gewählten Status (Entwurf, veröffentlicht oder archiviert).
 
+Die Übersicht **Ortschaften** zeigt je Ort, wie viele seiner aktiven Abholpunkte der gewählten Fraktion zugeordnet sind. Bei einer teilweisen oder fehlenden Zuordnung öffnen Sie die Ortszeile, um die betroffenen Abholpunkte und die Aktion **Zuordnungen bearbeiten** zu sehen. Gleich benannte Orte erscheinen mit ihrer Region. Ortschaften ohne aktive Abholpunkte stehen mit **Ohne Zuordnung** in der Übersicht. Zeitliche Lücken stehen unter **Zeitraum unvollständig**.
+
 Aktuelle JSON- und Tabellenexporte schreiben den Status als `draft`, `published` oder `archived`.
 Beim Import wird ein fehlender Status als `draft` behandelt; ältere Daten mit `active = true`
 werden als `published`, mit `active = false` als `draft` übernommen.
@@ -80,7 +82,7 @@ Touren, deren Termine ausschließlich individuell geplant werden (`Individuell`,
 
 Feste Wiederholungen und eigene Rhythmen mit einem aufgelösten positiven Tagesabstand werden weiterhin global und nach Feiertagsregeln verschoben. Zusätzliche Einzeltermine und Einsätze einer solchen wiederkehrenden Tour folgen weiterhin deren Verschiebungsregeln. Die Ausnahme richtet sich nach der Terminlogik der Tour; gespeicherte Termine, Fraktionen und Hinweise werden dadurch nicht verändert. Bereits veröffentlichte Mainserver-Termine ändern sich erst durch einen erneuten Abgleich nach dem Rollout.
 
-Die Bearbeitungsseite einer gespeicherten Tour bündelt die Abholpunktzuordnung, den Jahreskalender und einen Link zu den auf diese Tour gefilterten Einsätzen und tourbezogenen Ausweichterminen. Die Terminliste öffnet sich in einem neuen Tab, damit ungespeicherte Formularangaben erhalten bleiben. Der Jahreskalender zeigt den gespeicherten Planungsstand; bei ungespeicherten Änderungen an der Terminlogik muss die Tour zuerst gespeichert werden.
+Im Tab **Ausweichtermine** pflegen Sie Feiertagsregeln sowie globale und tourbezogene Verschiebungen. Im Tab **Tour-Einsätze** pflegen Sie einzelne Einsätze mit Abholpunkten, Datum und optionalem Hinweis. Die Detailseite einer gespeicherten Tour enthält für jeden Bereich einen eigenen Link mit vorausgewählter Tour. Beide Links öffnen einen neuen Browser-Tab, damit ungespeicherte Formularangaben erhalten bleiben. Der Jahreskalender verwendet den gespeicherten Planungsstand. Änderungen an der Terminlogik müssen zuerst gespeichert werden.
 
 Die Spalte `Verschiebungen` der Tourentabelle zählt tourspezifische und globale Verschiebungen sowie tatsächlich berechnete Feiertagsverschiebungen. Ist mindestens eine Verschiebung vorhanden, öffnet der Zähler eine Detailansicht mit ursprünglichem und neuem Datum, Quelle und vorhandenem Grund. Zähler und Detailansicht basieren auf derselben chronologisch sortierten Datenmenge.
 

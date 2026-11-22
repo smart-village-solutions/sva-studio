@@ -1,4 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  publishSessionAccessSnapshot,
+  resetSessionAccessSnapshot,
+} from '@sva/plugin-sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteLocationFractionCoverageCheck } from '../src/waste-management.location-fraction-coverage-check.js';
@@ -80,9 +84,57 @@ const links = [
 afterEach(() => {
   cleanup();
   loadScheduling.mockClear();
+  resetSessionAccessSnapshot();
 });
 
 describe('WasteLocationFractionCoverageCheck', () => {
+  it('excludes exactly Schadstoffmobil for Prignitz and clears a stale selection', () => {
+    const setTenant = (instanceId: string) => publishSessionAccessSnapshot({
+      instanceId,
+      assignedModules: ['waste-management'],
+      isResolved: true,
+      permissionActions: ['waste-management.read'],
+      roles: [],
+    });
+    setTenant('other-tenant');
+    const availableFractions = [
+      { ...fractions[0]!, id: 'hazard', name: 'Schadstoffmobil' },
+      { ...fractions[0]!, id: 'reserve', name: 'Schadstoffmobil Reserve' },
+      { ...fractions[0]!, id: 'residual', name: 'Hausmüll' },
+    ];
+    render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={availableFractions}
+        tours={tours as never}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(point) => point.id}
+      />
+    );
+    const prefix = 'masterData.locationsWorkspace.coverage';
+    const select = screen.getByLabelText<HTMLSelectElement>(`${prefix}.fraction`);
+    expect(screen.getByRole('option', { name: 'Schadstoffmobil', exact: true })).toBeTruthy();
+    fireEvent.change(select, { target: { value: 'hazard' } });
+    fireEvent.change(screen.getByLabelText(`${prefix}.year`), { target: { value: '2027' } });
+    expect(select.value).toBe('hazard');
+
+    act(() => setTenant('bb-prignitz'));
+    expect(select.value).toBe('');
+    expect(screen.queryByRole('option', { name: 'Schadstoffmobil', exact: true })).toBeNull();
+    expect(screen.getByRole('option', { name: 'Schadstoffmobil Reserve' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Hausmüll' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: `${prefix}.check` }));
+    expect(screen.getByRole('alert').textContent).toBe(`${prefix}.required`);
+    expect(loadScheduling).not.toHaveBeenCalled();
+
+    act(() => setTenant('other-tenant'));
+    expect(screen.getByRole('option', { name: 'Schadstoffmobil', exact: true })).toBeTruthy();
+    expect(select.value).toBe('');
+  });
+
   it('checks a full planning year with draft tours and allows a published-only comparison', async () => {
     const draftTour = {
       ...tours[0],

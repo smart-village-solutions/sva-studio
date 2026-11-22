@@ -6,7 +6,11 @@ import type {
   WasteRegionRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  readSessionAccessSnapshot,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import { IconChecklist } from '@tabler/icons-react';
 import {
   useEffect,
@@ -14,6 +18,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type FormEvent,
   type SetStateAction,
@@ -118,7 +123,10 @@ const useResetResult = (
 };
 
 const useCoverageCheckForm = (props: CoverageCheckProps) => {
-  const [fractionId, setFractionId] = useState('');
+  const [selectedFractionId, setFractionId] = useState('');
+  const fractionId = props.fractions.some((fraction) => fraction.id === selectedFractionId)
+    ? selectedFractionId
+    : '';
   const [year, setYear] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -127,6 +135,11 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
   const [result, setResult] = useState<CoverageResult | null>(null);
   const [checking, setChecking] = useState(false);
   const requestIdRef = useRef(0);
+  useEffect(() => {
+    if ((props.fractionsStatus ?? 'ready') === 'ready' && selectedFractionId && !fractionId) {
+      setFractionId('');
+    }
+  }, [fractionId, props.fractionsStatus, selectedFractionId]);
   const invalidateCheck = useCallback(() => {
     requestIdRef.current += 1;
   }, []);
@@ -212,11 +225,23 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
 
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const form = useCoverageCheckForm(props);
+  const { instanceId } = useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  // Prignitz uses this exact name for the occasional mobile hazardous-waste collection.
+  const fractions = useMemo(
+    () => instanceId === 'bb-prignitz'
+      ? props.fractions.filter((fraction) => fraction.name.trim() !== 'Schadstoffmobil')
+      : props.fractions,
+    [instanceId, props.fractions]
+  );
+  const form = useCoverageCheckForm({ ...props, fractions });
   const fractionsStatus = props.fractionsStatus ?? 'ready';
   const toursStatus = props.toursStatus ?? 'ready';
   const coverageDataUnavailable =
-    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
+    fractionsStatus !== 'ready' || toursStatus !== 'ready' || fractions.length === 0;
   const locationsById = useMemo(
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
@@ -232,7 +257,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     >
       <CoverageCheckHeader />
       <CoverageCheckForm
-        fractions={props.fractions}
+        fractions={fractions}
         disabled={coverageDataUnavailable}
         checking={form.checking}
         fractionId={form.fractionId}
@@ -255,7 +280,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       />
       <CoverageFractionsAvailability
         status={fractionsStatus}
-        hasFractions={props.fractions.length > 0}
+        hasFractions={fractions.length > 0}
       />
       <CoverageToursAvailability status={toursStatus} />
       {form.errorKey ? (

@@ -922,6 +922,13 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 - **AND** unterscheidet das System gleich benannte Ortschaften anhand ihrer Region
 - **AND** nennt das System im aufklappbaren Bereich die Abholpunkte ohne Zuordnung und listet zeitliche Lücken separat
 
+#### Scenario: Zuordnungsprüfung für laufende Abholungen in Prignitz
+
+- **WHEN** ein Benutzer die Zuordnungsprüfung im Mandanten `bb-prignitz` öffnet
+- **THEN** schließt das System die Fraktion mit exakt dem Namen `Schadstoffmobil` aus der Auswahl dieser Prüfung aus
+- **AND** verwirft das System eine zuvor gewählte Fraktion, die in dieser Prüfung nicht auswählbar ist
+- **AND** die Fraktion steht weiterhin in der Einsatzpflege, der Tourverwaltung und der öffentlichen Ausgabe nach deren jeweiligen Regeln zur Verfügung
+
 #### Scenario: Unbegrenzte Tourgrenze deckt den Prüfzeitraum ab
 
 - **WHEN** Start- oder Enddatum einer passenden Tour leer ist

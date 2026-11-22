@@ -57,6 +57,8 @@ Die Filter **Tourenjahr** und **Tourstatus** begrenzen Tourauswahl und Tourangab
 
 Die Übersicht **Ortschaften** zeigt je Ort, wie viele seiner aktiven Abholpunkte der gewählten Fraktion zugeordnet sind. Bei einer teilweisen oder fehlenden Zuordnung öffnen Sie die Ortszeile, um die betroffenen Abholpunkte und die Aktion **Zuordnungen bearbeiten** zu sehen. Gleich benannte Orte erscheinen mit ihrer Region. Ortschaften ohne aktive Abholpunkte stehen mit **Ohne Zuordnung** in der Übersicht. Zeitliche Lücken stehen unter **Zeitraum unvollständig**.
 
+In Prignitz blendet die Zuordnungsprüfung die Fraktion **Schadstoffmobil** aus. Die mobilen Sammlungen werden als einzelne Einsätze gepflegt und erscheinen weiterhin im öffentlichen Abfallkalender.
+
 Aktuelle JSON- und Tabellenexporte schreiben den Status als `draft`, `published` oder `archived`.
 Beim Import wird ein fehlender Status als `draft` behandelt; ältere Daten mit `active = true`
 werden als `published`, mit `active = false` als `draft` übernommen.

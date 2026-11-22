@@ -58,7 +58,7 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       fractionsLoading: 'Abfallfraktionen werden geladen.',
       fractionsLoadError:
         'Die Abfallfraktionen konnten nicht geladen werden. Die Abholpunkte können weiterhin bearbeitet werden.',
-      fractionsEmpty: 'Für diesen Mandanten sind noch keine Abfallfraktionen vorhanden.',
+      fractionsEmpty: 'Für diese Prüfung sind keine Abfallfraktionen verfügbar.',
       toursLoading: 'Touren werden für die Vollständigkeitsprüfung geladen.',
       toursLoadError:
         'Die Touren konnten nicht geladen werden. Die Abholpunkte können weiterhin bearbeitet werden.',

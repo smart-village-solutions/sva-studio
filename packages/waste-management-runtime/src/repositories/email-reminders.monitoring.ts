@@ -7,7 +7,8 @@ import type {
 } from '@sva/waste-management-contracts';
 
 // Preserve the agreed edge characters without exposing short address parts in full.
-export const maskWasteEmail = (email: string): string => {
+export const maskWasteEmail = (email: string | null): string => {
+  if (email === null) return '***@***';
   const parts = email.split('@');
   if (parts.length !== 2 || parts.some((part) => !part)) return '***@***';
   return parts
@@ -24,7 +25,8 @@ export const classifyWasteEmailError = (
 ): WasteEmailDeliverySummary['error'] => {
   if (!value || value.startsWith('provider_message_id:') || value === 'dispatch_claimed')
     return null;
-  if (value.startsWith('mail_transport_not_available:')) return 'transport_unavailable';
+  if (value === 'mail_transport_not_available' || value.startsWith('mail_transport_not_available:'))
+    return 'transport_unavailable';
   if (
     ['subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable'].includes(
       value
@@ -34,7 +36,7 @@ export const classifyWasteEmailError = (
   return 'dispatch_failed';
 };
 
-type SubscriptionRow = Omit<WasteEmailSubscriptionSummary, 'maskedEmail'> & { email: string };
+type SubscriptionRow = Omit<WasteEmailSubscriptionSummary, 'maskedEmail'> & { email: string | null };
 type DeliveryRow = Omit<WasteEmailDeliverySummary, 'error'> & { lastError: string | null };
 
 export const loadWasteEmailMonitoring = async (

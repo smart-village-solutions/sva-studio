@@ -29,6 +29,7 @@ const DEFAULT_REMINDER_SEND_HOUR_UTC = 6;
 const DEFAULT_OUTBOX_RETRY_DELAY_MINUTES = 15;
 const DEFAULT_OUTBOX_MAX_ATTEMPTS = 5;
 const DEFAULT_OUTBOX_BATCH_SIZE = 25;
+const OUTBOX_DISPATCH_TIMEOUT_MS = 30_000;
 
 const scheduleReminder = async (
   repository: WasteEmailReminderRepository,
@@ -255,14 +256,9 @@ export const createProcessEmailReminderOutboxOperation = (
   const reminderConfig = reminderSettings.config;
   const cleanup = await withWasteClient(deps, instanceId, async ({ client }) => {
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
-    const expiredDoiCount = await reminderRepository.cancelExpiredDoiOutboxEntries({
+    return reminderRepository.deleteExpiredPendingSubscriptions({
       now: referenceTime.toISOString(),
     });
-    const expiredPendingCount = await reminderRepository.deleteExpiredPendingSubscriptions({
-      now: referenceTime.toISOString(),
-      pendingSubscriptionTtlHours: reminderConfig.pendingSubscriptionTtlHours,
-    });
-    return { expiredDoiCount, expiredPendingCount };
   });
   if (!reminderConfig.enabled) {
     return buildOperationSummary(startedAt, {
@@ -327,53 +323,65 @@ export const createProcessEmailReminderOutboxOperation = (
     let failedCount = 0;
     for (const entry of leased) {
       const leasedAt = referenceTime.toISOString();
-      const dispatchClaimed = await reminderRepository.claimOutboxEntryForDispatch({
-        outboxId: entry.id,
-        leasedAt,
-      });
-      if (!dispatchClaimed) {
-        continue;
-      }
+      await client.query('BEGIN');
       try {
+        await client.query("SET LOCAL idle_in_transaction_session_timeout = '45s'");
+        const dispatchClaimed = await reminderRepository.claimOutboxEntryForDispatch({
+          outboxId: entry.id,
+          leasedAt,
+        });
+        if (!dispatchClaimed) {
+          await client.query('COMMIT');
+          continue;
+        }
         const transport = transportConfigs.get(entry.transportId);
+        const signal = AbortSignal.timeout(OUTBOX_DISPATCH_TIMEOUT_MS);
+        let failure: string | undefined;
+        let providerMessageId: string | undefined;
         if (!transport?.enabled) {
-          throw new Error(`mail_transport_not_available:${entry.transportId}`);
-        }
-        const message = buildDispatchMessage({
-          config: reminderConfig,
-          transport,
-          payload: entry.payload,
-        });
-        const result = await deps.dispatchMail!({
-          instanceId,
-          transport,
-          payload: entry.payload,
-          message,
-        });
-        await reminderRepository.markOutboxEntrySent({
-          outboxId: entry.id,
-          now: referenceTime.toISOString(),
-          leasedAt,
-          ...(result.providerMessageId ? { providerMessageId: result.providerMessageId } : {}),
-        });
-        sentCount += 1;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'mail_dispatch_failed';
-        const shouldRetry = entry.attemptCount < maxAttempts;
-        await reminderRepository.markOutboxEntryFailed({
-          outboxId: entry.id,
-          now: referenceTime.toISOString(),
-          leasedAt,
-          errorMessage,
-          ...(shouldRetry
-            ? { retryAt: new Date(referenceTime.getTime() + retryDelayMinutes * 60 * 1000).toISOString() }
-            : {}),
-        });
-        if (shouldRetry) {
-          retryScheduledCount += 1;
+          failure = 'mail_transport_not_available';
         } else {
-          failedCount += 1;
+          try {
+            const message = buildDispatchMessage({ config: reminderConfig, transport, payload: entry.payload });
+            const result = await deps.dispatchMail!({
+              instanceId,
+              transport,
+              payload: entry.payload,
+              message,
+              signal,
+            });
+            providerMessageId = result.providerMessageId;
+          } catch {
+            failure = signal.aborted ? 'mail_dispatch_outcome_unknown' : 'mail_dispatch_failed';
+          }
         }
+        if (failure) {
+          const shouldRetry = failure !== 'mail_dispatch_outcome_unknown' && entry.attemptCount < maxAttempts;
+          const recorded = await reminderRepository.markOutboxEntryFailed({
+            outboxId: entry.id,
+            now: leasedAt,
+            leasedAt,
+            errorMessage: failure,
+            ...(shouldRetry ? {
+              retryAt: new Date(referenceTime.getTime() + retryDelayMinutes * 60 * 1000).toISOString(),
+            } : {}),
+          });
+          if (recorded) {
+            if (shouldRetry) retryScheduledCount += 1;
+            else failedCount += 1;
+          }
+        } else if (await reminderRepository.markOutboxEntrySent({
+          outboxId: entry.id,
+          now: leasedAt,
+          leasedAt,
+          providerMessageId,
+        })) {
+          sentCount += 1;
+        }
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
       }
     }
 

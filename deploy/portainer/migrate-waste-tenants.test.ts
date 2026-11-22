@@ -17,6 +17,7 @@ const disruptionSettingsMigrationId = '20260901_01_add_waste_disruption_settings
 const wasteTourStatusMigrationId = '20260915_01_add_waste_tour_status';
 const tourFractionsMigrationId = '20261030_01_expand_waste_tour_fractions';
 const emailReminderSettingsMigrationId = '20261018_01_add_waste_email_reminder_settings';
+const emailAddressRedactionMigrationId = '20261123_01_allow_waste_subscription_address_redaction';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -88,7 +89,14 @@ describe('Waste-Tenant-Migration', () => {
   });
   it('contains the additive postal-code, tour-shift, collation, and source-revision contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(8);
+    expect(wasteTenantMigrations).toHaveLength(9);
+    expect(wasteTenantMigrations.at(-1)).toMatchObject({ id: emailAddressRedactionMigrationId });
+    expect(wasteTenantMigrations.at(-1)?.statements.join('\n')).not.toMatch(
+      /\b(?:DELETE|TRUNCATE|UPDATE)\b/u
+    );
+    expect(wasteTenantMigrations.at(-1)?.verification.sql).toContain(
+      'waste_email_reminder_subscriptions_live_address_check'
+    );
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -203,7 +211,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 16, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 18, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -248,6 +256,7 @@ describe('Waste-Tenant-Migration', () => {
         wasteTourStatusMigrationId,
         emailReminderSettingsMigrationId,
         tourFractionsMigrationId,
+        emailAddressRedactionMigrationId,
       ],
     });
 

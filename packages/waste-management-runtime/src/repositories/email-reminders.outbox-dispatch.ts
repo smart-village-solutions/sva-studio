@@ -72,17 +72,25 @@ const buildClaimOutboxEntryForDispatchStatement = (input: {
   readonly leasedAt: string;
 }): SqlStatement => ({
   text: `
+WITH locked_subscription AS MATERIALIZED (
+  SELECT subscription.id, subscription.status, subscription.expires_at
+  FROM waste_email_reminder_outbox AS candidate
+  JOIN waste_email_reminder_subscriptions AS subscription ON subscription.id = candidate.subscription_id
+  WHERE candidate.id = $1::uuid
+  FOR UPDATE OF subscription
+)
 UPDATE waste_email_reminder_outbox AS outbox
 SET last_error = '${OUTBOX_DISPATCH_CLAIM}',
     updated_at = $2::timestamptz
-FROM waste_email_reminder_subscriptions AS subscription
+FROM locked_subscription AS subscription
 WHERE outbox.id = $1::uuid
   AND subscription.id = outbox.subscription_id
   AND outbox.status = 'processing'
   AND outbox.leased_at = $2::timestamptz
   AND outbox.last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
   AND (
-    (outbox.message_kind = 'doi' AND subscription.status = 'pending' AND subscription.expires_at > $2::timestamptz)
+    (outbox.message_kind = 'doi' AND subscription.status = 'pending'
+      AND subscription.expires_at > GREATEST($2::timestamptz, clock_timestamp()))
     OR (outbox.message_kind = 'reminder' AND subscription.status = 'active')
   )
 RETURNING outbox.id;

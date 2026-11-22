@@ -14,9 +14,8 @@ const withReminderReconciliation = <T extends object>(repository: T) => ({
   listActiveSubscriptions: vi.fn(async () => []),
   refreshPendingOutboxEntry: vi.fn(async () => false),
   cancelInvalidReminderOutboxEntries: vi.fn(async () => 0),
-  cancelExpiredDoiOutboxEntries: vi.fn(async () => 0),
   hasDueReminderOutboxEntries: vi.fn(async () => false),
-  deleteExpiredPendingSubscriptions: vi.fn(async () => 0),
+  deleteExpiredPendingSubscriptions: vi.fn(async () => ({ expiredDoiCount: 0, expiredPendingCount: 0 })),
   claimOutboxEntryForDispatch: vi.fn(async () => true),
   ...repository,
 });
@@ -126,7 +125,7 @@ describe('waste management operations runtime', () => {
         updatedAt: '2026-06-14T06:00:00.000Z',
       },
     ]);
-    const markOutboxEntrySent = vi.fn(async () => undefined);
+    const markOutboxEntrySent = vi.fn(async () => true);
     const listActiveSubscriptions = vi.fn(async () => []);
     const reminderRepository = {
       listActiveSubscriptions,
@@ -174,6 +173,7 @@ describe('waste management operations runtime', () => {
 
     expect(dispatchMail).toHaveBeenCalledWith({
       instanceId: 'instance-1',
+      signal: expect.any(AbortSignal),
       transport: expect.objectContaining({
         transportId: 'transport-smtp',
         transportType: 'smtp',
@@ -362,8 +362,7 @@ describe('waste management operations runtime', () => {
   });
 
   it('skips outbox processing when email reminders are disabled for the selected interface', async () => {
-    const cancelExpiredDoiOutboxEntries = vi.fn(async () => 2);
-    const deleteExpiredPendingSubscriptions = vi.fn(async () => 1);
+    const deleteExpiredPendingSubscriptions = vi.fn(async () => ({ expiredDoiCount: 2, expiredPendingCount: 1 }));
     const leaseDueOutboxEntries = vi.fn();
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
       const actual =
@@ -372,7 +371,6 @@ describe('waste management operations runtime', () => {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
           withReminderReconciliation({
-            cancelExpiredDoiOutboxEntries,
             deleteExpiredPendingSubscriptions,
             leaseDueOutboxEntries,
           })
@@ -414,17 +412,14 @@ describe('waste management operations runtime', () => {
         expiredPendingCount: 1,
       },
     });
-    expect(cancelExpiredDoiOutboxEntries).toHaveBeenCalledOnce();
     expect(deleteExpiredPendingSubscriptions).toHaveBeenCalledWith({
       now: expect.any(String),
-      pendingSubscriptionTtlHours: 72,
     });
     expect(leaseDueOutboxEntries).not.toHaveBeenCalled();
   });
 
   it('rejects invalid outbox reference times and unavailable transports before leasing entries', async () => {
-    const cancelExpiredDoiOutboxEntries = vi.fn(async () => 0);
-    const deleteExpiredPendingSubscriptions = vi.fn(async () => 0);
+    const deleteExpiredPendingSubscriptions = vi.fn(async () => ({ expiredDoiCount: 0, expiredPendingCount: 0 }));
     const leaseDueOutboxEntries = vi.fn();
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
       const actual =
@@ -433,7 +428,6 @@ describe('waste management operations runtime', () => {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
           withReminderReconciliation({
-            cancelExpiredDoiOutboxEntries,
             deleteExpiredPendingSubscriptions,
             leaseDueOutboxEntries,
           })
@@ -462,7 +456,7 @@ describe('waste management operations runtime', () => {
         referenceTime: 'not-a-date',
       })
     ).rejects.toThrowError('invalid_reference_time:not-a-date');
-    expect(cancelExpiredDoiOutboxEntries).not.toHaveBeenCalled();
+    expect(deleteExpiredPendingSubscriptions).not.toHaveBeenCalled();
 
     await expect(
       runtime.processEmailReminderOutbox('instance-1', {
@@ -470,7 +464,6 @@ describe('waste management operations runtime', () => {
         referenceTime: '2026-06-15T06:00:00.000Z',
       })
     ).rejects.toThrowError('mail_transport_not_available:transport-smtp');
-    expect(cancelExpiredDoiOutboxEntries).toHaveBeenCalledOnce();
     expect(deleteExpiredPendingSubscriptions).toHaveBeenCalledOnce();
     expect(leaseDueOutboxEntries).not.toHaveBeenCalled();
   });
@@ -481,7 +474,7 @@ describe('waste management operations runtime', () => {
         readonly outboxId: string;
         readonly errorMessage: string;
         readonly retryAt?: string;
-      }) => undefined
+      }) => true
     );
     const reminderRepository = {
       leaseDueOutboxEntries: vi.fn(async () => [
@@ -590,7 +583,7 @@ describe('waste management operations runtime', () => {
       1,
       expect.objectContaining({
         outboxId: 'outbox-retry',
-        errorMessage: 'smtp_unavailable',
+        errorMessage: 'mail_dispatch_failed',
         retryAt: '2026-06-15T06:10:00.000Z',
       })
     );
@@ -598,7 +591,7 @@ describe('waste management operations runtime', () => {
       2,
       expect.objectContaining({
         outboxId: 'outbox-failed',
-        errorMessage: 'smtp_unavailable',
+        errorMessage: 'mail_dispatch_failed',
       })
     );
     expect(markOutboxEntryFailed.mock.calls[1]?.[0]).not.toHaveProperty('retryAt');
@@ -722,7 +715,7 @@ describe('waste management operations runtime', () => {
         updatedAt: '2026-06-14T06:00:00.000Z',
       },
     ]);
-    const markOutboxEntrySent = vi.fn(async () => undefined);
+    const markOutboxEntrySent = vi.fn(async () => true);
     const reminderRepository = {
       leaseDueOutboxEntries,
       markOutboxEntrySent,
@@ -2046,8 +2039,7 @@ describe('waste management operations runtime', () => {
   });
 
   it('fails closed when email outbox processing is requested without a mail dispatcher', async () => {
-    const cancelExpiredDoiOutboxEntries = vi.fn(async () => 0);
-    const deleteExpiredPendingSubscriptions = vi.fn(async () => 0);
+    const deleteExpiredPendingSubscriptions = vi.fn(async () => ({ expiredDoiCount: 0, expiredPendingCount: 0 }));
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
       const actual =
         await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
@@ -2055,7 +2047,6 @@ describe('waste management operations runtime', () => {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
           withReminderReconciliation({
-            cancelExpiredDoiOutboxEntries,
             deleteExpiredPendingSubscriptions,
           })
         ),
@@ -2076,7 +2067,6 @@ describe('waste management operations runtime', () => {
         operation: 'process-email-reminder-outbox',
       })
     ).rejects.toThrowError('mail_dispatch_not_configured');
-    expect(cancelExpiredDoiOutboxEntries).toHaveBeenCalledOnce();
     expect(deleteExpiredPendingSubscriptions).toHaveBeenCalledOnce();
   });
 });

@@ -22,50 +22,6 @@ SELECT EXISTS (
   values: [input.now],
 });
 
-const buildCancelExpiredDoiOutboxEntriesStatement = (input: {
-  readonly now: string;
-}): SqlStatement => ({
-  text: `
-UPDATE waste_email_reminder_outbox AS outbox
-SET status = 'cancelled',
-    leased_at = NULL,
-    updated_at = $1::timestamptz,
-    last_error = 'doi_token_expired'
-FROM waste_email_reminder_subscriptions AS subscription
-WHERE subscription.id = outbox.subscription_id
-  AND outbox.message_kind = 'doi'
-  AND outbox.status IN ('pending', 'processing')
-  AND subscription.status = 'pending'
-  AND subscription.expires_at <= $1::timestamptz
-  AND (
-    outbox.last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
-    OR outbox.leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
-  );
-`,
-  values: [input.now],
-});
-
-export const buildCancelPendingReminderOutboxEntriesStatement = (input: {
-  readonly subscriptionId: string;
-  readonly now: string;
-}): SqlStatement => ({
-  text: `
-UPDATE waste_email_reminder_outbox
-SET status = 'cancelled',
-    leased_at = NULL,
-    updated_at = $2::timestamptz,
-    last_error = 'subscription_unsubscribed'
-WHERE subscription_id = $1::uuid
-  AND message_kind = 'reminder'
-  AND status IN ('pending', 'processing')
-  AND (
-    last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
-    OR leased_at <= $2::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
-  );
-`,
-  values: [input.subscriptionId, input.now],
-});
-
 const buildCancelInvalidReminderOutboxEntriesStatement = (input: {
   readonly validDedupeKeys: readonly string[];
   readonly now: string;
@@ -92,7 +48,6 @@ export const createOutboxReconcileMethods = (
 ): Pick<
   WasteEmailReminderRepository,
   | 'hasDueReminderOutboxEntries'
-  | 'cancelExpiredDoiOutboxEntries'
   | 'cancelInvalidReminderOutboxEntries'
 > => ({
   async hasDueReminderOutboxEntries(input) {
@@ -100,10 +55,6 @@ export const createOutboxReconcileMethods = (
       buildHasDueReminderOutboxEntriesStatement(input)
     );
     return result.rows[0]?.due === true;
-  },
-  async cancelExpiredDoiOutboxEntries(input) {
-    const result = await executor.execute(buildCancelExpiredDoiOutboxEntriesStatement(input));
-    return result.rowCount;
   },
   async cancelInvalidReminderOutboxEntries(input) {
     const result = await executor.execute(buildCancelInvalidReminderOutboxEntriesStatement(input));
@@ -113,7 +64,5 @@ export const createOutboxReconcileMethods = (
 
 export const outboxReconcileStatements = {
   hasDueReminderOutboxEntries: buildHasDueReminderOutboxEntriesStatement,
-  cancelPendingReminderOutboxEntries: buildCancelPendingReminderOutboxEntriesStatement,
   cancelInvalidReminderOutboxEntries: buildCancelInvalidReminderOutboxEntriesStatement,
-  cancelExpiredDoiOutboxEntries: buildCancelExpiredDoiOutboxEntriesStatement,
 } as const;

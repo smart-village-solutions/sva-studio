@@ -1,12 +1,10 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteEmailReminderRepository } from './email-reminders.js';
-import { buildCancelPendingReminderOutboxEntriesStatement } from './email-reminders.outbox-reconcile.js';
 
 type SubscriptionStatusRow = Readonly<{
   id: string;
   status: string;
   location_label: string;
-  expires_at: string;
 }>;
 
 type UnsubscribeSubscriptionRow = Readonly<{
@@ -16,10 +14,10 @@ type UnsubscribeSubscriptionRow = Readonly<{
 
 const buildSelectSubscriptionByDoiTokenHashStatement = (tokenHash: string): SqlStatement => ({
   text: `
-SELECT id, status, location_label, expires_at
+SELECT id, status, location_label
 FROM waste_email_reminder_subscriptions
 WHERE doi_token_hash = $1
-LIMIT 1;
+FOR UPDATE;
 `,
   values: [tokenHash],
 });
@@ -28,10 +26,10 @@ const buildSelectSubscriptionByUnsubscribeTokenHashStatement = (
   tokenHash: string
 ): SqlStatement => ({
   text: `
-SELECT id, status, location_label, expires_at
+SELECT id, status, location_label
 FROM waste_email_reminder_subscriptions
 WHERE unsubscribe_token_hash = $1
-LIMIT 1;
+FOR UPDATE;
 `,
   values: [tokenHash],
 });
@@ -54,10 +52,12 @@ const buildActivateSubscriptionStatement = (input: {
   text: `
 UPDATE waste_email_reminder_subscriptions
 SET status = 'active',
-    activated_at = $2::timestamptz,
-    updated_at = $2::timestamptz
+    activated_at = GREATEST($2::timestamptz, clock_timestamp()),
+    updated_at = GREATEST($2::timestamptz, clock_timestamp())
 WHERE id = $1::uuid
-  AND status = 'pending';
+  AND status = 'pending'
+  AND expires_at > GREATEST($2::timestamptz, clock_timestamp())
+RETURNING id;
 `,
   values: [input.subscriptionId, input.now],
 });
@@ -67,12 +67,42 @@ const buildUnsubscribeSubscriptionStatement = (input: {
   readonly now: string;
 }): SqlStatement => ({
   text: `
-UPDATE waste_email_reminder_subscriptions
-SET status = 'unsubscribed',
-    unsubscribed_at = $2::timestamptz,
+WITH revoked AS (
+  UPDATE waste_email_reminder_subscriptions
+  SET status = 'unsubscribed',
+      email = NULL,
+      email_hash = NULL,
+      location_label = '',
+      house_number_id = NULL,
+      unsubscribed_at = COALESCE(unsubscribed_at, $2::timestamptz),
+      updated_at = CASE
+        WHEN status <> 'unsubscribed' OR email IS NOT NULL OR email_hash IS NOT NULL
+          OR location_label <> '' OR house_number_id IS NOT NULL
+        THEN $2::timestamptz
+        ELSE updated_at
+      END
+  WHERE id = $1::uuid
+    AND status IN ('pending', 'active', 'unsubscribed')
+  RETURNING id
+)
+UPDATE waste_email_reminder_outbox AS outbox
+SET payload = '{}'::jsonb,
+    status = CASE WHEN outbox.status IN ('pending', 'processing') THEN 'cancelled' ELSE outbox.status END,
+    leased_at = NULL,
+    last_error = CASE
+      WHEN outbox.status IN ('pending', 'processing') THEN 'subscription_unsubscribed'
+      WHEN outbox.last_error IN ('subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable') THEN outbox.last_error
+      WHEN outbox.status = 'failed' THEN 'dispatch_failed'
+      ELSE NULL
+    END,
     updated_at = $2::timestamptz
-WHERE id = $1::uuid
-  AND status IN ('pending', 'active');
+FROM revoked
+WHERE outbox.subscription_id = revoked.id
+  AND (outbox.payload <> '{}'::jsonb OR outbox.leased_at IS NOT NULL
+    OR outbox.status IN ('pending', 'processing')
+    OR (outbox.last_error IS NOT NULL AND outbox.last_error NOT IN (
+      'subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable', 'dispatch_failed'
+    )));
 `,
   values: [input.subscriptionId, input.now],
 });
@@ -117,12 +147,12 @@ export const createTokenMethods = (
     if (subscription.status !== 'pending') {
       return { status: 'invalid' };
     }
-    if (new Date(subscription.expires_at).getTime() < new Date(input.now).getTime()) {
-      return { status: 'expired' };
-    }
-    await executor.execute(
+    const updated = await executor.execute(
       buildActivateSubscriptionStatement({ subscriptionId: subscription.id, now: input.now })
     );
+    if (updated.rowCount === 0) {
+      return { status: 'expired' };
+    }
     return {
       status: 'activated',
       subscriptionId: subscription.id,
@@ -137,29 +167,16 @@ export const createTokenMethods = (
     if (!subscription) {
       return { status: 'invalid' };
     }
-    if (subscription.status === 'unsubscribed') {
-      return {
-        status: 'already_unsubscribed',
-        subscriptionId: subscription.id,
-        locationLabel: subscription.location_label,
-      };
-    }
-    if (subscription.status !== 'pending' && subscription.status !== 'active') {
+    if (!['pending', 'active', 'unsubscribed'].includes(subscription.status)) {
       return { status: 'invalid' };
     }
     await executor.execute(
       buildUnsubscribeSubscriptionStatement({ subscriptionId: subscription.id, now: input.now })
     );
-    await executor.execute(
-      buildCancelPendingReminderOutboxEntriesStatement({
-        subscriptionId: subscription.id,
-        now: input.now,
-      })
-    );
     return {
-      status: 'unsubscribed',
+      status: subscription.status === 'unsubscribed' ? 'already_unsubscribed' : 'unsubscribed',
       subscriptionId: subscription.id,
-      locationLabel: subscription.location_label,
+      locationLabel: '',
     };
   },
 });

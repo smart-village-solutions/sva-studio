@@ -1,3 +1,5 @@
+import { once } from 'node:events';
+import { createServer } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import type { MailTransportConfig } from '@sva/core';
 
@@ -67,6 +69,7 @@ describe('mail runtime', () => {
         },
       })
     );
+    expect(createTransport).not.toHaveBeenCalledWith(expect.objectContaining({ getSocket: expect.any(Function) }));
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         from: '"Abfallwirtschaft" <abfall@example.org>',
@@ -75,6 +78,71 @@ describe('mail runtime', () => {
         subject: 'Nicht vergessen',
       })
     );
+  });
+
+  it('never opens a transport if cancelled while resolving a password', async () => {
+    let releasePassword: (password: string) => void = () => {};
+    const createTransport = vi.fn(() => ({ sendMail: vi.fn(async () => ({})) }));
+    const dispatch = createNodemailerMailDispatcher({
+      createTransport,
+      resolveSecretRef: () => new Promise((resolve) => { releasePassword = resolve; }),
+    });
+    const controller = new AbortController();
+    const result = dispatch({
+      instanceId: 'instance-1',
+      transport: {
+        transportId: 'smtp', displayName: 'Fixture', transportType: 'smtp',
+        host: '127.0.0.1', port: 587, securityMode: 'starttls', authMode: 'basic',
+        username: 'synthetic', password: 'env://NOT_A_REAL_SECRET', enabled: true,
+      },
+      message: {
+        from: { email: 'sender@example.invalid' }, to: [{ email: 'recipient@example.invalid' }],
+        subject: 'Test', text: 'Test',
+      },
+      signal: controller.signal,
+    });
+    controller.abort();
+    await expect(result).rejects.toThrow('mail_dispatch_aborted');
+    releasePassword('synthetic');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(createTransport).not.toHaveBeenCalled();
+  });
+
+  it.each(['none', 'tls'] as const)('closes the local SMTP socket on abort in %s mode', async (securityMode) => {
+    const server = createServer();
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Expected TCP test listener');
+    const controller = new AbortController();
+    try {
+      const accepted = once(server, 'connection');
+      const result = createNodemailerMailDispatcher({})({
+        instanceId: 'instance-1',
+        transport: {
+          transportId: 'smtp', displayName: 'Fixture', transportType: 'smtp',
+          host: '127.0.0.1', port: address.port, securityMode, authMode: 'none', enabled: true,
+        },
+        message: {
+          from: { email: 'sender@example.invalid' }, to: [{ email: 'recipient@example.invalid' }],
+          subject: 'Test', text: 'Test',
+        },
+        signal: controller.signal,
+      });
+      const [socket] = await accepted;
+      const closed = once(socket, 'close');
+      if (securityMode === 'tls') {
+        const [hello] = await once(socket, 'data');
+        expect(hello[0]).toBe(22);
+      }
+      controller.abort();
+      await expect(result).rejects.toThrow('mail_dispatch_aborted');
+      await closed;
+    } finally {
+      controller.abort();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it('resolves SMTP passwords via secret refs before creating the transport', async () => {

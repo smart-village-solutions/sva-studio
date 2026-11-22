@@ -4,7 +4,8 @@ export const wasteManagementPluginTranslationsDEToursList = {
     description: 'Zuordnungen, Kalender und Tour-Einsätze für diese Tour direkt öffnen.',
     assignments: 'Abholpunkte zuordnen',
     calendar: 'Jahreskalender und Feiertagsverschiebungen',
-    scheduling: 'Tour-Einsätze und tourbezogene Ausweichtermine',
+    scheduling: 'Tourbezogene Ausweichtermine',
+    tourAssignments: 'Tour-Einsätze',
   },
   actions: {
     openCreate: 'Neue Tour',

@@ -58,6 +58,7 @@ const AssignmentRow = ({
   locationLabels,
   pt,
   search,
+  canManage,
   onEdit,
   onDeleteRequest,
 }: {
@@ -66,6 +67,7 @@ const AssignmentRow = ({
   readonly locationLabels: ReadonlyMap<string, string>;
   readonly pt: Translate;
   readonly search?: WasteManagementSearchParams;
+  readonly canManage: boolean;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
 }) => (
@@ -106,9 +108,11 @@ const AssignmentRow = ({
       </ul>
     </td>
     <td className="px-3 py-3">{entry.note ?? ''}</td>
-    <td className="px-3 py-3">
-      <AssignmentActions entry={entry} pt={pt} onEdit={onEdit} onDeleteRequest={onDeleteRequest} />
-    </td>
+    {canManage ? (
+      <td className="px-3 py-3">
+        <AssignmentActions entry={entry} pt={pt} onEdit={onEdit} onDeleteRequest={onDeleteRequest} />
+      </td>
+    ) : null}
   </tr>
 );
 
@@ -118,6 +122,7 @@ const WasteTourAssignmentsTable = ({
   locationLabels,
   pt,
   search,
+  canManage,
   onEdit,
   onDeleteRequest,
 }: {
@@ -126,6 +131,7 @@ const WasteTourAssignmentsTable = ({
   readonly locationLabels: ReadonlyMap<string, string>;
   readonly pt: Translate;
   readonly search?: WasteManagementSearchParams;
+  readonly canManage: boolean;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
 }) => (
@@ -137,15 +143,20 @@ const WasteTourAssignmentsTable = ({
       <caption className="sr-only">{pt('scheduling.assignments.table.caption')}</caption>
       <thead className="bg-surface-inset text-left text-[13px]">
         <tr className="border-b border-border/70">
-          {(['pickupDate', 'tour', 'locations', 'note', 'actions'] as const).map((column) => (
+          {(['pickupDate', 'tour', 'locations', 'note'] as const).map((column) => (
             <th
               key={column}
               scope="col"
-              className={`px-3 py-3${column === 'actions' ? ' text-right' : ''}`}
+              className="px-3 py-3"
             >
               {pt(`scheduling.assignments.table.${column}`)}
             </th>
           ))}
+          {canManage ? (
+            <th scope="col" className="px-3 py-3 text-right">
+              {pt('scheduling.assignments.table.actions')}
+            </th>
+          ) : null}
         </tr>
       </thead>
       <tbody>
@@ -157,6 +168,7 @@ const WasteTourAssignmentsTable = ({
             locationLabels={locationLabels}
             pt={pt}
             search={search}
+            canManage={canManage}
             onEdit={onEdit}
             onDeleteRequest={onDeleteRequest}
           />
@@ -171,6 +183,7 @@ export const WasteTourExplicitAssignmentsList = ({
   tourLabels,
   locationLabels,
   search,
+  canManage,
   onCreate,
   onEdit,
   onDelete,
@@ -179,6 +192,7 @@ export const WasteTourExplicitAssignmentsList = ({
   readonly tourLabels: ReadonlyMap<string, string>;
   readonly locationLabels: ReadonlyMap<string, string>;
   readonly search?: WasteManagementSearchParams;
+  readonly canManage: boolean;
   readonly onCreate: () => void;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDelete: (entry: WasteTourAssignmentRecord) => Promise<void>;
@@ -196,19 +210,15 @@ export const WasteTourExplicitAssignmentsList = ({
       )
   );
   return (
-    <section className="space-y-3" aria-labelledby="waste-tour-assignments-heading">
-      <div className="space-y-1">
-        <h3 id="waste-tour-assignments-heading" className="text-sm font-semibold">
-          {pt('scheduling.assignments.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">{pt('scheduling.assignments.description')}</p>
-      </div>
+    <section aria-label={pt('scheduling.assignments.title')}>
       <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
-        <div className="flex items-center justify-end border-b border-border-subtle px-4 py-3">
-          <Button type="button" className="rounded-md" onClick={onCreate}>
-            {pt('scheduling.assignments.actions.openCreate')}
-          </Button>
-        </div>
+        {canManage ? (
+          <div className="flex items-center justify-end border-b border-border-subtle px-4 py-3">
+            <Button type="button" className="rounded-md" onClick={onCreate}>
+              {pt('scheduling.assignments.actions.openCreate')}
+            </Button>
+          </div>
+        ) : null}
         {sortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">
             {pt('scheduling.assignments.empty')}
@@ -219,6 +229,7 @@ export const WasteTourExplicitAssignmentsList = ({
             tourLabels={tourLabels}
             locationLabels={locationLabels}
             search={search}
+            canManage={canManage}
             pt={pt}
             onEdit={onEdit}
             onDeleteRequest={setPendingDeleteEntry}
@@ -226,7 +237,7 @@ export const WasteTourExplicitAssignmentsList = ({
         )}
       </div>
       <WasteTourAssignmentDeleteDialog
-        entry={pendingDeleteEntry}
+        entry={canManage ? pendingDeleteEntry : null}
         onCancel={() => setPendingDeleteEntry(null)}
         onDelete={onDelete}
       />

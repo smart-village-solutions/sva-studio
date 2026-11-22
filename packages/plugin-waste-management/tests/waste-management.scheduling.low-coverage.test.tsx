@@ -261,6 +261,7 @@ describe('waste-management scheduling low coverage views', () => {
 
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={
           [
             {
@@ -319,11 +320,38 @@ describe('waste-management scheduling low coverage views', () => {
     });
   });
 
+  it('lets readers view visits without create, edit or delete actions', () => {
+    render(
+      <WasteTourExplicitAssignmentsList
+        canManage={false}
+        entries={[
+          {
+            id: 'pickup',
+            tourId: 'tour-1',
+            pickupDate: '2027-02-04',
+            locationIds: ['location-1'],
+            note: 'Standort im Norden',
+          },
+        ] as never}
+        tourLabels={new Map([['tour-1', 'Tour A']])}
+        locationLabels={new Map([['location-1', 'Albertplatz']])}
+        onCreate={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('04.02.2027')).toBeTruthy();
+    expect(screen.getByText('Albertplatz')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
   it('sorts schadstoffmobil rows by pickup date first and closes the delete dialog through cancel', () => {
     const onDelete = vi.fn(async () => undefined);
 
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={
           [
             {
@@ -366,6 +394,7 @@ describe('waste-management scheduling low coverage views', () => {
   it('shows the empty schadstoffmobil list state', () => {
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={[]}
         tourLabels={new Map()}
         locationLabels={new Map()}

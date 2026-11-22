@@ -21,6 +21,7 @@ export const wasteManagementTabTranslationKeyMap = {
   locations: 'locations',
   masterData: 'masterData',
   scheduling: 'scheduling',
+  tourAssignments: 'tourAssignments',
   output: 'output',
   tools: 'tools',
   settings: 'settings',
@@ -32,6 +33,7 @@ export const wasteManagementTabIconMap = {
   locations: 'mapPin',
   masterData: 'database',
   scheduling: 'calendarClock',
+  tourAssignments: 'route',
   output: 'basis',
   tools: 'database',
   settings: 'settings',
@@ -67,7 +69,16 @@ export const createWasteManagementTabContentMap = (
       onSearchChange={onAddressSearchChange}
     />
   ),
-  scheduling: <WasteSchedulingPanel search={search} rawSearch={rawSearch} />,
+  scheduling: (
+    <Activity mode={search.tab === 'scheduling' ? 'visible' : 'hidden'}>
+      <WasteSchedulingPanel search={search} rawSearch={rawSearch} />
+    </Activity>
+  ),
+  tourAssignments: (
+    <Activity mode={search.tab === 'tourAssignments' ? 'visible' : 'hidden'}>
+      <WasteSchedulingPanel search={search} canManageAssignments={access.canManageScheduling} />
+    </Activity>
+  ),
   output: <WasteOutputPanel />,
   settings: <WasteSettingsPanel />,
   tools: <WasteToolsPanel access={access} overview={<WasteOverviewPanel search={search} />} />,

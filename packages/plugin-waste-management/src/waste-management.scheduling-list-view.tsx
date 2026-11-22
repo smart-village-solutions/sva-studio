@@ -5,6 +5,7 @@ import { Link } from '@tanstack/react-router';
 import {
   WasteSchedulingContent,
   WasteSchedulingEmptyState,
+  WasteTourAssignmentsContent,
 } from './waste-management.scheduling-content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingListNavigation } from './waste-management.scheduling-list-view.navigation.js';
@@ -15,43 +16,50 @@ type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 export const WasteSchedulingListView = ({
   controller,
   search,
+  canManageAssignments = false,
 }: {
   readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
+  readonly canManageAssignments?: boolean;
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);
   const pt = usePluginTranslation('wasteManagement');
   const selectedTour = search.tourId
     ? controller.availableTours.find((tour) => tour.id === search.tourId)
     : undefined;
-  const content =
-    !controller.allSchedulingEntries.length &&
-    !controller.tourAssignments.length &&
-    !controller.availableTours.length ? (
-      <WasteSchedulingEmptyState onOpenCreateShiftDialog={navigation.openCreate} />
-    ) : (
-      <WasteSchedulingContent
-        message={controller.message}
-        schedulingEntries={controller.schedulingEntries}
-        tours={controller.availableTours}
-        tourAssignments={controller.tourAssignments}
-        assignmentLocationOptions={controller.assignmentLocationOptions}
-        search={search}
-        onOpenCreateShiftDialog={navigation.openCreate}
-        onEditHolidayRule={navigation.openEditHoliday}
-        onEditGlobalShiftDialog={navigation.openEditGlobal}
-        onEditTourShiftDialog={navigation.openEditTour}
-        onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
-        onSaveTourAssignment={controller.onSaveTourAssignment}
-        onDeleteTourAssignment={controller.onDeleteTourAssignment}
-        saving={controller.saving}
-        page={search.page}
-        pageSize={search.pageSize}
-        onPageChange={navigation.setPage}
-        onSyncPageChange={navigation.syncPage}
-        onPageSizeChange={navigation.setPageSize}
-      />
-    );
+  const assignmentsTab = search.tab === 'tourAssignments';
+  const content = assignmentsTab ? (
+    <WasteTourAssignmentsContent
+      message={controller.message}
+      tours={controller.availableTours}
+      tourAssignments={controller.tourAssignments}
+      assignmentLocationOptions={controller.assignmentLocationOptions}
+      search={search}
+      canManage={canManageAssignments}
+      onSaveTourAssignment={controller.onSaveTourAssignment}
+      onDeleteTourAssignment={controller.onDeleteTourAssignment}
+      saving={controller.saving}
+    />
+  ) : !controller.allSchedulingEntries.length && !controller.availableTours.length ? (
+    <WasteSchedulingEmptyState onOpenCreateShiftDialog={navigation.openCreate} />
+  ) : (
+    <WasteSchedulingContent
+      message={controller.message}
+      schedulingEntries={controller.schedulingEntries}
+      search={search}
+      onOpenCreateShiftDialog={navigation.openCreate}
+      onEditHolidayRule={navigation.openEditHoliday}
+      onEditGlobalShiftDialog={navigation.openEditGlobal}
+      onEditTourShiftDialog={navigation.openEditTour}
+      onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
+      saving={controller.saving}
+      page={search.page}
+      pageSize={search.pageSize}
+      onPageChange={navigation.setPage}
+      onSyncPageChange={navigation.syncPage}
+      onPageSizeChange={navigation.setPageSize}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -59,13 +67,13 @@ export const WasteSchedulingListView = ({
         <Button
           type="button"
           variant="tertiary"
-          disabled={!search.q && search.shiftContext === 'all' && !search.tourId}
+          disabled={!search.tourId && (assignmentsTab || (!search.q && search.shiftContext === 'all'))}
           onClick={navigation.resetFilters}
         >
           {pt('filters.reset')}
         </Button>
-        {search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
-        {search.shiftContext !== 'all' ? (
+        {!assignmentsTab && search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+        {!assignmentsTab && search.shiftContext !== 'all' ? (
           <span>{pt(`filters.shiftContext.${search.shiftContext}`)}</span>
         ) : null}
         {search.tourId ? (

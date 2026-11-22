@@ -99,14 +99,15 @@ const TourFormTopActions = ({
 
 const TourWorkspaceActions = (props: WasteToursFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  if (props.mode !== 'edit' || !props.persistedTour || !props.search) return null;
-  const schedulingDirty = hasSchedulingChanges(props.form, props.persistedTour);
+  const { persistedTour, search } = props;
+  if (props.mode !== 'edit' || !persistedTour || !search) return null;
+  const schedulingDirty = hasSchedulingChanges(props.form, persistedTour);
   const schedulingAction =
-    props.canManageScheduling && isWasteTourValidityApplicable(props.persistedTour) ? (
+    props.canManageScheduling && isWasteTourValidityApplicable(persistedTour) ? (
       <TourShiftSchedulingAction
         form={props.form}
-        persistedTour={props.persistedTour}
-        search={props.search}
+        persistedTour={persistedTour}
+        search={search}
         pt={pt}
       />
     ) : null;
@@ -140,16 +141,19 @@ const TourWorkspaceActions = (props: WasteToursFormContentProps) => {
             {pt('tours.workspace.calendar')}
           </Button>
         ) : null}
-        <Link
-          to="/plugins/waste-management"
-          search={toWasteTourSchedulingSearch(props.search, props.persistedTour.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonVariants({ variant: 'secondary' })}
-          aria-label={`${pt('tours.workspace.scheduling')} – ${pt('tours.actions.opensInNewTab')}`}
-        >
-          {pt('tours.workspace.scheduling')}
-        </Link>
+        {(['tourAssignments', 'scheduling'] as const).map((tab) => (
+          <Link
+            key={tab}
+            to="/plugins/waste-management"
+            search={toWasteTourSchedulingSearch(search, persistedTour.id, tab)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: 'secondary' })}
+            aria-label={`${pt(`tours.workspace.${tab}`)} – ${pt('tours.actions.opensInNewTab')}`}
+          >
+            {pt(`tours.workspace.${tab}`)}
+          </Link>
+        ))}
         {schedulingAction}
       </div>
       {schedulingDirty ? (

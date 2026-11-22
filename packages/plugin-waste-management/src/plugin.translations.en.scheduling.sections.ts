@@ -4,9 +4,7 @@ export const wasteManagementPluginTranslationsENSchedulingSections = {
     back: 'Back to tour',
   },
   assignments: {
-    title: 'Tour assignments',
-    description:
-      'Explicit tour assignments with a date, multiple pickup locations, and an optional note.',
+    title: 'Tour visits',
     empty: 'No explicit tour assignments have been stored yet.',
     actions: {
       openCreate: 'Create stop',

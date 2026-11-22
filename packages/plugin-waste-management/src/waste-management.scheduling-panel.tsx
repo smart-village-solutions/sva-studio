@@ -22,9 +22,11 @@ import { resolveTourShiftCreateContext } from './waste-management.tour-shift-nav
 export const WasteSchedulingPanel = ({
   search,
   rawSearch = search,
+  canManageAssignments = false,
 }: {
   readonly search: WasteManagementSearchParams;
   readonly rawSearch?: Readonly<Record<string, unknown>>;
+  readonly canManageAssignments?: boolean;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
@@ -43,6 +45,16 @@ export const WasteSchedulingPanel = ({
 
   if (controller.error) {
     return <StudioErrorState>{controller.error}</StudioErrorState>;
+  }
+
+  if (search.tab === 'tourAssignments') {
+    return (
+      <WasteSchedulingListView
+        controller={controller}
+        search={search}
+        canManageAssignments={canManageAssignments}
+      />
+    );
   }
 
   const dialogs = <WasteSchedulingDialogs controller={controller} />;

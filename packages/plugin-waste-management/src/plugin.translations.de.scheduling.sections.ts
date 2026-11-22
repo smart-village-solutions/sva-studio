@@ -5,8 +5,6 @@ export const wasteManagementPluginTranslationsDESchedulingSections = {
   },
   assignments: {
     title: 'Tour-Einsätze',
-    description:
-      'Explizite Einsätze einer Tour mit Datum, mehreren Abholpunkten und optionalem Hinweis.',
     empty: 'Es sind noch keine expliziten Tour-Einsätze hinterlegt.',
     actions: {
       openCreate: 'Einsatz anlegen',

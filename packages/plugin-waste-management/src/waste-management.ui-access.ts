@@ -13,6 +13,7 @@ const readOnlyTabIds = [
   'locations',
   'masterData',
   'scheduling',
+  'tourAssignments',
 ] as const satisfies readonly WasteManagementTabId[];
 
 export type WasteManagementUiAccess = Readonly<{

@@ -23,9 +23,15 @@ export const wasteManagementPluginTranslationsDETabs = createWasteManagementTabs
   masterData: ['Stammdaten', 'Pflegen Sie Regionen, Orte, Straßen und Hausnummern.', 'Keine Adressdaten vorhanden', 'Legen Sie eine Region an und bauen Sie die erforderliche Adresshierarchie auf.'],
   scheduling: [
     'Ausweichtermine',
-    'Globale und tourbezogene Verschiebungen bleiben als eigener Scheduling-Kontext explizit sichtbar.',
-    'Ausweichtermine folgen',
-    'Hier werden später Kalender-, Bulk- und Konfliktansichten angeschlossen.',
+    'Pflegen Sie Feiertagsregeln sowie globale und tourbezogene Verschiebungen.',
+    'Keine Ausweichtermine vorhanden',
+    'Legen Sie einen Ausweichtermin für einen regulären Abholtermin an.',
+  ],
+  tourAssignments: [
+    'Tour-Einsätze',
+    'Pflegen Sie einzelne Einsätze mit Datum, Abholpunkten und Hinweisen.',
+    'Keine Tour-Einsätze vorhanden',
+    'Legen Sie einen Einsatz für eine vorhandene Tour an.',
   ],
   output: [
     'Ausgabe',

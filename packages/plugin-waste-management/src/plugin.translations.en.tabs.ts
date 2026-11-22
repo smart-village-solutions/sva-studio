@@ -23,9 +23,15 @@ export const wasteManagementPluginTranslationsENTabs = createWasteManagementTabs
   masterData: ['Master data', 'Maintain regions, cities, streets, and house numbers.', 'No address data yet', 'Create a region to start building the required address hierarchy.'],
   scheduling: [
     'Schedule deviations',
-    'Global and tour-related shifts remain visible as an explicit scheduling context.',
-    'Schedule deviations coming next',
-    'Calendar, bulk and conflict surfaces will be added here later.',
+    'Maintain holiday rules, global shifts and shifts for specific tours.',
+    'No schedule deviations yet',
+    'Create a deviation for a regular collection date.',
+  ],
+  tourAssignments: [
+    'Tour visits',
+    'Maintain individual visits with their dates, pickup locations and notes.',
+    'No tour visits yet',
+    'Create a visit for an existing tour.',
   ],
   output: [
     'Output',

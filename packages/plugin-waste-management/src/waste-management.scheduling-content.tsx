@@ -1,13 +1,7 @@
-import type {
-  WasteHolidayRuleRecord,
-  WasteTourAssignmentRecord,
-  WasteTourRecord,
-  WasteGlobalDateShiftRecord,
-  WasteTourDateShiftRecord,
-} from '@sva/waste-management-contracts';
+import type { WasteTourAssignmentRecord, WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioEmptyState } from '@sva/studio-ui-react';
-import { type FormEvent, useState } from 'react';
+import { type ComponentProps, type FormEvent, useState } from 'react';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteTourExplicitAssignmentDialog } from './waste-management.scheduling-assignment-dialog.js';
 import type { WasteTourExplicitAssignmentFormState } from './waste-management.scheduling-assignment-form.js';
@@ -62,38 +56,23 @@ export const WasteSchedulingEmptyState = ({
   );
 };
 
-export const WasteSchedulingContent = ({
+export const WasteTourAssignmentsContent = ({
   message,
-  schedulingEntries,
   tours,
   tourAssignments,
   assignmentLocationOptions,
   search,
-  onOpenCreateShiftDialog,
-  onEditHolidayRule,
-  onEditGlobalShiftDialog,
-  onEditTourShiftDialog,
-  onDeleteSchedulingRows,
+  canManage,
   onSaveTourAssignment,
   onDeleteTourAssignment,
   saving,
-  page,
-  pageSize,
-  onPageChange,
-  onSyncPageChange,
-  onPageSizeChange,
 }: {
   readonly message: StatusMessage | null;
-  readonly schedulingEntries: readonly WasteSchedulingTableEntry[];
   readonly tours: readonly WasteTourRecord[];
   readonly tourAssignments: readonly WasteTourAssignmentRecord[];
   readonly assignmentLocationOptions: readonly { readonly id: string; readonly label: string }[];
   readonly search?: WasteManagementSearchParams;
-  readonly onOpenCreateShiftDialog: () => void;
-  readonly onEditHolidayRule: (rule: WasteHolidayRuleRecord) => void;
-  readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
-  readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
-  readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
+  readonly canManage: boolean;
   readonly onSaveTourAssignment: (
     input: {
       readonly id: string;
@@ -106,11 +85,6 @@ export const WasteSchedulingContent = ({
   ) => Promise<void>;
   readonly onDeleteTourAssignment: (id: string) => Promise<void>;
   readonly saving: boolean;
-  readonly page: number;
-  readonly pageSize: number;
-  readonly onPageChange: (page: number) => void;
-  readonly onSyncPageChange?: (page: number) => void;
-  readonly onPageSizeChange: (size: number) => void;
 }) => {
   useWasteTabPanelActions(null);
   const pt = usePluginTranslation('wasteManagement');
@@ -133,6 +107,7 @@ export const WasteSchedulingContent = ({
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canManage) return;
     if (!form.tourId || !form.pickupDate || form.locationIds.length === 0) {
       setValidationMessage(pt('scheduling.assignments.validation.required'));
       return;
@@ -152,6 +127,7 @@ export const WasteSchedulingContent = ({
         tourLabels={tourLabels}
         locationLabels={locationLabels}
         search={search}
+        canManage={canManage}
         onCreate={() => {
           setDialogMode('create');
           setForm(createAssignmentForm(undefined, search?.tourId));
@@ -165,7 +141,7 @@ export const WasteSchedulingContent = ({
         onDelete={(entry) => onDeleteTourAssignment(entry.id)}
       />
       <WasteTourExplicitAssignmentDialog
-        open={dialogOpen}
+        open={canManage && dialogOpen}
         mode={dialogMode}
         form={form}
         tours={tours}
@@ -180,21 +156,23 @@ export const WasteSchedulingContent = ({
         }}
         onSubmit={submit}
       />
-      <WasteSchedulingShiftsTable
-        entries={schedulingEntries}
-        search={search}
-        onOpenCreateShiftDialog={onOpenCreateShiftDialog}
-        onEditHolidayRule={onEditHolidayRule}
-        onEditGlobalShiftDialog={onEditGlobalShiftDialog}
-        onEditTourShiftDialog={onEditTourShiftDialog}
-        onDeleteSchedulingRows={onDeleteSchedulingRows}
-        saving={saving}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={onPageChange}
-        onSyncPageChange={onSyncPageChange}
-        onPageSizeChange={onPageSizeChange}
-      />
+    </div>
+  );
+};
+
+export const WasteSchedulingContent = ({
+  message,
+  schedulingEntries,
+  ...tableProps
+}: Omit<ComponentProps<typeof WasteSchedulingShiftsTable>, 'entries'> & {
+  readonly message: StatusMessage | null;
+  readonly schedulingEntries: readonly WasteSchedulingTableEntry[];
+}) => {
+  useWasteTabPanelActions(null);
+  return (
+    <div className="space-y-4">
+      <StatusNotice message={message} />
+      <WasteSchedulingShiftsTable entries={schedulingEntries} {...tableProps} />
     </div>
   );
 };

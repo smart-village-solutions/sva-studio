@@ -76,10 +76,25 @@ describe('email monitoring privacy projection', () => {
     expect(data.deliveries[0]?.error).toBe('dispatch_failed');
     expect(JSON.stringify(data)).not.toMatch(/philipp|private|secret|lastError/);
     const calls = execute.mock.calls as unknown as [{ text: string; values: unknown[] }][];
-    expect(calls[1]?.[0].values).toEqual(['active', 25, 25]);
+    expect(calls[1]?.[0].values).toEqual(['active', null, 25, 25]);
     expect(calls[0]?.[0].text).toContain("FILTER (WHERE status = 'active')");
     expect(calls[1]?.[0].text).toContain("message_kind = 'doi'");
     expect(calls[3]?.[0].values).toEqual(['sub', 25, 0]);
     expect(calls[3]?.[0].text).not.toContain('SELECT payload');
+  });
+
+  it('filters rows and total with the same active-address predicate and ignores foreign detail selections', async () => {
+    const execute = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ total: 0, activeTotal: 3 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const data = await loadWasteEmailMonitoring({ execute }, {
+      page: 1, pageSize: 50, deliveryPage: 1, emailHash: 'sha256:fixture', subscriptionId: 'unmatched',
+    });
+    expect(data).toMatchObject({ activeTotal: 3, total: 0, subscriptions: [], deliveries: [], deliveryTotal: 0 });
+    expect(execute).toHaveBeenCalledTimes(2);
+    for (const [statement] of execute.mock.calls) {
+      expect(statement.text).toContain("status = 'active' AND email_hash = $2");
+      expect(statement.values[1]).toBe('sha256:fixture');
+    }
   });
 });

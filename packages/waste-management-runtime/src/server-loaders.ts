@@ -1,5 +1,4 @@
-import { loadWasteEmailMonitoring } from './repositories/email-reminders.monitoring.js';
-import type { WasteEmailMonitoringQuery } from '@sva/waste-management-contracts';
+import { loadWasteEmailMonitoring, type WasteEmailMonitoringLookup } from './repositories/email-reminders.monitoring.js';
 import type { StudioJobRepository } from '@sva/data-repositories';
 import type {
   listExternalInterfaceRecords,
@@ -119,7 +118,7 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
   const { previewWasteAddressMutation, mutateWasteAddressInTransaction } = context;
 
   const wasteManagementOverviewLoaders = {
-    loadWasteEmailMonitoring: (instanceId: string, query: WasteEmailMonitoringQuery) =>
+    loadWasteEmailMonitoring: (instanceId: string, query: WasteEmailMonitoringLookup) =>
       context.withWasteClient(instanceId, 'load_email_monitoring', async (client) => {
         await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
         try {

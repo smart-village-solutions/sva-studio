@@ -1,5 +1,8 @@
+import { createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
 import {
   wasteManagementImportCatalog,
+  type WasteEmailMonitoringOverview,
+  type WasteEmailMonitoringSearchQuery,
   type WasteCollectionLocationPage,
   type WasteCollectionLocationQuery,
   type WasteCollectionLocationSelectionFilter,
@@ -160,7 +163,22 @@ export const getWasteEmailMonitoring = (
   });
   if (query.status) params.set('status', query.status);
   if (query.subscriptionId) params.set('subscriptionId', query.subscriptionId);
-  return requestWasteManagementItem<
-    import('@sva/waste-management-contracts').WasteEmailMonitoringOverview
-  >({ url: `/api/v1/waste-management/email-monitoring?${params}` });
+  return requestWasteManagementItem<WasteEmailMonitoringOverview>({
+    url: `/api/v1/waste-management/email-monitoring?${params}`,
+  });
 };
+
+export const searchWasteEmailMonitoring = (
+  query: WasteEmailMonitoringSearchQuery,
+  options?: { readonly signal?: AbortSignal }
+): Promise<WasteEmailMonitoringOverview> =>
+  requestWasteManagementItem<WasteEmailMonitoringOverview>({
+    url: '/api/v1/waste-management/email-monitoring/search',
+    init: {
+      method: 'POST',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(query),
+      cache: 'no-store',
+      signal: options?.signal,
+    },
+  });

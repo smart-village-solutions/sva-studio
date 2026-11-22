@@ -1,15 +1,15 @@
 ## 1. Abo-Ende und Versandgrenze
 
-- [ ] Waste-Schema, Migration und Abo-/Outbox-Verbraucher auf nullable Adressdaten für beendete Abos prüfen. Schema-SQL und Schemareferenz aktualisieren.
-- [ ] Aktivierung an Token, Status und gültigen Ablaufzeitpunkt im atomaren Update binden. Die Pending-Bereinigung ausschließlich nach der gespeicherten Gültigkeit auslösen.
-- [ ] Versandclaim, Abo-Widerruf und Ablaufbereinigung am Abo serialisieren. Erfolgsantwort, Rollback, begrenzten Versandversuch und Wiederaufnahme nach Prozessabbruch prüfen.
-- [ ] Adresse und Adresshash in der Abmelde-Transaktion entfernen. Persistierte Aufträge einschließlich bereits gesendeter Einträge und freier Fehlertexte auf die benötigten Metadaten reduzieren.
+- [x] Waste-Schema, Migration und Abo-/Outbox-Verbraucher auf nullable Adressdaten für beendete Abos prüfen. Schema-SQL und Schemareferenz aktualisieren.
+- [x] Aktivierung an Token, Status und gültigen Ablaufzeitpunkt im atomaren Update binden. Die Pending-Bereinigung ausschließlich nach der gespeicherten Gültigkeit auslösen.
+- [x] Versandclaim, Abo-Widerruf und Ablaufbereinigung am Abo serialisieren. Erfolgsantwort, Rollback, begrenzten Versandversuch und Wiederaufnahme nach Prozessabbruch lokal prüfen.
+- [x] Adresse und Adresshash in der Abmelde-Transaktion entfernen. Persistierte Aufträge einschließlich bereits gesendeter Einträge und freier Fehlertexte auf die benötigten Metadaten reduzieren.
 - [ ] Den Altbestand zuerst mit Anzahl, Einschlussregeln, Ausnahmen und erwarteten Änderungen erfassen. Einen produktiven Lauf erst nach Freigabe ausführen und unabhängig zurücklesen.
 
 ## 2. Suche im vorhandenen Monitoring
 
-- [ ] Vollständige Adressen im POST-Body validieren und Normalisierung und Hashbildung mit der Anmeldung teilen. Die bestehende Monitoring-Autorisierung und den Methodenschutz verwenden.
-- [ ] Paginierte Treffermenge und Trefferzahl mit exakt demselben Hash- und Aktivprädikat abrufen. Maskierte Antwort mit `Cache-Control: no-store` ausgeben.
+- [x] Vollständige Adressen im POST-Body validieren und Normalisierung und Hashbildung mit der Anmeldung teilen. Die bestehende Monitoring-Autorisierung und den Methodenschutz verwenden.
+- [x] Paginierte Treffermenge und Trefferzahl mit exakt demselben Hash- und Aktivprädikat abrufen. Maskierte Antwort mit `Cache-Control: no-store` ausgeben.
 - [ ] Das Suchformular in der vorhandenen Ansicht umsetzen. Bei Suchänderung, Wechsel des Mandanten oder Verlust des Zugriffs keine alte Antwort ausgeben.
 
 ## 3. Nachweise und Dokumentation

@@ -3,6 +3,7 @@ export type { WasteMasterDataRepository } from './repositories/master-data.js';
 export { mutateWasteAddressInTransaction } from './repositories/address-mutations.js';
 export { previewWasteAddressMutation } from './repositories/address-mutation-snapshot.js';
 export { createWasteEmailReminderRepository, wasteEmailReminderStatements } from './repositories/email-reminders.js';
+export { hashWasteReminderEmail, normalizeWasteReminderEmail } from './repositories/email-reminders.subscriptions.js';
 export type { WasteEmailReminderRepository, WasteEmailReminderActivationResult, WasteEmailReminderActiveSubscription, WasteEmailReminderOutboxEntryInput, WasteEmailReminderOutboxLease, WasteEmailReminderPendingSignupInput, WasteEmailReminderPendingSignupItem, WasteEmailReminderUnsubscribeSubscription, WasteEmailReminderUnsubscribeResult } from './repositories/email-reminders.js';
 export { writeWasteAnnualMappedTours } from './repositories/annual-tour-transfer-write.js';
 export { previewWasteLocationTourPickupDateImport } from './repositories/import-preview.js';

@@ -19,14 +19,16 @@ export const createWasteOverviewHandlers = (deps: WasteServerHandlerDeps) => {
     loadWasteMainserverSyncStatus,
     withAuthenticatedWasteManagementHandler,
   } = deps;
+  const emailMonitoringHandler = (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deps.getWasteEmailMonitoringInternal(nextRequest, ctx, {
+        ...bindWasteAuditActor(ctx),
+        loadWasteEmailMonitoring: deps.loadWasteEmailMonitoring,
+      })
+    );
   return {
-    getEmailMonitoring: (request: Request): Promise<Response> =>
-      deps.withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-        deps.getWasteEmailMonitoringInternal(nextRequest, ctx, {
-          ...deps.bindWasteAuditActor(ctx),
-          loadWasteEmailMonitoring: deps.loadWasteEmailMonitoring,
-        })
-      ),
+    getEmailMonitoring: emailMonitoringHandler,
+    searchEmailMonitoring: emailMonitoringHandler,
     getMainserverSyncStatus: (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
         getWasteManagementMainserverSyncStatusInternal(nextRequest, ctx, {

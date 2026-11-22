@@ -1,9 +1,15 @@
+import { createHash } from 'node:crypto';
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type {
   WasteEmailReminderPendingSignupInput,
   WasteEmailReminderPendingSignupItem,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
+
+export const normalizeWasteReminderEmail = (value: string): string => value.trim().toLowerCase();
+
+export const hashWasteReminderEmail = (value: string): string =>
+  `sha256:${createHash('sha256').update(normalizeWasteReminderEmail(value)).digest('hex')}`;
 
 type CountRow = Readonly<{
   total: number | string;

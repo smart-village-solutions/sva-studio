@@ -39,16 +39,23 @@ export const classifyWasteEmailError = (
 type SubscriptionRow = Omit<WasteEmailSubscriptionSummary, 'maskedEmail'> & { email: string | null };
 type DeliveryRow = Omit<WasteEmailDeliverySummary, 'error'> & { lastError: string | null };
 
+export type WasteEmailMonitoringLookup = WasteEmailMonitoringQuery & Readonly<{
+  emailHash?: string;
+}>;
+
+const subscriptionFilters = `($1::text IS NULL OR status = $1)
+  AND ($2::text IS NULL OR (status = 'active' AND email_hash = $2))`;
+
 export const loadWasteEmailMonitoring = async (
   executor: SqlExecutor,
-  query: WasteEmailMonitoringQuery
+  query: WasteEmailMonitoringLookup
 ): Promise<WasteEmailMonitoringOverview> => {
-  const filter = query.status ?? null;
+  const filters = [query.status ?? null, query.emailHash ?? null];
   const count = await executor.execute<{ total: number; activeTotal: number }>({
-    text: `SELECT COUNT(*) FILTER (WHERE $1::text IS NULL OR status = $1)::int AS total,
+    text: `SELECT COUNT(*) FILTER (WHERE ${subscriptionFilters})::int AS total,
       COUNT(*) FILTER (WHERE status = 'active')::int AS "activeTotal"
       FROM waste_email_reminder_subscriptions`,
-    values: [filter],
+    values: filters,
   });
   const subscriptions = await executor.execute<SubscriptionRow>({
     text: `SELECT s.id::text, s.email, s.status, c.name AS city,
@@ -62,8 +69,8 @@ export const loadWasteEmailMonitoring = async (
       FROM (
         SELECT id, email, status, city_id, created_at, activated_at, unsubscribed_at
         FROM waste_email_reminder_subscriptions
-        WHERE ($1::text IS NULL OR status = $1)
-        ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
+        WHERE ${subscriptionFilters}
+        ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4
       ) s
       LEFT JOIN waste_cities c ON c.id = s.city_id
       LEFT JOIN LATERAL (
@@ -85,11 +92,13 @@ export const loadWasteEmailMonitoring = async (
         ORDER BY created_at DESC, id DESC LIMIT 1
       ) doi ON true
       ORDER BY s.created_at DESC, s.id DESC`,
-    values: [filter, query.pageSize, (query.page - 1) * query.pageSize],
+    values: [...filters, query.pageSize, (query.page - 1) * query.pageSize],
   });
   let deliveries: readonly WasteEmailDeliverySummary[] = [];
   let deliveryTotal = 0;
-  if (query.subscriptionId) {
+  if (query.subscriptionId && (
+    !query.emailHash || subscriptions.rows.some((row) => row.id === query.subscriptionId)
+  )) {
     const deliveryCount = await executor.execute<{ total: number }>({
       text: 'SELECT COUNT(*)::int AS total FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid',
       values: [query.subscriptionId],

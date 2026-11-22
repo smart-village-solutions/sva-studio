@@ -111,9 +111,9 @@ export const wasteManagementPluginTranslationsDESettings =
       disruptionNotificationsDescription:
         'Legen Sie fest, welche außerordentlichen Abfallhinweise im nächsten wasteTypes-Abgleich für diesen Mandanten bereitgestellt werden.',
       disruptionLocationHelp:
-        'Ermöglicht Hinweise für den ausgewählten Abholort beziehungsweise „Meine Straße“.',
+        'Ermöglicht Hinweise für den ausgewählten Abholpunkt beziehungsweise „Meine Straße“.',
       disruptionAllLocationsHelp:
-        'Ermöglicht Hinweise für alle Abholorte beziehungsweise „Alle Straßen“.',
+        'Ermöglicht Hinweise für alle Abholpunkte beziehungsweise „Alle Straßen“.',
       wasteTypesSyncStarted: 'Die Synchronisierung der Abfallarten wurde gestartet.',
       wasteTypesSyncWarning:
         'Die Einstellungen wurden gespeichert, aber wasteTypes konnte nicht mit dem Mainserver synchronisiert werden.',

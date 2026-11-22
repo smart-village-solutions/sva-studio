@@ -271,7 +271,7 @@ describe('waste-management collection location handlers', () => {
       error: {
         code: 'database_unavailable',
         message:
-          'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.',
+          'Der Waste-Abholpunkt konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.',
       },
       requestId: 'req-test',
     });
@@ -311,7 +311,7 @@ describe('waste-management collection location handlers', () => {
       error: {
         code: 'database_unavailable',
         message:
-          'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Hausnummer verlangt. "Alle Hausnummern" ist dort aktuell nicht zulässig.',
+          'Der Waste-Abholpunkt konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Hausnummer verlangt. "Alle Hausnummern" ist dort aktuell nicht zulässig.',
       },
       requestId: 'req-test',
     });
@@ -349,7 +349,7 @@ describe('waste-management collection location handlers', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: {
         code: 'database_unavailable',
-        message: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+        message: 'Der Waste-Abholpunkt konnte nicht gespeichert werden.',
       },
       requestId: 'req-test',
     });

@@ -2,30 +2,30 @@ import { createWasteManagementLocationsWorkspaceTranslations } from './plugin.tr
 
 export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
   createWasteManagementLocationsWorkspaceTranslations({
-    title: 'Abholorte & Adresshierarchie',
+    title: 'Abholpunkte & Adresshierarchie',
     description:
-      'Arbeiten Sie wie im Newcms-Modus zentral an Abholorten, Tourfiltern und der geografischen Hierarchie.',
-    emptyTitle: 'Keine Abholorte gefunden',
-    emptyBody: 'Passen Sie die Filter an oder legen Sie den ersten Abholort an.',
+      'Arbeiten Sie wie im Newcms-Modus zentral an Abholpunkten, Tourfiltern und der geografischen Hierarchie.',
+    emptyTitle: 'Keine Abholpunkte gefunden',
+    emptyBody: 'Passen Sie die Filter an oder legen Sie den ersten Abholpunkt an.',
     emptyRegions: 'Noch keine Regionen angelegt.',
     emptyCities: 'Noch keine Orte angelegt.',
     emptyStreets: 'Noch keine Straßen angelegt.',
     emptyHouseNumbers: 'Noch keine Hausnummern angelegt.',
     actions: {
-      createMenu: 'Abholort anlegen',
+      createMenu: 'Abholpunkt anlegen',
       createRegion: 'Neue Region',
-      createRegionHint: 'mit Orten und Abholorten',
+      createRegionHint: 'mit Orten und Abholpunkten',
       createCity: 'Neuer Ort',
-      createCityHint: 'mit Straßen und Abholorten',
+      createCityHint: 'mit Straßen und Abholpunkten',
       createStreet: 'Neue Straße',
-      createStreetHint: 'mit Hausnummern und Abholorten',
+      createStreetHint: 'mit Hausnummern und Abholpunkten',
       createHouseNumber: 'Neue Hausnummer',
-      createLocation: 'Neuer Abholort',
-      createLocationHint: 'einzelner Abholort',
+      createLocation: 'Neuer Abholpunkt',
+      createLocationHint: 'einzelner Abholpunkt',
     },
     filters: {
       filtersTitle: 'Filter',
-      locationSearch: 'Abholort suchen',
+      locationSearch: 'Abholpunkt suchen',
       locationSearchPlaceholder: 'Ort, Straße oder Hausnummer',
       resetFilters: 'Filter zurücksetzen',
       tour: 'Nach Tour filtern',
@@ -52,16 +52,16 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
     coverage: {
       title: 'Vollständigkeit der Fraktionszuordnung prüfen',
       description:
-        'Prüfen Sie, ob alle aktiven Abholorte im gewählten Zeitraum lückenlos einer Tour der Abfallfraktion zugeordnet sind.',
+        'Prüfen Sie, ob alle aktiven Abholpunkte im gewählten Zeitraum lückenlos einer Tour der Abfallfraktion zugeordnet sind.',
       fraction: 'Abfallfraktion',
       fractionUnset: 'Abfallfraktion auswählen',
       fractionsLoading: 'Abfallfraktionen werden geladen.',
       fractionsLoadError:
-        'Die Abfallfraktionen konnten nicht geladen werden. Die Abholorte können weiterhin bearbeitet werden.',
+        'Die Abfallfraktionen konnten nicht geladen werden. Die Abholpunkte können weiterhin bearbeitet werden.',
       fractionsEmpty: 'Für diesen Mandanten sind noch keine Abfallfraktionen vorhanden.',
       toursLoading: 'Touren werden für die Vollständigkeitsprüfung geladen.',
       toursLoadError:
-        'Die Touren konnten nicht geladen werden. Die Abholorte können weiterhin bearbeitet werden.',
+        'Die Touren konnten nicht geladen werden. Die Abholpunkte können weiterhin bearbeitet werden.',
       startDate: 'Startdatum',
       year: 'Kalenderjahr',
       includeDrafts: 'Planung einschließlich Entwürfen prüfen',
@@ -74,19 +74,19 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       required: 'Wählen Sie eine Abfallfraktion sowie Start- und Enddatum aus.',
       invalidDateRange: 'Das Enddatum darf nicht vor dem Startdatum liegen.',
       complete:
-        'Alle {{value}} aktiven Abholorte sind im gewählten Zeitraum vollständig zugeordnet.',
+        'Alle {{value}} aktiven Abholpunkte sind im gewählten Zeitraum vollständig zugeordnet.',
       summary:
-        '{{checked}} aktive Abholorte geprüft: {{missing}} ohne Zuordnung, {{incomplete}} mit zeitlichen Lücken.',
+        '{{checked}} aktive Abholpunkte geprüft: {{missing}} ohne Zuordnung, {{incomplete}} mit zeitlichen Lücken.',
       missing: 'Keine Zuordnung',
       incomplete: 'Zeitraum unvollständig',
       gap: 'Nicht abgedeckt: {{startDate}} bis {{endDate}}',
       edit: 'Zuordnungen bearbeiten',
-      selectAndAssign: '{{value}} Abholorte auswählen und Tour zuordnen',
+      selectAndAssign: '{{value}} Abholpunkte auswählen und Tour zuordnen',
     },
     table: {
-      caption: 'Abholorte mit Status und direkter Bearbeitung',
+      caption: 'Abholpunkte mit Status und direkter Bearbeitung',
       noToursForFilters: 'Keine Tour für die gewählten Filter',
-      label: 'Abholort',
+      label: 'Abholpunkt',
       region: 'Region',
       city: 'Ort',
       street: 'Straße',
@@ -145,7 +145,7 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       moveConfirm: 'Verschiebung bestätigen',
       moveConfirmSubscriptions: 'Verschiebung und Abo-Löschung bestätigen',
       moveSaving: 'Verschiebung wird gespeichert…',
-      moveLocations: '{{count}} Abholorte übernehmen die neue Adresszuordnung.',
+      moveLocations: '{{count}} Abholpunkte übernehmen die neue Adresszuordnung.',
       moveRetainedTourLink: 'Die bestehende Tourzuordnung bleibt erhalten.',
       moveRetainedTourLinks: '{{count}} bestehende Tourzuordnungen bleiben erhalten.',
       moveSubscriptions:
@@ -172,14 +172,14 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       transferDescription:
         'Zugehörige Daten werden übertragen. Dubletten werden nur innerhalb desselben übergeordneten Eintrags zusammengeführt. Betroffene Erinnerungsabos einschließlich ihrer Versanddaten werden gelöscht.',
       transferImpact:
-        '{{merged}} Adresseinträge werden zusammengeführt und gelöscht, {{transferred}} untergeordnete Adresseinträge übertragen. {{locations}} Abholorte werden übertragen oder bei gleicher Zieladresse zusammengeführt.',
+        '{{merged}} Adresseinträge werden zusammengeführt und gelöscht, {{transferred}} untergeordnete Adresseinträge übertragen. {{locations}} Abholpunkte werden übertragen oder bei gleicher Zieladresse zusammengeführt.',
       transferKept:
         'Touren, Terminverknüpfungen und Abholtermine bleiben erhalten. Bei Orten gelten gleicher Name und gleiche Postleitzahl als Dublette; Straßen und Hausnummern werden nur innerhalb desselben Eltern-Eintrags verglichen.',
       edit: '{{value}} bearbeiten',
       delete: '{{value}} löschen',
       deleteTitle: '{{value}} löschen?',
       deleteDescription:
-        'Die zugehörigen Adressdaten, Abholorte und Erinnerungsabos werden mit den angezeigten Folgen entfernt.',
+        'Die zugehörigen Adressdaten, Abholpunkte und Erinnerungsabos werden mit den angezeigten Folgen entfernt.',
       deleteConfirm: 'Endgültig löschen',
       cancel: 'Abbrechen',
       previewLoading: 'Auswirkungen werden ermittelt …',
@@ -194,11 +194,11 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       details: 'Weitere Auswirkungen anzeigen',
       keptData: 'Touren, Fraktionen und allgemeine Terminregeln bleiben erhalten.',
       inconsistent:
-        '{{count}} Abholorte haben widersprüchliche Adressbezüge. Die Löschung ist gesperrt.',
+        '{{count}} Abholpunkte haben widersprüchliche Adressbezüge. Die Löschung ist gesperrt.',
       impact: {
         addresses:
           'Adressobjekte: {{regions}} Regionen, {{cities}} Orte, {{streets}} Straßen und {{houseNumbers}} Hausnummern.',
-        locations: 'Abholorte: {{count}}',
+        locations: 'Abholpunkte: {{count}}',
         subscriptions: 'E-Mail-Abos einschließlich ihrer Positionen: {{count}}',
         sent: '{{count}} bereits versandte Outbox-Einträge werden aus der gespeicherten Versandhistorie gelöscht; versendete E-Mails lassen sich nicht zurückrufen.',
         links: 'Tourzuordnungen: {{count}}',

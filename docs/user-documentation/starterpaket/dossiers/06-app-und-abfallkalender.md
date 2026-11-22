@@ -7,18 +7,18 @@ Die Modulzuweisung und die Katalogpflege sind im [Dossier zu Kategorien und Modu
 - **Route / Typ / Owner:** `/plugins/waste-management`, Übersicht, Plugin `waste-management`.
 - **Nutzerziel:** Abfallstammdaten, Touren, Termine, Ausgabe und Werkzeuge in einem Fachbereich
   verwalten.
-- **Produktfakten:** Die Seite besitzt Bereiche für Abfallarten, Touren, Abholorte,
+- **Produktfakten:** Die Seite besitzt Bereiche für Abfallarten, Touren, Abholpunkte,
   Ausweichtermine, Ausgabe, Datentools und Einstellungen sowie technische und Audit-Historie. Die
   Ausgabe konfiguriert die statischen PDF-Inhalte für Branding und Kontaktinformationen. Die
   öffentliche Webversion des Abfallkalenders erzeugt das PDF anschließend ad hoc für die gewählte
-  Adresse, die Fraktionen und das Jahr. Abholorte verbinden Regionen, Orte, Straßen, Hausnummern
+  Adresse, die Fraktionen und das Jahr. Abholpunkte verbinden Regionen, Orte, Straßen, Hausnummern
   und konkrete Sammelstellen. Einstellungen bleiben auch bei fehlerhafter Datenquelle erreichbar.
 - **Kontextabhängig:** Route erfordert das Modul `waste-management` und `waste-management.read`;
   einzelne Aktionen besitzen zusätzliche fully-qualified Rechte. Einige Tabtexte weisen noch auf
   künftige oder nachgelagerte Anbindungen hin und dürfen nicht als verfügbare Funktion beschrieben
   werden.
 - **Leitfragen / Stichwörter:** Welche Stammdaten müssen vor Touren vorhanden sein? Wie hängen
-  Abholort, Fraktion, Tour und Ausweichtermin zusammen? Abfallkalender, Abfallart, Tour, Abholort,
+  Abholpunkt, Fraktion, Tour und Ausweichtermin zusammen? Abfallkalender, Abfallart, Tour, Abholpunkt,
   PDF-Konfiguration, öffentliche Webversion, Datentool, Audit.
 - **Evidenz:** `packages/plugin-waste-management/src/waste-management.page.tsx`,
   `plugin.translations.de.*.ts`, `plugin.tsx`.
@@ -29,13 +29,13 @@ Die Modulzuweisung und die Katalogpflege sind im [Dossier zu Kategorien und Modu
    Wählen Sie den Ort, tragen Sie den Straßennamen ein und klicken Sie auf **Straße speichern**.
    Für Pferdeschwemme wählen Sie zum Beispiel den Ort **Perleberg**. Die gespeicherte Straße
    steht nun im Adressformular zur Auswahl.
-2. Öffnen Sie **Abholorte → Abholort anlegen** und wählen Sie Ort und Straße. Wenn die Abholung
+2. Öffnen Sie **Abholpunkte → Abholpunkt anlegen** und wählen Sie Ort und Straße. Wenn die Abholung
    für die gesamte Pferdeschwemme gelten soll, wählen Sie **Alle Hausnummern** und klicken Sie
-   auf **Abholort speichern**. Wenn unterschiedliche Touren beispielsweise für die Hausnummern
+   auf **Abholpunkt speichern**. Wenn unterschiedliche Touren beispielsweise für die Hausnummern
    2 bis 6 und 8 bis 12 gelten, pflegen Sie unter **Stammdaten → Hausnummern** zuerst die
    tatsächlich vorhandenen Hausnummern. Wählen Sie beim Anlegen jedes Abholpunkts die konkrete
    Hausnummer. So bleibt die Zuordnung auf die jeweils gewünschten Adressen beschränkt.
-3. Öffnen Sie unter **Touren** die gewünschte Tour und wählen Sie **Abholorte zuordnen**.
+3. Öffnen Sie unter **Touren** die gewünschte Tour und wählen Sie **Abholpunkte zuordnen**.
    Der gespeicherte Abholpunkt ist jetzt in der **Tour-Zuordnung** auswählbar. Prüfen Sie vor
    dem Speichern der Zuordnung den Ort, die Straße und gegebenenfalls die Hausnummer.
 

@@ -11,10 +11,10 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     formats: { json: 'JSON (ein Profil)', zip: 'ZIP-Paket' },
     profiles: {
       fractions: 'Fraktionen',
-      geographyCollectionLocations: 'Geografie und Abholorte',
+      geographyCollectionLocations: 'Geografie und Abholpunkte',
       recurrencePresets: 'Abstandspresets',
       tours: 'Touren',
-      locationTourLinks: 'Abholort-Tour-Zuordnungen',
+      locationTourLinks: 'Abholpunkt-Tour-Zuordnungen',
       tourAssignments: 'Tour-Einsätze',
       dateShifts: 'Ausweichtermine',
       holidayRules: 'Feiertagsregeln',
@@ -44,7 +44,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     templateColumns: 'Kanonische Importspalten',
     previewTitle: 'Importvorschau',
     previewSummary:
-      '{{validRows}} gültige Zeilen, {{invalidRows}} fehlerhafte Zeilen, {{createdTours}} neue Touren, {{createdLocations}} neue Abholorte, {{createdAssignments}} neue Zuordnungen.',
+      '{{validRows}} gültige Zeilen, {{invalidRows}} fehlerhafte Zeilen, {{createdTours}} neue Touren, {{createdLocations}} neue Abholpunkte, {{createdAssignments}} neue Zuordnungen.',
     previewDelimiter: 'Erkanntes Trennzeichen: {{detected}}. Verwendetes Trennzeichen: {{active}}.',
     previewHintStreet: 'Leere Straße wird als "Alle Straßen" verarbeitet.',
     previewHintHouseNumbers: 'Leere Hausnummern werden als "Alle Hausnummern" verarbeitet.',
@@ -60,9 +60,9 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
         'Der Import wurde als technischer Prozess gestartet. Details finden Sie weiter unten im Verlauf.',
       newFractionsTitle: 'Neue Abfallarten',
       newToursTitle: 'Neue Touren',
-      newLocationsTitle: 'Neue Abholorte',
+      newLocationsTitle: 'Neue Abholpunkte',
       newLocationsSummary:
-        '{{created}} neue Abholorte werden angelegt, {{reused}} bestehende wiederverwendet.',
+        '{{created}} neue Abholpunkte werden angelegt, {{reused}} bestehende wiederverwendet.',
       errorTitle: 'Fehler',
       errorLine: 'Zeile {{rowNumber}}, Spalte {{column}}',
       noErrors: 'Keine Fehler erkannt.',

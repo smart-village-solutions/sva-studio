@@ -226,13 +226,13 @@ test.describe('waste management plugin', () => {
         .getByRole('row')
         .filter({ hasText: String(year) })
         .getByRole('checkbox');
-    const locationsTab = page.getByRole('tab', { name: 'Abholorte', exact: true });
+    const locationsTab = page.getByRole('tab', { name: 'Abholpunkte', exact: true });
     const toursTab = page.getByRole('tab', { name: 'Touren', exact: true });
     const assignmentHeading = page.getByRole('heading', { name: 'Tour-Zuordnung', exact: true });
     const returnToList = page.getByRole('button', { name: 'Zurück zur Tourenliste', exact: true });
     const confirmDiscard = page.getByRole('alertdialog', { name: 'Änderungen verwerfen?' });
     const locationCheckbox = page.getByRole('checkbox', {
-      name: /Abholort .*Pferdeschwemme.* auswählen/,
+      name: /Abholpunkt .*Pferdeschwemme.* auswählen/,
     });
     const assignmentCount = (year: number) =>
       page.getByTestId(`tour-assignment-count-tour-${year}`);
@@ -299,7 +299,7 @@ test.describe('waste management plugin', () => {
     await toursTab.click();
     const tourRow = page.getByRole('row').filter({ has: assignmentCount(2026) });
     await tourRow.getByRole('link', { name: 'Restmüll', exact: true }).click();
-    await page.getByRole('button', { name: 'Abholorte zuordnen', exact: true }).click();
+    await page.getByRole('button', { name: 'Abholpunkte zuordnen', exact: true }).click();
     await expect(assignmentHeading).toBeVisible();
     await expect(page).toHaveURL(/tourId=tour-2026/);
     await page.setViewportSize({ width: 640, height: 780 });
@@ -870,30 +870,30 @@ test.describe('waste management plugin', () => {
     await captureStudioDesignState(page, 'waste-custom-date-picker', '[role=dialog]');
     await page.getByRole('button', { name: 'Auswahl übernehmen', exact: true }).click();
     await page.getByRole('button', { name: 'Termin bearbeiten', exact: true }).click();
-    await page.getByRole('button', { name: 'Abholort zuweisen', exact: true }).click();
-    const locationTrigger = page.getByRole('button', { name: 'Abholort', exact: true });
+    await page.getByRole('button', { name: 'Abholpunkt zuweisen', exact: true }).click();
+    const locationTrigger = page.getByRole('button', { name: 'Abholpunkt', exact: true });
     await locationTrigger.press('Enter');
-    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).fill('Markt');
+    await page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true }).fill('Markt');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(locationTrigger).toBeFocused();
     await expect(locationTrigger).toContainText('Markt');
     await locationTrigger.press('Enter');
-    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).press('Tab');
+    await page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true }).press('Tab');
     const clearLocation = page.getByRole('button', {
-      name: 'Abholortauswahl aufheben',
+      name: 'Abholpunktauswahl aufheben',
       exact: true,
     });
     await expect(clearLocation).toBeFocused();
     await clearLocation.press('Tab');
     await expect(page.getByRole('textbox', { name: 'Hinweis', exact: true })).toBeFocused();
-    await expect(page.getByRole('combobox', { name: 'Abholort suchen', exact: true })).toHaveCount(
+    await expect(page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })).toHaveCount(
       0
     );
     await locationTrigger.press('Enter');
     await captureStudioDesignState(page, 'waste-location-search', 'main, [role=dialog]');
     await expect(
-      page.getByRole('combobox', { name: 'Abholort suchen', exact: true })
+      page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })
     ).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(locationTrigger).toBeFocused();

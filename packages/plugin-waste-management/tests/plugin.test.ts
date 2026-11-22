@@ -327,7 +327,7 @@ describe('pluginWasteManagement contract', () => {
       {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
-        displayName: 'Geografie und Abholorte',
+        displayName: 'Geografie und Abholpunkte',
         sourceFormats: [
           'text/csv',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

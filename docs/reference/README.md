@@ -41,7 +41,7 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 - [Waste-Datenaustausch](./waste-data-exchange.md)
 - [Medienverwaltung](./media-management.md)
 - [UI-Zugriff und Server-Enforcement](./ui-access-server-enforcement.md)
-- [Waste-Abholorte global sortieren und auswählen](./waste-management-abholorte-sortieren.md)
+- [Waste-Abholpunkte global sortieren und auswählen](./waste-management-abholorte-sortieren.md)
 - [Gültigkeitszeiträume von Waste-Touren](./waste-management-tour-gueltigkeit.md)
 
 Das ergänzende Authorization-OpenAPI-Schema liegt unter [`docs/api/iam-authorization-openapi-3.0.yaml`](../api/iam-authorization-openapi-3.0.yaml). Alle finalen Zielpfade und Konsolidierungsentscheidungen sind im [Migrationsnachweis](../governance/dokumentationsmigration.md) festgehalten.

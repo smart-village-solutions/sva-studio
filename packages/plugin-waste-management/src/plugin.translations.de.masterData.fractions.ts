@@ -185,15 +185,15 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     tour: '{{name}} ({{status}})',
     shared: 'Weitere Fraktionen dieser Tour: {{fractions}}',
     removeDates: 'Touren und abhängige Daten entfallen vollständig, auch für weitere Fraktionen.',
-    keepDates: 'Touren, Termine, Einsätze und Abholortzuordnungen bleiben erhalten.',
+    keepDates: 'Touren, Termine, Einsätze und Abholpunktzuordnungen bleiben erhalten.',
     reminders:
       'Erinnerungsauswahlen entfallen ohne Übertragung. Ungültige Erinnerungen werden storniert.',
     refresh: 'Vorschau aktualisieren',
     previewError: 'Die Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.',
     executeError: 'Änderung fehlgeschlagen. Bitte Vorschau erneut prüfen.',
-    conflict: '{{tours}}: gleicher Abholtag {{date}} am Abholort {{location}}.',
+    conflict: '{{tours}}: gleicher Abholtag {{date}} am Abholpunkt {{location}}.',
     counts: {
-      links: 'Abholortzuordnungen',
+      links: 'Abholpunktzuordnungen',
       pickupDates: 'Gespeicherte Standorttermine',
       assignments: 'Gespeicherte Einsätze',
       shifts: 'Tourverschiebungen',

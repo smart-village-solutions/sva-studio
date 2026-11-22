@@ -131,9 +131,9 @@ const remainingCanonicalJsonEntries = wasteManagementDataProfiles
 export const wasteManagementImportCatalog = [
   importTemplate({
     profileId: wasteManagementOperationsContract.importProfileIds.geographyCollectionLocations,
-    displayName: 'Geografie und Abholorte',
+    displayName: 'Geografie und Abholpunkte',
     description:
-      'Importiert Regionen, Orte, Straßen, Hausnummern, Abholorte und die fachliche Zuordnung in einer kanonischen CSV-Struktur.',
+      'Importiert Regionen, Orte, Straßen, Hausnummern, Abholpunkte und die fachliche Zuordnung in einer kanonischen CSV-Struktur.',
     requiredColumns: [
       { key: 'region_id', required: true, example: 'region-nord' },
       { key: 'region_name', required: true, example: 'Nord' },

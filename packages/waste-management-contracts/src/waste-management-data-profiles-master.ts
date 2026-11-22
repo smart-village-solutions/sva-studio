@@ -39,8 +39,8 @@ export const wasteManagementMasterDataProfiles = [
   },
   {
     profileId: wasteManagementDataProfileIds.geographyCollectionLocations,
-    displayName: 'Geografie und Abholorte',
-    description: 'Regionen, Orte, Straßen, Hausnummern und Abholorte mit stabilen Referenzen.',
+    displayName: 'Geografie und Abholpunkte',
+    description: 'Regionen, Orte, Straßen, Hausnummern und Abholpunkte mit stabilen Referenzen.',
     formatVersion: '1.0.0',
     dependencies: [],
     formats: ['application/json'],

@@ -16,7 +16,7 @@ Die Reminder-Konfiguration einer Fraktion bleibt enthalten. Sie beschreibt nur d
 
 ## Profile und Formate
 
-Für Fraktionen, Geografie und Abholorte, Abstandspresets, Touren, Abholort-Tour-Zuordnungen, Tour-Einsätze, Ausweichtermine, Feiertagsregeln sowie portable Einstellungen existiert jeweils ein versioniertes JSON-Profil. Ein einzelnes Profil kann als JSON exportiert und importiert werden. Mehrere ausgewählte Profile werden als ZIP-Paket mit Manifest, Abhängigkeiten, Datensatzanzahlen und SHA-256-Prüfsummen übertragen.
+Für Fraktionen, Geografie und Abholpunkte, Abstandspresets, Touren, Abholpunkt-Tour-Zuordnungen, Tour-Einsätze, Ausweichtermine, Feiertagsregeln sowie portable Einstellungen existiert jeweils ein versioniertes JSON-Profil. Ein einzelnes Profil kann als JSON exportiert und importiert werden. Mehrere ausgewählte Profile werden als ZIP-Paket mit Manifest, Abhängigkeiten, Datensatzanzahlen und SHA-256-Prüfsummen übertragen.
 
 Die bisherigen CSV-/XLSX-Importe bleiben als kompatible, einseitige Eingangsadapter bestehen. Sie sind kein vollständiger Roundtrip-Vertrag. Der CSV-Spezialimport „Tourzuordnungen nach Fraktionen“ bleibt separat und erzeugt fehlende Fachdaten weiterhin mit seinen dokumentierten Defaults.
 

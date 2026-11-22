@@ -174,12 +174,12 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
   optionale Quelle und Veröffentlichungsmodus ohne Tabwechsel an. Hinzu kommt
   optional Push. Der Richtext lässt sich visuell oder als HTML bearbeiten; Links, Überschriften
   und Listen stehen in der visuellen Ansicht bereit. Push kann global oder auf ausgewählte
-  Abholorte begrenzt werden; die Nachricht selbst bleibt dabei öffentlich sichtbar.
+  Abholpunkte begrenzt werden; die Nachricht selbst bleibt dabei öffentlich sichtbar.
 - **Lebenszyklus:** Entwurf, sofort veröffentlichen oder zeitgesteuert; geplanter Zeitpunkt darf in
   Vergangenheit oder Zukunft liegen. Push wird beim Speichern einer veröffentlichten Nachricht
   ausgelöst und kann pro Nachricht nur einmal gesendet werden.
 - **Leitfragen / Stichwörter:** Wann ist die Nachricht sichtbar? Wer erhält Push? Was bedeutet
-  globale Zielgruppe? Nachricht, Push, Abholorte, Entwurf, Zeitsteuerung.
+  globale Zielgruppe? Nachricht, Push, Abholpunkte, Entwurf, Zeitsteuerung.
 - **Evidenz:** `packages/plugin-news/src/news.detail-*.tsx`,
   `packages/plugin-news/src/plugin.translations.ts`.
 

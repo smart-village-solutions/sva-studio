@@ -7,7 +7,7 @@ export const wasteManagementPluginTranslationsDESchedulingSections = {
   assignments: {
     title: 'Tour-Einsätze',
     description:
-      'Explizite Einsätze einer Tour mit Datum, mehreren Abholorten und optionalem Hinweis.',
+      'Explizite Einsätze einer Tour mit Datum, mehreren Abholpunkten und optionalem Hinweis.',
     empty: 'Es sind noch keine expliziten Tour-Einsätze hinterlegt.',
     actions: {
       openCreate: 'Einsatz anlegen',
@@ -20,9 +20,9 @@ export const wasteManagementPluginTranslationsDESchedulingSections = {
     },
     dialog: {
       createTitle: 'Tour-Einsatz anlegen',
-      createDescription: 'Wählen Sie Tour, Datum und alle Abholorte des Einsatzes.',
+      createDescription: 'Wählen Sie Tour, Datum und alle Abholpunkte des Einsatzes.',
       editTitle: 'Tour-Einsatz bearbeiten',
-      editDescription: 'Passen Sie Tour, Datum, Abholorte oder den optionalen Hinweis an.',
+      editDescription: 'Passen Sie Tour, Datum, Abholpunkte oder den optionalen Hinweis an.',
       deleteTitle: 'Tour-Einsatz löschen',
       deleteDescription:
         'Der Tour-Einsatz für Tour {{tourId}} am {{pickupDate}} wird dauerhaft gelöscht.',
@@ -31,22 +31,22 @@ export const wasteManagementPluginTranslationsDESchedulingSections = {
       pickupDate: 'Datum',
       tour: 'Tour',
       tourUnset: 'Tour auswählen',
-      locations: 'Abholorte',
+      locations: 'Abholpunkte',
       locationsHint:
-        'Übergeordnete Orte können direkt ausgewählt werden und gelten für ihre untergeordneten Abholorte.',
+        'Übergeordnete Orte können direkt ausgewählt werden und gelten für ihre untergeordneten Abholpunkte.',
       note: 'Hinweis (optional)',
     },
     table: {
       ariaLabel: 'Tabelle der expliziten Tour-Einsätze',
-      caption: 'Tabelle der Tour-Einsätze mit Datum, Tour, Abholorten, Hinweis und Aktionen.',
+      caption: 'Tabelle der Tour-Einsätze mit Datum, Tour, Abholpunkten, Hinweis und Aktionen.',
       pickupDate: 'Datum',
       tour: 'Tour',
-      locations: 'Abholorte',
+      locations: 'Abholpunkte',
       note: 'Hinweis',
       actions: 'Aktionen',
     },
     validation: {
-      required: 'Tour, Datum und mindestens ein Abholort sind erforderlich.',
+      required: 'Tour, Datum und mindestens ein Abholpunkt sind erforderlich.',
     },
     messages: {
       createSuccess: 'Der Tour-Einsatz wurde angelegt.',

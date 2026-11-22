@@ -13,7 +13,7 @@ export const wasteManagementPluginTranslationsDEMasterData = createWasteManageme
     cityCount: '{{value}} Orte',
     streetCount: '{{value}} Straßen',
     houseNumberCount: '{{value}} Hausnummern',
-    collectionLocationCount: '{{value}} Abholorte',
+    collectionLocationCount: '{{value}} Abholpunkte',
   },
   messages: {
     loading: 'Stammdaten werden geladen.',
@@ -22,7 +22,7 @@ export const wasteManagementPluginTranslationsDEMasterData = createWasteManageme
     emptyTitle: 'Keine Stammdaten gefunden',
     emptyBody: 'Passen Sie die Filter an oder legen Sie die erste Abfallfraktion an.',
   },
-  tabs: createMasterDataTabs('Stammdatenbereiche', 'Fraktionen', 'Abholorte'),
+  tabs: createMasterDataTabs('Stammdatenbereiche', 'Fraktionen', 'Abholpunkte'),
   locationsWorkspace: wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace,
   fractions: wasteManagementPluginTranslationsDEMasterDataFractions,
   ...wasteManagementPluginTranslationsDEMasterDataEntities,

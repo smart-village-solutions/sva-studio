@@ -137,7 +137,7 @@ export const wasteManagementCollectionLocationReadHandlers = {
       return createApiError(
         400,
         'invalid_request',
-        'Die Parameter der Abholortliste sind ungültig.',
+        'Die Parameter der Abholpunktliste sind ungültig.',
         requestId
       );
     }
@@ -157,7 +157,7 @@ export const wasteManagementCollectionLocationReadHandlers = {
       return createApiError(
         503,
         'database_unavailable',
-        'Die Waste-Abholorte konnten nicht geladen werden.',
+        'Die Waste-Abholpunkte konnten nicht geladen werden.',
         requestId
       );
     }
@@ -175,7 +175,7 @@ export const wasteManagementCollectionLocationReadHandlers = {
       return createApiError(
         400,
         'invalid_request',
-        'Die Filterparameter der Abholortauswahl sind ungültig.',
+        'Die Filterparameter der Abholpunktauswahl sind ungültig.',
         requestId
       );
     }
@@ -195,7 +195,7 @@ export const wasteManagementCollectionLocationReadHandlers = {
       return createApiError(
         503,
         'database_unavailable',
-        'Die Waste-Abholortauswahl konnte nicht geladen werden.',
+        'Die Waste-Abholpunktauswahl konnte nicht geladen werden.',
         requestId
       );
     }

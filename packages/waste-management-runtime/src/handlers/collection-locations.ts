@@ -30,11 +30,11 @@ const mapCollectionLocationPersistenceErrorMessage = (error: unknown): string | 
   }
 
   if (pgError.column === 'street_id') {
-    return 'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.';
+    return 'Der Waste-Abholpunkt konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.';
   }
 
   if (pgError.column === 'house_number_id') {
-    return 'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Hausnummer verlangt. "Alle Hausnummern" ist dort aktuell nicht zulässig.';
+    return 'Der Waste-Abholpunkt konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Hausnummer verlangt. "Alle Hausnummern" ist dort aktuell nicht zulässig.';
   }
 
   return undefined;
@@ -87,8 +87,8 @@ export const wasteManagementCollectionLocationHandlers = {
         resourceType: 'waste_collection_location',
       },
       messages: {
-        verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
-        persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+        verificationFailed: 'Der Waste-Abholpunkt konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der Waste-Abholpunkt konnte nicht gespeichert werden.',
         mapPersistenceErrorMessage: mapCollectionLocationPersistenceErrorMessage,
       },
       save: () =>
@@ -141,9 +141,9 @@ export const wasteManagementCollectionLocationHandlers = {
         resourceType: 'waste_collection_location',
       },
       messages: {
-        notFound: 'Der Waste-Abholort wurde nicht gefunden.',
-        verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
-        persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+        notFound: 'Der Waste-Abholpunkt wurde nicht gefunden.',
+        verificationFailed: 'Der Waste-Abholpunkt konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der Waste-Abholpunkt konnte nicht gespeichert werden.',
         mapPersistenceErrorMessage: mapCollectionLocationPersistenceErrorMessage,
       },
       loadExisting: () => loadCollectionLocation(instanceId, locationId),
@@ -185,8 +185,8 @@ export const wasteManagementCollectionLocationHandlers = {
         resourceType: 'waste_collection_location',
       },
       messages: {
-        notFound: 'Der Waste-Abholort wurde nicht gefunden.',
-        deleteFailed: 'Der Waste-Abholort konnte nicht gelöscht werden.',
+        notFound: 'Der Waste-Abholpunkt wurde nicht gefunden.',
+        deleteFailed: 'Der Waste-Abholpunkt konnte nicht gelöscht werden.',
       },
       loadExisting: () => loadCollectionLocation(instanceId, locationId),
       remove: () => deleteCollectionLocation(instanceId, locationId),

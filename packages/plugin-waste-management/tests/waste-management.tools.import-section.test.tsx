@@ -94,7 +94,7 @@ const importCatalog = [
   },
   {
     profileId: 'waste-management.geografie-abholorte',
-    displayName: 'Geografie und Abholorte',
+    displayName: 'Geografie und Abholpunkte',
     description: 'Importiert Geografie.',
     sourceFormats: [
       'text/csv',

@@ -224,8 +224,8 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
   getWasteManagementImportCatalog: vi.fn(() => [
     {
       profileId: 'waste-management.geografie-abholorte',
-      displayName: 'Geografie und Abholorte',
-      description: 'Importiert Regionen und Abholorte.',
+      displayName: 'Geografie und Abholpunkte',
+      description: 'Importiert Regionen und Abholpunkte.',
       sourceFormats: [
         'text/csv',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -460,8 +460,8 @@ describe('WasteManagementPage', () => {
     wasteManagementApiMocks.getWasteManagementImportCatalog.mockImplementation(() => [
       {
         profileId: 'waste-management.geografie-abholorte',
-        displayName: 'Geografie und Abholorte',
-        description: 'Importiert Regionen und Abholorte.',
+        displayName: 'Geografie und Abholpunkte',
+        description: 'Importiert Regionen und Abholpunkte.',
         sourceFormats: [
           'text/csv',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -2088,9 +2088,8 @@ describe('WasteManagementPage', () => {
         const street = dialog.getByLabelText<HTMLSelectElement>(
           'wasteManagement.masterData.collectionLocations.fields.streetId'
         );
-        const sort = dialog.getByLabelText<HTMLSelectElement>(
-          'wasteManagement.tours.assignments.workspace.sortingDirection'
-        );
+        const sortCity = () =>
+          dialog.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.table.city' });
         const location = () =>
           dialog.getByRole<HTMLInputElement>('checkbox', {
             name: /wasteManagement.tours.assignments.workspace.selectLocation/,
@@ -2099,7 +2098,8 @@ describe('WasteManagementPage', () => {
         fireEvent.change(region, { target: { value: 'region-1' } });
         fireEvent.change(city, { target: { value: 'city-1' } });
         fireEvent.change(street, { target: { value: 'street-1' } });
-        fireEvent.change(sort, { target: { value: 'desc' } });
+        expect(sortCity().closest('th')?.getAttribute('aria-sort')).toBe('ascending');
+        fireEvent.click(sortCity());
         expect(location().checked).toBe(false);
         fireEvent.click(location());
 
@@ -2112,7 +2112,7 @@ describe('WasteManagementPage', () => {
         expect(region.value).toBe('region-1');
         expect(city.value).toBe('city-1');
         expect(street.value).toBe('street-1');
-        expect(sort.value).toBe('desc');
+        expect(sortCity().closest('th')?.getAttribute('aria-sort')).toBe('descending');
         expect(location().checked).toBe(true);
 
         searchMock.mockReturnValue({ ...searchMock(), tourId: 'tour-2' });

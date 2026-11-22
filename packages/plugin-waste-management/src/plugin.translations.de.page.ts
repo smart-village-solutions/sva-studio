@@ -22,7 +22,7 @@ export const wasteManagementPluginTranslationsDEPage = {
         'Aktuell stehen keine Studio-Änderungen aus. Letzter erfolgreicher Abgleich: {{date}}.',
       pendingTitle: 'Abgleich steht aus',
       pendingText:
-        'Gespeicherte Änderungen an Terminen oder Abholorten müssen noch an den SVA Mainserver übertragen werden.',
+        'Gespeicherte Änderungen an Terminen oder Abholpunkten müssen noch an den SVA Mainserver übertragen werden.',
       finishChangesFirst:
         'Schließen und speichern Sie nach Möglichkeit zuerst alle geplanten Änderungen. Änderungen während oder nach der Übertragung erfordern einen weiteren Abgleich.',
       lastSuccess: 'Letzter erfolgreicher Abgleich: {{date}}.',

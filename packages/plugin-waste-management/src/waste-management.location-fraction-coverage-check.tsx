@@ -178,9 +178,10 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
     };
     let scheduling: WasteManagementSchedulingOverview | undefined;
     if (needsCoverageScheduling(input)) {
+      const access = readSessionAccessSnapshot();
       setChecking(true);
       try {
-        scheduling = await getWasteManagementSchedulingOverview();
+        scheduling = await getWasteManagementSchedulingOverview({ fresh: true });
         if (
           !Array.isArray(scheduling.tourDateShifts) ||
           !Array.isArray(scheduling.globalDateShifts) ||
@@ -189,14 +190,14 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
           throw new Error('incomplete_coverage_schedule');
         }
       } catch {
-        if (requestId === requestIdRef.current) {
+        if (requestId === requestIdRef.current && readSessionAccessSnapshot() === access) {
           setErrorKey('masterData.locationsWorkspace.coverage.schedulingLoadError');
-          setChecking(false);
         }
         return;
+      } finally {
+        if (requestId === requestIdRef.current) setChecking(false);
       }
-      if (requestId !== requestIdRef.current) return;
-      setChecking(false);
+      if (requestId !== requestIdRef.current || readSessionAccessSnapshot() !== access) return;
     }
     setResult({
       issues: checkLocationFractionCoverage({ ...input, scheduling }),

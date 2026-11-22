@@ -139,13 +139,16 @@ export const getWasteManagementToursOverview = async (): Promise<WasteManagement
     })
   );
 
-export const getWasteManagementSchedulingOverview =
-  async (): Promise<WasteManagementSchedulingOverview> =>
-    requestWasteManagementRead('scheduling', async () =>
-      requestWasteManagementItem<WasteManagementSchedulingOverview>({
-        url: '/api/v1/waste-management/scheduling',
-      })
-    );
+export const getWasteManagementSchedulingOverview = async (input?: {
+  readonly fresh?: boolean;
+}): Promise<WasteManagementSchedulingOverview> => {
+  const load = () =>
+    requestWasteManagementItem<WasteManagementSchedulingOverview>({
+      url: '/api/v1/waste-management/scheduling',
+      init: input?.fresh ? { cache: 'no-store' } : undefined,
+    });
+  return input?.fresh ? load() : requestWasteManagementRead('scheduling', load);
+};
 
 export const getWasteEmailMonitoring = (
   query: import('@sva/waste-management-contracts').WasteEmailMonitoringQuery

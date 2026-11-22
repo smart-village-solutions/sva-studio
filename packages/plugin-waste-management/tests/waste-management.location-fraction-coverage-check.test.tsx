@@ -178,6 +178,7 @@ describe('WasteLocationFractionCoverageCheck', () => {
     );
     expect(await screen.findByText('masterData.locationsWorkspace.coverage.complete:{"value":1}')).toBeTruthy();
     expect(loadScheduling).toHaveBeenCalledOnce();
+    expect(loadScheduling).toHaveBeenCalledWith({ fresh: true });
     expect(screen.getByText('masterData.locationsWorkspace.coverage.planningNotice')).toBeTruthy();
     expect(
       screen.getByText('masterData.locationsWorkspace.coverage.assignmentNotice')

@@ -30,13 +30,20 @@ const subscription = {
     { fraction: 'Altpapier', slotId: 'legacy-slot' },
   ],
   lastSentEmail: { kind: 'doi' as const, sentAt: '2026-11-10T10:00:00Z' },
+  doiEmail: { status: 'sent' as const, sentAt: '2026-11-10T10:00:00Z' },
   nextEmail: {
     kind: 'reminder' as const,
     status: 'pending' as const,
     scheduledAt: '2026-11-12T06:00:00Z',
   },
 };
-const data = { subscriptions: [subscription], total: 1, deliveries: [], deliveryTotal: 0 };
+const data = {
+  subscriptions: [subscription],
+  total: 1,
+  activeTotal: 2,
+  deliveries: [],
+  deliveryTotal: 0,
+};
 const allow = (permissions: string[], instanceId = 'tenant-a') =>
   publishSessionAccessSnapshot({
     isResolved: true,
@@ -105,6 +112,10 @@ describe('email monitoring page', () => {
       });
       await screen.findAllByText(subscription.maskedEmail);
       const copy = wasteManagementPluginTranslations[locale].wasteManagement.emailMonitoring;
+      const table = within(screen.getByRole('table', { name: copy.subscriptions }));
+      expect(screen.getByText(copy.activeSubscriptions.replace('{{count}}', '2'))).toBeTruthy();
+      expect(table.getByText(copy.doiStatus)).toBeTruthy();
+      expect(table.getByText(copy.deliveryStates.sent, { exact: false })).toBeTruthy();
       const [select] = screen.getAllByRole('button', { name: copy.select });
       if (!select) throw new Error('missing subscription action');
       fireEvent.click(select);
@@ -129,8 +140,58 @@ describe('email monitoring page', () => {
     expect(overview.getByText('emailMonitoring.kinds.doi', { exact: false })).toBeTruthy();
     expect(overview.getByText('emailMonitoring.nextEmail')).toBeTruthy();
     expect(overview.getByText('emailMonitoring.kinds.reminder', { exact: false })).toBeTruthy();
-    expect(overview.getByText('10.11.2026, 11:00', { exact: false })).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.doi · 10.11.2026, 11:00')).toBeTruthy();
     expect(overview.getByText('12.11.2026, 07:00', { exact: false })).toBeTruthy();
+  });
+  it.each(['pending', 'failed', 'sent'] as const)(
+    'shows the %s DOI independently of a later reminder',
+    async (status) => {
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({
+        ...data,
+        subscriptions: [
+          {
+            ...subscription,
+            doiEmail: {
+              status,
+              sentAt: status === 'sent' ? '2026-11-10T10:00:00Z' : null,
+            },
+            lastSentEmail: { kind: 'reminder', sentAt: '2026-11-11T10:00:00Z' },
+          },
+        ],
+      });
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      const table = within(
+        await screen.findByRole('table', { name: 'emailMonitoring.subscriptions' })
+      );
+      await table.findByText('emailMonitoring.doiStatus');
+      expect(
+        table.getByText(`emailMonitoring.deliveryStates.${status}`, { exact: false })
+      ).toBeTruthy();
+      expect(table.getByText('11.11.2026, 11:00', { exact: false })).toBeTruthy();
+    }
+  );
+  it('keeps the active count separate from filtered results and shows zero after refresh', async () => {
+    vi.mocked(usePluginTranslation).mockImplementation(
+      () => (key, variables) =>
+        key === 'emailMonitoring.activeSubscriptions'
+          ? `Aktive E-Mail-Abos ${variables?.count}`
+          : key
+    );
+    vi.mocked(getWasteEmailMonitoring)
+      .mockResolvedValueOnce(data)
+      .mockResolvedValueOnce({ ...data, subscriptions: [], total: 0 })
+      .mockResolvedValueOnce({ ...data, subscriptions: [], total: 0, activeTotal: 0 });
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findByText('Aktive E-Mail-Abos 2');
+    fireEvent.change(screen.getByRole('combobox', { name: 'emailMonitoring.statusFilter' }), {
+      target: { value: 'pending' },
+    });
+    await screen.findByText('emailMonitoring.empty');
+    expect(screen.getByText('Aktive E-Mail-Abos 2')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
+    await screen.findByText('Aktive E-Mail-Abos 0');
   });
   it.each(['missing', 'empty', 'processing'] as const)(
     'explains %s sending records without claiming a future delivery',

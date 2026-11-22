@@ -19,3 +19,17 @@ Das Abfallkalender-Plugin SHALL im Studio unter Monitoring eine rein lesende, pa
 - **AND** die API überträgt keine vollständigen Empfängeradressen, Straßen/Hausnummern, Token, Hashes, Mail-Payloads oder freien Provider-Fehlertexte
 - **AND** der erste und letzte Buchstabe jedes Adressteils bleiben sichtbar, während die übrigen Zeichen maskiert werden; Teile mit höchstens zwei Zeichen werden vollständig maskiert
 - **AND** die Ansicht erläutert, dass Provider-Übergabe und Postfachempfang unterschiedliche Zustände sind
+
+#### Scenario: Versandstatus der Bestätigungsmail bleibt bei späteren Erinnerungen sichtbar
+
+- **WHEN** ein berechtigter Benutzer ein Abo mit gespeichertem Double-Opt-in-Auftrag betrachtet
+- **THEN** zeigt die Übersicht den Status dieses Auftrags unabhängig vom Zeitpunkt späterer Erinnerungen
+- **AND** bezeichnet die Ansicht den gespeicherten Status `sent` als „Vom Versanddienst angenommen“
+- **AND** leitet die Ansicht aus der Annahme keine Zustellung im Postfach ab
+
+#### Scenario: Kennzahl für aktive E-Mail-Abos
+
+- **WHEN** ein berechtigter Benutzer die Übersicht öffnet, filtert oder durch ihre Seiten blättert
+- **THEN** zeigt eine Kennzahl oberhalb der Tabelle die Zahl der aktiven Abos des Mandanten
+- **AND** stehen ausstehende, abgelaufene und beendete Abos nicht in dieser Kennzahl
+- **AND** verwendet die Seitennavigation weiterhin die Anzahl der zur Auswahl passenden Abos

@@ -30,7 +30,7 @@ describe('email monitoring privacy projection', () => {
 
   it('returns only masked recipients and safe delivery fields with bounded parameterized queries', async () => {
     const results = [
-      [{ total: 1 }],
+      [{ total: 1, activeTotal: 2 }],
       [
         {
           id: 'sub',
@@ -41,6 +41,8 @@ describe('email monitoring privacy projection', () => {
           activatedAt: null,
           unsubscribedAt: null,
           items: [],
+          doiEmail: { status: 'failed', sentAt: null },
+          lastSentEmail: { kind: 'reminder', sentAt: '2026-11-17T10:00:00.000Z' },
         },
       ],
       [{ total: 1 }],
@@ -68,10 +70,15 @@ describe('email monitoring privacy projection', () => {
       subscriptionId: 'sub',
     });
     expect(data.subscriptions[0]?.maskedEmail).toBe('p*****p@e********e');
+    expect(data.subscriptions[0]?.doiEmail).toEqual({ status: 'failed', sentAt: null });
+    expect(data.subscriptions[0]?.lastSentEmail?.kind).toBe('reminder');
+    expect(data).toMatchObject({ total: 1, activeTotal: 2 });
     expect(data.deliveries[0]?.error).toBe('dispatch_failed');
     expect(JSON.stringify(data)).not.toMatch(/philipp|private|secret|lastError/);
     const calls = execute.mock.calls as unknown as [{ text: string; values: unknown[] }][];
     expect(calls[1]?.[0].values).toEqual(['active', 25, 25]);
+    expect(calls[0]?.[0].text).toContain("FILTER (WHERE status = 'active')");
+    expect(calls[1]?.[0].text).toContain("message_kind = 'doi'");
     expect(calls[3]?.[0].values).toEqual(['sub', 25, 0]);
     expect(calls[3]?.[0].text).not.toContain('SELECT payload');
   });

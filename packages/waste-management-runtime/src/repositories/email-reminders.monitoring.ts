@@ -26,11 +26,9 @@ export const classifyWasteEmailError = (
     return null;
   if (value.startsWith('mail_transport_not_available:')) return 'transport_unavailable';
   if (
-    [
-      'subscription_unsubscribed',
-      'doi_token_expired',
-      'reminder_no_longer_applicable',
-    ].includes(value)
+    ['subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable'].includes(
+      value
+    )
   )
     return 'cancelled';
   return 'dispatch_failed';
@@ -44,9 +42,10 @@ export const loadWasteEmailMonitoring = async (
   query: WasteEmailMonitoringQuery
 ): Promise<WasteEmailMonitoringOverview> => {
   const filter = query.status ?? null;
-  const count = await executor.execute<{ total: number }>({
-    text: `SELECT COUNT(*)::int AS total FROM waste_email_reminder_subscriptions
-      WHERE ($1::text IS NULL OR status = $1)`,
+  const count = await executor.execute<{ total: number; activeTotal: number }>({
+    text: `SELECT COUNT(*) FILTER (WHERE $1::text IS NULL OR status = $1)::int AS total,
+      COUNT(*) FILTER (WHERE status = 'active')::int AS "activeTotal"
+      FROM waste_email_reminder_subscriptions`,
     values: [filter],
   });
   const subscriptions = await executor.execute<SubscriptionRow>({
@@ -56,7 +55,8 @@ export const loadWasteEmailMonitoring = async (
       COALESCE((SELECT jsonb_agg(jsonb_build_object('fraction', COALESCE(f.name, i.fraction_id::text), 'slotId', i.slot_id) ORDER BY f.name, i.slot_id)
         FROM waste_email_reminder_subscription_items i LEFT JOIN waste_fractions f ON f.id = i.fraction_id
         WHERE i.subscription_id = s.id), '[]'::jsonb) AS items,
-      last_sent.message AS "lastSentEmail", next_email.message AS "nextEmail"
+      last_sent.message AS "lastSentEmail", next_email.message AS "nextEmail",
+      doi.message AS "doiEmail"
       FROM (
         SELECT id, email, status, city_id, created_at, activated_at, unsubscribed_at
         FROM waste_email_reminder_subscriptions
@@ -76,6 +76,12 @@ export const loadWasteEmailMonitoring = async (
         FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND status IN ('pending', 'processing')
         ORDER BY CASE WHEN status = 'processing' THEN 0 ELSE 1 END, send_at ASC, id ASC LIMIT 1
       ) next_email ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object('status', status,
+          'sentAt', to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) AS message
+        FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND message_kind = 'doi'
+        ORDER BY created_at DESC, id DESC LIMIT 1
+      ) doi ON true
       ORDER BY s.created_at DESC, s.id DESC`,
     values: [filter, query.pageSize, (query.page - 1) * query.pageSize],
   });
@@ -107,6 +113,7 @@ export const loadWasteEmailMonitoring = async (
       maskedEmail: maskWasteEmail(email),
     })),
     total: count.rows[0]?.total ?? 0,
+    activeTotal: count.rows[0]?.activeTotal ?? 0,
     deliveries,
     deliveryTotal,
   };

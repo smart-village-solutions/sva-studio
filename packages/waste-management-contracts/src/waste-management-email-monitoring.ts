@@ -20,6 +20,8 @@ export type WasteEmailSubscriptionSummary = Readonly<{
   items: readonly Readonly<{ fraction: string; slotId: string }>[];
   /** Absent with older API versions; null means no matching stored message. */
   lastSentEmail?: Readonly<Pick<WasteEmailDeliverySummary, 'kind' | 'sentAt'>> | null;
+  /** Absent with older API versions; null means no stored confirmation email. */
+  doiEmail?: Readonly<Pick<WasteEmailDeliverySummary, 'status' | 'sentAt'>> | null;
   nextEmail?: Readonly<
     Pick<WasteEmailDeliverySummary, 'kind' | 'scheduledAt'> & {
       status: 'pending' | 'processing';
@@ -41,6 +43,8 @@ export type WasteEmailDeliverySummary = Readonly<{
 export type WasteEmailMonitoringOverview = Readonly<{
   subscriptions: readonly WasteEmailSubscriptionSummary[];
   total: number;
+  /** Tenant-wide active subscriptions, independent of the current list filter. */
+  activeTotal?: number;
   deliveries: readonly WasteEmailDeliverySummary[];
   deliveryTotal: number;
 }>;

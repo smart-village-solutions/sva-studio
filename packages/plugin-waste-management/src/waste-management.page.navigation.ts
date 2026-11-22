@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
+import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 import {
   captureWasteManagementTabListState,
@@ -8,7 +9,7 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
-import type { useWasteManagementUiAccess } from './waste-management.ui-access.js';
+import { getWasteManagementNavigationContext, type useWasteManagementUiAccess } from './waste-management.ui-access.js';
 
 export const toMasterDataTab = (
   tab: WasteManagementTabId
@@ -44,6 +45,44 @@ export const useWasteManagementVisibleTabRedirect = (
   }, [navigate, search, uiAccess.canRead, uiAccess.visibleTabIds]);
 };
 
+type TabNavigationMemory = {
+  contextKey: string | null;
+  locationKey?: string;
+  discardedLocationKey?: string;
+  resettingLocationKey?: string;
+  tabs: Map<WasteManagementTabId, Partial<WasteManagementSearchParams>>;
+  locationEditor?: Pick<WasteManagementSearchParams, 'locationsView' | 'collectionLocationId'>;
+};
+
+// Route transitions remount plugin pages. This memory lives only in the current browser document.
+let browserNavigation: TabNavigationMemory | undefined;
+
+const synchronizeContext = (memory: TabNavigationMemory, contextKey: string | null) => {
+  if (memory.contextKey === contextKey) return;
+  if (memory.contextKey !== null) memory.discardedLocationKey = memory.locationKey;
+  memory.contextKey = contextKey;
+  memory.locationKey = undefined;
+  memory.resettingLocationKey = undefined;
+  memory.tabs.clear();
+  memory.locationEditor = undefined;
+};
+
+const getBrowserNavigation = () => {
+  if (typeof window === 'undefined') return undefined;
+
+  if (!browserNavigation) {
+    const memory: TabNavigationMemory = {
+      contextKey: null,
+      tabs: new Map(),
+    };
+    subscribeSessionAccessSnapshot(() =>
+      synchronizeContext(memory, getWasteManagementNavigationContext(readSessionAccessSnapshot()))
+    );
+    browserNavigation = memory;
+  }
+  return browserNavigation;
+};
+
 export const useWasteManagementTabNavigation = (
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams,
@@ -51,50 +90,56 @@ export const useWasteManagementTabNavigation = (
   locationKey: string
 ) => {
   const contextKey = uiAccess.canRead || !uiAccess.isResolved ? uiAccess.contextKey : null;
-  const [lastRoute, setLastRoute] = useState({
-    contextKey,
-    locationKey,
-    discardedLocationKey: undefined as string | undefined,
-  });
-  // A route already open when the context ends must not seed the next context's tab state.
+  const memory = typeof window === 'undefined' ? undefined : browserNavigation;
   const discardedLocationKey =
-    lastRoute.contextKey !== null && contextKey !== lastRoute.contextKey
-      ? lastRoute.locationKey
-      : lastRoute.discardedLocationKey;
-  if (lastRoute.contextKey !== contextKey || lastRoute.locationKey !== locationKey) {
-    setLastRoute({ contextKey, locationKey, discardedLocationKey });
-  }
-
+    memory?.contextKey && memory.contextKey !== contextKey
+      ? memory.locationKey
+      : memory?.discardedLocationKey;
   const discardCurrentListState = uiAccess.canRead && discardedLocationKey === locationKey;
-  const activeSearch = discardCurrentListState ? resetWasteManagementTabListState(search) : search;
-  const resettingLocationKey = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (!discardCurrentListState || resettingLocationKey.current === locationKey) return;
-    resettingLocationKey.current = locationKey;
-    void navigate({ to: '/plugins/waste-management', search: activeSearch, replace: true });
-  }, [activeSearch, discardCurrentListState, locationKey, navigate]);
+  const activeSearch = discardCurrentListState
+    ? {
+        ...resetWasteManagementTabListState(search),
+        ...(search.tab === 'locations'
+          ? { locationsView: 'list' as const, collectionLocationId: undefined }
+          : {}),
+      }
+    : search;
 
-  const saved = useRef({
-    contextKey,
-    tabs: new Map<WasteManagementTabId, Partial<WasteManagementSearchParams>>(),
-  });
   useEffect(() => {
-    if (saved.current.contextKey !== contextKey) {
-      saved.current.contextKey = contextKey;
-      saved.current.tabs.clear();
+    if (!contextKey && !browserNavigation) return;
+    const saved = getBrowserNavigation();
+    if (!saved) return;
+    synchronizeContext(saved, contextKey);
+    if (contextKey && uiAccess.canRead) saved.locationKey = locationKey;
+    if (discardCurrentListState && saved.resettingLocationKey !== locationKey) {
+      saved.resettingLocationKey = locationKey;
+      void navigate({ to: '/plugins/waste-management', search: activeSearch, replace: true });
     }
-  }, [contextKey]);
+  }, [activeSearch, contextKey, discardCurrentListState, locationKey, navigate, uiAccess.canRead]);
 
   const changeTab = (tab: WasteManagementTabId) => {
     if (tab === activeSearch.tab) return;
-    const activeTabs =
-      uiAccess.canRead && contextKey !== null && saved.current.contextKey === contextKey
-        ? saved.current.tabs
-        : undefined;
-    activeTabs?.set(activeSearch.tab, captureWasteManagementTabListState(activeSearch));
+    const saved = uiAccess.canRead && contextKey ? getBrowserNavigation() : undefined;
+    if (saved && contextKey) {
+      synchronizeContext(saved, contextKey);
+      saved.locationKey = locationKey;
+      saved.tabs.set(activeSearch.tab, captureWasteManagementTabListState(activeSearch));
+      if (activeSearch.tab === 'locations') {
+        saved.locationEditor =
+          activeSearch.locationsView === 'edit' && activeSearch.collectionLocationId
+            ? {
+                locationsView: activeSearch.locationsView,
+                collectionLocationId: activeSearch.collectionLocationId,
+              }
+            : undefined;
+      }
+    }
     void navigate({
       to: '/plugins/waste-management',
-      search: toWasteManagementTabSearch(tab, activeTabs?.get(tab)),
+      search: toWasteManagementTabSearch(tab, {
+        ...saved?.tabs.get(tab),
+        ...(tab === 'locations' ? saved?.locationEditor : {}),
+      }),
     });
   };
   return { search: activeSearch, changeTab };

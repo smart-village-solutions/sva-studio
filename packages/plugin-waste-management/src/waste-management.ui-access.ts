@@ -114,6 +114,11 @@ const getWasteManagementContextKey = ({
     ? JSON.stringify([subjectId, instanceId, organizationId])
     : null;
 
+export const getWasteManagementNavigationContext = (access: SessionAccessSnapshot) =>
+  canReadWasteManagement(access) || !access.isResolved
+    ? getWasteManagementContextKey(access)
+    : null;
+
 export const captureWasteTourAssignmentWriteAccess = (contextKey: string) => {
   const access = readSessionAccessSnapshot();
   if (

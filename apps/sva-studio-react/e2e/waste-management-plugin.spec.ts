@@ -217,7 +217,7 @@ test.describe('waste management plugin', () => {
     page.setDefaultTimeout(12_000);
     await navigateClientSide(
       page,
-      `/plugins/waste-management?tab=locations&locationsView=edit&collectionLocationId=${pferdeschwemme}&q=Restm`
+      `/plugins/waste-management?tab=locations&locationsView=edit&collectionLocationId=${pferdeschwemme}&q=Pferde`
     );
 
     const locationAssignments = page.getByRole('table', { name: 'Tour-Zuordnungen' });
@@ -245,6 +245,12 @@ test.describe('waste management plugin', () => {
 
     await expect(locationAssignments.getByRole('checkbox', { name: /Restmüll/ })).toHaveCount(2);
     await toursTab.click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('');
+    await page.getByRole('button', { name: 'Filtern', exact: true }).click();
+    const tourFilters = page.getByRole('dialog', { name: 'Touren filtern' });
+    await tourFilters.getByRole('textbox', { name: 'Name' }).fill('Restm');
+    await tourFilters.getByRole('button', { name: 'Anwenden', exact: true }).click();
+    await expect(page).toHaveURL(/q=Restm/);
     await assignmentCount(2027).click();
     await expect(assignmentHeading).toBeVisible();
     await expect(returnToList).toBeFocused();
@@ -264,6 +270,8 @@ test.describe('waste management plugin', () => {
     await expect.poll(storedPairs).toEqual([...initialPairs, `${pferdeschwemme}/tour-2027`]);
 
     await locationsTab.click();
+    await expect(page).toHaveURL(/q=Pferde/);
+    await expect(page).toHaveURL(/locationsView=edit/);
     await expect(tourRowCheckbox(2027)).toBeChecked();
     await expect(tourRowCheckbox(2026)).not.toBeChecked();
     await tourRowCheckbox(2027).uncheck();

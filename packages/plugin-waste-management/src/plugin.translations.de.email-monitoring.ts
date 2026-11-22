@@ -5,7 +5,7 @@ export const wasteEmailMonitoringTranslationsDE = {
     description:
       'Hier sehen Sie Anmeldungen für Abfuhrerinnerungen und den aktuellen Stand der zugehörigen E-Mails.',
     privacy:
-      'Zum Datenschutz sind Teile der E-Mail-Adressen mit Sternchen verdeckt. Vollständige Adressen und E-Mail-Inhalte werden nicht angezeigt.',
+      'In der Ergebnisliste sind Teile der E-Mail-Adressen mit Sternchen verdeckt. E-Mail-Inhalte werden nicht angezeigt.',
     deliveryNotice:
       '„Vom Versanddienst angenommen“ bedeutet, dass der Versanddienst die Nachricht zur Zustellung angenommen hat. Ob sie im Postfach angekommen ist, ist hier nicht erkennbar. Die Liste zeigt den zuletzt gespeicherten Stand.',
     empty: 'Keine Abonnements für diese Auswahl.',
@@ -15,6 +15,12 @@ export const wasteEmailMonitoringTranslationsDE = {
     forbidden: 'Für diese Auswertung ist das gesonderte Leserecht erforderlich.',
     refresh: 'Aktualisieren',
     statusFilter: 'Abo-Status',
+    emailSearch: {
+      label: 'Vollständige E-Mail-Adresse',
+      submit: 'Aktive Abos suchen',
+      applied: 'E-Mail-Suche aktiv',
+      invalid: 'Geben Sie eine vollständige E-Mail-Adresse ein.',
+    },
     all: 'Alle Status',
     subscriptions: 'Abonnements',
     activeSubscriptions: 'Aktive E-Mail-Abos {{count}}',

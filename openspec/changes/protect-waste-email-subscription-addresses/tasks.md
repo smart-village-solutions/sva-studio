@@ -10,7 +10,7 @@
 
 - [x] Vollständige Adressen im POST-Body validieren und Normalisierung und Hashbildung mit der Anmeldung teilen. Die bestehende Monitoring-Autorisierung und den Methodenschutz verwenden.
 - [x] Paginierte Treffermenge und Trefferzahl mit exakt demselben Hash- und Aktivprädikat abrufen. Maskierte Antwort mit `Cache-Control: no-store` ausgeben.
-- [ ] Das Suchformular in der vorhandenen Ansicht umsetzen. Bei Suchänderung, Wechsel des Mandanten oder Verlust des Zugriffs keine alte Antwort ausgeben.
+- [x] Das Suchformular in der vorhandenen Ansicht umsetzen. Bei Suchänderung, Wechsel des Mandanten oder Verlust des Zugriffs keine alte Antwort ausgeben.
 
 ## 3. Nachweise und Dokumentation
 

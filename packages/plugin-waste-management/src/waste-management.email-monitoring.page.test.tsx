@@ -9,10 +9,20 @@ import {
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
-import { wasteEmailMonitoringPermission } from '@sva/waste-management-contracts';
+import {
+  wasteEmailMonitoringPermission,
+  type WasteEmailMonitoringOverview,
+} from '@sva/waste-management-contracts';
 import { WasteEmailMonitoringPage } from './waste-management.email-monitoring.page.js';
-import { getWasteEmailMonitoring } from './waste-management.api.read.js';
-vi.mock('./waste-management.api.read.js', () => ({ getWasteEmailMonitoring: vi.fn() }));
+import {
+  getWasteEmailMonitoring,
+  searchWasteEmailMonitoring,
+} from './waste-management.api.read.js';
+import { WasteManagementApiError } from './waste-management.api.shared.js';
+vi.mock('./waste-management.api.read.js', () => ({
+  getWasteEmailMonitoring: vi.fn(),
+  searchWasteEmailMonitoring: vi.fn(),
+}));
 vi.mock('@sva/plugin-sdk', async (original) => ({
   ...(await original<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: vi.fn(() => (key: string) => key),
@@ -58,6 +68,7 @@ beforeEach(() => {
   vi.mocked(usePluginTranslation).mockImplementation(() => (key: string) => key);
   resetSessionAccessSnapshot();
   vi.mocked(getWasteEmailMonitoring).mockReset().mockResolvedValue(data);
+  vi.mocked(searchWasteEmailMonitoring).mockReset().mockResolvedValue(data);
 });
 afterEach(cleanup);
 describe('email monitoring page', () => {
@@ -130,6 +141,106 @@ describe('email monitoring page', () => {
     render(<WasteEmailMonitoringPage />);
     expect(screen.getByText('emailMonitoring.forbidden')).toBeTruthy();
     expect(getWasteEmailMonitoring).not.toHaveBeenCalled();
+    expect(searchWasteEmailMonitoring).not.toHaveBeenCalled();
+  });
+  it('submits the full address in search mode and restores the regular list when cleared', async () => {
+    const address = 'Rédaktion@example.invalid';
+    const matched = { ...subscription, maskedEmail: 'r******n@e********d' };
+    vi.mocked(searchWasteEmailMonitoring).mockResolvedValue({ ...data, subscriptions: [matched] });
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    const field = screen.getByRole('textbox', { name: 'emailMonitoring.emailSearch.label' });
+    const submit = screen.getByRole('button', { name: 'emailMonitoring.emailSearch.submit' });
+    fireEvent.change(field, { target: { value: 'example.invalid' } });
+    fireEvent.click(submit);
+    expect(searchWasteEmailMonitoring).not.toHaveBeenCalled();
+    expect(screen.getByText('emailMonitoring.emailSearch.invalid')).toBeTruthy();
+
+    fireEvent.change(field, { target: { value: address } });
+    fireEvent.click(submit);
+    await screen.findAllByText(matched.maskedEmail);
+    expect(searchWasteEmailMonitoring).toHaveBeenCalledExactlyOnceWith(
+      { email: address, page: 1, pageSize: 100, deliveryPage: 1 },
+      { signal: expect.any(AbortSignal) }
+    );
+    const status = screen.getByRole('combobox', { name: 'emailMonitoring.statusFilter' });
+    expect(status).toHaveProperty('value', 'active');
+    expect(status).toHaveProperty('disabled', true);
+    expect(window.location.href).not.toContain(encodeURIComponent(address));
+    expect(document.body.textContent).not.toContain(address);
+
+    fireEvent.change(field, { target: { value: '' } });
+    await screen.findAllByText(subscription.maskedEmail);
+    expect(getWasteEmailMonitoring).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 100,
+      deliveryPage: 1,
+    });
+    expect(status).toHaveProperty('disabled', false);
+    expect(status).toHaveProperty('value', '');
+  });
+
+  it.each(['edit', 'reset', 'tenant', 'permission'] as const)(
+    'aborts an address search on %s and ignores its late response',
+    async (change) => {
+      let signal: AbortSignal | undefined;
+      let finish!: (value: WasteEmailMonitoringOverview) => void;
+      vi.mocked(searchWasteEmailMonitoring).mockImplementationOnce((_query, options) => {
+        signal = options?.signal;
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      });
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findAllByText(subscription.maskedEmail);
+      const field = screen.getByRole('textbox', { name: 'emailMonitoring.emailSearch.label' });
+      fireEvent.change(field, {
+        target: { value: 'contact@example.invalid' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.emailSearch.submit' }));
+      await waitFor(() => expect(searchWasteEmailMonitoring).toHaveBeenCalledOnce());
+      switch (change) {
+        case 'edit':
+          fireEvent.change(field, { target: { value: 'other@example.invalid' } });
+          break;
+        case 'reset':
+          fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
+          break;
+        case 'tenant':
+          act(() => allow([wasteEmailMonitoringPermission], 'tenant-b'));
+          expect(
+            screen.getByRole('textbox', { name: 'emailMonitoring.emailSearch.label' })
+          ).toHaveProperty('value', '');
+          break;
+        case 'permission':
+          act(() => allow(['waste-management.read']));
+          break;
+      }
+      expect(signal?.aborted).toBe(true);
+      if (change === 'permission')
+        expect(screen.getByText('emailMonitoring.forbidden')).toBeTruthy();
+      else await screen.findAllByText(subscription.maskedEmail);
+      await act(async () =>
+        finish({ ...data, subscriptions: [{ ...subscription, maskedEmail: 'l***e@e*****e' }] })
+      );
+      expect(screen.queryAllByText('l***e@e*****e')).toHaveLength(0);
+    }
+  );
+
+  it('reports server-side address validation without exposing the submitted address in the message', async () => {
+    vi.mocked(searchWasteEmailMonitoring).mockRejectedValue(
+      new WasteManagementApiError('invalid_request')
+    );
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    fireEvent.change(screen.getByRole('textbox', { name: 'emailMonitoring.emailSearch.label' }), {
+      target: { value: 'contact@example.invalid' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.emailSearch.submit' }));
+    expect(await screen.findByText('emailMonitoring.emailSearch.invalid')).toBeTruthy();
   });
   it('shows stored sent and scheduled emails directly in the subscription overview', async () => {
     allow([wasteEmailMonitoringPermission]);

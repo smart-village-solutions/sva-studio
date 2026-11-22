@@ -4,7 +4,7 @@ export const wasteEmailMonitoringTranslationsEN = {
     title: 'Email subscriptions and delivery',
     description: 'View sign-ups for pickup reminders and the current status of their emails.',
     privacy:
-      'Parts of email addresses are hidden with asterisks for privacy. Full addresses and email contents are not displayed.',
+      'Parts of email addresses are hidden with asterisks in the results. Email contents are not displayed.',
     deliveryNotice:
       '“Accepted by email service” means that the mail service has accepted the message. This does not confirm that it reached the inbox. The list shows the latest saved status.',
     empty: 'No subscriptions match this selection.',
@@ -14,6 +14,12 @@ export const wasteEmailMonitoringTranslationsEN = {
     forbidden: 'This view requires its separate read permission.',
     refresh: 'Refresh',
     statusFilter: 'Subscription status',
+    emailSearch: {
+      label: 'Full email address',
+      submit: 'Search active subscriptions',
+      applied: 'Email search active',
+      invalid: 'Enter a complete email address.',
+    },
     all: 'All statuses',
     subscriptions: 'Subscriptions',
     activeSubscriptions: 'Active email subscriptions {{count}}',

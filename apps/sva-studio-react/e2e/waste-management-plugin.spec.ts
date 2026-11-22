@@ -98,6 +98,7 @@ test.describe('waste management plugin', () => {
             data: {
               subscriptions: [subscription],
               total: 1,
+              activeTotal: 3,
               deliveryTotal: selected ? 1 : 0,
               deliveries: selected
                 ? [
@@ -119,6 +120,22 @@ test.describe('waste management plugin', () => {
           },
         });
       });
+      const address = 'Rédaktion@example.invalid';
+      const match = { ...subscription, maskedEmail: 'r******n@e********d' };
+      const searchPath = '/api/v1/waste-management/email-monitoring/search';
+      await page.route(`**${searchPath}`, (route) =>
+        route.fulfill({
+          json: {
+            data: {
+              subscriptions: [match],
+              total: 1,
+              activeTotal: 3,
+              deliveryTotal: 0,
+              deliveries: [],
+            },
+          },
+        })
+      );
       await page.goto('/health/live');
       await establishServerReadableAuthSession(page.context(), page);
       await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
@@ -156,6 +173,36 @@ test.describe('waste management plugin', () => {
       await expect(page.getByText(subscription.id, { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Versand schließen' }).click();
       await expect(page.getByRole('heading', { name: 'Abonnements', exact: true })).toBeFocused();
+
+      const urlBeforeSearch = page.url();
+      const searchRequest = page.waitForRequest(
+        (request) => new URL(request.url()).pathname === searchPath
+      );
+      const emailField = page.getByRole('textbox', { name: 'Vollständige E-Mail-Adresse' });
+      await emailField.fill(address);
+      await emailField.press('Enter');
+      const submitted = await searchRequest;
+      expect(submitted.method()).toBe('POST');
+      expect(new URL(submitted.url()).search).toBe('');
+      expect(submitted.postDataJSON()).toEqual({
+        email: address,
+        page: 1,
+        pageSize: 100,
+        deliveryPage: 1,
+      });
+      await expect(
+        page.getByText(match.maskedEmail, { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText('Aktive E-Mail-Abos 3', { exact: true })).toBeVisible();
+      await expect(page.getByRole('combobox', { name: 'Abo-Status' })).toBeDisabled();
+      await expect(page.getByText(address, { exact: true })).toHaveCount(0);
+      await expect(page).toHaveURL(urlBeforeSearch);
+
+      await emailField.clear();
+      await expect(
+        page.getByText(subscription.maskedEmail, { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByRole('combobox', { name: 'Abo-Status' })).toBeEnabled();
     });
   }
 

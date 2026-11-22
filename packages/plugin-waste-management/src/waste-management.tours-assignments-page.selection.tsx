@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button } from '@sva/studio-ui-react';
+import { Badge } from '@sva/studio-ui-react';
 import { TourAssignmentsTable } from './waste-management.tours-assignments-table.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 import type {
@@ -59,7 +59,6 @@ export const TourAssignmentsPageSelection = ({
   someVisibleSelected,
   sortField,
   sortDirection,
-  onResetFilters,
   onSortChange,
   onToggleSelectAll,
   onToggleLocation,
@@ -78,7 +77,6 @@ export const TourAssignmentsPageSelection = ({
   readonly someVisibleSelected: boolean;
   readonly sortField: TourAssignmentSortField;
   readonly sortDirection: TourAssignmentSortDirection;
-  readonly onResetFilters: () => void;
   readonly onSortChange: (field: TourAssignmentSortField) => void;
   readonly onToggleSelectAll: (value: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
@@ -86,24 +84,11 @@ export const TourAssignmentsPageSelection = ({
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-background/70 p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <TourAssignmentSelectionCounts
-          selectedCount={selectedLocationIds.length}
-          visibleCount={filteredLocationsCount}
-          hiddenSelectedCount={hiddenSelectedCount}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              onResetFilters();
-            }}
-          >
-            {pt('tours.assignments.actions.resetFilters')}
-          </Button>
-        </div>
-      </div>
+      <TourAssignmentSelectionCounts
+        selectedCount={selectedLocationIds.length}
+        visibleCount={filteredLocationsCount}
+        hiddenSelectedCount={hiddenSelectedCount}
+      />
 
       <div className="min-w-0 rounded-lg border border-border-subtle">
         {loading ? (

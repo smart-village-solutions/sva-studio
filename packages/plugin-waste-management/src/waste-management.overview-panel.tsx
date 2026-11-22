@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { WasteOverviewContent } from './waste-management.overview-content.js';
 import { useWasteOverviewPanelState } from './waste-management.overview-panel.loader.js';
+import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -20,7 +21,9 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <WastePanelTableTopBar
+        activeFilters={search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+      >
         <Button
           type="button"
           variant="tertiary"
@@ -34,8 +37,7 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
         >
           {pt('filters.reset')}
         </Button>
-        {search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
-      </div>
+      </WastePanelTableTopBar>
       <WasteOverviewContent
         overview={overview}
         page={search.page}

@@ -196,10 +196,6 @@ export const WasteFractionsFilterAction = ({
           <IconFilter aria-hidden="true" className="h-4 w-4" />
           {pt('masterData.fractions.filters.open')}
         </Button>
-        {fractionsStatus !== 'all' ? (
-          <span className="text-sm">{pt(`masterData.fractions.filters.status.${fractionsStatus}`)}</span>
-        ) : null}
-        {query ? <span className="text-sm">{pt('filters.searchLabel')} · {query}</span> : null}
       </div>
       <FractionsFilterDialog
         open={filterDialogOpen}

@@ -10,6 +10,7 @@ import {
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingListNavigation } from './waste-management.scheduling-list-view.navigation.js';
 import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
+import { WastePanelTableTopBar, type WastePanelTableTopBarProps } from './waste-management.table-frame.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
@@ -28,6 +29,38 @@ export const WasteSchedulingListView = ({
     ? controller.availableTours.find((tour) => tour.id === search.tourId)
     : undefined;
   const assignmentsTab = search.tab === 'tourAssignments';
+  const toolbar: WastePanelTableTopBarProps = {
+    children: (
+      <Button
+        type="button"
+        variant="tertiary"
+        disabled={!search.tourId && (assignmentsTab || (!search.q && search.shiftContext === 'all'))}
+        onClick={navigation.resetFilters}
+      >
+        {pt('filters.reset')}
+      </Button>
+    ),
+    actions: selectedTour ? (
+      <Link
+        to="/plugins/waste-management"
+        search={toWasteTourEditSearch(search, selectedTour.id)}
+        className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+      >
+        {pt('scheduling.tourContext.back')}
+      </Link>
+    ) : null,
+    activeFilters: (
+      <>
+        {!assignmentsTab && search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+        {!assignmentsTab && search.shiftContext !== 'all' ? (
+          <span>{pt(`filters.shiftContext.${search.shiftContext}`)}</span>
+        ) : null}
+        {search.tourId ? (
+          <span>{pt('scheduling.tourContext.active', { name: selectedTour?.name ?? search.tourId })}</span>
+        ) : null}
+      </>
+    ),
+  };
   const content = assignmentsTab ? (
     <WasteTourAssignmentsContent
       message={controller.message}
@@ -36,16 +69,21 @@ export const WasteSchedulingListView = ({
       assignmentLocationOptions={controller.assignmentLocationOptions}
       search={search}
       canManage={canManageAssignments}
+      toolbar={toolbar}
       onSaveTourAssignment={controller.onSaveTourAssignment}
       onDeleteTourAssignment={controller.onDeleteTourAssignment}
       saving={controller.saving}
     />
   ) : !controller.allSchedulingEntries.length && !controller.availableTours.length ? (
-    <WasteSchedulingEmptyState onOpenCreateShiftDialog={navigation.openCreate} />
+    <>
+      <WastePanelTableTopBar {...toolbar} />
+      <WasteSchedulingEmptyState onOpenCreateShiftDialog={navigation.openCreate} />
+    </>
   ) : (
     <WasteSchedulingContent
       message={controller.message}
       schedulingEntries={controller.schedulingEntries}
+      toolbar={toolbar}
       search={search}
       onOpenCreateShiftDialog={navigation.openCreate}
       onEditHolidayRule={navigation.openEditHoliday}
@@ -61,37 +99,5 @@ export const WasteSchedulingListView = ({
     />
   );
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Button
-          type="button"
-          variant="tertiary"
-          disabled={!search.tourId && (assignmentsTab || (!search.q && search.shiftContext === 'all'))}
-          onClick={navigation.resetFilters}
-        >
-          {pt('filters.reset')}
-        </Button>
-        {!assignmentsTab && search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
-        {!assignmentsTab && search.shiftContext !== 'all' ? (
-          <span>{pt(`filters.shiftContext.${search.shiftContext}`)}</span>
-        ) : null}
-        {search.tourId ? (
-          <span className="mr-auto font-medium">
-            {pt('scheduling.tourContext.active', { name: selectedTour?.name ?? search.tourId })}
-          </span>
-        ) : null}
-        {selectedTour ? (
-          <Link
-            to="/plugins/waste-management"
-            search={toWasteTourEditSearch(search, selectedTour.id)}
-            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-          >
-            {pt('scheduling.tourContext.back')}
-          </Link>
-        ) : null}
-      </div>
-      {content}
-    </div>
-  );
+  return content;
 };

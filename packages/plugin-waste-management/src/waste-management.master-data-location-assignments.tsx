@@ -23,14 +23,14 @@ import {
 import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
 import { defaultWastePageSize } from './pagination-search-params.js';
-import { createPagedItems, WastePanelTableBottomBar } from './waste-management.table-frame.js';
+import { createPagedItems, WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 import { sortWasteTours } from './waste-management.tours.content.helpers.js';
 import {
   WasteTableSortButton,
   type WasteToursSortDirection,
 } from './waste-management.tours.table.parts.js';
 import { TourValidityPeriodField } from './waste-management.tours.toolbar.filter-fields.js';
-import { matchesWasteTourValidityPeriod } from './waste-management.tours.validity-filter.js';
+import { matchesWasteTourValidityPeriod, resolveWasteTourValidityYear } from './waste-management.tours.validity-filter.js';
 
 type AssignmentSortField = 'name' | 'recurrence';
 type AssignmentSort = Readonly<{ field: AssignmentSortField; direction: WasteToursSortDirection }>;
@@ -235,51 +235,76 @@ const LocationAssignmentsEditor = ({
 
   return (
     <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.title')}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.description')}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
-              value: String(linkedTourIds.size),
-            })}
-          </p>
-        </div>
-        <Button type="button" disabled={actionDisabled} onClick={() => void handleSave()}>
-          {pt(`${assignmentKey}.actions.${actionLabel}`)}
-        </Button>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.title')}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.description')}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
+            value: String(linkedTourIds.size),
+          })}
+        </p>
       </div>
 
       <StatusNotice message={message} />
 
-      {tours.length > 0 ? (
-        <div className="flex flex-wrap items-end gap-3">
-          <StudioField id={searchId} label={pt('tours.filters.nameLabel')}>
-            <Input
-              id={searchId}
-              type="search"
-              placeholder={pt('tours.filters.namePlaceholder')}
-              value={query}
-              onChange={(event) => {
-                setQuery(event.currentTarget.value);
+      <WastePanelTableTopBar
+        actions={
+          <Button type="button" disabled={actionDisabled} onClick={() => void handleSave()}>
+            {pt(`${assignmentKey}.actions.${actionLabel}`)}
+          </Button>
+        }
+        activeFilters={
+          <>
+            {query.trim() ? <span>{pt('tours.filters.nameLabel')} · {query.trim()}</span> : null}
+            {period !== 'all' ? (
+              <span>{pt(`tours.filters.validityPeriod.${period}`, {
+                year: resolveWasteTourValidityYear(period, referenceYear),
+              })}</span>
+            ) : null}
+          </>
+        }
+      >
+        {tours.length > 0 ? (
+          <div className="flex flex-wrap items-end gap-3">
+            <StudioField id={searchId} label={pt('tours.filters.nameLabel')}>
+              <Input
+                id={searchId}
+                type="search"
+                placeholder={pt('tours.filters.namePlaceholder')}
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.currentTarget.value);
+                  setPage(1);
+                }}
+              />
+            </StudioField>
+            <TourValidityPeriodField
+              referenceYear={referenceYear}
+              value={period}
+              onChange={(value) => {
+                setPeriod(value);
                 setPage(1);
               }}
             />
-          </StudioField>
-          <TourValidityPeriodField
-            referenceYear={referenceYear}
-            value={period}
-            onChange={(value) => {
-              setPeriod(value);
-              setPage(1);
-            }}
-          />
-        </div>
-      ) : null}
+            <Button
+              type="button"
+              variant="tertiary"
+              disabled={!query && period === 'all'}
+              onClick={() => {
+                setQuery('');
+                setPeriod('all');
+                setPage(1);
+              }}
+            >
+              {pt('filters.reset')}
+            </Button>
+          </div>
+        ) : null}
+      </WastePanelTableTopBar>
       {sortedTours.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {pt(`${assignmentKey}.${tours.length === 0 ? 'empty' : 'noMatches'}`)}

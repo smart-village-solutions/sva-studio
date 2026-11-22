@@ -234,6 +234,13 @@ export const TourAssignmentsPage = ({
               setStreetFilter(value);
               setPage(1);
             }}
+            onResetFilters={() => {
+              setSearchQuery('');
+              setRegionFilter('');
+              setCityFilter('');
+              setStreetFilter('');
+              setPage(1);
+            }}
           />
           <TourAssignmentsPageSelection
             loading={loading}
@@ -253,13 +260,6 @@ export const TourAssignmentsPage = ({
             someVisibleSelected={someVisibleSelected}
             sortField={sort.field}
             sortDirection={sort.direction}
-            onResetFilters={() => {
-              setSearchQuery('');
-              setRegionFilter('');
-              setCityFilter('');
-              setStreetFilter('');
-              setPage(1);
-            }}
             onSortChange={changeSort}
             onToggleSelectAll={(checked) => changeSelection(filteredLocationIds, checked)}
             onToggleLocation={(id, checked) => changeSelection([id], checked)}

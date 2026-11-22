@@ -100,7 +100,8 @@ vi.mock('@sva/studio-ui-react', () => ({
   },
 }));
 
-vi.mock('../src/waste-management.table-frame.js', () => ({
+vi.mock('../src/waste-management.table-frame.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/waste-management.table-frame.js')>()),
   createPagedItems: ({
     items,
     page,

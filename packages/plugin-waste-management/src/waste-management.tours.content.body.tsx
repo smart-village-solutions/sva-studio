@@ -9,7 +9,6 @@ import type {
   WasteManagementSearchParams,
   WasteManagementTourValidityPeriod,
 } from './search-params.js';
-import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 import type {
   WasteToursSortDirection,
   WasteToursSortField,
@@ -117,54 +116,52 @@ export const WasteToursContentBody = ({
     aria-label={focusFallbackLabel}
     className="overflow-hidden rounded-none border border-border-subtle bg-card"
   >
-    <WastePanelTableTopBar>
-      <WasteToursToolbar
-        filterDialogOpen={filters.filterDialogOpen}
-        selectedCount={table.selectedTourIds.length}
-        hiddenSelectedCount={table.hiddenSelectedCount}
-        filteredCount={table.tours.length}
-        allFilteredSelected={table.allFilteredSelected}
-        someFilteredSelected={table.someFilteredSelected}
-        query={filters.query}
-        status={filters.status}
-        tourValidityPeriod={filters.tourValidityPeriod}
-        fractions={fractions}
-        tourWasteFractionId={filters.tourWasteFractionId}
-        firstDateFrom={filters.firstDateFrom}
-        firstDateTo={filters.firstDateTo}
-        endDateFrom={filters.endDateFrom}
-        endDateTo={filters.endDateTo}
-        draftQuery={filters.draftQuery}
-        draftStatus={filters.draftStatus}
-        draftTourValidityPeriod={filters.draftTourValidityPeriod}
-        draftTourWasteFractionId={filters.draftTourWasteFractionId}
-        draftFirstDateFrom={filters.draftFirstDateFrom}
-        draftFirstDateTo={filters.draftFirstDateTo}
-        draftEndDateFrom={filters.draftEndDateFrom}
-        draftEndDateTo={filters.draftEndDateTo}
-        hasActiveFilters={filters.hasActiveFilters}
-        onOpenCreateDialog={onOpenCreateDialog}
-        onOpenAnnualTransfer={onOpenAnnualTransfer}
-        canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
-        onOpenFilterDialog={filters.onOpenFilterDialog}
-        onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
-        onOpenBulkDelete={() => setBulkDeleteOpen(true)}
-        onOpenBulkValidity={() => setBulkValidityOpen(true)}
-        onOpenBulkStatus={() => setBulkStatusOpen(true)}
-        onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
-        onClearSelection={table.clearSelection}
-        onDraftQueryChange={filters.onDraftQueryChange}
-        onDraftStatusChange={filters.onDraftStatusChange}
-        onDraftTourValidityPeriodChange={filters.onDraftTourValidityPeriodChange}
-        onDraftTourWasteFractionIdChange={filters.onDraftTourWasteFractionIdChange}
-        onDraftFirstDateFromChange={filters.onDraftFirstDateFromChange}
-        onDraftFirstDateToChange={filters.onDraftFirstDateToChange}
-        onDraftEndDateFromChange={filters.onDraftEndDateFromChange}
-        onDraftEndDateToChange={filters.onDraftEndDateToChange}
-        onApplyFilters={filters.onApplyFilters}
-        onResetFilters={filters.onResetFilters}
-      />
-    </WastePanelTableTopBar>
+    <WasteToursToolbar
+      filterDialogOpen={filters.filterDialogOpen}
+      selectedCount={table.selectedTourIds.length}
+      hiddenSelectedCount={table.hiddenSelectedCount}
+      filteredCount={table.tours.length}
+      allFilteredSelected={table.allFilteredSelected}
+      someFilteredSelected={table.someFilteredSelected}
+      query={filters.query}
+      status={filters.status}
+      tourValidityPeriod={filters.tourValidityPeriod}
+      fractions={fractions}
+      tourWasteFractionId={filters.tourWasteFractionId}
+      firstDateFrom={filters.firstDateFrom}
+      firstDateTo={filters.firstDateTo}
+      endDateFrom={filters.endDateFrom}
+      endDateTo={filters.endDateTo}
+      draftQuery={filters.draftQuery}
+      draftStatus={filters.draftStatus}
+      draftTourValidityPeriod={filters.draftTourValidityPeriod}
+      draftTourWasteFractionId={filters.draftTourWasteFractionId}
+      draftFirstDateFrom={filters.draftFirstDateFrom}
+      draftFirstDateTo={filters.draftFirstDateTo}
+      draftEndDateFrom={filters.draftEndDateFrom}
+      draftEndDateTo={filters.draftEndDateTo}
+      hasActiveFilters={filters.hasActiveFilters}
+      onOpenCreateDialog={onOpenCreateDialog}
+      onOpenAnnualTransfer={onOpenAnnualTransfer}
+      canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
+      onOpenFilterDialog={filters.onOpenFilterDialog}
+      onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
+      onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+      onOpenBulkValidity={() => setBulkValidityOpen(true)}
+      onOpenBulkStatus={() => setBulkStatusOpen(true)}
+      onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
+      onClearSelection={table.clearSelection}
+      onDraftQueryChange={filters.onDraftQueryChange}
+      onDraftStatusChange={filters.onDraftStatusChange}
+      onDraftTourValidityPeriodChange={filters.onDraftTourValidityPeriodChange}
+      onDraftTourWasteFractionIdChange={filters.onDraftTourWasteFractionIdChange}
+      onDraftFirstDateFromChange={filters.onDraftFirstDateFromChange}
+      onDraftFirstDateToChange={filters.onDraftFirstDateToChange}
+      onDraftEndDateFromChange={filters.onDraftEndDateFromChange}
+      onDraftEndDateToChange={filters.onDraftEndDateToChange}
+      onApplyFilters={filters.onApplyFilters}
+      onResetFilters={filters.onResetFilters}
+    />
     <WasteToursTable
       {...table}
       fractions={fractions}

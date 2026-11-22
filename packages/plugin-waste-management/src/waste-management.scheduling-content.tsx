@@ -11,6 +11,7 @@ import type { WasteSchedulingTableEntry } from './waste-management.scheduling.sh
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
+import type { WastePanelTableTopBarProps } from './waste-management.table-frame.js';
 
 const createAssignmentForm = (
   entry?: WasteTourAssignmentRecord,
@@ -63,6 +64,7 @@ export const WasteTourAssignmentsContent = ({
   assignmentLocationOptions,
   search,
   canManage,
+  toolbar,
   onSaveTourAssignment,
   onDeleteTourAssignment,
   saving,
@@ -73,6 +75,7 @@ export const WasteTourAssignmentsContent = ({
   readonly assignmentLocationOptions: readonly { readonly id: string; readonly label: string }[];
   readonly search?: WasteManagementSearchParams;
   readonly canManage: boolean;
+  readonly toolbar?: WastePanelTableTopBarProps;
   readonly onSaveTourAssignment: (
     input: {
       readonly id: string;
@@ -128,6 +131,7 @@ export const WasteTourAssignmentsContent = ({
         locationLabels={locationLabels}
         search={search}
         canManage={canManage}
+        toolbar={toolbar}
         onCreate={() => {
           setDialogMode('create');
           setForm(createAssignmentForm(undefined, search?.tourId));

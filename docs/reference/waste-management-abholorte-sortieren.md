@@ -48,6 +48,18 @@ verwendeten Filter im Arbeitsspeicher für den laufenden Anmeldekontext.
 Nach Abmeldung oder einem neuen Browser-Tab gelten die Standardwerte oder die
 ausdrücklich in der geöffneten URL gesetzten Filter.
 
+## Tabellenköpfe im Abfallmodul
+
+Suche, Filter und **Filter zurücksetzen** stehen links, Listenaktionen rechts.
+Aktive Filter stehen in einer Zeile unter den Bedienelementen. Auf schmalen
+Ansichten werden die Bedienelemente umgebrochen.
+
+Dieses Muster gilt für Touren, Abholpunkte, Abfallarten, Stammdaten,
+Ausweichtermine, Tour-Einsätze, beide Richtungen der Tour-Zuordnung, den
+Datentools-Verlauf und das E-Mail-Monitoring. Auswahl und Speichern richten sich
+nach der jeweiligen Liste. In der Zuordnungsdetailseite steht die Aktion zum
+Speichern des gesamten Formulars am Seitenende.
+
 ## Auswahl über mehrere Seiten
 
 Ausgewählte Abholpunkte werden anhand ihrer IDs gehalten. Sie bleiben bei

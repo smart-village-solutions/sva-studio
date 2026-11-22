@@ -11,6 +11,8 @@ import {
   WasteLocationsYearControl,
 } from './waste-management.master-data-locations-table.views.toolbar.controls.js';
 import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
+import { WasteMasterDataActiveTourBanner } from './waste-management.master-data-locations-table.views.js';
+import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 const WasteLocationsBulkActions = ({
   selectedCollectionLocationsCount,
@@ -130,6 +132,8 @@ type WasteLocationsToolbarProps = Pick<
   readonly onRequestDeleteSelected: () => void;
   readonly filtersOpen: boolean;
   readonly onToggleFiltersOpen: () => void;
+  readonly regionName?: string;
+  readonly cityName?: string;
 };
 
 export const WasteMasterDataLocationsTableToolbar = ({
@@ -156,19 +160,46 @@ export const WasteMasterDataLocationsTableToolbar = ({
   onSortDirectionChange,
   onRequestDeleteSelected,
   onToggleFiltersOpen,
+  regionName,
+  cityName,
 }: WasteLocationsToolbarProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const tours = visibleTours ?? availableTours;
+  const selectedTour = tours.find((tour) => tour.id === selectedTourId);
   return (
-    <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <WasteLocationsQueryControl search={search} onQueryChange={onQueryChange} />
-          <WasteLocationsResetControl search={search} onResetFilters={onResetFilters} />
+    <WastePanelTableTopBar
+      actions={
+        <>
           <WasteLocationsBulkActions
             selectedCollectionLocationsCount={selectedCollectionLocationsCount}
             onOpenBulkAssignments={onOpenBulkAssignments}
             onRequestDeleteSelected={onRequestDeleteSelected}
           />
+          <Button type="button" onClick={onOpenCreateLocation}>
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {pt('masterData.locationsWorkspace.actions.createLocation')}
+          </Button>
+        </>
+      }
+      activeFilters={
+        <>
+          {search?.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+          {search && search.status !== 'all' ? <span>{pt(`filters.status.${search.status}`)}</span> : null}
+          {regionName ? <span>{pt('masterData.collectionLocations.fields.regionId')} · {regionName}</span> : null}
+          {cityName ? <span>{pt('masterData.collectionLocations.fields.cityId')} · {cityName}</span> : null}
+          {locationYear ? <span>{pt('masterData.locationsWorkspace.filters.tourYear')} · {locationYear}</span> : null}
+          {locationTourStatus ? <span>{pt(`masterData.locationsWorkspace.filters.${locationTourStatus}`)}</span> : null}
+          <WasteMasterDataActiveTourBanner
+            selectedTour={selectedTour}
+            onTourFilterChange={onTourFilterChange}
+          />
+        </>
+      }
+    >
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <WasteLocationsQueryControl search={search} onQueryChange={onQueryChange} />
+          <WasteLocationsResetControl search={search} onResetFilters={onResetFilters} />
           <WasteLocationsFiltersToggle
             filtersOpen={filtersOpen}
             onToggleFiltersOpen={onToggleFiltersOpen}
@@ -191,7 +222,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
         </div>
         {filtersOpen ? (
           <WasteLocationsFilters
-            visibleTours={visibleTours ?? availableTours}
+            visibleTours={tours}
             selectedTourId={selectedTourId}
             allFilteredLocationsSelected={allFilteredLocationsSelected}
             onTourFilterChange={onTourFilterChange}
@@ -199,12 +230,6 @@ export const WasteMasterDataLocationsTableToolbar = ({
           />
         ) : null}
       </div>
-      <div className="flex justify-end">
-        <Button type="button" onClick={onOpenCreateLocation}>
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          {pt('masterData.locationsWorkspace.actions.createLocation')}
-        </Button>
-      </div>
-    </div>
+    </WastePanelTableTopBar>
   );
 };

@@ -12,6 +12,10 @@ import {
 } from './waste-management.cross-link.navigation.js';
 import { WasteTourAssignmentDeleteDialog } from './waste-management.scheduling-assignment-delete-dialog.js';
 import { formatSchedulingDisplayDate } from './waste-management.scheduling-table-meta.js';
+import {
+  WastePanelTableTopBar,
+  type WastePanelTableTopBarProps,
+} from './waste-management.table-frame.js';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
 
@@ -184,6 +188,7 @@ export const WasteTourExplicitAssignmentsList = ({
   locationLabels,
   search,
   canManage,
+  toolbar,
   onCreate,
   onEdit,
   onDelete,
@@ -193,6 +198,7 @@ export const WasteTourExplicitAssignmentsList = ({
   readonly locationLabels: ReadonlyMap<string, string>;
   readonly search?: WasteManagementSearchParams;
   readonly canManage: boolean;
+  readonly toolbar?: WastePanelTableTopBarProps;
   readonly onCreate: () => void;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDelete: (entry: WasteTourAssignmentRecord) => Promise<void>;
@@ -212,12 +218,20 @@ export const WasteTourExplicitAssignmentsList = ({
   return (
     <section aria-label={pt('scheduling.assignments.title')}>
       <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
-        {canManage ? (
-          <div className="flex items-center justify-end border-b border-border-subtle px-4 py-3">
-            <Button type="button" className="rounded-md" onClick={onCreate}>
-              {pt('scheduling.assignments.actions.openCreate')}
-            </Button>
-          </div>
+        {toolbar || canManage ? (
+          <WastePanelTableTopBar
+            {...toolbar}
+            actions={
+              <>
+                {toolbar?.actions}
+                {canManage ? (
+                  <Button type="button" className="rounded-md" onClick={onCreate}>
+                    {pt('scheduling.assignments.actions.openCreate')}
+                  </Button>
+                ) : null}
+              </>
+            }
+          />
         ) : null}
         {sortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">

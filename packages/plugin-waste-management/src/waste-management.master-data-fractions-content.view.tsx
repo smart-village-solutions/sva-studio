@@ -2,7 +2,7 @@ import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog, StudioDataTable } from '@sva/studio-ui-react';
 
-import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 import {
   FractionPrimaryAction,
   FractionRowActions,
@@ -111,6 +111,29 @@ export const WasteMasterDataFractionsTableSection = ({
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="[&>div]:rounded-none [&>div]:border-x-0">
+      <WastePanelTableTopBar
+        actions={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
+        activeFilters={
+          <>
+            {fractionsStatus !== 'all' ? (
+              <span>{pt(`masterData.fractions.filters.status.${fractionsStatus}`)}</span>
+            ) : null}
+            {search?.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+          </>
+        }
+      >
+        <WasteFractionsFilterAction
+          fractionsStatus={fractionsStatus}
+          query={search?.q ?? ''}
+          filterDialogOpen={filterDialogOpen}
+          draftFractionsStatus={draftFractionsStatus}
+          onOpenFilterDialog={onOpenFilterDialog}
+          onFilterDialogOpenChange={onFilterDialogOpenChange}
+          onDraftFractionsStatusChange={onDraftFractionsStatusChange}
+          onApplyFractionsStatus={onApplyFractionsStatus}
+          onResetFractionsStatus={onResetFractionsStatus}
+        />
+      </WastePanelTableTopBar>
       <StudioDataTable
         ariaLabel={pt('masterData.fractions.table.ariaLabel')}
         caption={pt('masterData.fractions.table.caption')}
@@ -119,20 +142,6 @@ export const WasteMasterDataFractionsTableSection = ({
         columns={columns}
         getRowId={(fraction) => fraction.id}
         bulkActions={bulkActions}
-        toolbarStart={
-          <WasteFractionsFilterAction
-            fractionsStatus={fractionsStatus}
-            query={search?.q ?? ''}
-            filterDialogOpen={filterDialogOpen}
-            draftFractionsStatus={draftFractionsStatus}
-            onOpenFilterDialog={onOpenFilterDialog}
-            onFilterDialogOpenChange={onFilterDialogOpenChange}
-            onDraftFractionsStatusChange={onDraftFractionsStatusChange}
-            onApplyFractionsStatus={onApplyFractionsStatus}
-            onResetFractionsStatus={onResetFractionsStatus}
-          />
-        }
-        toolbarEnd={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
         selectionMode="multiple"
         emptyState={
           <p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>

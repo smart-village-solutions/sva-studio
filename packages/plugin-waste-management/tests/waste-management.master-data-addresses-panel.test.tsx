@@ -45,7 +45,8 @@ vi.mock('../src/waste-management.api.js', () => ({
   previewWasteAddressMutation: vi.fn(),
 }));
 vi.mock('../src/waste-management.page.support.js', () => ({ resolveApiErrorCode: () => '' }));
-vi.mock('../src/waste-management.table-frame.js', () => ({
+vi.mock('../src/waste-management.table-frame.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/waste-management.table-frame.js')>()),
   WastePanelTableBottomBar: () => null,
 }));
 vi.mock('@sva/studio-ui-react', async (importOriginal) => {

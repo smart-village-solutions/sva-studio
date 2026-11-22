@@ -42,9 +42,31 @@ export const usePagedRouteSync = ({
   }, [onPageChange, onSyncPageChange, page, safePage]);
 };
 
-export const WastePanelTableTopBar = ({ children }: { readonly children?: ReactNode }) => (
-  <div className="flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 py-4">
-    <div className="flex w-full flex-wrap items-center gap-2">{children}</div>
+export type WastePanelTableTopBarProps = {
+  readonly children?: ReactNode;
+  readonly actions?: ReactNode;
+  readonly activeFilters?: ReactNode;
+};
+
+export const WastePanelTableTopBar = ({
+  children,
+  actions,
+  activeFilters,
+}: WastePanelTableTopBarProps) => (
+  <div className="space-y-3 border-b border-border bg-card px-4 py-4">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      {children ? (
+        <div className="flex min-w-0 grow basis-64 flex-wrap items-end gap-2">{children}</div>
+      ) : null}
+      {actions ? (
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+      ) : null}
+    </div>
+    {activeFilters ? (
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground empty:hidden">
+        {activeFilters}
+      </div>
+    ) : null}
   </div>
 );
 

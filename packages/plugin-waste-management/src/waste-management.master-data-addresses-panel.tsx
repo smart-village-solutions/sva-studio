@@ -43,26 +43,25 @@ type PanelProps = Readonly<{
 type AddressFiltersProps = {
   pt: Translate;
   search: WasteManagementSearchParams;
-  controller: ReturnType<typeof useWasteMasterDataViewModel>;
+  parentOptions: ReturnType<typeof parentOptionsFor>;
   onSearchChange: PanelProps['onSearchChange'];
 };
 
 const AddressFilters = ({
   pt,
   search,
-  controller,
+  parentOptions,
   onSearchChange,
 }: AddressFiltersProps) => {
   const entityType = search.addressEntityType;
   const parentLabel = addressParentLabel[entityType];
-  const parentOptions = parentOptionsFor(controller, entityType);
   const [query, setQuery] = useState(search.q);
   useEffect(() => setQuery(search.q), [search.q]);
   const commitQuery = () => {
     if (query !== search.q) onSearchChange({ q: query, page: 1 });
   };
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <StudioField
         id="waste-address-entity-type"
         label={pt('masterData.locationsWorkspace.addresses.typeLabel')}
@@ -155,6 +154,8 @@ export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChang
   const filteredRows = useMemo(() => filterAddressRows(rows, search), [rows, search.addressEntityType, search.addressParentId, search.q]);
   const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);
   const { page, pageCount, pageItems } = pageAddressRows(sortedRows, search.page, search.pageSize);
+  const parentOptions = parentOptionsFor(controller, search.addressEntityType);
+  const activeParent = parentOptions.find((option) => option.id === search.addressParentId);
   const loadPreview = (row: AddressRow, previewFresh = false, transfer = false, targetEntityId?: string) =>
     loadDeletePreview({ row, pt, previewSequence, setPendingDelete, previewFresh, transfer, targetEntityId });
   const openDelete = async (row: AddressRow, trigger: HTMLElement) => {
@@ -194,9 +195,19 @@ export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChang
   if (controller.error) return <StudioErrorState>{controller.error}</StudioErrorState>;
   return (
     <div className="space-y-4">
-      <AddressFilters {...{ pt, search, controller, onSearchChange }} />
       <WasteMasterDataAddressesTable
         pt={pt} controller={controller} search={search} canManage={canManage} allRows={rows}
+        filters={<AddressFilters {...{ pt, search, parentOptions, onSearchChange }} />}
+        activeFilters={
+          <>
+            {search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
+            {activeParent ? (
+              <span>
+                {pt(`masterData.locationsWorkspace.addresses.parentFilter.${addressParentLabel[search.addressEntityType]}`)} · {activeParent.label}
+              </span>
+            ) : null}
+          </>
+        }
         filteredRows={filteredRows} pageItems={pageItems} page={page} pageCount={pageCount}
         onSearchChange={onSearchChange} onOpenDelete={(row, trigger) => void openDelete(row, trigger)}
         sorting={sorting} onSortingChange={([nextSort]) => onSearchChange({

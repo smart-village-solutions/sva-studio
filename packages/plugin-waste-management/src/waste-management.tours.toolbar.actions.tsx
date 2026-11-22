@@ -135,7 +135,7 @@ const WasteToursBulkActions = ({
   );
 };
 
-const WasteToursFilterActions = ({
+export const WasteToursFilterActions = ({
   filterDialogOpen,
   hasActiveFilters,
   onOpenFilterDialog,
@@ -171,6 +171,5 @@ export const WasteToursToolbarActions = (props: WasteToursToolbarActionsProps) =
   <div className="flex flex-wrap items-center gap-2">
     <WasteToursSelectionActions {...props} />
     <WasteToursBulkActions {...props} />
-    <WasteToursFilterActions {...props} />
   </div>
 );

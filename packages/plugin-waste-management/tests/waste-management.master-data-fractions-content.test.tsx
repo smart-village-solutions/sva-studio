@@ -335,8 +335,8 @@ describe('WasteMasterDataFractionsContent', () => {
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(tableProps.ariaLabel).toBe('masterData.fractions.table.ariaLabel');
     expect(tableProps.selectionMode).toBe('multiple');
-    expect(tableProps.toolbarStart).toBeTruthy();
-    expect(tableProps.toolbarEnd).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'masterData.fractions.filters.open' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' })).toBeTruthy();
     expect(tableProps.sorting).toMatchObject({
       mode: 'external',
       state: [{ id: 'nameWithContainerSize', desc: false }],

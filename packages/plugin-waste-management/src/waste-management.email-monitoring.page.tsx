@@ -23,6 +23,7 @@ import {
   emailMonitoringPageSize,
 } from './waste-management.email-monitoring.tables.js';
 import type { EmailMonitoringTranslate } from './waste-management.email-monitoring.columns.js';
+import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 type Selection = {
   page: number;
@@ -46,38 +47,49 @@ const MonitoringControls = ({
   pt: EmailMonitoringTranslate;
   selection: Selection;
   onChange: (selection: Selection) => void;
-}) => (
-  <div className="flex flex-wrap items-end justify-between gap-4">
-    <label className="space-y-2 text-sm font-medium">
-      {pt('emailMonitoring.statusFilter')}
-      <Select
-        value={selection.status}
-        onChange={(event) =>
-          onChange({
-            ...selection,
-            status: event.target.value as Selection['status'],
-            page: 1,
-            selected: null,
-            deliveryPage: 1,
-          })
-        }
-      >
-        <option value="">{pt('emailMonitoring.all')}</option>
-        {(['pending', 'active', 'unsubscribed', 'expired'] as const).map((value) => (
-          <option key={value} value={value}>
-            {pt(`emailMonitoring.states.${value}`)}
-          </option>
-        ))}
-      </Select>
-    </label>
-    <Button
-      variant="secondary"
-      onClick={() => onChange({ ...selection, refresh: selection.refresh + 1 })}
+}) => {
+  const changeStatus = (status: Selection['status']) =>
+    onChange({ ...selection, status, page: 1, selected: null, deliveryPage: 1 });
+  return (
+    <WastePanelTableTopBar
+      activeFilters={
+        selection.status ? <span>{pt(`emailMonitoring.states.${selection.status}`)}</span> : null
+      }
+      actions={
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onChange({ ...selection, refresh: selection.refresh + 1 })}
+        >
+          {pt('emailMonitoring.refresh')}
+        </Button>
+      }
     >
-      {pt('emailMonitoring.refresh')}
-    </Button>
-  </div>
-);
+      <label className="space-y-2 text-sm font-medium">
+        {pt('emailMonitoring.statusFilter')}
+        <Select
+          value={selection.status}
+          onChange={(event) => changeStatus(event.currentTarget.value as Selection['status'])}
+        >
+          <option value="">{pt('emailMonitoring.all')}</option>
+          {(['pending', 'active', 'unsubscribed', 'expired'] as const).map((value) => (
+            <option key={value} value={value}>
+              {pt(`emailMonitoring.states.${value}`)}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <Button
+        type="button"
+        variant="tertiary"
+        disabled={!selection.status}
+        onClick={() => changeStatus('')}
+      >
+        {pt('filters.reset')}
+      </Button>
+    </WastePanelTableTopBar>
+  );
+};
 
 const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
   const [selection, setSelection] = useState<Selection>({

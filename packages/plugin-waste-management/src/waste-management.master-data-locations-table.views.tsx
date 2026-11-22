@@ -17,7 +17,7 @@ export const WasteMasterDataActiveTourBanner = ({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-surface-inset px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">
         {pt('masterData.locationsWorkspace.filters.activeTour')}
       </span>
@@ -26,7 +26,6 @@ export const WasteMasterDataActiveTourBanner = ({
         type="button"
         size="sm"
         variant="tertiary"
-        className="ml-auto"
         onClick={() => onTourFilterChange('')}
       >
         {pt('masterData.locationsWorkspace.filters.clearTour')}

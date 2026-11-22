@@ -425,6 +425,65 @@ test.describe('waste management plugin', () => {
     await expect(dialog.getByText('Keine berechneten Termine in diesem Monat.')).toHaveCount(0);
   });
 
+  test('opens separate assignment and date-shift tabs from the same tour', async ({
+    context,
+    page,
+  }) => {
+    await mockSharedShellRequests(context, {
+      instanceId: 'de-musterhausen',
+      permissionActions: [
+        'waste-management.read',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ],
+    });
+    await mockWasteFacade(context, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: [],
+          recurrence: 'weekly',
+          firstDate: '2026-05-12',
+          status: 'published',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(context, page);
+    await openWastePlugin(page);
+    await navigateClientSide(page, '/plugins/waste-management?tab=tours&toursView=edit&tourId=tour-1');
+
+    for (const [linkLabel, tabLabel, tabParam] of [
+      ['Tour-Einsätze', 'Tour-Einsätze', 'tourAssignments'],
+      ['Tourbezogene Ausweichtermine', 'Ausweichtermine', 'scheduling'],
+    ]) {
+      const popupPromise = page.waitForEvent('popup');
+      await page.getByRole('link', { name: new RegExp(`^${linkLabel}`) }).click();
+      const popup = await popupPromise;
+      await expect(popup.getByRole('tab', { name: tabLabel, exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      const params = new URL(popup.url()).searchParams;
+      expect(params.get('tab')).toBe(tabParam);
+      expect(params.get('tourId')).toBe('tour-1');
+      await popup.close();
+    }
+    await expect(page).toHaveURL(/toursView=edit/u);
+  });
+
   test('opens contextual tour-shift creation in a new tab without losing the tour workflow', async ({
     context,
     page,
@@ -463,6 +522,8 @@ test.describe('waste management plugin', () => {
       ],
     });
 
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(context, page);
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
@@ -477,7 +538,6 @@ test.describe('waste management plugin', () => {
     await expect(createShiftLink).toHaveAttribute('rel', 'noopener noreferrer');
 
     const sourceUrl = page.url();
-    await establishServerReadableAuthSession(context, page);
     const popupPromise = page.waitForEvent('popup');
     await createShiftLink.click();
     const popup = await popupPromise;

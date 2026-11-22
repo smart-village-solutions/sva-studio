@@ -54,16 +54,17 @@ const buildPdfLegendHints = (
     const tourName = entry.tourName?.trim();
     const tourDescription = entry.tourDescription?.trim();
     if (tourName && tourDescription) {
-      const id = `tour:${tourName}:${tourDescription}`;
+      const id = JSON.stringify(['tour', tourName, tourDescription]);
       tourHints.set(id, { id, label: `Tour: ${tourName}`, description: tourDescription });
     }
 
     const note = entry.note?.trim();
     if (note) {
       const contextLabel = tourName ? `Tour: ${tourName}` : entry.fractionLabel;
-      const id = `pickup:${entry.date}:${contextLabel}:${note}`;
+      const id = JSON.stringify(['pickup', entry.date, contextLabel, note]);
       pickupHints.set(id, {
         id,
+        date: entry.date,
         label: `${formatPdfLegendDate(entry.date)} ${contextLabel}`,
         description: note,
       });
@@ -78,7 +79,6 @@ const buildPdfPickups = (
     readonly date: string;
     readonly fractionId: string;
     readonly fractionLabel: string;
-    readonly fractionDescription?: string;
     readonly fractionShortLabel?: string;
     readonly fractionColor?: string;
     readonly isShifted?: boolean;
@@ -93,9 +93,6 @@ const buildPdfPickups = (
     fractions.set(entry.fractionId, {
       id: entry.fractionId,
       label: entry.fractionLabel,
-      ...(existingFraction?.description || entry.fractionDescription?.trim()
-        ? { description: existingFraction?.description ?? entry.fractionDescription?.trim() }
-        : {}),
       shortLabel: entry.fractionShortLabel,
       color: entry.fractionColor ?? '#808080',
       ...(existingFraction?.isShifted || entry.isShifted ? { isShifted: true } : {}),

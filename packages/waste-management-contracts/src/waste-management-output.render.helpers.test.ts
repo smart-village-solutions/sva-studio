@@ -6,16 +6,15 @@ import {
   getContrastingTextColor,
   getEntryLabelWidth,
   pad2,
-  splitLegendLabel,
+  getHelveticaTextWidth,
+  wrapHelveticaText,
 } from './waste-management-output.render.helpers.js';
 
 describe('waste-management-output.render.helpers', () => {
-  it('keeps short legend labels intact and wraps long labels on whitespace', () => {
-    expect(splitLegendLabel('Bio')).toEqual(['Bio']);
-    expect(splitLegendLabel('Sehr lange Legende fuer den Abfallkalender')).toEqual([
-      'Sehr lange Legende fuer',
-      'den Abfallkalender',
-    ]);
+  it('wraps at words, preserves paragraph breaks and splits words wider than the column', () => {
+    const lines = wrapHelveticaText('Bio Papier Glas\n\nWWWWWWWWWW', 8, 36);
+    expect(lines).toEqual(['Bio', 'Papier', 'Glas', '', 'WWWW', 'WWWW', 'WW']);
+    expect(lines.every((line) => getHelveticaTextWidth(line, 8) <= 36)).toBe(true);
   });
 
   it('pads single-digit numbers and leaves two digits untouched', () => {
@@ -51,7 +50,9 @@ describe('waste-management-output.render.helpers', () => {
             brandingImage: {
               width: 4,
               height: 2,
-              rgbData: new Uint8Array([255, 255, 255, 0, 0, 0, 127, 127, 127, 5, 5, 5, 10, 10, 10, 15, 15, 15]),
+              rgbData: new Uint8Array([
+                255, 255, 255, 0, 0, 0, 127, 127, 127, 5, 5, 5, 10, 10, 10, 15, 15, 15,
+              ]),
             },
           },
         ],

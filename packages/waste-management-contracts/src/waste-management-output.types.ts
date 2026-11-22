@@ -14,6 +14,7 @@ export type WasteOutputPickupEntry = Readonly<{
 
 export type WasteOutputLegendHint = Readonly<{
   id: string;
+  date?: string;
   label: string;
   description: string;
 }>;
@@ -24,13 +25,13 @@ export type WasteCalendarPdfBrandingImage = Readonly<{
   rgbData: Uint8Array;
 }>;
 
-type WasteCalendarPdfEntry = Readonly<{
+export type WasteCalendarPdfEntry = Readonly<{
   code: string;
   fillColor: readonly [red: number, green: number, blue: number];
   isShifted: boolean;
 }>;
 
-type WasteCalendarPdfDay = Readonly<{
+export type WasteCalendarPdfDay = Readonly<{
   isoDate: string;
   dayOfMonth: number;
   weekdayShort: string;
@@ -39,35 +40,22 @@ type WasteCalendarPdfDay = Readonly<{
   entries: readonly WasteCalendarPdfEntry[];
 }>;
 
-type WasteCalendarPdfMonth = Readonly<{
+export type WasteCalendarPdfMonth = Readonly<{
   month: number;
   label: string;
   days: readonly WasteCalendarPdfDay[];
 }>;
 
-type WasteCalendarPdfFractionLegendEntry = Readonly<{
-  kind: 'fraction';
+export type WasteCalendarPdfFractionLegendEntry = Readonly<{
   code: string;
   label: string;
-  description?: string;
   fillColor: readonly [red: number, green: number, blue: number];
 }>;
 
 type WasteCalendarPdfHintLegendEntry = Readonly<{
-  kind: 'hint';
   label: string;
   description: string;
 }>;
-
-type WasteCalendarPdfShiftLegendEntry = Readonly<{
-  kind: 'shift';
-  label: string;
-}>;
-
-type WasteCalendarPdfLegendEntry =
-  | WasteCalendarPdfFractionLegendEntry
-  | WasteCalendarPdfHintLegendEntry
-  | WasteCalendarPdfShiftLegendEntry;
 
 type WasteCalendarPdfPage = Readonly<{
   title: string;
@@ -76,7 +64,9 @@ type WasteCalendarPdfPage = Readonly<{
   brandingPlaceholderLabel: string;
   brandingImage?: WasteCalendarPdfBrandingImage;
   months: readonly WasteCalendarPdfMonth[];
-  legend: readonly WasteCalendarPdfLegendEntry[];
+  fractionLegend: readonly WasteCalendarPdfFractionLegendEntry[];
+  hasShiftedPickups: boolean;
+  hints: readonly WasteCalendarPdfHintLegendEntry[];
 }>;
 
 export type WasteCalendarPdfDocument = Readonly<{

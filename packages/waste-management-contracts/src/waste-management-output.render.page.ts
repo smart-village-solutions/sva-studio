@@ -5,6 +5,7 @@ import {
   getContrastingTextColor,
   getHelveticaTextWidth,
   truncateHelveticaText,
+  wrapHelveticaText,
 } from './waste-management-output.render.helpers.js';
 import {
   PAGE_WIDTH,
@@ -16,6 +17,17 @@ import {
 } from './waste-management-output.render.drawing.js';
 import { renderMonthGrid } from './waste-management-output.render.grid.js';
 
+type CalendarPage = WasteCalendarPdfDocument['pages'][number];
+
+type DetailRow = (commands: string[], rowTop: number) => void;
+
+const MARGIN = 38;
+const DETAILS_TOP = 476;
+const CONTINUATION_TOP = 76;
+const ROW_HEIGHT = 12;
+const FONT_SIZE = 8;
+const COLUMN_GAP = 10;
+
 const renderHeader = (
   commands: string[],
   page: WasteCalendarPdfDocument['pages'][number],
@@ -23,16 +35,6 @@ const renderHeader = (
 ): void => {
   drawText({ commands, x: 38, top: 16, fontSize: 20, text: page.title, fontName: 'F2' });
   drawText({ commands, x: 38, top: 44, fontSize: 10.5, text: page.locationLabel, fontName: 'F1' });
-  if (page.contactBlock) {
-    drawText({
-      commands,
-      x: 38,
-      top: 60,
-      fontSize: 7.5,
-      text: truncateHelveticaText(page.contactBlock, 7.5, 570),
-      fontName: 'F1',
-    });
-  }
   if (page.brandingImage && imageObjectName) {
     commands.push(buildBrandingImageCommand(page, imageObjectName, PAGE_HEIGHT) ?? '');
     return;
@@ -73,96 +75,120 @@ const renderHeader = (
   });
 };
 
-const renderLegend = (
-  commands: string[],
-  page: WasteCalendarPdfDocument['pages'][number]
-): void => {
-  const baseX = 38;
-  const baseY = 476;
-  const boxWidth = 22;
-  const rowHeight = 12;
-  const labelX = baseX + boxWidth + 8;
-  const rightEdge = PAGE_WIDTH - baseX;
-  const fontSize = 8;
+const textRow =
+  (x: number, text: string): DetailRow =>
+  (commands, rowTop) =>
+    drawText({
+      commands,
+      x,
+      top: rowTop + 1.5,
+      fontSize: FONT_SIZE,
+      text,
+      fontName: 'F1',
+    });
 
-  for (const [index, entry] of page.legend.entries()) {
-    const rowTop = baseY + index * rowHeight;
-    if (entry.kind === 'shift') {
+const buildLegendRows = (page: CalendarPage, width: number): DetailRow[] => {
+  const rows: DetailRow[] = [];
+  const boxWidth = 22;
+  const labelIndent = boxWidth + 8;
+  const labelX = MARGIN + labelIndent;
+  if (page.hasShiftedPickups) {
+    rows.push((commands, rowTop) => {
       drawText({
         commands,
-        x: baseX,
+        x: MARGIN,
         top: rowTop + 1,
         fontSize: 9,
         text: '*',
         fontName: 'F2',
         color: SHIFT_MARKER_COLOR,
       });
-      drawText({
-        commands,
-        x: baseX + 12,
-        top: rowTop + 1.5,
-        fontSize,
-        text: entry.label,
-        fontName: 'F1',
-      });
-      continue;
-    }
+      textRow(MARGIN + 12, '= Ausweichtermin')(commands, rowTop);
+    });
+  }
 
-    if (entry.kind === 'fraction') {
+  for (const entry of page.fractionLegend) {
+    const [firstLine = '', ...moreLines] = wrapHelveticaText(
+      entry.label,
+      FONT_SIZE,
+      width - labelIndent
+    );
+    rows.push((commands, rowTop) => {
       drawFilledRectangle(
-        { commands, x: baseX, top: rowTop + 0.8, width: boxWidth, height: 10.4 },
+        { commands, x: MARGIN, top: rowTop + 0.8, width: boxWidth, height: 10.4 },
         entry.fillColor
       );
       drawText({
         commands,
-        x: baseX + 4,
+        x: MARGIN + 4,
         top: rowTop + 1.9,
         fontSize: 7.2,
         text: entry.code,
         fontName: 'F1',
         color: getContrastingTextColor(entry.fillColor),
       });
-      drawText({
-        commands,
-        x: labelX,
-        top: rowTop + 1.5,
-        fontSize,
-        text: truncateHelveticaText(
-          entry.description ? `${entry.label} - ${entry.description}` : entry.label,
-          fontSize,
-          rightEdge - labelX
-        ),
-        fontName: 'F1',
-      });
-      continue;
-    }
-
-    drawText({
-      commands,
-      x: baseX,
-      top: rowTop + 1.5,
-      fontSize,
-      text: truncateHelveticaText(
-        `${entry.label} - ${entry.description}`,
-        fontSize,
-        rightEdge - baseX
-      ),
-      fontName: 'F1',
+      textRow(labelX, firstLine)(commands, rowTop);
     });
+    rows.push(...moreLines.map((line) => textRow(labelX, line)));
   }
+  return rows;
 };
 
-export const renderPageCommands = (
-  page: WasteCalendarPdfDocument['pages'][number],
-  imageObjectName?: string
-): string => {
-  const commands: string[] = [];
-  drawFilledRectangle(
-    { commands, x: 0, top: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT },
-    [1, 1, 1]
+const buildDetailColumns = (page: CalendarPage): readonly DetailRow[][] => {
+  const quarterWidth = (PAGE_WIDTH - 2 * MARGIN) / 4;
+  const hintsX = MARGIN + quarterWidth;
+  const hintsWidth = page.contactBlock ? 2 * quarterWidth - COLUMN_GAP : 3 * quarterWidth;
+  const hintRows = page.hints.flatMap(({ label, description }) =>
+    wrapHelveticaText(`${label} - ${description}`, FONT_SIZE, hintsWidth).map((line) =>
+      textRow(hintsX, line)
+    )
   );
-  renderHeader(commands, page, imageObjectName);
-  renderMonthGrid(commands, page);
-  renderLegend(commands, page);
-  return commands.join('\n');
+  const columns = [buildLegendRows(page, quarterWidth - COLUMN_GAP), hintRows];
+  if (page.contactBlock) {
+    const contactX = MARGIN + 3 * quarterWidth;
+    columns.push(
+      wrapHelveticaText(page.contactBlock, FONT_SIZE, quarterWidth).map((line) =>
+        textRow(contactX, line)
+      )
+    );
+  }
+  return columns;
+};
+
+export const renderPageCommands = (page: CalendarPage, imageObjectName?: string): string[] => {
+  const columns = buildDetailColumns(page);
+  const totalRows = Math.max(...columns.map((column) => column.length));
+  const pageCommands: string[] = [];
+  let offset = 0;
+  do {
+    const commands: string[] = [];
+    drawFilledRectangle(
+      { commands, x: 0, top: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT },
+      [1, 1, 1]
+    );
+    renderHeader(commands, page, imageObjectName);
+    const rowTop = offset === 0 ? DETAILS_TOP : CONTINUATION_TOP;
+    if (offset === 0) {
+      renderMonthGrid(commands, page);
+    } else {
+      const period = `${page.months[0]?.label} bis ${page.months[page.months.length - 1]?.label}`;
+      drawText({
+        commands,
+        x: MARGIN,
+        top: 60,
+        fontSize: 9,
+        text: `Fortsetzung zur Kalenderseite: ${period}`,
+        fontName: 'F2',
+      });
+    }
+    const capacity = Math.floor((PAGE_HEIGHT - 20 - rowTop) / ROW_HEIGHT);
+    for (const column of columns) {
+      column.slice(offset, offset + capacity).forEach((drawRow, index) => {
+        drawRow(commands, rowTop + index * ROW_HEIGHT);
+      });
+    }
+    pageCommands.push(commands.join('\n'));
+    offset += capacity;
+  } while (offset < totalRows);
+  return pageCommands;
 };

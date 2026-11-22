@@ -6,6 +6,37 @@ import {
 } from './waste-management-output.js';
 
 describe('waste-management output pdf', () => {
+  it('renders every pickup hint alongside six fractions and a shift explanation', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bad Wilsnack',
+        pickups: [
+          {
+            date: '2026-09-08',
+            fractions: Array.from({ length: 6 }, (_, index) => ({
+              id: `fraction-${index}`,
+              label: `Fraktion ${index + 1}`,
+              color: '#555555',
+              isShifted: index === 0,
+            })),
+          },
+        ],
+        legendHints: [
+          { id: 'stop:1', label: '08.09.', description: '09:00 Uhr, Erster Haltepunkt.' },
+          { id: 'stop:2', label: '08.09.', description: '10:00 Uhr, Zweiter Haltepunkt.' },
+          { id: 'stop:3', label: '08.09.', description: '11:00 Uhr, Dritter Haltepunkt.' },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('= Ausweichtermin');
+    expect(pdfText).toContain('Fraktion 6');
+    expect(pdfText).toContain('09:00 Uhr, Erster Haltepunkt.');
+    expect(pdfText).toContain('10:00 Uhr, Zweiter Haltepunkt.');
+    expect(pdfText).toContain('11:00 Uhr, Dritter Haltepunkt.');
+  });
+
   it('builds a two-page yearly document with mapped pickup entries', () => {
     const document = buildWasteCalendarPdfDocument({
       year: 2026,
@@ -54,18 +85,14 @@ describe('waste-management output pdf', () => {
     expect(october?.days.find((day) => day.dayOfMonth === 3)?.holidayLabel).toBe(
       'Tag der Deutschen Einheit'
     );
-    expect(document.pages[0]?.legend.map((entry) => entry.label)).toEqual([
-      '= Ausweichtermin',
+    expect(document.pages[0]?.hasShiftedPickups).toBe(true);
+    expect(document.pages[0]?.fractionLegend.map((entry) => entry.label)).toEqual([
       'Bioabfall',
       'Hausmuell',
       'Leichtverpackungen',
       'Papier und Pappe',
-      'Tour: Nord',
     ]);
-    expect(document.pages[0]?.legend[1]).toMatchObject({
-      kind: 'fraction',
-      description: 'Bitte ohne Kunststoffbeutel bereitstellen.',
-    });
+    expect(document.pages[0]?.hints.map((hint) => hint.label)).toEqual(['Tour: Nord']);
     expect(document.pages[0]?.months[2]?.label).toBe('März');
   });
 
@@ -109,7 +136,7 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('(Bärensprung) Tj');
   });
 
-  it('encodes Windows ANSI punctuation in imported legend descriptions', () => {
+  it('encodes Windows ANSI punctuation in imported pickup hints', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -121,11 +148,13 @@ describe('waste-management output pdf', () => {
               {
                 id: 'bio',
                 label: 'Biogut',
-                description: '09:00–11:00 Uhr „bereitstellen“…',
                 color: '#55AA33',
               },
             ],
           },
+        ],
+        legendHints: [
+          { id: 'bio:1', label: '14.01.', description: '09:00–11:00 Uhr „bereitstellen“…' },
         ],
       })
     ).toString('latin1');
@@ -133,7 +162,7 @@ describe('waste-management output pdf', () => {
       0x84
     )}bereitstellen${String.fromCharCode(0x93)}${String.fromCharCode(0x85)}`;
 
-    expect(pdfText).toContain(`Biogut - ${winAnsiDescription}`);
+    expect(pdfText).toContain(`14.01. - ${winAnsiDescription}`);
   });
 
   it('vertically centers day content inside calendar table cells', () => {
@@ -176,7 +205,7 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/F1 10.50 Tf');
     expect(pdfText).toMatch(/1 0 0 1 38\.00 559\.28 Tm \(Abfallkalender 2026\) Tj ET/);
     expect(pdfText).toContain('(Tour: Nord - Hinweis zur Bereitstellung.) Tj ET');
-    expect(pdfText).toContain('1 0 0 1 38.00 527.78 Tm (Abfallberatung 03395 / 1234) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 612.42 109.78 Tm (Abfallberatung 03395 / 1234) Tj ET');
     expect(pdfText).not.toContain('Abfallkalender 2026 · Rathenow');
     expect(pdfText).not.toContain('Abfallberatung · Beispielkontakt');
   });
@@ -226,7 +255,7 @@ describe('waste-management output pdf', () => {
     expect(pdfText).not.toContain('640.00 541.28 163.00 40.00 re S');
   });
 
-  it('renders at most eight legend entries as vertical rows beneath the calendar', () => {
+  it('renders fraction entries as vertical rows beneath the calendar', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -266,96 +295,7 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('1 0 0 1 68.00 109.78 Tm (Fraktion 1) Tj ET');
   });
 
-  it('reserves the first legend row for the shift explanation', () => {
-    const document = buildWasteCalendarPdfDocument({
-      year: 2026,
-      locationLabel: 'Bärensprung',
-      pickups: [
-        {
-          date: '2026-01-14',
-          fractions: Array.from({ length: 9 }, (_, index) => ({
-            id: `fraction-${index + 1}`,
-            label: `Fraktion ${index + 1}`,
-            color: '#666666',
-            ...(index === 0 ? { isShifted: true } : {}),
-          })),
-        },
-      ],
-    });
-
-    expect(document.pages[0]?.legend).toHaveLength(8);
-    expect(document.pages[0]?.legend.at(0)).toEqual({
-      kind: 'shift',
-      label: '= Ausweichtermin',
-    });
-  });
-
-  it('reserves a legend row for contextual hints when fractions fill the row limit', () => {
-    const document = buildWasteCalendarPdfDocument({
-      year: 2026,
-      locationLabel: 'Bärensprung',
-      pickups: [
-        {
-          date: '2026-01-14',
-          fractions: Array.from({ length: 8 }, (_, index) => ({
-            id: `fraction-${index + 1}`,
-            label: `Fraktion ${index + 1}`,
-            color: '#666666',
-          })),
-        },
-      ],
-      legendHints: [
-        { id: 'tour:nord', label: 'Tour: Nord', description: 'Am Fahrbahnrand bereitstellen.' },
-        { id: 'pickup:14', label: '14.01.', description: 'Zufahrt freihalten.' },
-      ],
-    });
-
-    expect(document.pages[0]?.legend).toHaveLength(8);
-    expect(document.pages[0]?.legend.at(-1)).toMatchObject({
-      kind: 'hint',
-      label: 'Tour: Nord',
-    });
-  });
-
-  it('renders legend descriptions inline after their labels', () => {
-    const pdfText = renderWasteCalendarPdf(
-      buildWasteCalendarPdfDocument({
-        year: 2026,
-        locationLabel: 'Bärensprung',
-        pickups: [
-          {
-            date: '2026-01-14',
-            fractions: [
-              {
-                id: 'bio',
-                label: 'Biogut',
-                description: 'Bitte melden Sie die Abholung min. 2 Tage vor dem Termin an!',
-                shortLabel: 'BIO',
-                color: '#55AA33',
-              },
-            ],
-          },
-        ],
-        legendHints: [
-          {
-            id: 'tour-bio',
-            label: 'Tour: Bio.11.B.3',
-            description: 'Behälter am Straßenrand bereitstellen.',
-          },
-        ],
-      })
-    ).toString('latin1');
-
-    expect(pdfText).toContain(
-      '1 0 0 1 68.00 109.78 Tm (Biogut - Bitte melden Sie die Abholung min. 2 Tage vor dem Termin an!) Tj ET'
-    );
-    expect(pdfText).toContain(
-      '1 0 0 1 38.00 97.78 Tm (Tour: Bio.11.B.3 - Behälter am Straßenrand bereitstellen.) Tj ET'
-    );
-    expect(pdfText).not.toContain('1 0 0 1 238.00');
-  });
-
-  it('converts HTML descriptions to plain text before building the PDF legend', () => {
+  it('renders labels and wraps hints in the separate columns, omitting fraction descriptions', () => {
     const document = buildWasteCalendarPdfDocument({
       year: 2026,
       locationLabel: 'Bärensprung',
@@ -366,9 +306,7 @@ describe('waste-management output pdf', () => {
             {
               id: 'bio',
               label: 'Biogut',
-              description:
-                '<p>Bitte <strong>Tonne &amp; Deckel</strong> bereitstellen.</p>' +
-                '<ul><li>Keine Säcke</li><li>Keine Asche</li></ul>',
+              description: 'Beschreibung der Abfallart',
               color: '#55AA33',
             },
           ],
@@ -384,46 +322,61 @@ describe('waste-management output pdf', () => {
         },
       ],
     });
-
-    expect(document.pages[0]?.legend).toContainEqual(
-      expect.objectContaining({
-        kind: 'fraction',
-        description: 'Bitte Tonne & Deckel bereitstellen. * Keine Säcke * Keine Asche',
-      })
-    );
-    expect(document.pages[0]?.legend).toContainEqual({
-      kind: 'hint',
+    expect(document.pages[0]?.hints[0]).toMatchObject({
       label: 'Tour: Bio',
       description: 'Mehr unter Hinweise.',
     });
+
+    const pdfText = renderWasteCalendarPdf(document).toString('latin1');
+    expect(pdfText).toContain('1 0 0 1 68.00 109.78 Tm (Biogut) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 229.47 109.78 Tm (Tour: Bio - Mehr unter Hinweise.) Tj ET');
+    expect(pdfText).not.toContain('Beschreibung der Abfallart');
   });
 
-  it('truncates long single-line legend descriptions with three dots', () => {
-    const longDescription =
-      'Dieser sehr lange Hinweis soll ausschließlich in einer einzigen Legendenzeile stehen und darf den rechten Seitenrand auf keinen Fall überschreiten, auch wenn noch viele weitere Wörter folgen. Deshalb enthält dieser Test bewusst zusätzlichen Text, der garantiert nicht mehr vollständig auf die Seite passt.';
+  it('uses the right quarter for contact only when a visible contact block is available', () => {
+    const description = 'Abholung an der Hauptstraße. '.repeat(3) + 'Abholung am Bahnübergang.';
+    const render = (contactBlock: string) =>
+      renderWasteCalendarPdf(
+        buildWasteCalendarPdfDocument({
+          year: 2026,
+          locationLabel: 'Bärensprung',
+          pickups: [],
+          legendHints: [{ id: 'stop', date: '2026-01-14', label: '14.01.', description }],
+          contactBlock,
+        })
+      ).toString('latin1');
+
+    const withoutContact = render('<p></p>');
+    const withContact = render('Kontakt der Abfallberatung');
+
+    expect(withoutContact).toContain(`(14.01. - ${description}) Tj ET`);
+    expect(withContact).not.toContain(`(14.01. - ${description}) Tj ET`);
+    expect(withContact).toContain('1 0 0 1 229.47 97.78 Tm (Abholung am Bahnübergang.) Tj ET');
+    expect(withContact).toContain('1 0 0 1 612.42 109.78 Tm (Kontakt der Abfallberatung) Tj ET');
+  });
+
+  it('continues every hint in order after its half-year calendar when the first page fills', () => {
+    const legendHints = Array.from({ length: 56 }, (_, index) => ({
+      id: `stop:${index}`,
+      date: '2026-09-08',
+      label: '08.09.',
+      description: `Haltepunkt Nr. ${index + 1}.`,
+    }));
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
-        locationLabel: 'Bärensprung',
-        pickups: [
-          {
-            date: '2026-01-14',
-            fractions: [
-              {
-                id: 'bio',
-                label: 'Biogut',
-                description: longDescription,
-                shortLabel: 'BIO',
-                color: '#55AA33',
-              },
-            ],
-          },
-        ],
+        locationLabel: 'Bad Wilsnack',
+        pickups: [],
+        legendHints,
       })
     ).toString('latin1');
 
-    expect(pdfText).not.toContain(`(${longDescription}) Tj ET`);
-    expect(pdfText).toMatch(/\(Biogut - Dieser sehr lange Hinweis[^)]*\.\.\.\) Tj ET/);
+    expect(pdfText.match(/\/Type \/Page\b/g)).toHaveLength(4);
+    expect(pdfText.match(/Fortsetzung zur Kalenderseite: Juli bis Dezember/g)).toHaveLength(2);
+    expect(pdfText.indexOf('(Juli) Tj ET')).toBeLessThan(pdfText.indexOf('Haltepunkt Nr. 1.'));
+    expect(
+      Array.from(pdfText.matchAll(/Haltepunkt Nr\. (\d+)\./g), ([, index]) => Number(index))
+    ).toEqual(legendHints.map((_, index) => index + 1));
   });
 
   it('renders shifted pickup markers outside their colored boxes and explains them below the legend', () => {

@@ -33,6 +33,9 @@ Gesamtbestand angewendet. Änderungen an einem Filter, an der Sortierung oder an
 der Seitengröße springen auf Seite eins zurück. Ein reiner Seitenwechsel behält
 alle anderen Einstellungen bei.
 
+Paginierte Tabellen im Abfallmodul zeigen standardmäßig 100 Einträge pro Seite.
+Wo die Seitengröße auswählbar ist, gilt die gewählte Größe.
+
 Sortiermodus und Richtung liegen wie die übrigen Listenparameter in der URL.
 Ein geteilter oder neu geladener Link stellt deshalb dieselbe Ansicht wieder
 her. Ungültige UI-Werte werden auf die Defaults normalisiert; unbekannte oder

@@ -1,4 +1,5 @@
 import React from 'react';
+import type { WasteCollectionLocationQuery } from '@sva/waste-management-contracts';
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,7 @@ import { useWasteSchedulingOverview } from '../src/use-waste-scheduling-overview
 import { useWasteSchedulingState } from '../src/use-waste-scheduling-state.js';
 import { useWasteToursOverview } from '../src/use-waste-tours-overview.js';
 import { useWasteToursState } from '../src/use-waste-tours-state.js';
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
@@ -254,6 +256,59 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
     });
+  });
+
+  it('requests 100 locations by default and forwards explicitly selected page sizes', async () => {
+    const locations = Array.from({ length: 101 }, (_, index) => ({ id: `location-${index + 1}` }));
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(
+      async ({ page, pageSize }: WasteCollectionLocationQuery) => ({
+        items: locations.slice((page - 1) * pageSize, page * pageSize),
+        page,
+        pageSize,
+        total: locations.length,
+        pageCount: Math.ceil(locations.length / pageSize),
+      })
+    );
+    const setCollectionLocationPage = vi.fn();
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage,
+      setFilteredLocationIds: vi.fn(),
+    } as never;
+    const firstPage = normalizeWasteManagementSearchParams({ tab: 'locations' });
+    const { rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: firstPage } }
+    );
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith({
+        items: locations.slice(0, 100),
+        page: 1,
+        pageSize: 100,
+        total: 101,
+        pageCount: 2,
+      })
+    );
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 100 })
+    );
+    rerender({ search: { ...firstPage, page: 2 } });
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ items: [{ id: 'location-101' }], page: 2, pageSize: 100 })
+      )
+    );
+    rerender({
+      search: normalizeWasteManagementSearchParams({ tab: 'locations', pageSize: '25' }),
+    });
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ items: locations.slice(0, 25), page: 1, pageSize: 25 })
+      )
+    );
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 25 })
+    );
   });
 
   it('retains filtered ids across page and sort reloads and clears them for filters or refreshes', async () => {

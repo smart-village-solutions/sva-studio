@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
 
 describe('waste-management search params', () => {
+  it('defaults to 100 rows while honoring every explicit allowed page size', () => {
+    expect(normalizeWasteManagementSearchParams({}).pageSize).toBe(100);
+    for (const pageSize of [10, 25, 50, 100]) {
+      expect(normalizeWasteManagementSearchParams({ pageSize: String(pageSize) }).pageSize).toBe(
+        pageSize
+      );
+    }
+  });
+
   it('accepts only a valid Abholorte tour year', () => {
     expect(
       normalizeWasteManagementSearchParams({ tab: 'locations', locationYear: '2027' }).locationYear
@@ -61,7 +70,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -190,7 +199,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -239,7 +248,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -288,7 +297,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 3,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -338,7 +347,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -392,7 +401,7 @@ describe('waste-management search params', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',

@@ -36,7 +36,7 @@ const subscription = {
     scheduledAt: '2026-11-12T06:00:00Z',
   },
 };
-const data = { subscriptions: [subscription], total: 26, deliveries: [], deliveryTotal: 0 };
+const data = { subscriptions: [subscription], total: 1, deliveries: [], deliveryTotal: 0 };
 const allow = (permissions: string[], instanceId = 'tenant-a') =>
   publishSessionAccessSnapshot({
     isResolved: true,
@@ -186,7 +186,7 @@ describe('email monitoring page', () => {
     await waitFor(() =>
       expect(getWasteEmailMonitoring).toHaveBeenLastCalledWith({
         page: 1,
-        pageSize: 25,
+        pageSize: 100,
         status: 'pending',
         deliveryPage: 1,
       })
@@ -235,14 +235,42 @@ describe('email monitoring page', () => {
     expect(document.activeElement).toBe(refresh);
   });
   it('refreshes and paginates without exposing mail contents', async () => {
+    const subscriptions = Array.from({ length: 101 }, (_, index) => ({
+      ...subscription,
+      id: `subscription-${index + 1}`,
+      maskedEmail: `m*****${index + 1}@e********e`,
+    }));
+    vi.mocked(getWasteEmailMonitoring).mockImplementation(async ({ page, pageSize }) => ({
+      ...data,
+      subscriptions: subscriptions.slice((page - 1) * pageSize, page * pageSize),
+      total: subscriptions.length,
+    }));
     allow([wasteEmailMonitoringPermission]);
     render(<WasteEmailMonitoringPage />);
-    await screen.findAllByText(subscription.maskedEmail);
+    expect(await screen.findAllByText('m*****1@e********e')).not.toHaveLength(0);
+    const table = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
+    expect(table.getAllByRole('row')).toHaveLength(101);
+    expect(table.getByText('m*****100@e********e')).toBeTruthy();
+    expect(table.queryByText('m*****101@e********e')).toBeNull();
+    expect(getWasteEmailMonitoring).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 100,
+      deliveryPage: 1,
+    });
     fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.next' }));
     await waitFor(() =>
-      expect(getWasteEmailMonitoring).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }))
+      expect(getWasteEmailMonitoring).toHaveBeenLastCalledWith({
+        page: 2,
+        pageSize: 100,
+        deliveryPage: 1,
+      })
     );
-    await screen.findAllByText(subscription.maskedEmail);
+    await screen.findAllByText('m*****101@e********e');
+    expect(
+      within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' })).getAllByRole(
+        'row'
+      )
+    ).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
     await waitFor(() => expect(getWasteEmailMonitoring).toHaveBeenCalledTimes(3));
     expect(document.body.textContent).not.toContain('philipp@example.de');
@@ -296,6 +324,7 @@ describe('email monitoring page', () => {
     }
   );
   it('retains the pagination control while the next page loads', async () => {
+    vi.mocked(getWasteEmailMonitoring).mockResolvedValueOnce({ ...data, total: 101 });
     allow([wasteEmailMonitoringPermission]);
     render(<WasteEmailMonitoringPage />);
     await screen.findAllByText(subscription.maskedEmail);
@@ -322,7 +351,7 @@ describe('email monitoring page', () => {
     await screen.findAllByText(subscription.maskedEmail);
     vi.mocked(getWasteEmailMonitoring).mockResolvedValueOnce({
       ...data,
-      deliveryTotal: 26,
+      deliveryTotal: 101,
       deliveries: [
         {
           id: 'delivery-1',
@@ -348,7 +377,7 @@ describe('email monitoring page', () => {
     vi.mocked(getWasteEmailMonitoring).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          finish = () => resolve({ ...data, deliveryTotal: 26 });
+          finish = () => resolve({ ...data, deliveryTotal: 101 });
         })
     );
     const next = within(

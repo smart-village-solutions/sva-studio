@@ -17,6 +17,7 @@ import {
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import { defaultWastePageSize } from './pagination-search-params.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
 import { formatTourDateRange } from './waste-management.tours.presentation.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
@@ -70,7 +71,7 @@ export const TourAssignmentsPage = ({
     direction: 'asc',
   });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState<number>(defaultWastePageSize);
 
   const assignedLocationIds = useMemo(
     () =>

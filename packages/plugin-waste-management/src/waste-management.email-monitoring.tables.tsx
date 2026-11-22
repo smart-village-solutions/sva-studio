@@ -10,8 +10,9 @@ import {
   formatEmailMonitoringTimestamp,
   type EmailMonitoringTranslate,
 } from './waste-management.email-monitoring.columns.js';
+import { defaultWastePageSize } from './pagination-search-params.js';
 
-export const emailMonitoringPageSize = 25;
+export const emailMonitoringPageSize = defaultWastePageSize;
 type TableProps = {
   data: WasteEmailMonitoringOverview;
   pt: EmailMonitoringTranslate;

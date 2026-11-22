@@ -1,4 +1,5 @@
 const allowedPageSizes = new Set([10, 25, 50, 100]);
+export const defaultWastePageSize = 100;
 
 export const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
@@ -10,6 +11,6 @@ export const normalizePositiveInteger = (value: unknown, fallback: number): numb
 };
 
 export const normalizePageSize = (value: unknown): number => {
-  const pageSize = normalizePositiveInteger(value, 25);
-  return allowedPageSizes.has(pageSize) ? pageSize : 25;
+  const pageSize = normalizePositiveInteger(value, defaultWastePageSize);
+  return allowedPageSizes.has(pageSize) ? pageSize : defaultWastePageSize;
 };

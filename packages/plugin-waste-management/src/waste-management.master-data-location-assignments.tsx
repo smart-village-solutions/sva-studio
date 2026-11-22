@@ -22,6 +22,7 @@ import {
 } from './waste-management.tours.presentation.js';
 import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import { defaultWastePageSize } from './pagination-search-params.js';
 import { createPagedItems, WastePanelTableBottomBar } from './waste-management.table-frame.js';
 import { sortWasteTours } from './waste-management.tours.content.helpers.js';
 import {
@@ -118,7 +119,7 @@ const LocationAssignmentsEditor = ({
   const [period, setPeriod] = useState<WasteManagementTourValidityPeriod>('all');
   const [sort, setSort] = useState<AssignmentSort | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState<number>(defaultWastePageSize);
   const searchId = useId();
   const pendingRequest = useRef(false);
   const creationIds = useRef(new Map<string, string>());

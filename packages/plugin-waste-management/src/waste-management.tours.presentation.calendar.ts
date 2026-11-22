@@ -37,7 +37,7 @@ const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`)
 
 const formatUtcDate = (value: Date): string => value.toISOString().slice(0, 10);
 
-const resolveAdvanceStrategy = (
+export const resolveFixedTourCadenceDays = (
   recurrence: WasteTourRecord['recurrence'],
   customRecurrenceIntervalDays?: number
 ) => {
@@ -46,18 +46,20 @@ const resolveAdvanceStrategy = (
     Number.isInteger(customRecurrenceIntervalDays) &&
     customRecurrenceIntervalDays > 0
   ) {
-    return (current: Date) =>
-      current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
+    return customRecurrenceIntervalDays;
   }
-  if (recurrence === 'weekly') {
-    return (current: Date) => current.setUTCDate(current.getUTCDate() + 7);
-  }
-  if (recurrence === 'biweekly') {
-    return (current: Date) => current.setUTCDate(current.getUTCDate() + 14);
-  }
-  if (recurrence === 'fourweekly') {
-    return (current: Date) => current.setUTCDate(current.getUTCDate() + 28);
-  }
+  if (recurrence === 'weekly') return 7;
+  if (recurrence === 'biweekly') return 14;
+  if (recurrence === 'fourweekly') return 28;
+  return null;
+};
+
+const resolveAdvanceStrategy = (
+  recurrence: WasteTourRecord['recurrence'],
+  customRecurrenceIntervalDays?: number
+) => {
+  const cadenceDays = resolveFixedTourCadenceDays(recurrence, customRecurrenceIntervalDays);
+  if (cadenceDays !== null) return (current: Date) => current.setUTCDate(current.getUTCDate() + cadenceDays);
   if (recurrence === 'yearly') {
     return (current: Date) => current.setUTCFullYear(current.getUTCFullYear() + 1);
   }

@@ -6,8 +6,15 @@ import type {
 import { describe, expect, it } from 'vitest';
 
 import { checkLocationFractionCoverage } from '../src/waste-management.location-fraction-coverage.js';
+import type { WasteManagementSchedulingOverview } from '../src/waste-management.api.js';
 
 const timestamp = '2026-08-09T10:00:00.000Z';
+const emptySchedule: WasteManagementSchedulingOverview = {
+  locationTourPickupDates: [],
+  tourDateShifts: [],
+  globalDateShifts: [],
+  holidayRules: [],
+};
 
 const location = (id: string, active = true): WasteCollectionLocationRecord => ({
   id,
@@ -46,7 +53,8 @@ const check = (
   locations: readonly WasteCollectionLocationRecord[],
   tours: readonly WasteTourRecord[],
   links: readonly WasteLocationTourLinkRecord[],
-  includeDrafts = false
+  includeDrafts = false,
+  scheduling = emptySchedule
 ) =>
   checkLocationFractionCoverage({
     locations,
@@ -56,24 +64,86 @@ const check = (
     startDate: '2027-01-01',
     endDate: '2027-12-31',
     includeDrafts,
+    scheduling,
   });
 
 describe('checkLocationFractionCoverage', () => {
-  it('reports the period before a recurring tour starts in January for review', () => {
+  it('accepts the first 14-day and 28-day pickup within the inclusive January window', () => {
     expect(
       check(
         [location('regular')],
-        [{ ...tour('paper-2027', ['paper'], '2027-01-07', '2027-12-31'), recurrence: 'biweekly' }],
+        [{ ...tour('paper-2027', ['paper'], '2027-01-14', '2027-12-31'), recurrence: 'biweekly' }],
         [link('link-regular', 'regular', 'paper-2027')]
       )
-    ).toEqual([{ locationId: 'regular', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-06' }] }]);
+    ).toEqual([]);
     expect(
       check(
         [location('late')],
         [{ ...tour('late-tour', ['paper'], '2027-01-28', '2027-12-31'), recurrence: 'fourweekly' }],
         [link('late-link', 'late', 'late-tour')]
       )
-    ).toEqual([{ locationId: 'late', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-27' }] }]);
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['2027-01-15', true, []],
+    ['2027-01-15', false, [{ startDate: '2027-01-01', endDate: '2027-01-14' }]],
+    ['2027-01-16', true, [{ startDate: '2027-01-01', endDate: '2027-01-15' }]],
+  ] as const)('checks the first pickup on %s with a New Year holiday rule (%s)', (firstDate, withHoliday, gaps) => {
+    const holidayRules = withHoliday
+      ? [{ holidayDate: '2027-01-01', holidayName: 'Neujahr', scope: 'holiday-only', strategy: 'postpone' }] as WasteManagementSchedulingOverview['holidayRules']
+      : [];
+    expect(check(
+      [location('regular')],
+      [{ ...tour('paper-2027', ['paper'], firstDate, '2027-12-31'), recurrence: 'biweekly' }],
+      [link('regular-link', 'regular', 'paper-2027')],
+      false,
+      { ...emptySchedule, holidayRules }
+    )).toEqual(gaps.length ? [{ locationId: 'regular', kind: 'incomplete', gaps }] : []);
+  });
+
+  it('continues across New Year and reports a displaced real pickup despite continuous validity', () => {
+    const regularTour = {
+      ...tour('cross-year', ['paper'], '2026-12-18', '2027-12-31'),
+      recurrence: 'biweekly' as const,
+    };
+    const args = [[location('regular')], [regularTour], [link('regular-link', 'regular', regularTour.id)]] as const;
+    expect(check(...args)).toEqual([]);
+    const tourDateShifts = [{
+      id: 'shift',
+      tourId: regularTour.id,
+      originalDate: '2027-01-01',
+      actualDate: '2027-01-20',
+      hasYear: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }];
+    expect(check(...args, false, { ...emptySchedule, tourDateShifts })).toEqual([
+      { locationId: 'regular', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-14' }] },
+    ]);
+  });
+
+  it('keeps a later gap in January between two separate validity periods', () => {
+    const early = { ...tour('early', ['paper'], '2027-01-01', '2027-01-03'), recurrence: 'weekly' as const };
+    const later = { ...tour('later', ['paper'], '2027-01-13', '2027-12-31'), recurrence: 'biweekly' as const };
+    expect(check(
+      [location('regular')],
+      [early, later],
+      [link('early-link', 'regular', early.id), link('later-link', 'regular', later.id)]
+    )).toEqual([
+      { locationId: 'regular', kind: 'incomplete', gaps: [{ startDate: '2027-01-04', endDate: '2027-01-12' }] },
+    ]);
+  });
+
+  it('reports a missing initial event when a recurring tour has no calculated start', () => {
+    const missingStart = { ...tour('missing-start', ['paper'], undefined, '2027-12-31'), recurrence: 'biweekly' as const };
+    expect(check(
+      [location('regular')],
+      [missingStart],
+      [link('regular-link', 'regular', missingStart.id)]
+    )).toEqual([
+      { locationId: 'regular', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-14' }] },
+    ]);
   });
 
   it('still reports a real later start and a January one-off date as incomplete', () => {
@@ -113,9 +183,7 @@ describe('checkLocationFractionCoverage', () => {
     expect(check(plannedLocation, [plannedTour], plannedLink)).toMatchObject([
       { locationId: 'planned', kind: 'missing' },
     ]);
-    expect(check(plannedLocation, [plannedTour], plannedLink, true)).toMatchObject([
-      { locationId: 'planned', kind: 'incomplete' },
-    ]);
+    expect(check(plannedLocation, [plannedTour], plannedLink, true)).toEqual([]);
     expect(
       check(plannedLocation, [{ ...plannedTour, status: 'archived' }], plannedLink, true)
     ).toMatchObject([{ locationId: 'planned', kind: 'missing' }]);

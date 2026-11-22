@@ -879,7 +879,7 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 
 #### Scenario: Mehrere Zuordnungen decken den Prüfzeitraum gemeinsam ab
 
-- **WHEN** sich die zentralen Gültigkeitszeiträume mehrerer einem aktiven Abholort zugeordneter Touren derselben Fraktion überlappen oder unmittelbar aneinander anschließen
+- **WHEN** die zentralen Gültigkeitszeiträume mehrerer einem aktiven Abholort zugeordneter Touren derselben Fraktion gemeinsam den Prüfzeitraum abdecken und die Prüfung des Jahresanfangs gegebenenfalls erfüllt ist
 - **THEN** bewertet das System den Abholort als vollständig abgedeckt
 
 #### Scenario: Abholort besitzt keine passende Zuordnung
@@ -895,9 +895,17 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 
 #### Scenario: Passende Zuordnungen lassen zeitliche Lücken
 
-- **WHEN** ein aktiver Abholort passenden Touren zugeordnet ist, deren zentrale Gültigkeitszeiträume den Prüfzeitraum nicht vollständig abdecken
+- **WHEN** ein aktiver Abholort passenden Touren zugeordnet ist und nach der Prüfung ihrer Gültigkeit und des Jahresanfangs eine Lücke bleibt
 - **THEN** weist das System den Abholort als `Zeitraum unvollständig` aus
 - **AND** zeigt die nicht abgedeckten Zeiträume an
+
+#### Scenario: Der erste wirksame Abholtermin liegt im erwarteten Jahresstartfenster
+
+- **WHEN** der Prüfzeitraum am 1. Januar beginnt und der Abholort einer regelmäßig wiederkehrenden Tour der gewählten Fraktion zugeordnet ist
+- **THEN** berechnet das System den ersten wirksamen regulären Abholtermin und lässt ab dem 1. Januar einschließlich einen Turnus als Startfenster zu
+- **AND** verlängert eine auf die konkrete Abholung wirkende Feiertagsverschiebung das Fenster entsprechend
+- **AND** bleibt ein späterer oder fehlender Ersttermin als Anfangslücke sichtbar
+- **AND** genügt für die Prüfung der gemeinsame Terminstand des Zieljahres mit den einschlägigen Verschiebungen
 
 #### Scenario: Unbegrenzte Tourgrenze deckt den Prüfzeitraum ab
 

@@ -8,7 +8,9 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconChecklist } from '@tabler/icons-react';
 import {
   useEffect,
+  useCallback,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type FormEvent,
@@ -24,7 +26,14 @@ import {
   CoverageResults,
   type CoverageResult,
 } from './waste-management.location-fraction-coverage-check.parts.js';
-import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
+import {
+  checkLocationFractionCoverage,
+  needsCoverageScheduling,
+} from './waste-management.location-fraction-coverage.js';
+import {
+  getWasteManagementSchedulingOverview,
+  type WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
@@ -75,21 +84,28 @@ const useResetResult = (
     endDate: string,
     includeDrafts: boolean,
   ],
-  setResult: Dispatch<SetStateAction<CoverageResult | null>>
+  setResult: Dispatch<SetStateAction<CoverageResult | null>>,
+  invalidateCheck: () => void,
+  setChecking: Dispatch<SetStateAction<boolean>>
 ) => {
   const [fractionId, startDate, endDate, includeDrafts] = criteria;
   useEffect(() => {
     setResult(null);
+    invalidateCheck();
+    setChecking(false);
+    return invalidateCheck;
   }, [
     endDate,
     fractionId,
     includeDrafts,
+    invalidateCheck,
     props.fractions,
     props.fractionsStatus,
     props.links,
     props.locations,
     props.tours,
     props.toursStatus,
+    setChecking,
     setResult,
     startDate,
   ]);
@@ -103,7 +119,18 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
   const [includeDrafts, setIncludeDrafts] = useState(true);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
-  useResetResult(props, [fractionId, startDate, endDate, includeDrafts], setResult);
+  const [checking, setChecking] = useState(false);
+  const requestIdRef = useRef(0);
+  const invalidateCheck = useCallback(() => {
+    requestIdRef.current += 1;
+  }, []);
+  useResetResult(
+    props,
+    [fractionId, startDate, endDate, includeDrafts],
+    setResult,
+    invalidateCheck,
+    setChecking
+  );
   const changeYear = (value: string) => {
     setYear(value);
     if (/^(20\d{2}|2100)$/.test(value)) {
@@ -114,27 +141,49 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
       setEndDate('');
     }
   };
-  const runCheck = (event: FormEvent<HTMLFormElement>) => {
+  const runCheck = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const requestId = ++requestIdRef.current;
     const nextError = getCoverageErrorKey(fractionId, startDate, endDate);
     setErrorKey(nextError);
-    setResult(
-      nextError
-        ? null
-        : {
-            issues: checkLocationFractionCoverage({
-              locations: props.locations,
-              tours: props.tours,
-              links: props.links,
-              fractionId,
-              startDate,
-              endDate,
-              includeDrafts,
-            }),
-            checkedLocationCount: props.locations.filter((location) => location.active).length,
-            includeDrafts,
-          }
-    );
+    setResult(null);
+    if (nextError) return;
+    const input = {
+      locations: props.locations,
+      tours: props.tours,
+      links: props.links,
+      fractionId,
+      startDate,
+      endDate,
+      includeDrafts,
+    };
+    let scheduling: WasteManagementSchedulingOverview | undefined;
+    if (needsCoverageScheduling(input)) {
+      setChecking(true);
+      try {
+        scheduling = await getWasteManagementSchedulingOverview();
+        if (
+          !Array.isArray(scheduling.tourDateShifts) ||
+          !Array.isArray(scheduling.globalDateShifts) ||
+          !Array.isArray(scheduling.holidayRules)
+        ) {
+          throw new Error('incomplete_coverage_schedule');
+        }
+      } catch {
+        if (requestId === requestIdRef.current) {
+          setErrorKey('masterData.locationsWorkspace.coverage.schedulingLoadError');
+          setChecking(false);
+        }
+        return;
+      }
+      if (requestId !== requestIdRef.current) return;
+      setChecking(false);
+    }
+    setResult({
+      issues: checkLocationFractionCoverage({ ...input, scheduling }),
+      checkedLocationCount: props.locations.filter((location) => location.active).length,
+      includeDrafts,
+    });
   };
   return {
     fractionId,
@@ -148,6 +197,7 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
     includeDrafts,
     setIncludeDrafts,
     errorKey,
+    checking,
     result,
     changeYear,
     runCheck,
@@ -178,6 +228,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       <CoverageCheckForm
         fractions={props.fractions}
         disabled={coverageDataUnavailable}
+        checking={form.checking}
         fractionId={form.fractionId}
         year={form.year}
         startDate={form.startDate}

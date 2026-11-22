@@ -68,9 +68,12 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       planningNotice:
         'Entwürfe zählen hier als geplante Zuordnung. Für öffentliche Termine müssen die Touren veröffentlicht sein.',
       assignmentNotice:
-        'Diese Prüfung bewertet Tour-Zuordnungen anhand ihres Start- und Enddatums, nicht die tatsächliche Terminfolge. Ein erster Termin im Januar lässt den Zeitraum davor als Prüflücke erscheinen; prüfen Sie die Fortsetzung des Turnus in der Tourenvorschau.',
+        'Bei einem Prüfbeginn am 1. Januar berücksichtigt Studio den ersten wirksamen Abholtermin regelmäßiger Touren. Für spätere Lücken gelten die Gültigkeitszeiträume der Tour-Zuordnungen.',
       endDate: 'Enddatum',
       check: 'Prüfen',
+      checking: 'Abholtermine werden geprüft …',
+      schedulingLoadError:
+        'Die Abholtermine und Feiertagsregeln konnten nicht vollständig geladen werden. Starten Sie die Prüfung erneut.',
       required: 'Wählen Sie eine Abfallfraktion sowie Start- und Enddatum aus.',
       invalidDateRange: 'Das Enddatum darf nicht vor dem Startdatum liegen.',
       complete:

@@ -3,6 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteLocationFractionCoverageCheck } from '../src/waste-management.location-fraction-coverage-check.js';
 
+const loadScheduling = vi.hoisted(() => vi.fn(async () => ({
+  locationTourPickupDates: [],
+  tourDateShifts: [],
+  globalDateShifts: [],
+  holidayRules: [],
+})));
+
+vi.mock('../src/waste-management.api.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/waste-management.api.js')>()),
+  getWasteManagementSchedulingOverview: loadScheduling,
+}));
+
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -64,10 +76,13 @@ const links = [
   },
 ];
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  loadScheduling.mockClear();
+});
 
 describe('WasteLocationFractionCoverageCheck', () => {
-  it('checks a full planning year with draft tours and allows a published-only comparison', () => {
+  it('checks a full planning year with draft tours and allows a published-only comparison', async () => {
     const draftTour = {
       ...tours[0],
       id: 'draft-paper-2027',
@@ -108,12 +123,8 @@ describe('WasteLocationFractionCoverageCheck', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
     );
-    expect(
-      screen.getByText(
-        'masterData.locationsWorkspace.coverage.summary:{"checked":1,"missing":0,"incomplete":1}'
-      )
-    ).toBeTruthy();
-    expect(screen.getByText('masterData.locationsWorkspace.coverage.incomplete')).toBeTruthy();
+    expect(await screen.findByText('masterData.locationsWorkspace.coverage.complete:{"value":1}')).toBeTruthy();
+    expect(loadScheduling).toHaveBeenCalledOnce();
     expect(screen.getByText('masterData.locationsWorkspace.coverage.planningNotice')).toBeTruthy();
     expect(
       screen.getByText('masterData.locationsWorkspace.coverage.assignmentNotice')
@@ -124,6 +135,7 @@ describe('WasteLocationFractionCoverageCheck', () => {
       screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
     );
     expect(screen.getByText('masterData.locationsWorkspace.coverage.missing')).toBeTruthy();
+    expect(loadScheduling).toHaveBeenCalledOnce();
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.year'), {
       target: { value: '202' },
     });
@@ -138,6 +150,32 @@ describe('WasteLocationFractionCoverageCheck', () => {
       (screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate') as HTMLInputElement)
         .value
     ).toBe('');
+  });
+
+  it('withholds a January coverage result when the effective schedule cannot be read', async () => {
+    loadScheduling.mockRejectedValueOnce(new Error('schedule unavailable'));
+    render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        tours={[{ ...tours[0], recurrence: 'biweekly' }] as never}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => location.id}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.fraction'), {
+      target: { value: 'paper' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.year'), {
+      target: { value: '2027' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' }));
+    expect(await screen.findByText('masterData.locationsWorkspace.coverage.schedulingLoadError')).toBeTruthy();
+    expect(screen.queryByText('masterData.locationsWorkspace.coverage.assignmentNotice')).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'masterData.locationsWorkspace.coverage.check' }).disabled).toBe(false);
   });
   it.each([
     ['loading', 'masterData.locationsWorkspace.coverage.fractionsLoading'],

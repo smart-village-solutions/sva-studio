@@ -104,7 +104,12 @@ Gültigkeitszeitraum direkt unter dem Tournamen, damit gleich benannte Touren
 unterschiedlicher Jahrgänge unterscheidbar sind.
 
 In der Detailansicht eines Abholorts markiert die Liste der Tour-Zuordnungen
-offene Zuordnungen und Entfernungen. **Zuordnungen speichern** bestätigt
+offene Zuordnungen und Entfernungen. Die Filter grenzen die Touren nach Name und
+Gültigkeitsjahr ein. Eine über den Jahreswechsel gültige Tour erscheint in beiden
+Jahren. Standardmäßig stehen ausgewählte Touren zuerst. Eine Spaltensortierung
+ordnet alle Treffer vor dem Blättern. **Alle gefilterten Touren auswählen**
+erfasst die Treffer auf sämtlichen Seiten und erhält Auswahlen außerhalb des
+Filters. **Zuordnungen speichern** bestätigt
 Änderungen nach dem erneuten Lesen des gespeicherten Stands. Bei einem
 unklaren Ergebnis liest **Zuordnungen erneut lesen** den Stand erneut.
 Nach einem Teilerfolg bearbeitet der nächste Speichervorgang die noch offenen

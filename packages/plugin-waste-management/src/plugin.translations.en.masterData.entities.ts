@@ -171,7 +171,9 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       title: 'Tour assignments',
       description: 'Select the tours that should be assigned to this collection location.',
       empty: 'No tours are currently available.',
+      noMatches: 'No tours match the current filters.',
       actions: {
+        selectAllFiltered: 'Select all filtered tours',
         reload: 'Read assignments again',
         reloading: 'Reading assignments…',
         save: 'Save assignments',

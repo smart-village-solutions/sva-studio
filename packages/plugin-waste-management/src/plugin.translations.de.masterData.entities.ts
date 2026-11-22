@@ -164,7 +164,9 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       title: 'Tour-Zuordnungen',
       description: 'Wählen Sie die Touren aus, die diesem Abholort zugeordnet sein sollen.',
       empty: 'Es sind aktuell keine Touren verfügbar.',
+      noMatches: 'Keine Touren passen zu den aktuellen Filtern.',
       actions: {
+        selectAllFiltered: 'Alle gefilterten Touren auswählen',
         reload: 'Zuordnungen erneut lesen',
         reloading: 'Zuordnungen werden gelesen …',
         save: 'Zuordnungen speichern',

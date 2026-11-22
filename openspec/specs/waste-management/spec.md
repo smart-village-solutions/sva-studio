@@ -1147,6 +1147,15 @@ Das System SHALL in der Tourenübersicht einen reload-stabilen Filter für alle 
 - **AND** kein expliziter Termin der Tour im ausgewählten Jahr liegt
 - **THEN** blendet das System die Tour aus
 
+#### Scenario: Benutzer filtert die Tourauswahl an einem Abholort
+
+- **WHEN** ein Benutzer die Tour-Zuordnung eines Abholorts öffnet
+- **THEN** bietet das System dieselbe Jahresauswahl und Gültigkeitsprüfung wie in der Tourenübersicht an
+- **AND** standardmäßig stehen ausgewählte Touren zuerst
+- **AND** eine gewählte Spaltensortierung sortiert die gesamte Treffermenge vor der Pagination und hat Vorrang
+- **AND** die Auswahl aller gefilterten Touren erfasst sämtliche Seiten
+- **AND** der Benutzer behält Auswahlen außerhalb des Filters beim Speichern
+
 #### Scenario: Jahresfilter bleibt mit bestehenden Filtern kombinierbar
 
 - **WHEN** ein Benutzer den Jahresfilter gemeinsam mit Name, Status, Abfallart oder freien Datumsgrenzen setzt

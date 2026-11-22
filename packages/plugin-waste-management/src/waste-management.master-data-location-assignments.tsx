@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox } from '@sva/studio-ui-react';
+import { toDatetimeLocalValue, usePluginTranslation } from '@sva/plugin-sdk';
+import { Button, Checkbox, Input, StudioField } from '@sva/studio-ui-react';
 
 import {
   createWasteManagementLocationTourLink,
@@ -21,6 +21,19 @@ import {
   formatTourRecurrence,
 } from './waste-management.tours.presentation.js';
 import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import { createPagedItems, WastePanelTableBottomBar } from './waste-management.table-frame.js';
+import { sortWasteTours } from './waste-management.tours.content.helpers.js';
+import {
+  WasteTableSortButton,
+  type WasteToursSortDirection,
+} from './waste-management.tours.table.parts.js';
+import { TourValidityPeriodField } from './waste-management.tours.toolbar.filter-fields.js';
+import { matchesWasteTourValidityPeriod } from './waste-management.tours.validity-filter.js';
+
+type AssignmentSortField = 'name' | 'recurrence';
+type AssignmentSort = Readonly<{ field: AssignmentSortField; direction: WasteToursSortDirection }>;
+const locationCounts = new Map<string, number>();
 
 const createFractionNameMap = (fractions: readonly WasteFractionRecord[]) =>
   new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const));
@@ -101,6 +114,12 @@ const LocationAssignmentsEditor = ({
   const [awaitingReadback, setAwaitingReadback] = useState<AssignmentAttempt | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [query, setQuery] = useState('');
+  const [period, setPeriod] = useState<WasteManagementTourValidityPeriod>('all');
+  const [sort, setSort] = useState<AssignmentSort | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+  const searchId = useId();
   const pendingRequest = useRef(false);
   const creationIds = useRef(new Map<string, string>());
   const linkedTourIds = useMemo(() => getLinkedTourIds(links), [links]);
@@ -109,21 +128,43 @@ const LocationAssignmentsEditor = ({
     setDraft((current) => getUnconfirmedChanges(current, linkedTourIds));
   }, [linkedTourIds]);
 
+  const referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
   const sortedTours = useMemo(
     () =>
-      [...tours].sort((left, right) =>
-        left.name.localeCompare(right.name, 'de', { sensitivity: 'base' })
-      ),
-    [tours]
+      sortWasteTours({
+        tours: tours.filter(
+          (tour) =>
+            tour.name.toLocaleLowerCase().includes(normalizedQuery) &&
+            matchesWasteTourValidityPeriod(tour, period, referenceYear)
+        ),
+        sortField: sort?.field ?? 'name',
+        sortDirection: sort?.direction ?? 'asc',
+        locationCountByTourId: locationCounts,
+        pt,
+      }),
+    [normalizedQuery, period, pt, referenceYear, sort, tours]
   );
   const fractionNamesById = useMemo(() => createFractionNameMap(fractions), [fractions]);
   const pendingChanges = getUnconfirmedChanges(draft, linkedTourIds);
   const isSelected = (tourId: string) => pendingChanges.get(tourId) ?? linkedTourIds.has(tourId);
-  const allVisibleSelected =
-    sortedTours.length > 0 && sortedTours.every(({ id }) => isSelected(id));
-  const someVisibleSelected = sortedTours.some(({ id }) => isSelected(id));
+  const selectedTours = sortedTours.filter(({ id }) => isSelected(id));
+  const orderedTours = sort
+    ? sortedTours
+    : [...selectedTours, ...sortedTours.filter(({ id }) => !isSelected(id))];
+  const pagedTours = createPagedItems({ items: orderedTours, page, pageSize });
+  const allFilteredSelected = sortedTours.length > 0 && selectedTours.length === sortedTours.length;
+  const someFilteredSelected = selectedTours.length > 0;
   const selectionDisabled = disabled || saving || awaitingReadback !== null;
   const actionDisabled = disabled || saving || (!awaitingReadback && pendingChanges.size === 0);
+
+  const changeSort = (field: AssignmentSortField) => {
+    setSort((current) => ({
+      field,
+      direction: current?.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPage(1);
+  };
 
   const toggleTours = (tourIds: readonly string[], checked: boolean) => {
     setMessage(null);
@@ -189,6 +230,7 @@ const LocationAssignmentsEditor = ({
     : awaitingReadback
       ? 'reload'
       : 'save';
+  const ariaSort = sort?.direction === 'desc' ? 'descending' : 'ascending';
 
   return (
     <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
@@ -213,13 +255,42 @@ const LocationAssignmentsEditor = ({
 
       <StatusNotice message={message} />
 
+      {tours.length > 0 ? (
+        <div className="flex flex-wrap items-end gap-3">
+          <StudioField id={searchId} label={pt('tours.filters.nameLabel')}>
+            <Input
+              id={searchId}
+              type="search"
+              placeholder={pt('tours.filters.namePlaceholder')}
+              value={query}
+              onChange={(event) => {
+                setQuery(event.currentTarget.value);
+                setPage(1);
+              }}
+            />
+          </StudioField>
+          <TourValidityPeriodField
+            referenceYear={referenceYear}
+            value={period}
+            onChange={(value) => {
+              setPeriod(value);
+              setPage(1);
+            }}
+          />
+        </div>
+      ) : null}
       {sortedTours.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {pt('masterData.collectionLocations.assignmentEditor.empty')}
+          {pt(`${assignmentKey}.${tours.length === 0 ? 'empty' : 'noMatches'}`)}
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border-subtle bg-background/70">
-          <div className="overflow-x-auto">
+          <div
+            role="group"
+            aria-label={pt(`${assignmentKey}.title`)}
+            tabIndex={0}
+            className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
             <table
               className="min-w-full border-collapse"
               aria-label={pt('masterData.collectionLocations.assignmentEditor.title')}
@@ -228,9 +299,9 @@ const LocationAssignmentsEditor = ({
                 <tr className="border-b border-border/70">
                   <th scope="col" className="w-11 px-3 py-3">
                     <Checkbox
-                      aria-label={pt('tours.table.selectAll')}
-                      checked={allVisibleSelected}
-                      indeterminate={someVisibleSelected && !allVisibleSelected}
+                      aria-label={pt(`${assignmentKey}.actions.selectAllFiltered`)}
+                      checked={allFilteredSelected}
+                      indeterminate={someFilteredSelected && !allFilteredSelected}
                       disabled={selectionDisabled}
                       onChange={(event) =>
                         toggleTours(
@@ -240,19 +311,29 @@ const LocationAssignmentsEditor = ({
                       }
                     />
                   </th>
-                  <th scope="col" className="w-[220px] px-3 py-3 font-semibold">
-                    {pt('tours.table.name')}
-                  </th>
-                  <th scope="col" className="w-[220px] px-3 py-3">
-                    {pt('tours.table.fractions')}
-                  </th>
-                  <th scope="col" className="w-[180px] px-3 py-3 font-semibold">
-                    {pt('tours.table.recurrence')}
-                  </th>
+                  {(['name', 'fractions', 'recurrence'] as const).map((field) => (
+                    <th
+                      key={field}
+                      scope="col"
+                      className="w-[220px] px-3 py-3 font-semibold"
+                      aria-sort={sort?.field === field ? ariaSort : undefined}
+                    >
+                      {field === 'fractions' ? (
+                        pt('tours.table.fractions')
+                      ) : (
+                        <WasteTableSortButton
+                          label={pt(`tours.table.${field}`)}
+                          active={sort?.field === field}
+                          direction={sort?.direction ?? 'asc'}
+                          onClick={() => changeSort(field)}
+                        />
+                      )}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {sortedTours.map((tour) => {
+                {pagedTours.items.map((tour) => {
                   const periodId =
                     tour.firstDate || tour.endDate
                       ? `waste-location-tour-period-${tour.id}`
@@ -305,6 +386,18 @@ const LocationAssignmentsEditor = ({
               </tbody>
             </table>
           </div>
+          <WastePanelTableBottomBar
+            pt={pt}
+            page={pagedTours.safePage}
+            pageSize={pageSize}
+            pageCount={pagedTours.pageCount}
+            totalItems={pagedTours.totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
+          />
         </div>
       )}
     </section>

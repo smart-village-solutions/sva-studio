@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { WasteLocationTourLinkRecord } from '@sva/waste-management-contracts';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/waste-management-contracts';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
@@ -10,7 +10,8 @@ const formatTourRecurrenceMock = vi.hoisted(() => vi.fn(() => 'weekly'));
 import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { LocationAssignmentsSection } from '../src/waste-management.master-data-location-assignments.js';
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, string>) =>
     values?.value ? `${key}:${values.value}` : key,
 }));
@@ -33,7 +34,8 @@ vi.mock('../src/waste-management.page.support.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../src/waste-management.tours.presentation.js', () => ({
+vi.mock('../src/waste-management.tours.presentation.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/waste-management.tours.presentation.js')>()),
   formatTourRecurrence: formatTourRecurrenceMock,
 }));
 
@@ -43,7 +45,8 @@ vi.mock('../src/waste-management.tours.table-row.parts.js', () => ({
   ),
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   Checkbox: ({
     indeterminate,
@@ -112,6 +115,91 @@ describe('LocationAssignmentsSection', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('filters by overlapping validity years and lets explicit sorting override assigned-first order', () => {
+    vi.setSystemTime(new Date('2026-11-23T11:00:00Z'));
+    const entries = [
+      { id: 'early', name: 'A-Tour', firstDate: '2026-01-15', endDate: '2026-12-31' },
+      { id: 'later', name: 'B-Tour', firstDate: '2027-01-16', endDate: '2027-12-31' },
+      { id: existing.tourId, name: 'Z-Tour', firstDate: '2026-12-20', endDate: '2027-01-15' },
+    ];
+    render(
+      <LocationAssignmentsSection
+        locationId={existing.locationId}
+        tours={entries as readonly WasteTourRecord[]}
+        fractions={[]}
+        links={linkRecords([existing])}
+        onReload={onRead}
+      />
+    );
+    const rowNames = () =>
+      within(screen.getByRole('table')).getAllByRole('row').slice(1).map(
+        (row) => row.querySelector('input')?.getAttribute('aria-label')
+      );
+    const names = (...labels: string[]) => labels.map((name) => `tours.table.selectRow:${name}`);
+    const year = screen.getByRole('combobox', { name: 'tours.filters.validityPeriodLabel' });
+    expect(rowNames()).toEqual(names('Z-Tour', 'A-Tour', 'B-Tour'));
+    fireEvent.change(year, { target: { value: 'current' } });
+    expect(rowNames()).toEqual(names('Z-Tour', 'A-Tour'));
+    fireEvent.change(year, { target: { value: 'next' } });
+    expect(rowNames()).toEqual(names('Z-Tour', 'B-Tour'));
+
+    const nameSort = screen.getByRole('button', { name: 'tours.table.name' });
+    fireEvent.click(nameSort);
+    expect(rowNames()).toEqual(names('B-Tour', 'Z-Tour'));
+    fireEvent.click(nameSort);
+    expect(rowNames()).toEqual(names('Z-Tour', 'B-Tour'));
+  });
+
+  it('saves all filtered tours across pages and retains a draft selection outside the filter', async () => {
+    const entries = Array.from({ length: 22 }, (_, index) => ({
+      id: `test-tour-${index}`,
+      name: index === 21 ? 'Bioabfall' : `Restmüll ${index + 1}`,
+      recurrence: 'weekly',
+    }));
+    const links = entries.map(({ id }) => ({
+      id: `link-${id}`,
+      locationId: existing.locationId,
+      tourId: id,
+    }));
+    createWasteManagementLocationTourLinkMock.mockImplementation(async ({ tourId }) =>
+      links.find((link) => link.tourId === tourId)
+    );
+    onRead.mockResolvedValueOnce(linkRecords(links));
+    render(
+      <LocationAssignmentsSection
+        locationId={existing.locationId}
+        tours={entries as readonly WasteTourRecord[]}
+        fractions={[]}
+        links={[]}
+        onReload={onRead}
+      />
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tours.table.selectRow:Bioabfall' }));
+    const table = screen.getByRole('table');
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Restmüll' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'meta.pagination.pageSizeLabel' }), {
+      target: { value: '10' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.table.name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.table.name' }));
+    expect(within(table).getAllByRole('row')).toHaveLength(11);
+    expect(tour('21')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    expect(tour('11')).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: 'tours.table.selectRow:Restmüll 21' })).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: `${prefix}.actions.selectAllFiltered` }));
+    expect(tour('11').checked).toBe(true);
+    fireEvent.click(save());
+
+    expect(await screen.findByText(`${prefix}.messages.saveSuccess`)).toBeTruthy();
+    expect(createWasteManagementLocationTourLinkMock).toHaveBeenCalledTimes(22);
+    expect(
+      createWasteManagementLocationTourLinkMock.mock.calls.map(([input]) => input.tourId)
+    ).toEqual(expect.arrayContaining(entries.map((entry) => entry.id)));
+    expect(deleteWasteManagementLocationTourLinkMock).not.toHaveBeenCalled();
   });
 
   it('keeps the 2027 draft on an equivalent reload and confirms one link after save and reopen', async () => {
@@ -194,7 +282,7 @@ describe('LocationAssignmentsSection', () => {
     );
     onRead.mockResolvedValueOnce(linkRecords([existing]));
     render(<Harness />);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'tours.table.selectAll' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: `${prefix}.actions.selectAllFiltered` }));
     fireEvent.click(save());
 
     await waitFor(() => expect(onRead).toHaveBeenCalledOnce());

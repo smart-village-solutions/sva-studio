@@ -1,48 +1,36 @@
-import { useMemo } from 'react';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 
-export const useTourAssignmentFilterOptions = (
+const sortOptions = (options: readonly (readonly [string, string])[]) =>
+  Array.from(new Map(options.filter(([id, name]) => id && name))).sort(
+    ([leftId, leftName], [rightId, rightName]) =>
+      leftName.localeCompare(rightName, 'de', { numeric: true, sensitivity: 'base' }) ||
+      leftId.localeCompare(rightId)
+  );
+
+export const matchesTourAssignmentScope = (
+  location: TourAssignmentLocationOption,
+  region: string,
+  city: string,
+  street = ''
+) =>
+  (!region || location.regionId === region) &&
+  (!city || location.cityId === city) &&
+  (!street || location.streetId === street);
+
+export const getTourAssignmentFilterOptions = (
   locations: readonly TourAssignmentLocationOption[],
   regionFilter: string,
   cityFilter: string
-) => {
-  const regionOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter((location) => location.regionId && location.regionName)
-            .map((location) => [location.regionId, location.regionName] as const)
-        )
-      ),
-    [locations]
-  );
-  const cityOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter((location) => !regionFilter || location.regionId === regionFilter)
-            .map((location) => [location.cityId, location.cityName] as const)
-        )
-      ),
-    [locations, regionFilter]
-  );
-  const streetOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter(
-              (location) =>
-                (!regionFilter || location.regionId === regionFilter) &&
-                (!cityFilter || location.cityId === cityFilter)
-            )
-            .map((location) => [location.streetId, location.streetName] as const)
-        )
-      ),
-    [cityFilter, locations, regionFilter]
-  );
-
-  return { regionOptions, cityOptions, streetOptions };
-};
+) => ({
+  regionOptions: sortOptions(locations.map(({ regionId, regionName }) => [regionId, regionName])),
+  cityOptions: sortOptions(
+    locations
+      .filter((location) => matchesTourAssignmentScope(location, regionFilter, ''))
+      .map(({ cityId, cityName }) => [cityId, cityName])
+  ),
+  streetOptions: sortOptions(
+    locations
+      .filter((location) => matchesTourAssignmentScope(location, regionFilter, cityFilter))
+      .map(({ streetId, streetName }) => [streetId, streetName])
+  ),
+});

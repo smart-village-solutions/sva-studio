@@ -22,15 +22,19 @@ import { formatTourDateRange } from './waste-management.tours.presentation.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 import { TourAssignmentsPageFilters } from './waste-management.tours-assignments-page.filters.js';
 import { TourAssignmentsPageSelection } from './waste-management.tours-assignments-page.selection.js';
-import { useTourAssignmentFilterOptions } from './waste-management.tours-assignments-page.options.js';
+import {
+  getTourAssignmentFilterOptions,
+  matchesTourAssignmentScope,
+} from './waste-management.tours-assignments-page.options.js';
 import {
   createTourAssignmentSelectionSummary,
   orderTourAssignmentLocations,
-  type TourAssignmentSortDirection,
+  type TourAssignmentSortField,
+  type TourAssignmentSortOptions,
 } from './waste-management.tours.view-model.js';
+import { createPagedItems } from './waste-management.table-frame.js';
 
-const matchesSearch = (value: string, query: string) =>
-  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query);
 
 type TourAssignmentsPageProps = {
   readonly tour: WasteTourRecord;
@@ -61,8 +65,12 @@ export const TourAssignmentsPage = ({
   const [selectionChanges, setSelectionChanges] = useState<ReadonlyMap<string, boolean>>(
     () => new Map()
   );
-  const [includeRegionInSorting, setIncludeRegionInSorting] = useState(false);
-  const [sortDirection, setSortDirection] = useState<TourAssignmentSortDirection>('asc');
+  const [sort, setSort] = useState<Required<TourAssignmentSortOptions>>({
+    field: 'cityName',
+    direction: 'asc',
+  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
 
   const assignedLocationIds = useMemo(
     () =>
@@ -79,55 +87,57 @@ export const TourAssignmentsPage = ({
     [assignedLocationIds, locations, selectionChanges]
   );
 
-  const { regionOptions, cityOptions, streetOptions } = useTourAssignmentFilterOptions(
-    locations,
-    regionFilter,
-    cityFilter
+  const { regionOptions, cityOptions, streetOptions } = useMemo(
+    () => getTourAssignmentFilterOptions(locations, regionFilter, cityFilter),
+    [locations, regionFilter, cityFilter]
   );
 
-  const filteredLocations = useMemo(
-    () =>
-      locations.filter((location) => {
-        if (regionFilter && location.regionId !== regionFilter) {
-          return false;
-        }
-        if (cityFilter && location.cityId !== cityFilter) {
-          return false;
-        }
-        if (streetFilter && location.streetId !== streetFilter) {
-          return false;
-        }
-        if (!searchQuery.trim()) {
-          return true;
-        }
-        return [
-          location.label,
-          location.regionName,
-          location.cityName,
-          location.streetName,
-          location.houseNumberName,
-        ]
-          .filter((value): value is string => typeof value === 'string' && value.length > 0)
-          .some((value) => matchesSearch(value, searchQuery.trim()));
-      }),
-    [cityFilter, locations, regionFilter, searchQuery, streetFilter]
-  );
+  const filteredLocations = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    return locations.filter(
+      (location) =>
+        matchesTourAssignmentScope(location, regionFilter, cityFilter, streetFilter) &&
+        (!query ||
+          matchesSearch(location.cityName, query) ||
+          (location.streetId && matchesSearch(location.streetName, query)))
+    );
+  }, [cityFilter, locations, regionFilter, searchQuery, streetFilter]);
 
   const orderedFilteredLocations = useMemo(
-    () =>
-      orderTourAssignmentLocations(filteredLocations, selectedLocationIds, {
-        includeRegion: includeRegionInSorting,
-        direction: sortDirection,
-      }),
-    [filteredLocations, includeRegionInSorting, selectedLocationIds, sortDirection]
+    () => orderTourAssignmentLocations(filteredLocations, selectedLocationIds, sort),
+    [filteredLocations, selectedLocationIds, sort]
   );
+  const pagedLocations = createPagedItems({ items: orderedFilteredLocations, page, pageSize });
 
-  const visibleLocationIds = orderedFilteredLocations.map((location) => location.id);
+  const filteredLocationIds = filteredLocations.map((location) => location.id);
   const { allVisibleSelected, someVisibleSelected, hiddenSelectedCount } =
     createTourAssignmentSelectionSummary({
-      filteredLocationIds: visibleLocationIds,
+      filteredLocationIds,
       selectedLocationIds,
     });
+
+  const changeScope = (region: string, city: string) => {
+    const nextCity = locations.some((location) => matchesTourAssignmentScope(location, region, city))
+      ? city
+      : '';
+    const nextStreet = locations.some((location) =>
+      matchesTourAssignmentScope(location, region, nextCity, streetFilter)
+    )
+      ? streetFilter
+      : '';
+    setRegionFilter(region);
+    setCityFilter(nextCity);
+    setStreetFilter(nextStreet);
+    setPage(1);
+  };
+
+  const changeSort = (field: TourAssignmentSortField) => {
+    setSort((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPage(1);
+  };
 
   const changeSelection = (locationIds: readonly string[], checked: boolean) => {
     setSelectionChanges((current) => {
@@ -212,37 +222,44 @@ export const TourAssignmentsPage = ({
             regionOptions={regionOptions}
             cityOptions={cityOptions}
             streetOptions={streetOptions}
-            onSearchQueryChange={setSearchQuery}
-            onRegionFilterChange={(value) => {
-              setRegionFilter(value);
-              setCityFilter('');
-              setStreetFilter('');
+            onSearchQueryChange={(value) => {
+              setSearchQuery(value);
+              setPage(1);
             }}
-            onCityFilterChange={(value) => {
-              setCityFilter(value);
-              setStreetFilter('');
+            onRegionFilterChange={(value) => changeScope(value, cityFilter)}
+            onCityFilterChange={(value) => changeScope(regionFilter, value)}
+            onStreetFilterChange={(value) => {
+              setStreetFilter(value);
+              setPage(1);
             }}
-            onStreetFilterChange={setStreetFilter}
           />
           <TourAssignmentsPageSelection
             loading={loading}
             selectedLocationIds={selectedLocationIds}
             filteredLocationsCount={filteredLocations.length}
             hiddenSelectedCount={hiddenSelectedCount}
-            orderedFilteredLocations={orderedFilteredLocations}
+            locations={pagedLocations.items}
+            page={pagedLocations.safePage}
+            pageSize={pageSize}
+            pageCount={pagedLocations.pageCount}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
-            includeRegionInSorting={includeRegionInSorting}
-            sortDirection={sortDirection}
+            sortField={sort.field}
+            sortDirection={sort.direction}
             onResetFilters={() => {
               setSearchQuery('');
               setRegionFilter('');
               setCityFilter('');
               setStreetFilter('');
+              setPage(1);
             }}
-            onIncludeRegionInSortingChange={setIncludeRegionInSorting}
-            onSortDirectionChange={setSortDirection}
-            onToggleSelectAll={(checked) => changeSelection(visibleLocationIds, checked)}
+            onSortChange={changeSort}
+            onToggleSelectAll={(checked) => changeSelection(filteredLocationIds, checked)}
             onToggleLocation={(id, checked) => changeSelection([id], checked)}
           />
         </fieldset>

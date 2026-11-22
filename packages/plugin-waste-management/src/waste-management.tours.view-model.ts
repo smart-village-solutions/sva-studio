@@ -77,7 +77,7 @@ export type TourAssignmentSortField = 'regionName' | 'cityName' | 'streetName' |
 export type TourAssignmentSortDirection = 'asc' | 'desc';
 
 export type TourAssignmentSortOptions = Readonly<{
-  includeRegion?: boolean;
+  field?: TourAssignmentSortField;
   direction?: TourAssignmentSortDirection;
 }>;
 
@@ -131,14 +131,15 @@ const compareTourAssignmentLocations = <T extends TourAssignmentSortValue>(
 export const orderTourAssignmentLocations = <T extends TourAssignmentSortValue>(
   locations: readonly T[],
   selectedLocationIds: readonly string[],
-  { includeRegion = false, direction = 'asc' }: TourAssignmentSortOptions = {}
+  { field = 'cityName', direction = 'asc' }: TourAssignmentSortOptions = {}
 ): readonly T[] => {
   const selectedLocationIdSet = new Set(selectedLocationIds);
   const selectedLocations: T[] = [];
   const unselectedLocations: T[] = [];
-  const sortFields: readonly TourAssignmentSortField[] = includeRegion
-    ? ['regionName', ...tourAssignmentAddressSortFields]
-    : tourAssignmentAddressSortFields;
+  const sortFields = [
+    field,
+    ...tourAssignmentAddressSortFields.filter((secondaryField) => secondaryField !== field),
+  ];
 
   for (const location of locations) {
     if (selectedLocationIdSet.has(location.id)) {

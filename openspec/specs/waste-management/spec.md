@@ -829,6 +829,14 @@ Das System SHALL Abholorte auf der Detailseite zur Tour-Zuordnung tabellarisch m
 - **AND** zusammengesetzte Werte wie `Amt Meyenburg / Brügge / Alle Straßen / Alle Hausnummern` werden den vier passenden Adressspalten zugeordnet
 - **AND** auf schmalen Ansichten bleiben dieselben Fachwerte beschriftet und lesbar
 
+#### Scenario: Benutzer kombiniert Suche und Adressfilter
+
+- **WHEN** ein Benutzer auf der Detailseite nach einem Orts- oder Straßennamen sucht und Region, Ort oder Straße filtert
+- **THEN** trifft die Freitextsuche nur separate Orts- und Straßennamen
+- **AND** wendet das System alle Adressfilter gemeinsam auf zugeordnete und freie Abholorte an
+- **AND** stehen die Filteroptionen alphabetisch nach ihrer Bezeichnung
+- **AND** setzt ein Wechsel der Region oder des Orts nur nachgelagerte Auswahlen zurück, die im neuen Geltungsbereich fehlen
+
 #### Scenario: Liste und Tourdetails öffnen dieselbe Zuordnungsseite
 
 - **WHEN** der Benutzer die Abholortanzahl in der Tourenliste oder die Zuordnungsaktion in den Tourdetails öffnet
@@ -841,28 +849,28 @@ Das System SHALL Abholorte auf der Detailseite zur Tour-Zuordnung tabellarisch m
 - **THEN** bestätigt der Benutzer das Verwerfen oder behält beim Weiterbearbeiten den Entwurf bei
 - **AND** bei unveränderter Auswahl führt der Rücksprung direkt zur gefilterten Tourenliste
 
-#### Scenario: Benutzer sortiert die gefilterten Abholorte nach Ort und Straße
+#### Scenario: Benutzer sortiert die gefilterten Abholorte über eine Spaltenüberschrift
 
-- **WHEN** ein Benutzer die Sortierrichtung auswählt
-- **THEN** sortiert das System die vollständige aktuell gefilterte Ergebnismenge hierarchisch nach Ort, Straße und Hausnummer in der gewählten Richtung
-- **AND** die Filterung erfolgt vor der Sortierung
+- **WHEN** ein Benutzer eine Adressspalte zum Sortieren auswählt
+- **THEN** sortiert das System nach dem gewählten Feld und verwendet die übrigen Felder aus Ort, Straße und Hausnummer als nachrangige Kriterien
+- **AND** beim erneuten Auswählen derselben Spalte wechselt die Richtung
+- **AND** das System filtert, sortiert die vollständige Treffermenge und bildet danach die Seiten
 - **AND** ausgewählte Abholorte stehen weiterhin vor nicht ausgewählten Abholorten
 - **AND** dieselbe Sortierhierarchie gilt innerhalb beider Gruppen
 - **AND** fehlende Werte stehen nach vorhandenen Werten
 - **AND** Bezeichnung und ID stellen bei gleichen Adresswerten eine stabile Reihenfolge sicher
 
-#### Scenario: Benutzer berücksichtigt die Region bei der Mehrfachsortierung
+#### Scenario: Benutzer wählt alle gefilterten Abholorte
 
-- **WHEN** ein Benutzer Region als optionales Sortierkriterium aktiviert
-- **THEN** sortiert das System hierarchisch nach Region, Ort, Straße und Hausnummer
-- **AND** die gewählte Sortierrichtung gilt für alle Adresskriterien
-- **AND** deaktiviert der Benutzer das Kriterium wieder, beginnt die Sortierhierarchie erneut mit dem Ort
+- **WHEN** ein Benutzer alle gefilterten Abholorte aus- oder abwählt
+- **THEN** ändert das System die Auswahl für alle Treffer auf sämtlichen Seiten
+- **AND** Auswahlen außerhalb des aktuellen Filters bleiben erhalten
 
 #### Scenario: Benutzer ändert Auswahl bei aktiver Sortierung
 
 - **WHEN** ein Benutzer einen sichtbaren Abholort aus- oder abwählt
 - **THEN** aktualisiert das System die ausgewählte beziehungsweise nicht ausgewählte Gruppe unmittelbar
-- **AND** die optionale Regionssortierung und die Sortierrichtung bleiben erhalten
+- **AND** die ausgewählte Spalte und die Sortierrichtung bleiben erhalten
 - **AND** Auswahlen außerhalb des aktuellen Filters bleiben unverändert gespeichert
 
 ### Requirement: Waste-Management prüft die lückenlose Fraktionszuordnung aktiver Abholorte

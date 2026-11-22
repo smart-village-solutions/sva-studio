@@ -2,7 +2,11 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button } from '@sva/studio-ui-react';
 import { TourAssignmentsTable } from './waste-management.tours-assignments-table.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
-import type { TourAssignmentSortDirection } from './waste-management.tours.view-model.js';
+import type {
+  TourAssignmentSortDirection,
+  TourAssignmentSortField,
+} from './waste-management.tours.view-model.js';
+import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
 const TourAssignmentSelectionCounts = ({
   selectedCount,
@@ -45,14 +49,18 @@ export const TourAssignmentsPageSelection = ({
   selectedLocationIds,
   filteredLocationsCount,
   hiddenSelectedCount,
-  orderedFilteredLocations,
+  locations,
+  page,
+  pageSize,
+  pageCount,
+  onPageChange,
+  onPageSizeChange,
   allVisibleSelected,
   someVisibleSelected,
-  includeRegionInSorting,
+  sortField,
   sortDirection,
   onResetFilters,
-  onIncludeRegionInSortingChange,
-  onSortDirectionChange,
+  onSortChange,
   onToggleSelectAll,
   onToggleLocation,
 }: {
@@ -60,14 +68,18 @@ export const TourAssignmentsPageSelection = ({
   readonly selectedLocationIds: readonly string[];
   readonly filteredLocationsCount: number;
   readonly hiddenSelectedCount: number;
-  readonly orderedFilteredLocations: readonly TourAssignmentLocationOption[];
+  readonly locations: readonly TourAssignmentLocationOption[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly pageCount: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
   readonly allVisibleSelected: boolean;
   readonly someVisibleSelected: boolean;
-  readonly includeRegionInSorting: boolean;
+  readonly sortField: TourAssignmentSortField;
   readonly sortDirection: TourAssignmentSortDirection;
   readonly onResetFilters: () => void;
-  readonly onIncludeRegionInSortingChange: (value: boolean) => void;
-  readonly onSortDirectionChange: (value: TourAssignmentSortDirection) => void;
+  readonly onSortChange: (field: TourAssignmentSortField) => void;
   readonly onToggleSelectAll: (value: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
 }) => {
@@ -98,23 +110,33 @@ export const TourAssignmentsPageSelection = ({
           <div className="p-4 text-sm text-muted-foreground">
             {pt('tours.table.loadingAssignments')}
           </div>
-        ) : orderedFilteredLocations.length === 0 ? (
+        ) : locations.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">
             {pt('tours.assignments.workspace.noLocations')}
           </div>
         ) : (
-          <TourAssignmentsTable
-            locations={orderedFilteredLocations}
-            selectedLocationIds={selectedLocationIds}
-            allVisibleSelected={allVisibleSelected}
-            someVisibleSelected={someVisibleSelected}
-            includeRegionInSorting={includeRegionInSorting}
-            sortDirection={sortDirection}
-            onIncludeRegionInSortingChange={onIncludeRegionInSortingChange}
-            onSortDirectionChange={onSortDirectionChange}
-            onToggleSelectAll={onToggleSelectAll}
-            onToggleLocation={onToggleLocation}
-          />
+          <>
+            <TourAssignmentsTable
+              locations={locations}
+              selectedLocationIds={selectedLocationIds}
+              allVisibleSelected={allVisibleSelected}
+              someVisibleSelected={someVisibleSelected}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSortChange={onSortChange}
+              onToggleSelectAll={onToggleSelectAll}
+              onToggleLocation={onToggleLocation}
+            />
+            <WastePanelTableBottomBar
+              pt={pt}
+              page={page}
+              pageSize={pageSize}
+              pageCount={pageCount}
+              totalItems={filteredLocationsCount}
+              onPageChange={onPageChange}
+              onPageSizeChange={onPageSizeChange}
+            />
+          </>
         )}
       </div>
     </div>

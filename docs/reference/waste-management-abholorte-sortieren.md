@@ -75,10 +75,14 @@ Mehrere Buchstaben können zusammenhängend eingegeben werden; Enter oder das
 Verlassen des Suchfelds übernimmt den Begriff. Die Sortierschaltflächen in den
 vorgesehenen Spalten sortieren den vollständigen Trefferbestand vor dem Blättern.
 
-Auf der Detailseite **Tour-Zuordnung** beziehen sich Suche, Orts-/Straßenfilter
-und die bevorzugte Anzeige ausgewählter Abholorte auf die bearbeitete Tour.
-Die Adresssortierung wird über die Steuerelemente für Region und Richtung
-bedient; die Spaltenüberschriften dieser Seite sind keine Sortierschaltflächen.
+Auf der Detailseite **Tour-Zuordnung** sucht die Freitextsuche nach Ort und
+Straße. Die Filter für Region, Ort und Straße wirken gemeinsam und bieten
+alphabetisch sortierte Optionen. Beim Wechsel eines übergeordneten Filters
+bleiben die weiterhin passenden Auswahlen erhalten.
+Die Spaltenüberschriften sortieren die vollständige Treffermenge vor dem
+Blättern. Innerhalb der ausgewählten und der freien Abholorte gilt dieselbe
+Reihenfolge, ausgewählte Abholorte stehen zuerst. **Alle gefilterten auswählen**
+erfasst die Treffer auf sämtlichen Seiten und erhält Auswahlen außerhalb des Filters.
 Ein Statusabruf behält Suchtext, Filter, Sortierung und ungespeicherte Haken für
 die geöffnete Tour bei. Beim Abbrechen wird der Entwurf verworfen. Beim nächsten
 Öffnen zeigt die Seite den gespeicherten Zuordnungsstand der gewählten Tour.

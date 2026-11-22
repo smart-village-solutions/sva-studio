@@ -66,7 +66,7 @@ export const TourAssignmentsPageFilters = ({
           <Input
             id="waste-tour-assignment-search"
             value={searchQuery}
-            placeholder={pt('filters.searchPlaceholder')}
+            placeholder={pt('tours.assignments.workspace.searchPlaceholder')}
             onChange={(event) => onSearchQueryChange(event.target.value)}
           />
         </StudioField>
@@ -77,11 +77,7 @@ export const TourAssignmentsPageFilters = ({
         unsetLabel={pt('masterData.collectionLocations.fields.regionUnset')}
         value={regionFilter}
         options={regionOptions}
-        onChange={(value) => {
-          onRegionFilterChange(value);
-          onCityFilterChange('');
-          onStreetFilterChange('');
-        }}
+        onChange={onRegionFilterChange}
       />
       <TourAssignmentLocationFilter
         id="waste-tour-assignment-city-filter"
@@ -89,10 +85,7 @@ export const TourAssignmentsPageFilters = ({
         unsetLabel={pt('masterData.collectionLocations.fields.cityUnset')}
         value={cityFilter}
         options={cityOptions}
-        onChange={(value) => {
-          onCityFilterChange(value);
-          onStreetFilterChange('');
-        }}
+        onChange={onCityFilterChange}
       />
       <TourAssignmentLocationFilter
         id="waste-tour-assignment-street-filter"

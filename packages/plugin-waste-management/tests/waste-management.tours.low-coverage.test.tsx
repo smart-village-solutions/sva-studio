@@ -297,7 +297,7 @@ describe('waste-management tours low coverage views', () => {
       />
     );
     const table = screen.getByRole('table');
-    expect(within(table).getAllByRole('row')).toHaveLength(719);
+    expect(within(table).getAllByRole('row')).toHaveLength(101);
     // Existing assignments lead the complete selection, rather than changing the location list ordering.
     expect(within(table).getAllByRole('row')[1]?.textContent).toContain('Zielort');
     const input = screen.getByLabelText('filters.searchLabel');
@@ -314,7 +314,132 @@ describe('waste-management tours low coverage views', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(2);
     expect(within(table).getByText('Zielstraße')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
-    expect(within(table).getAllByRole('row')).toHaveLength(719);
+    expect(within(table).getAllByRole('row')).toHaveLength(101);
+  });
+
+  it('combines alphabetic address filters and keeps child selections while they still fit', () => {
+    const entry = (regionName: string, cityName: string, streetName: string) => ({
+      id: `${regionName}-${cityName}-${streetName}`,
+      label: `${regionName} / ${cityName} / ${streetName}`,
+      regionId: regionName,
+      regionName,
+      cityId: cityName,
+      cityName,
+      streetId: streetName,
+      streetName,
+      houseNumberId: '',
+      houseNumberName: '',
+    });
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={[
+          entry('Zossen', 'Zossen', 'Zielstraße'),
+          entry('Perleberg', 'Ziegelberg', 'Zielstraße'),
+          entry('Perleberg', 'Sükow', 'Birkenweg'),
+          entry('Perleberg', 'Sükow', ''),
+          entry('Perleberg', 'Perleberg', 'Am Markt'),
+          entry('Altes Amt', 'Berge', 'Perleberger Straße'),
+        ]}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const search = screen.getByLabelText('filters.searchLabel');
+    fireEvent.change(search, { target: { value: 'perleberg' } });
+    const rows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    expect(rows()).toHaveLength(2);
+    expect(rows().map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Perleberger Straße'),
+      expect.stringContaining('Am Markt'),
+    ]);
+    fireEvent.change(search, { target: { value: '' } });
+
+    const region = screen.getByLabelText('masterData.collectionLocations.fields.regionId');
+    const city = screen.getByLabelText('masterData.collectionLocations.fields.cityId');
+    const street = screen.getByLabelText('masterData.collectionLocations.fields.streetId');
+    const options = (select: HTMLElement) =>
+      within(select).getAllByRole('option').slice(1).map((option) => option.textContent);
+    expect(options(region)).toEqual(['Altes Amt', 'Perleberg', 'Zossen']);
+    fireEvent.change(street, { target: { value: 'Birkenweg' } });
+    fireEvent.change(city, { target: { value: 'Sükow' } });
+    fireEvent.change(region, { target: { value: 'Perleberg' } });
+    expect(options(city)).toEqual(['Perleberg', 'Sükow', 'Ziegelberg']);
+    expect(options(street)).toEqual(['Birkenweg']);
+    expect(city).toHaveProperty('value', 'Sükow');
+    expect(street).toHaveProperty('value', 'Birkenweg');
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]?.textContent).toContain('Sükow');
+
+    fireEvent.change(region, { target: { value: '' } });
+    expect(city).toHaveProperty('value', 'Sükow');
+    expect(street).toHaveProperty('value', 'Birkenweg');
+    fireEvent.change(region, { target: { value: 'Zossen' } });
+    expect(city).toHaveProperty('value', '');
+    expect(street).toHaveProperty('value', '');
+    expect(rows()[0]?.textContent).toContain('Zossen');
+  });
+
+  it('sorts the full filter result before paging and selects all its pages without losing hidden selections', () => {
+    const locations = Array.from({ length: 23 }, (_, index) => ({
+      id: String(index),
+      label: `Abholpunkt ${index}`,
+      regionId: 'region',
+      regionName: 'Prignitz',
+      cityId: index === 22 ? 'hidden' : 'filtered',
+      cityName: index === 22 ? 'Berge' : 'Perleberg',
+      streetId: 'street',
+      streetName: 'Markt',
+      houseNumberId: String(index),
+      houseNumberName: String(index + 1),
+    }));
+    const onSubmit = vi.fn();
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={locations.toReversed()}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'tours.assignments.workspace.selectLocation:{"value":"Abholpunkt 22"}',
+      })
+    );
+    fireEvent.change(screen.getByLabelText('meta.pagination.pageSizeLabel'), {
+      target: { value: '10' },
+    });
+    fireEvent.change(screen.getByLabelText('filters.searchLabel'), {
+      target: { value: 'Perleberg' },
+    });
+    const table = screen.getByRole('table');
+    const sort = within(table).getByRole('button', {
+      name: 'masterData.locationsWorkspace.table.houseNumbers',
+    });
+    fireEvent.click(sort);
+    fireEvent.click(sort);
+    const addressNumbers = () =>
+      within(table).getAllByRole('row').slice(1).map((row) => row.lastElementChild?.textContent);
+    expect(addressNumbers()).toEqual(['22', '21', '20', '19', '18', '17', '16', '15', '14', '13']);
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    expect(addressNumbers()).toEqual(['12', '11', '10', '9', '8', '7', '6', '5', '4', '3']);
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    expect(addressNumbers()).toEqual(['2', '1']);
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'masterData.collectionLocations.bulk.actions.selectAllFiltered',
+      })
+    );
+    const save = screen.getByRole('button', { name: 'tours.assignments.actions.save' });
+    fireEvent.submit(save.closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(new Map(locations.map(({ id }) => [id, true])));
   });
 
   it('keeps assignment changes through an empty loading result for the same tour', () => {
@@ -559,16 +684,17 @@ describe('waste-management tours low coverage views', () => {
       expect.stringContaining('B-Ort'),
     ]);
 
-    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
+    const regionSort = within(table).getByRole('button', {
+      name: 'masterData.locationsWorkspace.table.region',
+    });
+    fireEvent.click(regionSort);
     expect(getRowIds()).toEqual([
       expect.stringContaining('Amt Z'),
       expect.stringContaining('Amt A'),
       expect.stringContaining('A-Ort'),
     ]);
 
-    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
-      target: { value: 'desc' },
-    });
+    fireEvent.click(regionSort);
 
     expect(getRowIds()).toEqual([
       expect.stringContaining('Amt Z'),
@@ -713,7 +839,7 @@ describe('waste-management tours low coverage views', () => {
     );
 
     expect(screen.getByText('assignment-message')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Schul' } });
+    fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Nord' } });
     expect(
       screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')
     ).toBeTruthy();
@@ -733,9 +859,8 @@ describe('waste-management tours low coverage views', () => {
     expect(onSubmit).toHaveBeenCalledWith(new Map([['location-2', true]]));
   });
 
-  it('exposes the address hierarchy, optional region, and shared sort direction', () => {
-    const onIncludeRegionInSortingChange = vi.fn();
-    const onSortDirectionChange = vi.fn();
+  it('exposes all address sort buttons and puts aria-sort on the active column', () => {
+    const onSortChange = vi.fn();
 
     render(
       <TourAssignmentsTable
@@ -754,23 +879,26 @@ describe('waste-management tours low coverage views', () => {
         selectedLocationIds={[]}
         allVisibleSelected={false}
         someVisibleSelected={false}
-        includeRegionInSorting={false}
-        sortDirection="asc"
-        onIncludeRegionInSortingChange={onIncludeRegionInSortingChange}
-        onSortDirectionChange={onSortDirectionChange}
+        sortField="cityName"
+        sortDirection="desc"
+        onSortChange={onSortChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
       />
     );
 
-    expect(screen.getByText('tours.assignments.workspace.sortOrderWithoutRegion')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
-    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
-      target: { value: 'desc' },
-    });
-
-    expect(onIncludeRegionInSortingChange).toHaveBeenCalledWith(true);
-    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
+    expect(
+      screen.getByRole('columnheader', { name: 'masterData.locationsWorkspace.table.city' })
+        .getAttribute('aria-sort')
+    ).toBe('descending');
+    for (const [label, field] of [
+      ['region', 'regionName'],
+      ['street', 'streetName'],
+      ['houseNumbers', 'houseNumberName'],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name: `masterData.locationsWorkspace.table.${label}` }));
+      expect(onSortChange).toHaveBeenCalledWith(field);
+    }
   });
 
   it('renders the tours table header controls and forwards select-all plus sort interactions', () => {

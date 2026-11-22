@@ -100,13 +100,9 @@ export const resolveTourAssignmentLocationOptions = (
     cityId: location.cityId,
     cityName: findCityName(data.cities, location.cityId),
     streetId: location.streetId ?? '',
-    streetName:
-      findStreetName(data.streets, location.streetId) ??
-      pt('masterData.collectionLocations.meta.allStreets'),
+    streetName: findStreetName(data.streets, location.streetId) ?? '',
     houseNumberId: location.houseNumberId ?? '',
-    houseNumberName:
-      findHouseNumberValue(data.houseNumbers, location.houseNumberId) ??
-      pt('masterData.collectionLocations.meta.allHouseNumbers'),
+    houseNumberName: findHouseNumberValue(data.houseNumbers, location.houseNumberId) ?? '',
     assignedLinkId: assignedLinkIdByLocationId.get(location.id),
   }));
 };

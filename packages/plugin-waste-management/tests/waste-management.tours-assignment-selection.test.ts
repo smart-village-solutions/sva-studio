@@ -135,7 +135,7 @@ describe('orderTourAssignmentLocations', () => {
       'region-first',
     ]);
     expect(
-      orderTourAssignmentLocations(locations, [], { includeRegion: true }).map(
+      orderTourAssignmentLocations(locations, [], { field: 'regionName' }).map(
         (location) => location.id
       )
     ).toEqual(['region-first', 'city-first']);

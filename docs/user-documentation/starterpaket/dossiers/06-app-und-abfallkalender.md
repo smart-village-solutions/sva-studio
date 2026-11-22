@@ -23,6 +23,22 @@ Die Modulzuweisung und die Katalogpflege sind im [Dossier zu Kategorien und Modu
 - **Evidenz:** `packages/plugin-waste-management/src/waste-management.page.tsx`,
   `plugin.translations.de.*.ts`, `plugin.tsx`.
 
+### Straße erfassen und Abholpunkt für eine Tour anlegen
+
+1. Öffnen Sie **Abfallkalender → Stammdaten**, wählen Sie **Straßen** und anschließend **Straße anlegen**.
+   Wählen Sie den Ort, tragen Sie den Straßennamen ein und klicken Sie auf **Straße speichern**.
+   Für Pferdeschwemme wählen Sie zum Beispiel den Ort **Perleberg**. Die gespeicherte Straße
+   steht nun im Adressformular zur Auswahl.
+2. Öffnen Sie **Abholorte → Abholort anlegen** und wählen Sie Ort und Straße. Wenn die Abholung
+   für die gesamte Pferdeschwemme gelten soll, wählen Sie **Alle Hausnummern** und klicken Sie
+   auf **Abholort speichern**. Wenn unterschiedliche Touren beispielsweise für die Hausnummern
+   2 bis 6 und 8 bis 12 gelten, pflegen Sie unter **Stammdaten → Hausnummern** zuerst die
+   tatsächlich vorhandenen Hausnummern. Wählen Sie beim Anlegen jedes Abholpunkts die konkrete
+   Hausnummer. So bleibt die Zuordnung auf die jeweils gewünschten Adressen beschränkt.
+3. Öffnen Sie unter **Touren** die gewünschte Tour und wählen Sie **Abholorte zuordnen**.
+   Der gespeicherte Abholpunkt ist jetzt in der **Tour-Zuordnung** auswählbar. Prüfen Sie vor
+   dem Speichern der Zuordnung den Ort, die Straße und gegebenenfalls die Hausnummer.
+
 ### PDF-Legende und Logo
 
 Die Legende entsteht aus den gepflegten Abfallarten (Name, Kürzel, Farbe, Beschreibung),

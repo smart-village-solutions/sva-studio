@@ -141,6 +141,8 @@ Der Verbraucher verbindet jede Kalenderantwort mit dem zugehörigen Katalogeintr
 
 Die angebotenen E-Mail- und Kalendererinnerungen berücksichtigen Abfallarten aus direkten Tourverknüpfungen und aus datierten Tourzuweisungen für den ausgewählten Abholort. Eine Abfallart erscheint nur dann als Erinnerungsoption, wenn ihr jeweiliger Kanal aktiv ist und gültige Erinnerungszeitpunkte konfiguriert sind.
 
+In Bestätigungs- und Erinnerungsmails enthält der Vorlagenplatzhalter `{{locationLabel}}` den Ort und, falls ausgewählt, die konkrete Straße sowie die Hausnummer oder den Hausnummernbereich. Die Sammelangaben „Alle Straßen“ und „Alle Hausnummern“ entfallen in der E-Mail.
+
 ## Bewusste Nicht-Ziele
 
 Dieser Ausbau führt keine Quellenversion, keinen neuen fachlichen Abfallartencode, keine neue Termin-ID, keine Pagination und keinen Sammelendpunkt für alle Termine ein. Rate Limiting und weitere Ingress-Regeln werden getrennt von diesem fachlichen API-Change behandelt.

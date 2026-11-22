@@ -41,8 +41,22 @@ const formatPickupDateLabel = (pickupDate: string): string =>
 const renderTemplate = (template: string, values: Readonly<Record<string, string>>): string =>
   template.replace(templatePlaceholderPattern, (_match, rawKey: string) => values[rawKey] ?? '');
 
-const formatEmailLocationLabel = (value: string): string =>
-  value.replace(/Alle Straßen Alle Hausnummern$/u, 'alle Straßen und Hausnummern');
+const formatEmailLocationLabel = (value: string): string => {
+  if (!value.trim()) {
+    return value;
+  }
+  const [city, ...addressParts] = value.split(',').map((part) => part.trim());
+  const streetsAndHouseNumbers = /^alle\s+straßen(?:\s+(?:(?:alle|und)\s+)?hausnummern)?$/iu;
+  const houseNumbers = /(?:^|\s+)alle\s+hausnummern$/iu;
+  return [
+    city,
+    ...addressParts
+      .filter((part) => !streetsAndHouseNumbers.test(part))
+      .map((part) => part.replace(houseNumbers, '')),
+  ]
+    .filter(Boolean)
+    .join(', ');
+};
 
 const buildUnsubscribeUrl = (
   config: WasteManagementEmailReminderConfig,
@@ -348,6 +362,13 @@ const buildReminderDispatchMessage = (input: {
   readonly payload: MailDispatchPayload;
 }): MailDispatchMessage => {
   const { templatePayload } = input.payload;
+  const storedLocationLabel = templatePayload.locationLabel ?? '';
+  const locationLabel = formatEmailLocationLabel(storedLocationLabel);
+  // Reminder text is rendered when queued, so update the stored label without rendering the templates again.
+  const formatQueuedText = (text?: string): string | undefined =>
+    storedLocationLabel && locationLabel && storedLocationLabel !== locationLabel
+      ? text?.split(storedLocationLabel).join(locationLabel)
+      : text;
   const bulletLine = normalizeMailTextLine(templatePayload.fractionName)
     ? `- ${templatePayload.fractionName}${normalizeMailTextLine(templatePayload.pickupDate) ? ` (${templatePayload.pickupDate})` : ''}`
     : undefined;
@@ -365,11 +386,11 @@ const buildReminderDispatchMessage = (input: {
     templatePayload.serviceLabel ?? input.config.serviceLabel
   );
   const text = joinMailTextSections([
-    templatePayload.introText,
-    templatePayload.listIntroText,
+    formatQueuedText(templatePayload.introText),
+    formatQueuedText(templatePayload.listIntroText),
     appointmentSection,
     templatePayload.outroText,
-    templatePayload.reasonText,
+    formatQueuedText(templatePayload.reasonText),
     `${templatePayload.unsubscribeLabel}: ${templatePayload.unsubscribeUrl}`,
     `Datenschutz: ${templatePayload.privacyPolicyUrl}`,
     `Impressum: ${templatePayload.imprintUrl}`,
@@ -384,7 +405,7 @@ const buildReminderDispatchMessage = (input: {
     ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
     ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
     ...(replyTo ? { replyTo } : {}),
-    subject: templatePayload.subject,
+    subject: formatQueuedText(templatePayload.subject) ?? templatePayload.subject,
     text,
   };
 };

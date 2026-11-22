@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { MailDispatchPayload, MailTransportConfig } from '@sva/core';
 import type {
   WasteCollectionLocationRecord,
+  WasteFractionRecord,
   WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
 
@@ -141,6 +142,24 @@ const createDoiPayload = (overrides: Partial<MailDispatchPayload> = {}): MailDis
   ...overrides,
 });
 
+const paperFraction: WasteFractionRecord = {
+  id: 'fraction-paper',
+  name: 'Papier',
+  pdfShortLabel: 'PAP',
+  translations: { de: 'Papier' },
+  containerSize: undefined,
+  color: '#0000ff',
+  description: undefined,
+  active: true,
+  reminderConfig: {
+    reminderCount: 'once',
+    channels: { push: false, email: true, calendar: false },
+    email: { slots: [{ id: 'paper:first', defaultLeadDays: 1, maxLeadDays: 3 }] },
+  },
+  createdAt: '',
+  updatedAt: '',
+};
+
 describe('waste email reminder dispatch helpers', () => {
   it('builds UTC dates and rejects invalid pickup dates', () => {
     expect(createUtcIsoAtHour(new Date('2026-06-15T12:30:00.000Z'), 6)).toBe(
@@ -240,23 +259,7 @@ describe('waste email reminder dispatch helpers', () => {
       subscriptionId: 'subscription-1',
       email: 'max@example.org',
       locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
-      fraction: {
-        id: 'fraction-paper',
-        name: 'Papier',
-        pdfShortLabel: 'PAP',
-        translations: { de: 'Papier' },
-        containerSize: undefined,
-        color: '#0000ff',
-        description: undefined,
-        active: true,
-        reminderConfig: {
-          reminderCount: 'once',
-          channels: { push: false, email: true, calendar: false },
-          email: { slots: [{ id: 'paper:first', defaultLeadDays: 1, maxLeadDays: 3 }] },
-        },
-        createdAt: '',
-        updatedAt: '',
-      },
+      fraction: paperFraction,
       pickupDate: '2026-06-16',
       hints: [
         '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
@@ -269,8 +272,8 @@ describe('waste email reminder dispatch helpers', () => {
 
     expect(payload.addresses).toEqual([{ kind: 'to', email: 'max@example.org' }]);
     expect(payload.templatePayload).not.toHaveProperty('serviceLabel');
-    expect(payload.templatePayload.locationLabel).toBe('Gumtow, alle Straßen und Hausnummern');
-    expect(payload.templatePayload.subject).toContain('Gumtow, alle Straßen und Hausnummern');
+    expect(payload.templatePayload.locationLabel).toBe('Gumtow');
+    expect(payload.templatePayload.subject).toBe('Abfalltermine fuer Gumtow');
     expect(payload.templatePayload.hintText).toBe(
       ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n')
     );
@@ -465,20 +468,77 @@ describe('waste email reminder dispatch helpers', () => {
     });
   });
 
-  it('uses a readable catch-all address in DOI subject, text, and location', () => {
-    const message = buildDispatchMessage({
-      config: createReminderConfig(),
-      transport: createTransport(),
+  it.each([
+    ['Gumtow, Alle Straßen', 'Gumtow'],
+    ['Gumtow, Alle Straßen Alle Hausnummern', 'Gumtow'],
+    ['Gumtow, alle Straßen und Hausnummern', 'Gumtow'],
+    ['Perleberg, Pferdeschwemme Alle Hausnummern', 'Perleberg, Pferdeschwemme'],
+    [' Perleberg , Pferdeschwemme , Alle Hausnummern ', 'Perleberg, Pferdeschwemme'],
+    ['Perleberg, Pferdeschwemme 2', 'Perleberg, Pferdeschwemme 2'],
+    ['Perleberg, Pferdeschwemme 2-8', 'Perleberg, Pferdeschwemme 2-8'],
+  ])('shortens %s in both rendered mail types', (locationLabel, expected) => {
+    const config = createReminderConfig({
+      reminderIntroTemplate: 'Adresse: {{locationLabel}}.',
+      reminderReasonText: 'Erinnerung für {{locationLabel}}.',
+    });
+    const transport = createTransport();
+    const doi = buildDispatchMessage({
+      config,
+      transport,
       payload: createDoiPayload({
         templatePayload: {
           ...createDoiPayload().templatePayload,
-          locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
+          locationLabel,
         },
       }),
     });
+    const reminderPayload = buildReminderDispatchPayload({
+      config,
+      subscriptionId: 'subscription-1',
+      email: 'recipient@invalid.example',
+      locationLabel,
+      fraction: paperFraction,
+      pickupDate: '2026-06-16',
+      unsubscribeTokenHash: 'sha256:unsubscribe',
+      unsubscribeTokenSecret: 'secret',
+    });
+    const reminder = buildDispatchMessage({ config, transport, payload: reminderPayload });
 
-    expect(message.subject).toContain('Gumtow, alle Straßen und Hausnummern');
-    expect(message.text).toContain('Ort: Gumtow, alle Straßen und Hausnummern');
+    expect(doi.subject).toBe(`Bitte Anmeldung fuer ${expected} bestaetigen`);
+    expect(doi.text).toContain(`Bitte bestaetigen Sie Ihre Anmeldung fuer ${expected}.`);
+    expect(doi.text).toContain(`Ort: ${expected}\n`);
+    expect(reminderPayload.templatePayload.locationLabel).toBe(expected);
+    expect(reminder.subject).toBe(`Abfalltermine fuer ${expected}`);
+    expect(reminder.text).toContain(`Adresse: ${expected}.`);
+    expect(reminder.text).toContain(`Erinnerung für ${expected}.`);
+  });
+
+  it.each([
+    ['Gumtow, alle Straßen und Hausnummern', 'Gumtow'],
+    ['Perleberg, Pferdeschwemme Alle Hausnummern', 'Perleberg, Pferdeschwemme'],
+  ])('updates %s in an already rendered reminder', (locationLabel, expected) => {
+    const payload = createReminderPayload({
+      templatePayload: {
+        ...createReminderPayload().templatePayload,
+        locationLabel,
+        subject: `Archivierter Betreff: ${locationLabel}`,
+        introText: `Archivierte Einleitung für ${locationLabel}.`,
+        listIntroText: `Für ${locationLabel} gilt:`,
+        reasonText: `Abonniert für ${locationLabel}.`,
+        hintText: 'Alle Hausnummern sind im Tourenplan erfasst.',
+      },
+    });
+    const message = buildDispatchMessage({
+      config: createReminderConfig(),
+      transport: createTransport(),
+      payload,
+    });
+
+    expect(message.subject).toBe(`Archivierter Betreff: ${expected}`);
+    expect(message.text).toContain(`Archivierte Einleitung für ${expected}.`);
+    expect(message.text).toContain(`Für ${expected} gilt:`);
+    expect(message.text).toContain(`Abonniert für ${expected}.`);
+    expect(message.text).toContain('Alle Hausnummern sind im Tourenplan erfasst.');
   });
 
   it('uses configured DOI labels only when payload labels are absent', () => {

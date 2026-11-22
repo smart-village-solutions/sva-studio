@@ -72,17 +72,19 @@ export const getWasteManagementHistoryOverview = async (input: {
 
 export const getWasteManagementMasterDataOverview = async (input?: {
   readonly scope?: 'fractions' | 'locations';
+  readonly fresh?: boolean;
 }): Promise<WasteManagementMasterDataOverview> => {
   const url = new URL('/api/v1/waste-management/master-data', 'https://studio.invalid');
   if (input?.scope) {
     url.searchParams.set('scope', input.scope);
   }
 
-  return requestWasteManagementRead(`master-data:${url.search}`, async () =>
+  const load = () =>
     requestWasteManagementItem<WasteManagementMasterDataOverview>({
       url: `${url.pathname}${url.search}`,
-    })
-  );
+      init: input?.fresh ? { cache: 'no-store' } : undefined,
+    });
+  return input?.fresh ? load() : requestWasteManagementRead(`master-data:${url.search}`, load);
 };
 
 const appendCollectionLocationFilters = (

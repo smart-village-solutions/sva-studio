@@ -11,11 +11,8 @@ import type {
   WasteManagementToursOverview,
 } from './waste-management.api.js';
 import type { StatusMessage } from './waste-management.page.support.js';
-import {
-  createDefaultLocationTourLinkForm,
-  createDefaultTourForm,
-} from './waste-management.tours.shared.js';
-import type { LocationTourLinkFormState, TourFormState } from './waste-management.tours.types.js';
+import { createDefaultTourForm } from './waste-management.tours.shared.js';
+import type { TourFormState } from './waste-management.tours.types.js';
 
 export const useWasteToursState = () => {
   const schedulingRequestRef = useRef(0);
@@ -37,11 +34,6 @@ export const useWasteToursState = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [tourForm, setTourForm] = useState<TourFormState>(createDefaultTourForm());
-  const [assignmentsDialogOpen, setAssignmentsDialogOpen] = useState(false);
-  const [assignmentsDialogMode, setAssignmentsDialogMode] = useState<'create' | 'edit'>('create');
-  const [linkForm, setLinkForm] = useState<LocationTourLinkFormState>(
-    createDefaultLocationTourLinkForm()
-  );
   const [selectedTour, setSelectedTour] = useState<WasteTourRecord | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
@@ -62,9 +54,6 @@ export const useWasteToursState = () => {
     dialogOpen,
     dialogMode,
     tourForm,
-    assignmentsDialogOpen,
-    assignmentsDialogMode,
-    linkForm,
     selectedTour,
     calendarOpen,
     message,
@@ -82,9 +71,6 @@ export const useWasteToursState = () => {
     setDialogOpen,
     setDialogMode,
     setTourForm,
-    setAssignmentsDialogOpen,
-    setAssignmentsDialogMode,
-    setLinkForm,
     setSelectedTour,
     setCalendarOpen,
     setMessage,

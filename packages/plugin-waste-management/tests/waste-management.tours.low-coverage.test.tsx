@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursDialogs } from '../src/waste-management.tours-dialogs-panel.js';
-import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
+import { TourAssignmentsPage } from '../src/waste-management.tours-assignments-page.js';
 import { TourAssignmentsTable } from '../src/waste-management.tours-assignments-table.js';
 import { WasteToursFormView } from '../src/waste-management.tours-form-view.js';
 import { WasteToursTableHeader } from '../src/waste-management.tours.table.parts.js';
@@ -12,7 +12,6 @@ import { WasteToursTourFields } from '../src/waste-management.tours-tour-fields.
 const navigateMock = vi.fn();
 const dialogSpy = vi.hoisted(() => ({
   tour: vi.fn(),
-  assignments: vi.fn(),
   calendar: vi.fn(),
 }));
 const fractionSelectionSpy = vi.fn();
@@ -20,6 +19,7 @@ const customDatesSpy = vi.fn();
 const formSwitchSpy = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => ({ status: 'idle' }),
   useNavigate: () => navigateMock,
 }));
 
@@ -89,14 +89,6 @@ vi.mock('../src/waste-management.tours.dialogs.js', () => ({
     return props.open ? (
       <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
         close-tour
-      </button>
-    ) : null;
-  },
-  TourAssignmentsDialog: (props: Record<string, unknown>) => {
-    dialogSpy.assignments(props);
-    return props.open ? (
-      <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
-        close-assignments
       </button>
     ) : null;
   },
@@ -179,14 +171,8 @@ const createController = () =>
     setTourForm: vi.fn(),
     setSelectedTour: vi.fn(),
     onSubmitTour: vi.fn(),
-    assignmentsDialogOpen: true,
-    assignmentsDialogMode: 'create' as const,
-    linkForm: { id: 'link-1', tourId: 'tour-1' },
     overview: { tours: [{ id: 'tour-1', name: 'Schadstoffmobil' }] },
-    assignmentLocationOptions: [],
     assignmentContextLoading: false,
-    setAssignmentsDialogOpen: vi.fn(),
-    setLinkForm: vi.fn(),
     onSubmitAssignments: vi.fn(),
     calendarOpen: true,
     schedulingOverview: { locationTourPickupDates: [] },
@@ -205,31 +191,21 @@ describe('waste-management tours low coverage views', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     dialogSpy.tour.mockReset();
-    dialogSpy.assignments.mockReset();
     dialogSpy.calendar.mockReset();
   });
 
-  it('resets tour and assignment forms when the dialogs close', () => {
+  it('resets the tour form when the dialogs close', () => {
     const controller = createController();
 
     render(<WasteToursDialogs controller={controller} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'close-tour' }));
-    fireEvent.click(screen.getByRole('button', { name: 'close-assignments' }));
 
     expect(controller.setDialogOpen).toHaveBeenCalledWith(false);
     expect(controller.setTourForm).toHaveBeenCalledWith(
       expect.objectContaining({ id: expect.any(String) })
     );
     expect(controller.setSelectedTour).toHaveBeenCalledWith(null);
-    expect(controller.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
-    expect(controller.setLinkForm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: expect.any(String),
-        locationId: '',
-        tourId: '',
-      })
-    );
     expect(dialogSpy.calendar).toHaveBeenCalledWith(
       expect.objectContaining({ open: true, schedulingLoadState: 'loading' })
     );
@@ -243,22 +219,12 @@ describe('waste-management tours low coverage views', () => {
     const tourProps = dialogSpy.tour.mock.calls[0]?.[0] as {
       onChange: (patch: Record<string, unknown>) => void;
     };
-    const assignmentProps = dialogSpy.assignments.mock.calls[0]?.[0] as {
-      onChange: (patch: Record<string, unknown>) => void;
-    };
 
     tourProps.onChange({ name: 'Geaendert' });
-    assignmentProps.onChange({ locationId: 'location-2' });
 
     const nextTourForm = controller.setTourForm.mock.calls[0]?.[0](controller.tourForm);
-    const nextLinkForm = controller.setLinkForm.mock.calls[0]?.[0]({
-      id: 'link-1',
-      locationId: '',
-      tourId: 'tour-1',
-    });
 
     expect(nextTourForm).toEqual(expect.objectContaining({ name: 'Geaendert' }));
-    expect(nextLinkForm).toEqual(expect.objectContaining({ locationId: 'location-2' }));
   });
 
   it('renders the form view with duplication metadata, cancels back to the list, and submits create mode', () => {
@@ -321,16 +287,12 @@ describe('waste-management tours low coverage views', () => {
       ...(index === 717 ? { assignedLinkId: 'existing-link' } : {}),
     }));
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ tourId: 'tour' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour', name: 'Testtour' } as never}
         locations={locations}
         saving={false}
         message={null}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
@@ -355,26 +317,75 @@ describe('waste-management tours low coverage views', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(719);
   });
 
-  it('renders assignment dialog loading and fallback description branches', () => {
+  it('keeps assignment changes through an empty loading result for the same tour', () => {
+    const locations = ['location-1', 'location-2'].map((id, index) => ({
+      id,
+      label: id,
+      regionId: 'region-1',
+      regionName: 'Prignitz',
+      cityId: 'city-1',
+      cityName: 'Perleberg',
+      streetId: '',
+      streetName: '',
+      houseNumberId: '',
+      houseNumberName: '',
+      ...(index === 0 ? { assignedLinkId: 'link-1' } : {}),
+    }));
+    const onSubmit = vi.fn();
+    const renderDialog = (options: typeof locations, loading = false) => (
+      <TourAssignmentsPage
+        tour={{ id: 'tour-1', name: 'Tour 1' } as never}
+        locations={options}
+        saving={false}
+        loading={loading}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    const { rerender } = render(renderDialog(locations));
+    const location = (id: string) =>
+      screen.getByRole<HTMLInputElement>('checkbox', {
+        name: `tours.assignments.workspace.selectLocation:{"value":"${id}"}`,
+      });
+    const save = () =>
+      screen.getByRole<HTMLButtonElement>('button', {
+        name: 'tours.assignments.actions.save',
+      });
+
+    fireEvent.click(location('location-1'));
+    fireEvent.click(location('location-2'));
+    rerender(renderDialog([], true));
+    expect(save().disabled).toBe(true);
+    fireEvent.submit(save().closest('form')!);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    rerender(renderDialog(locations.map((entry) => ({ ...entry }))));
+    expect(location('location-1').checked).toBe(false);
+    expect(location('location-2').checked).toBe(true);
+    fireEvent.submit(save().closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(
+      new Map([
+        ['location-1', false],
+        ['location-2', true],
+      ])
+    );
+  });
+
+  it('renders the assignment page while loading', () => {
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={
-          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
-        }
-        tour={null}
+      <TourAssignmentsPage
+        tour={{ id: 'tour-1', name: 'Tour 1' } as never}
         locations={[]}
         saving
         loading
         message={{ kind: 'info', text: 'assignment-message' }}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
 
-    expect(screen.getByText('tours.assignments.dialog.descriptionFallback')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Tour 1' })).toBeTruthy();
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'tours.assignments.actions.saving' })).toHaveProperty(
       'disabled',
@@ -383,16 +394,11 @@ describe('waste-management tours low coverage views', () => {
   });
 
   it('filters assignment locations, tracks hidden selections, resets filters, and submits the selected ids', () => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSubmit = vi.fn();
     const onOpenChange = vi.fn();
 
     render(
-      <TourAssignmentsDialog
-        open
-        mode="create"
-        form={
-          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
-        }
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
         locations={
           [
@@ -427,8 +433,7 @@ describe('waste-management tours low coverage views', () => {
         }
         saving={false}
         message={null}
-        onOpenChange={onOpenChange}
-        onChange={vi.fn()}
+        onBack={onOpenChange}
         onSubmit={onSubmit}
       />
     );
@@ -452,9 +457,9 @@ describe('waste-management tours low coverage views', () => {
       screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
     );
     fireEvent.submit(
-      screen.getByRole('button', { name: 'tours.assignments.actions.create' }).closest('form')!
+      screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form')!
     );
-    expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
+    expect(onSubmit).toHaveBeenCalledWith(new Map([['location-2', true]]));
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
     expect(screen.getByText('tours.assignments.workspace.visibleCount:{"value":2}')).toBeTruthy();
@@ -465,15 +470,12 @@ describe('waste-management tours low coverage views', () => {
     expect(screen.getByText('tours.assignments.workspace.noLocations')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.cancel' }));
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledOnce();
   });
 
   it('renders address values with multi-column sorting while keeping selected locations first', () => {
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ id: 'link-1', tourId: 'tour-1' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Bio.10.A.2' } as never}
         locations={
           [
@@ -522,8 +524,7 @@ describe('waste-management tours low coverage views', () => {
         saving={false}
         loading={false}
         message={null}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
@@ -670,13 +671,10 @@ describe('waste-management tours low coverage views', () => {
   });
 
   it('filters assignment locations, manages hidden selections, and submits the selected ids', () => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSubmit = vi.fn();
 
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ id: 'link-1', tourId: 'tour-1' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
         locations={
           [
@@ -709,8 +707,7 @@ describe('waste-management tours low coverage views', () => {
         saving={false}
         loading={false}
         message={{ kind: 'info', text: 'assignment-message' }}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={onSubmit}
       />
     );
@@ -733,7 +730,7 @@ describe('waste-management tours low coverage views', () => {
     }
     fireEvent.submit(form);
 
-    expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
+    expect(onSubmit).toHaveBeenCalledWith(new Map([['location-2', true]]));
   });
 
   it('exposes the address hierarchy, optional region, and shared sort direction', () => {

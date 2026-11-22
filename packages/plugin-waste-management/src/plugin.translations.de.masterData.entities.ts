@@ -165,13 +165,20 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       description: 'Wählen Sie die Touren aus, die diesem Abholort zugeordnet sein sollen.',
       empty: 'Es sind aktuell keine Touren verfügbar.',
       actions: {
+        reload: 'Zuordnungen erneut lesen',
+        reloading: 'Zuordnungen werden gelesen …',
         save: 'Zuordnungen speichern',
         saving: 'Speichert…',
       },
       meta: {
+        additionPending: 'Zuordnung ausstehend',
+        removalPending: 'Entfernung ausstehend',
         selectedCount: '{{value}} Touren zugeordnet',
       },
       messages: {
+        readBackUnconfirmed:
+          'Der gespeicherte Stand konnte nicht bestätigt werden. Lesen Sie die Zuordnungen erneut.',
+        savePartial: 'Ein Teil der Änderungen wurde bestätigt. Noch offen: {{value}}.',
         saveSuccess: 'Die Tour-Zuordnungen wurden aktualisiert.',
         saveError: 'Die Tour-Zuordnungen konnten nicht gespeichert werden.',
         saveForbidden: 'Für das Speichern der Tour-Zuordnungen fehlt die Berechtigung.',

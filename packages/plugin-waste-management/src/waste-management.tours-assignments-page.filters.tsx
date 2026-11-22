@@ -45,7 +45,7 @@ const TourAssignmentLocationFilter = ({
   </div>
 );
 
-export const TourAssignmentsDialogFilters = ({
+export const TourAssignmentsPageFilters = ({
   searchQuery,
   regionFilter,
   cityFilter,

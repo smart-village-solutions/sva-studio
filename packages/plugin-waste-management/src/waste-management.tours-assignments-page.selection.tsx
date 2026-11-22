@@ -40,7 +40,7 @@ const TourAssignmentSelectionCounts = ({
   );
 };
 
-export const TourAssignmentsDialogSelection = ({
+export const TourAssignmentsPageSelection = ({
   loading,
   selectedLocationIds,
   filteredLocationsCount,
@@ -93,7 +93,7 @@ export const TourAssignmentsDialogSelection = ({
         </div>
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto rounded-lg border border-border-subtle">
+      <div className="min-w-0 rounded-lg border border-border-subtle">
         {loading ? (
           <div className="p-4 text-sm text-muted-foreground">
             {pt('tours.table.loadingAssignments')}

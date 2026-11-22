@@ -1,13 +1,18 @@
 import React from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import {
+  invalidateSessionAccessSnapshot,
+  publishSessionAccessSnapshot,
+  registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
+} from '@sva/plugin-sdk';
 
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
 const navigateMock = vi.fn();
-const searchMock = vi.fn(() => ({
+const searchMock = vi.fn((): Record<string, unknown> => ({
   tab: 'tools',
   q: 'Restmüll',
   page: 2,
@@ -15,32 +20,30 @@ const searchMock = vi.fn(() => ({
   status: 'active',
   shiftContext: 'tour',
 }));
-const uiAccessMock = vi.hoisted(() => ({
+const wastePermissions = [
+  'waste-management.read',
+  'waste-management.settings.manage',
+  'waste-management.tours.manage',
+  'waste-management.scheduling.manage',
+  'waste-management.master-data.manage',
+  'waste-management.import.execute',
+  'waste-management.export.execute',
+  'waste-management.seed.execute',
+  'waste-management.reset.execute',
+  'iam.monitoring.read',
+] as const;
+const editorAccess = {
   isResolved: true,
-  hasError: false,
-  visibleTabIds: [
-    'fractions',
-    'tours',
-    'locations',
-    'masterData',
-    'scheduling',
-    'output',
-    'tools',
-    'settings',
-  ] as const,
-  canAccessSettings: true,
-  canAccessTools: true,
-  canDuplicateTour: true,
-  canRunInitialize: true,
-  canRunMigrations: true,
-  canRunImport: true,
-  canRunSeed: true,
-  canRunMainserverSync: true,
-  canRunReset: true,
-  canOpenJobDetails: true,
-}));
+  subjectId: 'editor-1',
+  instanceId: 'tenant-a',
+  organizationId: 'org-1',
+  assignedModules: ['waste-management'],
+  permissionActions: wastePermissions,
+  roles: [],
+};
 
 vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => ({ status: 'idle' }),
   Link: ({
     children,
     params,
@@ -64,11 +67,6 @@ const clickMenuItemContaining = (textFragment: string) => {
   }
   fireEvent.click(menuItem);
 };
-
-vi.mock('../src/waste-management.ui-access.js', () => ({
-  deriveWasteManagementUiAccess: () => ({ ...uiAccessMock }),
-  useWasteManagementUiAccess: () => ({ ...uiAccessMock }),
-}));
 
 const wasteManagementApiMocks = vi.hoisted(() => ({
   createWasteManagementLocationTourPickupDate: vi.fn(async () => ({ id: 'pickup-date-1' })),
@@ -396,32 +394,13 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
 vi.mock('../src/waste-management.api.js', () => wasteManagementApiMocks);
 
 describe('WasteManagementPage', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    resetSessionAccessSnapshot();
+  });
 
   beforeEach(() => {
-    Object.assign(uiAccessMock, {
-      isResolved: true,
-      hasError: false,
-      visibleTabIds: [
-        'fractions',
-        'tours',
-        'locations',
-        'masterData',
-        'scheduling',
-        'output',
-        'tools',
-        'settings',
-      ],
-      canAccessSettings: true,
-      canAccessTools: true,
-      canDuplicateTour: true,
-      canRunInitialize: true,
-      canRunMigrations: true,
-      canRunImport: true,
-      canRunSeed: true,
-      canRunReset: true,
-      canOpenJobDetails: true,
-    });
+    publishSessionAccessSnapshot(editorAccess);
     navigateMock.mockReset();
     searchMock.mockReset();
     searchMock.mockImplementation(() => ({
@@ -824,7 +803,9 @@ describe('WasteManagementPage', () => {
       'https://bb-prignitz.abfallkalender.smart-village.app/'
     );
     expect(screen.queryByDisplayValue('Restmüll')).toBeNull();
-    expect(screen.queryByLabelText('wasteManagement.filters.searchLabel')).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'wasteManagement.filters.searchLabel' })
+    ).toBeNull();
     expect(screen.queryByLabelText('wasteManagement.filters.statusLabel')).toBeNull();
     expect(screen.queryByLabelText('wasteManagement.filters.shiftContextLabel')).toBeNull();
     expect(screen.queryByText(/wasteManagement\.meta\.search:/)).toBeNull();
@@ -865,7 +846,7 @@ describe('WasteManagementPage', () => {
   });
 
   it('keeps the route and blocks waste forms while permissions cannot be loaded', () => {
-    Object.assign(uiAccessMock, { isResolved: false, hasError: true });
+    publishSessionAccessSnapshot({ ...editorAccess, isResolved: false, hasError: true });
 
     render(<WasteManagementPage />);
 
@@ -875,10 +856,9 @@ describe('WasteManagementPage', () => {
   });
 
   it('does not load settings for the page header when the user cannot access settings', async () => {
-    Object.assign(uiAccessMock, {
-      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools'],
-      canAccessSettings: false,
-      canRunMainserverSync: false,
+    publishSessionAccessSnapshot({
+      ...editorAccess,
+      permissionActions: ['waste-management.read', 'waste-management.import.execute'],
     });
 
     render(<WasteManagementPage />);
@@ -1740,6 +1720,7 @@ describe('WasteManagementPage', () => {
     await waitFor(() => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'locations',
+        fresh: true,
       });
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'fractions',
@@ -1934,6 +1915,7 @@ describe('WasteManagementPage', () => {
     await waitFor(() => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'locations',
+        fresh: true,
       });
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'fractions',
@@ -2031,6 +2013,200 @@ describe('WasteManagementPage', () => {
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
     expect(screen.queryByText('Wöchentliche Innenstadt-Tour')).toBeNull();
     expect(screen.queryByText('Biomüll Süd')).toBeNull();
+  });
+
+  const setUpTourAssignmentOverview = () => {
+    searchMock.mockReturnValue({
+      tab: 'tours',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    });
+    const timestamps = {
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+    wasteManagementApiMocks.getWasteManagementToursOverview.mockResolvedValue({
+      tours: ['tour-1', 'tour-2'].map((id) => ({
+        id,
+        name: id,
+        wasteFractionIds: [],
+        recurrence: 'weekly',
+        status: 'published',
+        ...timestamps,
+      })),
+    });
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
+      fractions: [],
+      houseNumbers: [],
+      regions: [{ id: 'region-1', name: 'Prignitz', ...timestamps }],
+      cities: [{ id: 'city-1', name: 'Perleberg', regionId: 'region-1', ...timestamps }],
+      streets: [{ id: 'street-1', name: 'Pferdeschwemme', cityId: 'city-1', ...timestamps }],
+      collectionLocations: [
+        {
+          id: 'location-1',
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          ...timestamps,
+        },
+      ],
+      locationTourLinks: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-2',
+          ...timestamps,
+        },
+      ],
+    });
+  };
+
+  it.each(['Perleberg', 'Pferdeschwemme'])(
+    'keeps the tour assignment draft for %s after sync status polling',
+    async (query) => {
+      vi.useFakeTimers();
+      try {
+        setUpTourAssignmentOverview();
+
+        searchMock.mockReturnValue({ ...searchMock(), toursView: 'assignments', tourId: 'tour-1' });
+        const view = render(<WasteManagementPage />);
+        await act(async () => {});
+        const dialog = screen;
+        const search = dialog.getByLabelText<HTMLInputElement>(
+          'wasteManagement.filters.searchLabel'
+        );
+        const region = dialog.getByLabelText<HTMLSelectElement>(
+          'wasteManagement.masterData.collectionLocations.fields.regionId'
+        );
+        const city = dialog.getByLabelText<HTMLSelectElement>(
+          'wasteManagement.masterData.collectionLocations.fields.cityId'
+        );
+        const street = dialog.getByLabelText<HTMLSelectElement>(
+          'wasteManagement.masterData.collectionLocations.fields.streetId'
+        );
+        const sort = dialog.getByLabelText<HTMLSelectElement>(
+          'wasteManagement.tours.assignments.workspace.sortingDirection'
+        );
+        const location = () =>
+          dialog.getByRole<HTMLInputElement>('checkbox', {
+            name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+          });
+        fireEvent.change(search, { target: { value: query } });
+        fireEvent.change(region, { target: { value: 'region-1' } });
+        fireEvent.change(city, { target: { value: 'city-1' } });
+        fireEvent.change(street, { target: { value: 'street-1' } });
+        fireEvent.change(sort, { target: { value: 'desc' } });
+        expect(location().checked).toBe(false);
+        fireEvent.click(location());
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(10_000);
+        });
+
+        expect(wasteManagementApiMocks.getWasteMainserverSyncStatus).toHaveBeenCalledTimes(2);
+        expect(search.value).toBe(query);
+        expect(region.value).toBe('region-1');
+        expect(city.value).toBe('city-1');
+        expect(street.value).toBe('street-1');
+        expect(sort.value).toBe('desc');
+        expect(location().checked).toBe(true);
+
+        searchMock.mockReturnValue({ ...searchMock(), tourId: 'tour-2' });
+        view.rerender(<WasteManagementPage />);
+        expect(
+          screen.getByLabelText<HTMLInputElement>('wasteManagement.filters.searchLabel').value
+        ).toBe('');
+        expect(location().checked).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  const openEditedAssignment = async () => {
+    setUpTourAssignmentOverview();
+    searchMock.mockReturnValue({ ...searchMock(), toursView: 'assignments', tourId: 'tour-1' });
+    render(<WasteManagementPage />);
+    await screen.findByRole('checkbox', {
+      name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+    });
+    const dialog = screen;
+    fireEvent.change(dialog.getByLabelText('wasteManagement.filters.searchLabel'), {
+      target: { value: 'Pferdeschwemme' },
+    });
+    fireEvent.click(
+      dialog.getByRole('checkbox', {
+        name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+      })
+    );
+    return dialog
+      .getByRole('button', {
+        name: 'wasteManagement.tours.assignments.actions.save',
+      })
+      .closest('form')!;
+  };
+
+  it('restores the same tour draft after access is confirmed for the same context', async () => {
+    const form = await openEditedAssignment();
+    act(() => invalidateSessionAccessSnapshot());
+    expect(form.closest('[hidden]')).toBeTruthy();
+    expect(screen.getByText('wasteManagement.page.accessLoading')).toBeTruthy();
+    fireEvent.submit(form);
+    expect(wasteManagementApiMocks.createWasteManagementLocationTourLink).not.toHaveBeenCalled();
+
+    act(() => publishSessionAccessSnapshot(editorAccess));
+    await screen.findByLabelText('wasteManagement.filters.searchLabel');
+    const dialog = screen;
+    expect(dialog.getByText('tour-1')).toBeTruthy();
+    expect(
+      dialog.getByLabelText<HTMLInputElement>('wasteManagement.filters.searchLabel').value
+    ).toBe('Pferdeschwemme');
+    const location = await dialog.findByRole<HTMLInputElement>('checkbox', {
+      name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+    });
+    expect(location.checked).toBe(true);
+  });
+
+  it.each([
+    [
+      'write access is revoked',
+      {
+        ...editorAccess,
+        permissionActions: wastePermissions.filter(
+          (action) => action !== 'waste-management.tours.manage'
+        ),
+      },
+    ],
+    ['the organization changes', { ...editorAccess, organizationId: 'org-2' }],
+    ['the account changes', { ...editorAccess, subjectId: 'editor-2' }],
+    ['the tenant changes', { ...editorAccess, instanceId: 'tenant-b' }],
+  ] as const)('discards the tour draft when %s', async (reason, nextAccess) => {
+    const form = await openEditedAssignment();
+    act(() => invalidateSessionAccessSnapshot());
+    act(() => publishSessionAccessSnapshot(nextAccess));
+    if (reason === 'write access is revoked') {
+      expect(screen.queryByLabelText('wasteManagement.filters.searchLabel')).toBeNull();
+    }
+    fireEvent.submit(form);
+    expect(wasteManagementApiMocks.createWasteManagementLocationTourLink).not.toHaveBeenCalled();
+
+    act(() => publishSessionAccessSnapshot(editorAccess));
+    await screen.findByRole('checkbox', {
+      name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+    });
+    const dialog = screen;
+    expect(
+      dialog.getByLabelText<HTMLInputElement>('wasteManagement.filters.searchLabel').value
+    ).toBe('');
+    expect(
+      dialog.getByRole<HTMLInputElement>('checkbox', {
+        name: /wasteManagement.tours.assignments.workspace.selectLocation/,
+      }).checked
+    ).toBe(false);
   });
 
   it('creates a waste tour from the tours dialog and reloads the overview', async () => {

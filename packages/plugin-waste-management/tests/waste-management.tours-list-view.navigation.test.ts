@@ -5,6 +5,8 @@ import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
   toCreateTourSearch,
   toEditTourSearch,
+  toTourAssignmentsSearch,
+  toToursListSearch,
   toToursFiltersSearch,
   toToursPageSearch,
   toToursPageSizeSearch,
@@ -88,6 +90,16 @@ describe('waste-management.tours-list-view.navigation', () => {
       toursView: 'edit',
       tourId: 'tour-1',
     });
+  });
+
+  it('retains list filters and paging for assignments from either tour view', () => {
+    const list = createSearch();
+    const assignments = toTourAssignmentsSearch(list, 'tour-1');
+    expect(assignments).toEqual({ ...list, toursView: 'assignments', tourId: 'tour-1' });
+    expect(toTourAssignmentsSearch(toEditTourSearch(list, 'tour-1'), 'tour-1')).toEqual(
+      assignments
+    );
+    expect(toToursListSearch(assignments)).toEqual(list);
   });
 
   it('builds filter and paging search states for tours', () => {

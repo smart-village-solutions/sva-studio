@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Activity, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
@@ -19,7 +19,10 @@ import {
 import { WasteManagementMainserverSyncStatus } from './waste-management-sync-status.js';
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
-import { toMasterDataTab, useWasteManagementVisibleTabRedirect } from './waste-management.page.navigation.js';
+import {
+  toMasterDataTab,
+  useWasteManagementVisibleTabRedirect,
+} from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 const updateSearch = (
@@ -47,7 +50,7 @@ const useWasteManagementCalendarWebUrl = (
   const [calendarWebUrl, setCalendarWebUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!uiAccess.isResolved || !uiAccess.canAccessSettings) {
+    if (!uiAccess.canRead || !uiAccess.canAccessSettings) {
       setCalendarWebUrl(null);
       return;
     }
@@ -70,7 +73,7 @@ const useWasteManagementCalendarWebUrl = (
     return () => {
       active = false;
     };
-  }, [uiAccess.canAccessSettings, uiAccess.isResolved]);
+  }, [uiAccess.canAccessSettings, uiAccess.canRead, uiAccess.contextKey]);
 
   return calendarWebUrl;
 };
@@ -177,55 +180,82 @@ export const WasteManagementPage = () => {
   const navigate = useNavigate();
   const rawSearch = useSearch({ strict: false });
   const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
+  const isAssignmentPage = search.tab === 'tours' && search.toursView === 'assignments';
   const uiAccess = useWasteManagementUiAccess(search.tab);
   const calendarWebUrl = useWasteManagementCalendarWebUrl(uiAccess);
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
-  const syncStatus = useWasteManagementMainserverSyncStatus(
-    uiAccess.isResolved && uiAccess.visibleTabIds.length > 0
-  );
+  const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead);
+  const activeAccess = uiAccess.canRead ? uiAccess : null;
+  const [confirmedAccess, setConfirmedAccess] = useState(activeAccess);
+  if (
+    activeAccess !== confirmedAccess &&
+    (uiAccess.isResolved || uiAccess.contextKey !== confirmedAccess?.contextKey)
+  ) {
+    setConfirmedAccess(activeAccess);
+  }
+
+  const retainTourEditor =
+    !uiAccess.isResolved &&
+    search.tab === 'tours' &&
+    uiAccess.contextKey !== null &&
+    uiAccess.contextKey === confirmedAccess?.contextKey &&
+    confirmedAccess.canManageTours;
+  const tabsAccess = activeAccess ?? (retainTourEditor ? confirmedAccess : null);
 
   useWasteManagementVisibleTabRedirect(navigate, search, uiAccess);
 
   return (
     <StudioOverviewPageTemplate
-      title={pt('page.title')}
+      title={pt(isAssignmentPage ? 'tours.assignments.title' : 'page.title')}
       description={
-        <WasteManagementPageDescription
-          description={pt('page.description')}
-          calendarWebUrl={calendarWebUrl}
-          webVersionLead={pt('page.webVersionLead')}
-          webVersionLinkLabel={pt('page.webVersionLinkLabel')}
-        />
+        isAssignmentPage ? undefined : (
+          <WasteManagementPageDescription
+            description={pt('page.description')}
+            calendarWebUrl={uiAccess.canRead ? calendarWebUrl : null}
+            webVersionLead={pt('page.webVersionLead')}
+            webVersionLinkLabel={pt('page.webVersionLinkLabel')}
+          />
+        )
       }
     >
-      <div className="mb-6 space-y-3">
-        <WasteManagementMainserverSyncStatus
-          canOpenJobDetails={uiAccess.canOpenJobDetails}
-          canRunMainserverSync={uiAccess.canRunMainserverSync}
-          error={syncStatus.error}
-          loading={syncStatus.loading}
-          onStartSync={() => startSync(syncStatus.refresh)}
-          pt={pt}
-          starting={syncRunning}
-          status={syncStatus.status}
-        />
-        {statusMessage ? <StatusNotice message={statusMessage} /> : null}
-      </div>
+      {activeAccess && !isAssignmentPage ? (
+        <div className="mb-6 space-y-3">
+          <WasteManagementMainserverSyncStatus
+            canOpenJobDetails={uiAccess.canOpenJobDetails}
+            canRunMainserverSync={uiAccess.canRunMainserverSync}
+            error={syncStatus.error}
+            loading={syncStatus.loading}
+            onStartSync={() => startSync(syncStatus.refresh)}
+            pt={pt}
+            starting={syncRunning}
+            status={syncStatus.status}
+          />
+          {statusMessage ? <StatusNotice message={statusMessage} /> : null}
+        </div>
+      ) : null}
       {uiAccess.hasError ? (
         <StudioErrorState>{pt('page.accessUnavailable')}</StudioErrorState>
+      ) : uiAccess.isResolved && !uiAccess.canRead ? (
+        <StudioErrorState>{pt('page.accessDenied')}</StudioErrorState>
       ) : !uiAccess.isResolved ? (
         <StudioLoadingState>{pt('page.accessLoading')}</StudioLoadingState>
-      ) : (
-        <WasteManagementPageTabs
-          pt={pt}
-          search={search}
-          rawSearch={rawSearch as Record<string, unknown>}
-          access={uiAccess}
-          visibleTabIds={uiAccess.visibleTabIds}
-          onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
-          onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
-        />
-      )}
+      ) : null}
+      {tabsAccess ? (
+        <div hidden={!activeAccess}>
+          <Activity key={tabsAccess.contextKey} mode={activeAccess ? 'visible' : 'hidden'}>
+            <WasteManagementPageTabs
+              pt={pt}
+              search={search}
+              rawSearch={rawSearch as Record<string, unknown>}
+              access={tabsAccess}
+              visibleTabIds={tabsAccess.visibleTabIds}
+              assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
+              onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+              onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
+            />
+          </Activity>
+        </div>
+      ) : null}
     </StudioOverviewPageTemplate>
   );
 };

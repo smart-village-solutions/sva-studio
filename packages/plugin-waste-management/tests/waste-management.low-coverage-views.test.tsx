@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudioSwitch } from '@sva/studio-ui-react';
 import { WasteSchedulingCreateFormView } from '../src/waste-management.scheduling-create-form-view.js';
 import { WasteSettingsForm } from '../src/waste-management.settings-form.js';
-import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
+import { TourAssignmentsPage } from '../src/waste-management.tours-assignments-page.js';
 
 const navigateMock = vi.fn();
 const schedulingFormContentSpy = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => ({ status: 'idle' }),
   useNavigate: () => navigateMock,
 }));
 
@@ -757,15 +758,11 @@ describe('waste-management low coverage views', () => {
     expect(screen.getByText(/scheduling\.create\.annualOverrideHint/)).toBeTruthy();
   });
 
-  it('renders the tour-assignment dialog without an explicit tour or validity-date selector', () => {
+  it('renders the tour-assignment page without an explicit tour or validity-date selector', () => {
     const onSubmit = vi.fn();
-    const onChange = vi.fn();
 
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ tourId: 'tour-1' }}
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Restmüll Nord' } as never}
         locations={
           [
@@ -786,8 +783,7 @@ describe('waste-management low coverage views', () => {
         saving={false}
         loading={false}
         message={null}
-        onOpenChange={vi.fn()}
-        onChange={onChange}
+        onBack={vi.fn()}
         onSubmit={onSubmit}
       />
     );
@@ -800,7 +796,6 @@ describe('waste-management low coverage views', () => {
     fireEvent.submit(
       screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form')!
     );
-    expect(onChange).not.toHaveBeenCalled();
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

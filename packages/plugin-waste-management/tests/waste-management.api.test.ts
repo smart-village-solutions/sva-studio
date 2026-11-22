@@ -404,6 +404,30 @@ describe('waste-management api client', () => {
     });
   });
 
+  it('reads assignments independently of an already running location overview request', async () => {
+    const previous = Promise.withResolvers<Response>();
+    const response = (locationTourLinks: readonly object[]) =>
+      new Response(JSON.stringify({ data: { locationTourLinks } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    const link = { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' };
+    fetchMock.mockReturnValueOnce(previous.promise).mockResolvedValueOnce(response([link]));
+    const earlierRead = getWasteManagementMasterDataOverview({ scope: 'locations' });
+
+    await expect(
+      getWasteManagementMasterDataOverview({ scope: 'locations', fresh: true })
+    ).resolves.toMatchObject({ locationTourLinks: [link] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/waste-management/master-data?scope=locations',
+      expect.objectContaining({ cache: 'no-store' })
+    );
+
+    previous.resolve(response([]));
+    await expect(earlierRead).resolves.toMatchObject({ locationTourLinks: [] });
+  });
+
   it('creates and updates waste fractions through the host facade', async () => {
     fetchMock
       .mockResolvedValueOnce(

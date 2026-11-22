@@ -423,8 +423,7 @@ describe('WasteToursContent', () => {
 
     const onOpenEditDialog = vi.fn();
     const onOpenDuplicateDialog = vi.fn();
-    const onOpenCreateAssignmentsDialog = vi.fn();
-    const onOpenEditAssignmentsDialog = vi.fn();
+    const onOpenAssignments = vi.fn();
     const onOpenCalendar = vi.fn();
     const onOpenEditFraction = vi.fn();
     const onUpdateTourStatusBulk = vi
@@ -461,8 +460,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={onOpenEditDialog}
         onOpenDuplicateDialog={onOpenDuplicateDialog}
-        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
+        onOpenAssignments={onOpenAssignments}
         onOpenCalendar={onOpenCalendar}
         onOpenEditFraction={onOpenEditFraction}
         onUpdateTourStatusBulk={onUpdateTourStatusBulk}
@@ -559,8 +557,7 @@ describe('WasteToursContent', () => {
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
     expect(onOpenEditFraction).not.toHaveBeenCalled();
-    expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
-    expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
+    expect(onOpenAssignments).toHaveBeenCalledWith(tour);
     expect(screen.getByText('tours.bulkStatusDialog.singleTitle')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.targetLabel'), {
@@ -612,8 +609,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
-        onOpenCreateAssignmentsDialog={vi.fn()}
-        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenAssignments={vi.fn()}
         onOpenCalendar={vi.fn()}
         onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
@@ -644,7 +640,7 @@ describe('WasteToursContent', () => {
 
   it('opens zero assignments and the exact holiday-rule based shifts from their columns', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([]);
-    const onOpenCreateAssignmentsDialog = vi.fn();
+    const onOpenAssignments = vi.fn();
 
     render(
       <WasteToursContent
@@ -673,8 +669,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
-        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenAssignments={onOpenAssignments}
         onOpenCalendar={vi.fn()}
         onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
@@ -703,9 +698,7 @@ describe('WasteToursContent', () => {
         name: 'tours.actions.openAssignmentsAccessible:Restmüll Nord|0',
       })
     );
-    expect(onOpenCreateAssignmentsDialog).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'tour-1' })
-    );
+    expect(onOpenAssignments).toHaveBeenCalledWith(expect.objectContaining({ id: 'tour-1' }));
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -767,8 +760,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
-        onOpenCreateAssignmentsDialog={vi.fn()}
-        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenAssignments={vi.fn()}
         onOpenCalendar={vi.fn()}
         onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
@@ -882,8 +874,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
-        onOpenCreateAssignmentsDialog={vi.fn()}
-        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenAssignments={vi.fn()}
         onOpenCalendar={vi.fn()}
         onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}

@@ -3,6 +3,9 @@ import {
   getHistory,
   getMasterData,
   createFraction,
+  createLocationTourLink,
+  createLocationTourLinksBulk,
+  deleteLocationTourLink,
   getScheduling,
 } from './waste-management-plugin.master-data';
 import {
@@ -115,6 +118,14 @@ type WasteCollectionLocationState = {
   updatedAt: string;
 };
 
+export type WasteLocationTourLinkState = {
+  id: string;
+  locationId: string;
+  tourId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type WasteJobState = {
   id: string;
   jobTypeId: string;
@@ -122,6 +133,7 @@ export type WasteJobState = {
 };
 
 type WasteHarness = {
+  readonly locationTourLinks: readonly WasteLocationTourLinkState[];
   readonly requests: {
     settingsUpdates: Array<Record<string, unknown>>;
     createdFractions: Array<Record<string, unknown>>;
@@ -144,6 +156,7 @@ type WasteFacadeInput = {
   readonly streets?: WasteStreetState[];
   readonly houseNumbers?: WasteHouseNumberState[];
   readonly collectionLocations?: WasteCollectionLocationState[];
+  readonly locationTourLinks?: WasteLocationTourLinkState[];
   readonly allowFractionCreate?: boolean;
 };
 
@@ -157,6 +170,7 @@ export type WasteFacadeState = {
   readonly streetsState: WasteStreetState[];
   readonly houseNumbersState: WasteHouseNumberState[];
   readonly collectionLocationsState: WasteCollectionLocationState[];
+  readonly locationTourLinksState: WasteLocationTourLinkState[];
   readonly requests: WasteHarness['requests'];
 };
 
@@ -177,6 +191,7 @@ export const mockWasteFacade = async (
     streetsState: [...(input.streets ?? [])],
     houseNumbersState: [...(input.houseNumbers ?? [])],
     collectionLocationsState: [...(input.collectionLocations ?? [])],
+    locationTourLinksState: [...(input.locationTourLinks ?? [])],
     requests: {
       settingsUpdates: [],
       createdFractions: [],
@@ -191,6 +206,10 @@ export const mockWasteFacade = async (
   const handlers: Record<string, (route: Route) => Promise<void>> = {
     'GET /api/v1/waste-management/history': (route) => getHistory(route),
     'GET /api/v1/waste-management/master-data': (route) => getMasterData(route, state),
+    'POST /api/v1/waste-management/location-tour-links': (route) =>
+      createLocationTourLink(route, state),
+    'POST /api/v1/waste-management/location-tour-links/bulk': (route) =>
+      createLocationTourLinksBulk(route, state),
     'POST /api/v1/waste-management/fractions': (route) => createFraction(route, state),
     'GET /api/v1/waste-management/scheduling': (route) => getScheduling(route),
     'GET /api/v1/waste-management/tours': (route) => getTours(route, state),
@@ -213,7 +232,16 @@ export const mockWasteFacade = async (
   };
   await page.route('**/api/v1/waste-management/**', async (route: Route) => {
     const request = route.request();
-    const handler = handlers[`${request.method()} ${new URL(request.url()).pathname}`];
+    const path = new URL(request.url()).pathname;
+    const deletedLinkId =
+      request.method() === 'DELETE'
+        ? /^\/api\/v1\/waste-management\/location-tour-links\/([^/]+)$/.exec(path)?.[1]
+        : undefined;
+    if (deletedLinkId) {
+      await deleteLocationTourLink(route, state, decodeURIComponent(deletedLinkId));
+      return;
+    }
+    const handler = handlers[`${request.method()} ${path}`];
     if (handler) {
       await handler(route);
       return;
@@ -221,5 +249,5 @@ export const mockWasteFacade = async (
     await route.fallback();
   });
 
-  return { requests: state.requests };
+  return { requests: state.requests, locationTourLinks: state.locationTourLinksState };
 };

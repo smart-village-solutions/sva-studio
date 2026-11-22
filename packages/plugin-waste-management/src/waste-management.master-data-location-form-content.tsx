@@ -35,13 +35,16 @@ type WasteMasterDataLocationFormContentProps = {
   readonly availableTours: readonly WasteTourRecord[];
   readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
   readonly saving: boolean;
+  readonly assignmentOverviewRefreshing?: boolean;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
   readonly onCancel: () => void;
   readonly onSubmit: (
     values: CollectionLocationFormState,
     cityPostalCodeUpdate?: Readonly<{ cityId: string; postalCode: string }>
   ) => void | Promise<void>;
-  readonly onReloadAssignments: () => Promise<void>;
+  readonly onReloadAssignments: (
+    locationId: string
+  ) => Promise<readonly WasteLocationTourLinkRecord[] | null>;
 };
 
 const locationFormResolver: Resolver<CollectionLocationFormState> = async (values) => {
@@ -84,6 +87,7 @@ export const WasteMasterDataLocationFormContent = ({
   availableTours,
   locationTourLinks,
   saving,
+  assignmentOverviewRefreshing = false,
   onChange,
   onCancel,
   onSubmit,
@@ -232,7 +236,7 @@ export const WasteMasterDataLocationFormContent = ({
             tours={availableTours}
             fractions={fractions}
             links={currentLocationTourLinks}
-            disabled={saving}
+            disabled={saving || assignmentOverviewRefreshing}
             onReload={onReloadAssignments}
           />
         ) : null}

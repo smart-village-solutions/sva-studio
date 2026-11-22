@@ -1,9 +1,15 @@
 import { useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import type { WasteManagementMasterDataTabId, WasteManagementSearchParams, WasteManagementTabId } from './search-params.js';
+import type {
+  WasteManagementMasterDataTabId,
+  WasteManagementSearchParams,
+  WasteManagementTabId,
+} from './search-params.js';
 import type { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 
-export const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
+export const toMasterDataTab = (
+  tab: WasteManagementTabId
+): WasteManagementMasterDataTabId | undefined => {
   if (tab === 'fractions' || tab === 'locations') {
     return tab;
   }
@@ -18,7 +24,7 @@ export const useWasteManagementVisibleTabRedirect = (
   uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
   useEffect(() => {
-    if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
+    if (!uiAccess.canRead || uiAccess.visibleTabIds.includes(search.tab)) {
       return;
     }
 
@@ -37,5 +43,5 @@ export const useWasteManagementVisibleTabRedirect = (
       },
       replace: true,
     });
-  }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
+  }, [navigate, search, uiAccess.canRead, uiAccess.visibleTabIds]);
 };

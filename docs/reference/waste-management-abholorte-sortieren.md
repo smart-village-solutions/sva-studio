@@ -75,10 +75,36 @@ Mehrere Buchstaben können zusammenhängend eingegeben werden; Enter oder das
 Verlassen des Suchfelds übernimmt den Begriff. Die Sortierschaltflächen in den
 vorgesehenen Spalten sortieren den vollständigen Trefferbestand vor dem Blättern.
 
-Im Dialog **Tour-Zuordnung bearbeiten** beziehen sich Suche, Orts-/Straßenfilter
+Auf der Detailseite **Tour-Zuordnung** beziehen sich Suche, Orts-/Straßenfilter
 und die bevorzugte Anzeige ausgewählter Abholorte auf die bearbeitete Tour.
 Die Adresssortierung wird über die Steuerelemente für Region und Richtung
-bedient; die Spaltenüberschriften dieses Dialogs sind keine Sortierschaltflächen.
+bedient; die Spaltenüberschriften dieser Seite sind keine Sortierschaltflächen.
+Ein Statusabruf behält Suchtext, Filter, Sortierung und ungespeicherte Haken für
+die geöffnete Tour bei. Beim Abbrechen wird der Entwurf verworfen. Beim nächsten
+Öffnen zeigt die Seite den gespeicherten Zuordnungsstand der gewählten Tour.
+Während einer erneuten Berechtigungsprüfung pausiert die Bearbeitung. Nach
+bestätigtem Schreibrecht im selben Konto, Mandanten und Organisationskontext
+erscheint der Entwurf wieder. Bei einem Kontextwechsel oder bei Rechteentzug wird
+er verworfen.
+
+Die Abholortanzahl in der Tourenliste und **Abholorte zuordnen** in den
+Tourdetails öffnen dieselbe Seite. **Zurück zur Tourenliste** führt zu den
+bisherigen Listenfiltern. Sind Zuordnungen geändert, bietet der Rücksprung
+**Weiter bearbeiten** und **Verwerfen und zurück** an. Nach erfolgreichem
+Speichern öffnet sich die gefilterte Tourenliste automatisch.
+
+Eine Straße wird auf der Zuordnungsseite auswählbar, sobald dafür ein Abholort angelegt
+ist. Die Ansichten **Touren** und **Abholorte** laden ihre Zuordnungen beim
+Wechsel in den jeweiligen Tab erneut. In der Abholort-Detailansicht steht der
+Gültigkeitszeitraum direkt unter dem Tournamen, damit gleich benannte Touren
+unterschiedlicher Jahrgänge unterscheidbar sind.
+
+In der Detailansicht eines Abholorts markiert die Liste der Tour-Zuordnungen
+offene Zuordnungen und Entfernungen. **Zuordnungen speichern** bestätigt
+Änderungen nach dem erneuten Lesen des gespeicherten Stands. Bei einem
+unklaren Ergebnis liest **Zuordnungen erneut lesen** den Stand erneut.
+Nach einem Teilerfolg bearbeitet der nächste Speichervorgang die noch offenen
+Änderungen.
 
 Wer aus der Abdeckungsprüfung einen Abholort zur Bearbeitung öffnet und
 abbricht, erhält die bisherigen Listeneinstellungen einschließlich Tourfilter

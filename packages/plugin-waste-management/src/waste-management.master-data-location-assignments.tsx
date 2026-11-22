@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
@@ -16,35 +16,98 @@ import {
   resolveApiErrorCode,
   type StatusMessage,
 } from './waste-management.page.support.js';
-import { formatTourRecurrence } from './waste-management.tours.presentation.js';
+import {
+  formatTourDateRange,
+  formatTourRecurrence,
+} from './waste-management.tours.presentation.js';
 import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
 
 const createFractionNameMap = (fractions: readonly WasteFractionRecord[]) =>
   new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const));
 
-export const LocationAssignmentsSection = ({
+const assignmentKey = 'masterData.collectionLocations.assignmentEditor';
+type Draft = ReadonlyMap<string, boolean>;
+type WriteReceipt = Readonly<{ id: string; exists: boolean }>;
+type AssignmentAttempt = Readonly<{
+  draft: Draft;
+  receipts: readonly WriteReceipt[];
+  forbidden: boolean;
+}>;
+
+const getLinkedTourIds = (links: readonly WasteLocationTourLinkRecord[]) =>
+  new Set(links.map((link) => link.tourId));
+
+const getUnconfirmedChanges = (draft: Draft, linkedTourIds: ReadonlySet<string>): Draft => {
+  const pending = new Map(
+    [...draft].filter(([tourId, selected]) => selected !== linkedTourIds.has(tourId))
+  );
+  return pending.size === draft.size ? draft : pending;
+};
+
+const applyAssignmentWrites = async (
+  locationId: string,
+  links: readonly WasteLocationTourLinkRecord[],
+  draft: Draft,
+  creationIds: Map<string, string>
+): Promise<AssignmentAttempt> => {
+  const results = await Promise.allSettled([
+    ...[...draft]
+      .filter(([, selected]) => selected)
+      .map(async ([tourId]) => {
+        const id = creationIds.get(tourId) ?? crypto.randomUUID();
+        creationIds.set(tourId, id);
+        const link = await createWasteManagementLocationTourLink({ id, locationId, tourId });
+        return { id: link.id, exists: true };
+      }),
+    ...links
+      .filter((link) => draft.get(link.tourId) === false)
+      .map(async ({ id }) => {
+        await deleteWasteManagementLocationTourLink(id);
+        return { id, exists: false };
+      }),
+  ]);
+  return {
+    draft,
+    receipts: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+    forbidden: results.some(
+      (result) => result.status === 'rejected' && resolveApiErrorCode(result.reason) === 'forbidden'
+    ),
+  };
+};
+
+type LocationAssignmentsProps = {
+  readonly locationId: string;
+  readonly tours: readonly WasteTourRecord[];
+  readonly fractions: readonly WasteFractionRecord[];
+  readonly links: readonly WasteLocationTourLinkRecord[];
+  readonly disabled?: boolean;
+  readonly onReload: (locationId: string) => Promise<readonly WasteLocationTourLinkRecord[] | null>;
+};
+
+export const LocationAssignmentsSection = (props: LocationAssignmentsProps) => (
+  <LocationAssignmentsEditor key={props.locationId} {...props} />
+);
+
+const LocationAssignmentsEditor = ({
   locationId,
   tours,
   fractions,
   links,
   disabled = false,
   onReload,
-}: {
-  readonly locationId: string;
-  readonly tours: readonly WasteTourRecord[];
-  readonly fractions: readonly WasteFractionRecord[];
-  readonly links: readonly WasteLocationTourLinkRecord[];
-  readonly disabled?: boolean;
-  readonly onReload: () => Promise<void>;
-}) => {
+}: LocationAssignmentsProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [selectedTourIds, setSelectedTourIds] = useState<readonly string[]>([]);
+  const [draft, setDraft] = useState<Draft>(() => new Map());
+  const [awaitingReadback, setAwaitingReadback] = useState<AssignmentAttempt | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const pendingRequest = useRef(false);
+  const creationIds = useRef(new Map<string, string>());
+  const linkedTourIds = useMemo(() => getLinkedTourIds(links), [links]);
 
   useEffect(() => {
-    setSelectedTourIds(Array.from(new Set(links.map((link) => link.tourId))));
-  }, [links, locationId]);
+    setDraft((current) => getUnconfirmedChanges(current, linkedTourIds));
+  }, [linkedTourIds]);
 
   const sortedTours = useMemo(
     () =>
@@ -53,68 +116,79 @@ export const LocationAssignmentsSection = ({
       ),
     [tours]
   );
-  const selectedTourIdSet = useMemo(() => new Set(selectedTourIds), [selectedTourIds]);
-  const linkedTourIdSet = useMemo(() => new Set(links.map((link) => link.tourId)), [links]);
   const fractionNamesById = useMemo(() => createFractionNameMap(fractions), [fractions]);
+  const pendingChanges = getUnconfirmedChanges(draft, linkedTourIds);
+  const isSelected = (tourId: string) => pendingChanges.get(tourId) ?? linkedTourIds.has(tourId);
   const allVisibleSelected =
-    sortedTours.length > 0 && sortedTours.every((tour) => selectedTourIdSet.has(tour.id));
-  const someVisibleSelected = sortedTours.some((tour) => selectedTourIdSet.has(tour.id));
+    sortedTours.length > 0 && sortedTours.every(({ id }) => isSelected(id));
+  const someVisibleSelected = sortedTours.some(({ id }) => isSelected(id));
+  const selectionDisabled = disabled || saving || awaitingReadback !== null;
+  const actionDisabled = disabled || saving || (!awaitingReadback && pendingChanges.size === 0);
 
-  const toggleSelectedTour = (tourId: string, checked: boolean) => {
-    setSelectedTourIds((current) => {
-      if (checked) {
-        return current.includes(tourId) ? current : [...current, tourId];
+  const toggleTours = (tourIds: readonly string[], checked: boolean) => {
+    setMessage(null);
+    setDraft((current) => {
+      const next = new Map(current);
+      for (const id of tourIds) {
+        if (checked === linkedTourIds.has(id)) next.delete(id);
+        else next.set(id, checked);
       }
-
-      return current.filter((currentTourId) => currentTourId !== tourId);
+      return next;
     });
   };
 
-  const handleSave = async () => {
-    const toursToCreate = selectedTourIds.filter((tourId) => !linkedTourIdSet.has(tourId));
-    const linksToDelete = links.filter((link) => !selectedTourIdSet.has(link.tourId));
-
-    if (toursToCreate.length === 0 && linksToDelete.length === 0) {
-      setMessage({
-        kind: 'success',
-        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
-      });
+  const verifyAssignmentWrites = async (attempt: AssignmentAttempt) => {
+    const refreshed = await onReload(locationId).catch(() => null);
+    const observedIds = new Set(refreshed?.map((link) => link.id));
+    if (!refreshed || attempt.receipts.some(({ id, exists }) => observedIds.has(id) !== exists)) {
+      setAwaitingReadback(attempt);
+      setMessage({ kind: 'warning', text: pt(`${assignmentKey}.messages.readBackUnconfirmed`) });
       return;
     }
 
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      await Promise.all([
-        ...toursToCreate.map((tourId) =>
-          createWasteManagementLocationTourLink({
-            id: crypto.randomUUID(),
-            locationId,
-            tourId,
-          })
-        ),
-        ...linksToDelete.map((link) => deleteWasteManagementLocationTourLink(link.id)),
-      ]);
-
-      await onReload();
+    setAwaitingReadback(null);
+    const confirmedTourIds = getLinkedTourIds(refreshed);
+    for (const id of confirmedTourIds) creationIds.current.delete(id);
+    const remaining = getUnconfirmedChanges(attempt.draft, confirmedTourIds);
+    setDraft(remaining);
+    if (remaining.size === 0) {
+      setMessage({ kind: 'success', text: pt(`${assignmentKey}.messages.saveSuccess`) });
+    } else if (remaining.size < attempt.draft.size) {
       setMessage({
-        kind: 'success',
-        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
+        kind: 'warning',
+        text: pt(`${assignmentKey}.messages.savePartial`, { value: String(remaining.size) }),
       });
-    } catch (error) {
-      const code = resolveApiErrorCode(error);
+    } else {
       setMessage({
         kind: 'error',
-        text:
-          code === 'forbidden'
-            ? pt('masterData.collectionLocations.assignmentEditor.messages.saveForbidden')
-            : pt('masterData.collectionLocations.assignmentEditor.messages.saveError'),
+        text: pt(`${assignmentKey}.messages.${attempt.forbidden ? 'saveForbidden' : 'saveError'}`),
       });
+    }
+  };
+
+  const handleSave = async () => {
+    if (actionDisabled || pendingRequest.current) return;
+    pendingRequest.current = true;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const attempt =
+        awaitingReadback ??
+        (await applyAssignmentWrites(locationId, links, pendingChanges, creationIds.current));
+      await verifyAssignmentWrites(attempt);
     } finally {
+      pendingRequest.current = false;
       setSaving(false);
     }
   };
+
+  const actionLabel = saving
+    ? awaitingReadback
+      ? 'reloading'
+      : 'saving'
+    : awaitingReadback
+      ? 'reload'
+      : 'save';
 
   return (
     <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
@@ -128,18 +202,12 @@ export const LocationAssignmentsSection = ({
           </p>
           <p className="text-xs text-muted-foreground">
             {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
-              value: String(selectedTourIds.length),
+              value: String(linkedTourIds.size),
             })}
           </p>
         </div>
-        <Button
-          type="button"
-          disabled={disabled || saving || sortedTours.length === 0}
-          onClick={() => void handleSave()}
-        >
-          {saving
-            ? pt('masterData.collectionLocations.assignmentEditor.actions.saving')
-            : pt('masterData.collectionLocations.assignmentEditor.actions.save')}
+        <Button type="button" disabled={actionDisabled} onClick={() => void handleSave()}>
+          {pt(`${assignmentKey}.actions.${actionLabel}`)}
         </Button>
       </div>
 
@@ -163,12 +231,13 @@ export const LocationAssignmentsSection = ({
                       aria-label={pt('tours.table.selectAll')}
                       checked={allVisibleSelected}
                       indeterminate={someVisibleSelected && !allVisibleSelected}
-                      disabled={disabled || saving}
-                      onChange={(event) => {
-                        setSelectedTourIds(
-                          event.currentTarget.checked ? sortedTours.map((tour) => tour.id) : []
-                        );
-                      }}
+                      disabled={selectionDisabled}
+                      onChange={(event) =>
+                        toggleTours(
+                          sortedTours.map((tour) => tour.id),
+                          event.currentTarget.checked
+                        )
+                      }
                     />
                   </th>
                   <th scope="col" className="w-[220px] px-3 py-3 font-semibold">
@@ -184,6 +253,10 @@ export const LocationAssignmentsSection = ({
               </thead>
               <tbody>
                 {sortedTours.map((tour) => {
+                  const periodId =
+                    tour.firstDate || tour.endDate
+                      ? `waste-location-tour-period-${tour.id}`
+                      : undefined;
                   const fractionNames = (tour.wasteFractionIds ?? [])
                     .map((fractionId: string) => fractionNamesById.get(fractionId))
                     .filter((value: string | undefined): value is string => Boolean(value));
@@ -196,15 +269,26 @@ export const LocationAssignmentsSection = ({
                       <td className="px-3 py-3">
                         <Checkbox
                           aria-label={pt('tours.table.selectRow', { value: tour.name })}
-                          checked={selectedTourIdSet.has(tour.id)}
-                          disabled={disabled || saving}
-                          onChange={(event) =>
-                            toggleSelectedTour(tour.id, event.currentTarget.checked)
-                          }
+                          aria-describedby={periodId}
+                          checked={isSelected(tour.id)}
+                          disabled={selectionDisabled}
+                          onChange={(event) => toggleTours([tour.id], event.currentTarget.checked)}
                         />
                       </td>
                       <td className="px-3 py-3">
                         <p className="text-sm font-semibold text-foreground">{tour.name}</p>
+                        {periodId ? (
+                          <p id={periodId} className="text-xs text-muted-foreground">
+                            {formatTourDateRange(tour)}
+                          </p>
+                        ) : null}
+                        {pendingChanges.has(tour.id) ? (
+                          <p className="text-xs text-muted-foreground">
+                            {pt(
+                              `${assignmentKey}.meta.${isSelected(tour.id) ? 'additionPending' : 'removalPending'}`
+                            )}
+                          </p>
+                        ) : null}
                       </td>
                       <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
                       <td className="px-3 py-3 text-sm text-foreground">

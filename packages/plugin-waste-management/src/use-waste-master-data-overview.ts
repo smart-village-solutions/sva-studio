@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -93,9 +93,11 @@ export const useWasteMasterDataOverview = (
   pt: Translate,
   tab: WasteManagementSearchParams['masterDataTab']
 ) => {
+  const [overviewRefreshing, setOverviewRefreshing] = useState(true);
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   const coverageRequestIdRef = useRef(0);
+  const overviewRequestIdRef = useRef(0);
   ptRef.current = pt;
   const { setAvailableTours, setLoading, setOverview, setOverviewError } = state;
   const {
@@ -104,65 +106,82 @@ export const useWasteMasterDataOverview = (
     setLocationCoverageToursStatus,
   } = state;
 
-  const loadOverview = useCallback(async () => {
-    const coverageRequestId = ++coverageRequestIdRef.current;
-    prepareLocationCoverageLoad(tab, {
-      setAvailableTours,
-      setLocationCoverageFractions,
-      setLocationCoverageFractionsStatus,
-      setLocationCoverageToursStatus,
-    });
-
-    const overviewPromise = getWasteManagementMasterDataOverview(
-      resolveMasterDataOverviewScope(tab)
-    );
-    const coverageSupportPromise =
-      tab === 'locations'
-        ? loadLocationCoverageSupport(
-            {
-              setAvailableTours,
-              setLocationCoverageFractions,
-              setLocationCoverageFractionsStatus,
-              setLocationCoverageToursStatus,
-            },
+  const loadOverview = useCallback(
+    async (readAssignments = false) => {
+      const requestId = ++overviewRequestIdRef.current;
+      const isCurrent = () => isMountedRef.current && requestId === overviewRequestIdRef.current;
+      const coverageState = {
+        setAvailableTours,
+        setLocationCoverageFractions,
+        setLocationCoverageFractionsStatus,
+        setLocationCoverageToursStatus,
+      };
+      const scope = resolveMasterDataOverviewScope(tab);
+      const readLocationLinks = readAssignments || tab === 'locations';
+      const overviewPromise = getWasteManagementMasterDataOverview(
+        readLocationLinks ? { scope: 'locations', fresh: true } : scope
+      );
+      let coverageSupportPromise: Promise<void> | undefined;
+      if (!readAssignments) {
+        setOverviewRefreshing(true);
+        const coverageRequestId = ++coverageRequestIdRef.current;
+        prepareLocationCoverageLoad(tab, coverageState);
+        if (tab === 'locations') {
+          coverageSupportPromise = loadLocationCoverageSupport(
+            coverageState,
             coverageRequestId,
             coverageRequestIdRef,
             isMountedRef
-          )
-        : undefined;
+          );
+        }
+      }
 
-    try {
-      const overviewResponse = await overviewPromise;
-      if (!isMountedRef.current) return;
-      setOverview(overviewResponse);
-      setOverviewError(null);
-      setLoading(false);
-      await coverageSupportPromise;
-    } catch (loadError) {
-      if (!isMountedRef.current) return;
-      setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
-      setAvailableTours([]);
-    } finally {
-      if (isMountedRef.current) setLoading(false);
-    }
-  }, [
-    setAvailableTours,
-    setLoading,
-    setLocationCoverageFractions,
-    setLocationCoverageFractionsStatus,
-    setLocationCoverageToursStatus,
-    setOverview,
-    setOverviewError,
-    tab,
-  ]);
+      try {
+        const overviewResponse = await overviewPromise;
+        if (!isCurrent()) return null;
+        setOverview(overviewResponse);
+        setOverviewError(null);
+        setLoading(false);
+        await coverageSupportPromise;
+        return overviewResponse;
+      } catch (loadError) {
+        if (isCurrent() && !readAssignments) {
+          setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
+          setAvailableTours([]);
+        }
+        return null;
+      } finally {
+        if (isCurrent()) {
+          setOverviewRefreshing(false);
+          if (!readAssignments) setLoading(false);
+        }
+      }
+    },
+    [
+      setAvailableTours,
+      setLoading,
+      setLocationCoverageFractions,
+      setLocationCoverageFractionsStatus,
+      setLocationCoverageToursStatus,
+      setOverview,
+      setOverviewError,
+      tab,
+    ]
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
     void loadOverview();
     return () => {
       isMountedRef.current = false;
+      overviewRequestIdRef.current += 1;
+      coverageRequestIdRef.current += 1;
     };
   }, [loadOverview]);
 
-  return loadOverview;
+  return {
+    loadOverview,
+    overviewRefreshing,
+    readLocationAssignmentOverview: () => loadOverview(true),
+  };
 };

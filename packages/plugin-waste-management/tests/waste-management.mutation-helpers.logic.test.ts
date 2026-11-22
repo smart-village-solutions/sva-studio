@@ -315,15 +315,6 @@ describe('waste-management mutation helper logic', () => {
 
   it('updates assignment sets in edit mode via bulk create, delete and update operations', async () => {
     const state = {
-      assignmentsDialogMode: 'edit' as const,
-      selectedTour: { id: 'tour-1' },
-      linkForm: {
-        id: 'link-2',
-        locationId: 'location-2',
-        tourId: 'tour-1',
-        startDate: '2026-06-01',
-        endDate: '2026-06-30',
-      },
       masterDataOverview: {
         locationTourLinks: [
           { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
@@ -341,10 +332,19 @@ describe('waste-management mutation helper logic', () => {
       loadOverview,
     });
 
-    await handler({ preventDefault: vi.fn() } as never, ['location-2', 'location-3']);
+    await expect(
+      handler(
+        'tour-1',
+        new Map([
+          ['location-1', false],
+          ['location-3', true],
+        ]),
+        () => true
+      )
+    ).resolves.toBe(true);
 
     expect(submitWasteLocationTourLinksBulkInChunksMock).toHaveBeenCalledOnce();
-    expect(deleteWasteManagementLocationTourLinkMock).toHaveBeenCalledWith('link-1');
+    expect(deleteWasteManagementLocationTourLinkMock).toHaveBeenCalledExactlyOnceWith('link-1');
     expect(updateWasteManagementLocationTourLinkMock).not.toHaveBeenCalled();
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'success',

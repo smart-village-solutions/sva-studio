@@ -2,38 +2,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createTourDateLocationAssignmentKey,
-  createDefaultLocationTourLinkForm,
   createDefaultTourForm,
   filterTours,
-  mapLocationTourLinkToForm,
   mapPickupDatesToTourDateLocationAssignments,
   mapTourToForm,
   normalizeTourDateLocationAssignments,
   removeAssignmentsForDeletedDates,
   resolveActiveTourFractions,
-  toCreateLocationTourLinkInput,
   toCreateTourInput,
-  toUpdateLocationTourLinkInput,
   toUpdateTourInput,
 } from '../src/waste-management.tours.shared.js';
 
 describe('waste-management.tours.shared', () => {
   beforeEach(() => {
     vi.stubGlobal('crypto', {
-      randomUUID: vi
-        .fn()
-        .mockReturnValueOnce('link-default-id')
-        .mockReturnValueOnce('tour-default-id'),
+      randomUUID: vi.fn().mockReturnValueOnce('tour-default-id'),
     });
   });
 
   it('creates empty default form states with generated ids', () => {
-    expect(createDefaultLocationTourLinkForm()).toEqual({
-      id: 'link-default-id',
-      locationId: '',
-      tourId: '',
-    });
-
     expect(createDefaultTourForm()).toEqual({
       id: 'tour-default-id',
       name: '',
@@ -50,18 +37,6 @@ describe('waste-management.tours.shared', () => {
   });
 
   it('maps records into form state and normalizes optional values', () => {
-    expect(
-      mapLocationTourLinkToForm({
-        id: 'link-1',
-        locationId: 'location-1',
-        tourId: 'tour-1',
-      } as never)
-    ).toEqual({
-      id: 'link-1',
-      locationId: 'location-1',
-      tourId: 'tour-1',
-    });
-
     expect(
       mapTourToForm({
         id: 'tour-1',
@@ -123,29 +98,6 @@ describe('waste-management.tours.shared', () => {
   });
 
   it('builds create and update payloads with compact optional strings and parsed custom dates', () => {
-    expect(
-      toCreateLocationTourLinkInput({
-        id: 'link-2',
-        locationId: 'location-2',
-        tourId: 'tour-2',
-      })
-    ).toEqual({
-      id: 'link-2',
-      locationId: 'location-2',
-      tourId: 'tour-2',
-    });
-
-    expect(
-      toUpdateLocationTourLinkInput({
-        id: 'ignored',
-        locationId: 'location-3',
-        tourId: 'tour-3',
-      })
-    ).toEqual({
-      locationId: 'location-3',
-      tourId: 'tour-3',
-    });
-
     const form = {
       id: 'tour-2',
       name: '  Biomüll Mitte  ',

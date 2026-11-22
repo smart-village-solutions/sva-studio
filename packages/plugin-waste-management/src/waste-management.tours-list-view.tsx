@@ -10,11 +10,13 @@ export const WasteToursListView = ({
   search,
   canDuplicateTour = false,
   canManageScheduling = false,
+  canManageAssignments = false,
 }: {
   readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
   readonly canDuplicateTour?: boolean;
   readonly canManageScheduling?: boolean;
+  readonly canManageAssignments?: boolean;
 }) => {
   const navigation = useWasteToursListNavigation(controller, search);
   const hasAnyTours = (controller.overview?.tours?.length ?? 0) > 0;
@@ -41,8 +43,7 @@ export const WasteToursListView = ({
       onReloadOverview={controller.reloadOverview}
       onOpenEditDialog={navigation.openEdit}
       onOpenDuplicateDialog={navigation.toDuplicate}
-      onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}
-      onOpenEditAssignmentsDialog={controller.openEditAssignmentsDialog}
+      onOpenAssignments={canManageAssignments ? navigation.openAssignments : undefined}
       onOpenCalendar={controller.openCalendar}
       onOpenEditFraction={navigation.openEditFraction}
       onDeleteTour={controller.onDeleteTour}

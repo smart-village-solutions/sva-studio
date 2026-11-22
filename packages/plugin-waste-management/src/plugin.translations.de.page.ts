@@ -8,6 +8,7 @@ export const wasteManagementPluginTranslationsDEPage = {
     accessLoading: 'Berechtigungen werden geprüft …',
     accessUnavailable:
       'Berechtigungen konnten nicht geladen werden. Versuchen Sie es über „Neu laden“ erneut.',
+    accessDenied: 'Für das Abfall-Management fehlt die Berechtigung.',
     syncStatus: {
       loadingTitle: 'Abgleichsstatus wird geladen',
       loadingText: 'Der Datenstand wird geprüft.',

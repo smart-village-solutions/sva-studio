@@ -32,6 +32,7 @@ export const WasteManagementPageTabs = ({
   rawSearch = search,
   access = defaultUiAccess,
   visibleTabIds = wasteManagementTabIds,
+  assignmentContextKey = null,
   onTabChange,
   onAddressSearchChange,
 }: {
@@ -40,6 +41,7 @@ export const WasteManagementPageTabs = ({
   readonly rawSearch?: Readonly<Record<string, unknown>>;
   readonly access?: WasteManagementUiAccess;
   readonly visibleTabIds?: readonly WasteManagementTabId[];
+  readonly assignmentContextKey?: string | null;
   readonly onTabChange: (value: WasteManagementTabId) => void;
   readonly onAddressSearchChange: (patch: Partial<WasteManagementSearchParams>) => void;
 }) => {
@@ -47,8 +49,12 @@ export const WasteManagementPageTabs = ({
     search,
     access,
     onAddressSearchChange,
-    rawSearch
+    rawSearch,
+    assignmentContextKey
   );
+  if (search.tab === 'tours' && search.toursView === 'assignments') {
+    return content.tours;
+  }
   const activeTab = visibleTabIds.includes(search.tab)
     ? search.tab
     : (visibleTabIds[0] ?? search.tab);

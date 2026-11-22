@@ -21,7 +21,7 @@ import {
 } from './waste-management.tours.table-row.parts.js';
 import { WasteToursRowShiftCell } from './waste-management.tours.table-row-shift.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
+import { toEditTourSearch } from './waste-management.tours-list-view.navigation.js';
 
 const WasteToursRowSummaryCell = ({
   tour,
@@ -35,7 +35,7 @@ const WasteToursRowSummaryCell = ({
   <td className="w-[150px] px-3 py-3">
     {search ? (
       <StudioTableValueAction emphasis="primary" asChild>
-        <Link to="/plugins/waste-management" search={toWasteTourEditSearch(search, tour.id)}>
+        <Link to="/plugins/waste-management" search={toEditTourSearch(search, tour.id)}>
           {tour.name}
         </Link>
       </StudioTableValueAction>
@@ -51,23 +51,19 @@ const WasteToursRowAssignmentCountCell = ({
   assignmentContextLoading,
   assignmentCount,
   pt,
-  assignmentId,
   tour,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
+  onOpenAssignments,
 }: {
   readonly assignmentContextLoading: boolean;
   readonly assignmentCount: number;
   readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly assignmentId?: string;
   readonly tour: WasteTourRecord;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly onOpenAssignments?: (tour: WasteTourRecord) => void;
 }) => (
   <td className="w-[94px] px-3 py-3">
     {assignmentContextLoading ? (
       <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
-    ) : (
+    ) : onOpenAssignments ? (
       <StudioTableValueAction
         type="button"
         numeric
@@ -76,16 +72,12 @@ const WasteToursRowAssignmentCountCell = ({
           count: assignmentCount,
         })}
         data-testid={`tour-assignment-count-${tour.id}`}
-        onClick={() => {
-          if (assignmentId) {
-            onOpenEditAssignmentsDialog(tour, assignmentId);
-            return;
-          }
-          onOpenCreateAssignmentsDialog(tour);
-        }}
+        onClick={() => onOpenAssignments(tour)}
       >
         {assignmentCount}
       </StudioTableValueAction>
+    ) : (
+      assignmentCount
     )}
   </td>
 );
@@ -104,8 +96,7 @@ type WasteToursTableRowProps = {
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly onOpenAssignments?: (tour: WasteTourRecord) => void;
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
@@ -163,10 +154,8 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
         assignmentContextLoading={props.assignmentContextLoading}
         assignmentCount={assignmentItems.length}
         pt={pt}
-        assignmentId={firstAssignmentId}
         tour={tour}
-        onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
+        onOpenAssignments={props.onOpenAssignments}
       />
       <WasteToursRowStatusCell tour={tour} onOpenStatusDialog={props.onOpenStatusDialog} />
       <WasteToursRowActionsCell

@@ -128,8 +128,12 @@ test.describe('waste management plugin', () => {
         page.getByText('Abo bestätigt', { exact: true }).filter({ visible: true })
       ).toBeVisible();
       await expect(page.getByText('legacy-slot')).toHaveCount(0);
-      await expect(page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })).toBeVisible();
-      await expect(page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(
+        page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(
+        page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath(`monitoring-list-${width}.png`),
         fullPage: true,
@@ -156,6 +160,169 @@ test.describe('waste management plugin', () => {
   }
 
   test.describe.configure({ timeout: 120_000 });
+  test('reads tour assignments in both directions after switching tabs', async ({ page }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-musterhausen',
+      permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
+    });
+    const timestamps = {
+      createdAt: '2026-05-10T12:00:00.000Z',
+      updatedAt: '2026-05-10T12:00:00.000Z',
+    };
+    const pferdeschwemme = 'location-pferdeschwemme';
+    const otherLocation = 'location-markt';
+    const fixture = await mockWasteFacade(page, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [2026, 2027].map((year) => ({
+        id: `tour-${year}`,
+        name: 'Restmüll',
+        recurrence: 'weekly',
+        wasteFractionIds: [],
+        status: 'published',
+        firstDate: `${year}-01-05`,
+        endDate: `${year}-12-31`,
+        ...timestamps,
+      })),
+      cities: [{ id: 'city-1', name: 'Perleberg', regionId: 'region-1', ...timestamps }],
+      regions: [{ id: 'region-1', name: 'Prignitz', ...timestamps }],
+      streets: ['Pferdeschwemme', 'Markt'].map((name) => ({
+        id: `street-${name.toLowerCase()}`,
+        name,
+        cityId: 'city-1',
+        ...timestamps,
+      })),
+      collectionLocations: [pferdeschwemme, otherLocation].map((id) => ({
+        id,
+        regionId: 'region-1',
+        cityId: 'city-1',
+        streetId: id.replace('location-', 'street-'),
+        active: true,
+        ...timestamps,
+      })),
+      locationTourLinks: [
+        { id: 'link-existing', locationId: otherLocation, tourId: 'tour-2027', ...timestamps },
+      ],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    page.setDefaultTimeout(12_000);
+    await navigateClientSide(
+      page,
+      `/plugins/waste-management?tab=locations&locationsView=edit&collectionLocationId=${pferdeschwemme}&q=Restm`
+    );
+
+    const locationAssignments = page.getByRole('table', { name: 'Tour-Zuordnungen' });
+    const tourRowCheckbox = (year: number) =>
+      locationAssignments
+        .getByRole('row')
+        .filter({ hasText: String(year) })
+        .getByRole('checkbox');
+    const locationsTab = page.getByRole('tab', { name: 'Abholorte', exact: true });
+    const toursTab = page.getByRole('tab', { name: 'Touren', exact: true });
+    const assignmentHeading = page.getByRole('heading', { name: 'Tour-Zuordnung', exact: true });
+    const returnToList = page.getByRole('button', { name: 'Zurück zur Tourenliste', exact: true });
+    const confirmDiscard = page.getByRole('alertdialog', { name: 'Änderungen verwerfen?' });
+    const locationCheckbox = page.getByRole('checkbox', {
+      name: /Abholort .*Pferdeschwemme.* auswählen/,
+    });
+    const assignmentCount = (year: number) =>
+      page.getByTestId(`tour-assignment-count-tour-${year}`);
+    const storedPairs = () =>
+      fixture.locationTourLinks.map(({ locationId, tourId }) => `${locationId}/${tourId}`).sort();
+    const initialPairs = [`${otherLocation}/tour-2027`];
+    const locationSave = page.getByRole('button', { name: 'Zuordnungen speichern', exact: true });
+    const expectLocationSaved = async () =>
+      expect(page.getByText('Die Tour-Zuordnungen wurden aktualisiert.')).toBeVisible();
+
+    await expect(locationAssignments.getByRole('checkbox', { name: /Restmüll/ })).toHaveCount(2);
+    await toursTab.click();
+    await assignmentCount(2027).click();
+    await expect(assignmentHeading).toBeVisible();
+    await expect(returnToList).toBeFocused();
+    await expect(page).toHaveURL(/toursView=assignments/);
+    await page.getByRole('textbox', { name: 'Suche' }).fill('Pferdeschwemme');
+    await expect(page.getByText('1 außerhalb des Filters ausgewählt')).toBeVisible();
+    await locationCheckbox.check();
+    await returnToList.click();
+    await expect(confirmDiscard).toBeVisible();
+    await confirmDiscard.getByRole('button', { name: 'Weiter bearbeiten' }).click();
+    await expect(confirmDiscard).toBeHidden();
+    await expect(locationCheckbox).toBeChecked();
+    await expect(page.getByRole('textbox', { name: 'Suche' })).toHaveValue('Pferdeschwemme');
+    await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect(page).toHaveURL(/q=Restm/);
+    await expect.poll(storedPairs).toEqual([...initialPairs, `${pferdeschwemme}/tour-2027`]);
+
+    await locationsTab.click();
+    await expect(tourRowCheckbox(2027)).toBeChecked();
+    await expect(tourRowCheckbox(2026)).not.toBeChecked();
+    await tourRowCheckbox(2027).uncheck();
+    await locationSave.click();
+    await expectLocationSaved();
+    await expect.poll(storedPairs).toEqual(initialPairs);
+
+    await toursTab.click();
+    await expect(assignmentCount(2027)).toHaveText('1');
+    await assignmentCount(2027).click();
+    await expect(locationCheckbox).not.toBeChecked();
+    await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+
+    await locationsTab.click();
+    await tourRowCheckbox(2026).check();
+    await locationSave.click();
+    await expectLocationSaved();
+    await expect.poll(storedPairs).toEqual([...initialPairs, `${pferdeschwemme}/tour-2026`]);
+
+    await toursTab.click();
+    await expect(assignmentCount(2026)).toHaveText('1');
+    await assignmentCount(2026).click();
+    await expect(locationCheckbox).toBeChecked();
+    await locationCheckbox.uncheck();
+    await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect.poll(storedPairs).toEqual(initialPairs);
+
+    await locationsTab.click();
+    await expect(tourRowCheckbox(2026)).not.toBeChecked();
+    await expect(tourRowCheckbox(2027)).not.toBeChecked();
+
+    await toursTab.click();
+    const tourRow = page.getByRole('row').filter({ has: assignmentCount(2026) });
+    await tourRow.getByRole('link', { name: 'Restmüll', exact: true }).click();
+    await page.getByRole('button', { name: 'Abholorte zuordnen', exact: true }).click();
+    await expect(assignmentHeading).toBeVisible();
+    await expect(page).toHaveURL(/tourId=tour-2026/);
+    await page.setViewportSize({ width: 640, height: 780 });
+    await expect(page.getByRole('textbox', { name: 'Suche' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 780 });
+    await returnToList.focus();
+    await page.keyboard.press('Tab');
+    const search = page.getByRole('textbox', { name: 'Suche' });
+    await expect(search).toBeFocused();
+    await search.fill('Pferdeschwemme');
+    await expect(locationCheckbox).toBeVisible();
+    await locationCheckbox.focus();
+    await page.keyboard.press('Space');
+    await expect(locationCheckbox).toBeChecked();
+    await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    await expect(confirmDiscard).toBeVisible();
+    await confirmDiscard.getByRole('button', { name: 'Verwerfen und zurück' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect(page).toHaveURL(/q=Restm/);
+    await expect.poll(storedPairs).toEqual(initialPairs);
+  });
+
   test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
     page,
   }) => {

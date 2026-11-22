@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Activity, type ReactNode } from 'react';
 import { StudioEmptyState, type StudioDetailTabIconName } from '@sva/studio-ui-react';
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
@@ -41,17 +41,25 @@ export const createWasteManagementTabContentMap = (
   search: WasteManagementSearchParams,
   access: WasteManagementUiAccess,
   onAddressSearchChange: (patch: Partial<WasteManagementSearchParams>) => void,
-  rawSearch: Readonly<Record<string, unknown>> = search
+  rawSearch: Readonly<Record<string, unknown>> = search,
+  assignmentContextKey: string | null = null
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
   tours: (
-    <WasteToursPanel
-      search={search}
-      canDuplicateTour={access.canDuplicateTour}
-      canManageScheduling={access.canManageScheduling}
-    />
+    <Activity mode={search.tab === 'tours' ? 'visible' : 'hidden'}>
+      <WasteToursPanel
+        search={search}
+        assignmentContextKey={assignmentContextKey}
+        canDuplicateTour={access.canDuplicateTour}
+        canManageScheduling={access.canManageScheduling}
+      />
+    </Activity>
   ),
-  locations: <WasteMasterDataPanel search={search} tab="locations" />,
+  locations: (
+    <Activity mode={search.tab === 'locations' ? 'visible' : 'hidden'}>
+      <WasteMasterDataPanel search={search} tab="locations" />
+    </Activity>
+  ),
   masterData: (
     <WasteMasterDataAddressesPanel
       search={search}

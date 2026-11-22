@@ -20,7 +20,8 @@ const noopRefreshTechnicalHistory = async () => undefined;
 
 export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
-  const loadOverview = useWasteMasterDataOverview(state, pt, search.masterDataTab);
+  const { loadOverview, overviewRefreshing, readLocationAssignmentOverview } =
+    useWasteMasterDataOverview(state, pt, search.masterDataTab);
   const {
     clearFilteredLocationIds,
     loadFilteredLocationIds,
@@ -38,7 +39,9 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     state,
     pt,
     search,
-    loadOverview,
+    loadOverview: async () => {
+      await loadOverview();
+    },
     loadCollectionLocationList: refreshCollectionLocationList,
     selectedCollectionLocationIds: state.selectedLocationIds,
   });
@@ -80,6 +83,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
 
   return {
     ...state,
+    overviewRefreshing,
     ...derivedState,
     ...dialogActions,
     ...selectionActions,
@@ -87,6 +91,10 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     ...resetActions,
     reloadOverview: async () => {
       await Promise.all([loadOverview(), refreshCollectionLocationList()]);
+    },
+    reloadLocationAssignmentLinks: async (locationId: string) => {
+      const overview = await readLocationAssignmentOverview();
+      return overview?.locationTourLinks.filter((link) => link.locationId === locationId) ?? null;
     },
     retrySyncWasteTypes,
   };

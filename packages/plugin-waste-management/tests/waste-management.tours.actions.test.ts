@@ -35,9 +35,6 @@ describe('createWasteToursActions', () => {
       setMessage: vi.fn(),
       setDialogOpen: vi.fn(),
       setSelectedTour: vi.fn(),
-      setAssignmentsDialogMode: vi.fn(),
-      setLinkForm: vi.fn(),
-      setAssignmentsDialogOpen: vi.fn(),
       setSchedulingOverview: vi.fn(),
       setSchedulingLoadState: vi.fn(),
       schedulingRequestRef: { current: 0 },
@@ -57,26 +54,13 @@ describe('createWasteToursActions', () => {
 
     actions.openCreateDialog();
     actions.openEditDialog(tour as never);
-    actions.openCreateAssignmentsDialog(tour as never);
-    actions.openEditAssignmentsDialog(tour as never, 'missing-link');
-    actions.openEditAssignmentsDialog(tour as never, 'link-1');
     await actions.openCalendar(tour as never);
     actions.resetTourForm();
-    actions.resetLinkForm();
 
     expect(state.setDialogMode).toHaveBeenCalledWith('create');
     expect(state.setDialogMode).toHaveBeenCalledWith('edit');
     expect(state.setDialogOpen).toHaveBeenCalledTimes(2);
     expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
-    expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('create');
-    expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('edit');
-    expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(3);
-    expect(state.setLinkForm).toHaveBeenCalledWith(expect.objectContaining({ tourId: 'tour-1' }));
-    expect(state.setLinkForm).toHaveBeenCalledWith({
-      id: 'link-1',
-      locationId: 'location-1',
-      tourId: 'tour-1',
-    });
     expect(state.setSchedulingOverview).toHaveBeenCalledWith({ locationTourPickupDates: [] });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
   });
@@ -91,9 +75,6 @@ describe('createWasteToursActions', () => {
       setMessage: vi.fn(),
       setDialogOpen: vi.fn(),
       setSelectedTour: vi.fn(),
-      setAssignmentsDialogMode: vi.fn(),
-      setLinkForm: vi.fn(),
-      setAssignmentsDialogOpen: vi.fn(),
       setSchedulingOverview: vi.fn(),
       setSchedulingLoadState: vi.fn(),
       schedulingRequestRef: { current: 0 },

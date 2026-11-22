@@ -30,6 +30,7 @@ const WasteMasterDataLocationFormView = ({
     availableTours={controller.availableTours}
     locationTourLinks={controller.overview?.locationTourLinks ?? []}
     saving={controller.saving}
+    assignmentOverviewRefreshing={controller.overviewRefreshing}
     onChange={(patch) => controller.setLocationForm((current) => ({ ...current, ...patch }))}
     onCancel={onCancel}
     onSubmit={(values, cityPostalCodeUpdate) =>
@@ -39,7 +40,7 @@ const WasteMasterDataLocationFormView = ({
         cityPostalCodeUpdate
       )
     }
-    onReloadAssignments={() => controller.reloadOverview()}
+    onReloadAssignments={controller.reloadLocationAssignmentLinks}
   />
 );
 

@@ -44,8 +44,7 @@ type WasteToursTableProps = {
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly onOpenAssignments?: (tour: WasteTourRecord) => void;
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
@@ -66,8 +65,7 @@ const WasteToursTableBody = ({
   onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
+  onOpenAssignments,
   canDuplicateTour,
   canManageScheduling,
   search,
@@ -86,8 +84,7 @@ const WasteToursTableBody = ({
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly onOpenAssignments?: (tour: WasteTourRecord) => void;
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
@@ -110,8 +107,7 @@ const WasteToursTableBody = ({
         onOpenEditFraction={onOpenEditFraction}
         onOpenEditDialog={onOpenEditDialog}
         onOpenDuplicateDialog={onOpenDuplicateDialog}
-        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
+        onOpenAssignments={onOpenAssignments}
         canDuplicateTour={canDuplicateTour}
         canManageScheduling={canManageScheduling}
         search={search}
@@ -165,8 +161,7 @@ export const WasteToursTable = (props: WasteToursTableProps) => {
             onOpenEditFraction={props.onOpenEditFraction}
             onOpenEditDialog={props.onOpenEditDialog}
             onOpenDuplicateDialog={props.onOpenDuplicateDialog}
-            onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
-            onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
+            onOpenAssignments={props.onOpenAssignments}
             canDuplicateTour={props.canDuplicateTour}
             canManageScheduling={props.canManageScheduling}
             search={props.search}

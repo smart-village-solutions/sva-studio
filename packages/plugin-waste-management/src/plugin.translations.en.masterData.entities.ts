@@ -172,13 +172,20 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       description: 'Select the tours that should be assigned to this collection location.',
       empty: 'No tours are currently available.',
       actions: {
+        reload: 'Read assignments again',
+        reloading: 'Reading assignments…',
         save: 'Save assignments',
         saving: 'Saving…',
       },
       meta: {
+        additionPending: 'Assignment pending',
+        removalPending: 'Removal pending',
         selectedCount: '{{value}} tours assigned',
       },
       messages: {
+        readBackUnconfirmed:
+          'The saved assignments could not be confirmed. Read the assignments again.',
+        savePartial: 'Some changes were confirmed. Changes still pending: {{value}}.',
         saveSuccess: 'The tour assignments were updated.',
         saveError: 'The tour assignments could not be saved.',
         saveForbidden: 'Missing permission to save the tour assignments.',

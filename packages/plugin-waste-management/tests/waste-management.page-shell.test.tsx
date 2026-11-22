@@ -59,6 +59,8 @@ const searchState = {
 };
 const useWasteManagementUiAccessMock = vi.fn(() => ({
   isResolved: true,
+  canRead: true,
+  contextKey: null,
   visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
   canAccessSettings: true,
   canAccessTools: true,
@@ -182,6 +184,8 @@ describe('WasteManagementPage shell', () => {
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
+      canRead: true,
+      contextKey: null,
       visibleTabIds: [
         'fractions',
         'tours',
@@ -259,6 +263,8 @@ describe('WasteManagementPage shell', () => {
     searchState.masterDataTab = 'locations';
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
+      canRead: true,
+      contextKey: null,
       visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling'],
       canAccessSettings: false,
       canAccessTools: false,

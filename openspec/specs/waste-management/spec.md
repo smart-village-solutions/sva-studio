@@ -819,15 +819,27 @@ Das System SHALL für alle einer Tour zugeordneten Abholorte ausschließlich den
 
 ### Requirement: Tour-Zuordnungen sind fachlich sortiert
 
-Das System SHALL Abholorte im Dialog zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
+Das System SHALL Abholorte auf der Detailseite zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
 
-#### Scenario: Dialog zeigt getrennte Adressspalten
+#### Scenario: Detailseite zeigt getrennte Adressspalten
 
-- **WHEN** ein Benutzer den Dialog zur Tour-Zuordnung öffnet
+- **WHEN** ein Benutzer die Detailseite zur Tour-Zuordnung öffnet
 - **THEN** zeigt das System Auswahl, Region, Ort, Straße und Hausnummer in getrennten Tabellenspalten
 - **AND** das System zeigt weder den Aktivstatus noch einen zusätzlichen Zuordnungsstatus des Abholorts
 - **AND** zusammengesetzte Werte wie `Amt Meyenburg / Brügge / Alle Straßen / Alle Hausnummern` werden den vier passenden Adressspalten zugeordnet
 - **AND** auf schmalen Ansichten bleiben dieselben Fachwerte beschriftet und lesbar
+
+#### Scenario: Liste und Tourdetails öffnen dieselbe Zuordnungsseite
+
+- **WHEN** der Benutzer die Abholortanzahl in der Tourenliste oder die Zuordnungsaktion in den Tourdetails öffnet
+- **THEN** öffnet sich die vollbreite Zuordnungsseite für die Tour-ID und erhält die Filter der Tourenliste
+- **AND** nach erfolgreichem Speichern oder Abbrechen kehrt die Ansicht zur gefilterten Tourenliste zurück
+
+#### Scenario: Rücksprung schützt ungespeicherte Zuordnungen
+
+- **WHEN** der Benutzer bei geänderter Auswahl zurückgehen möchte
+- **THEN** bestätigt der Benutzer das Verwerfen oder behält beim Weiterbearbeiten den Entwurf bei
+- **AND** bei unveränderter Auswahl führt der Rücksprung direkt zur gefilterten Tourenliste
 
 #### Scenario: Benutzer sortiert die gefilterten Abholorte nach Ort und Straße
 

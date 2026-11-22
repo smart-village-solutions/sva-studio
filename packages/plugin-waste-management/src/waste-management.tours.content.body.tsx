@@ -79,8 +79,7 @@ export type WasteToursTableViewModel = {
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly onOpenAssignments?: (tour: WasteTourRecord) => void;
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;

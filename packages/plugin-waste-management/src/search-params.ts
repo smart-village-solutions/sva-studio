@@ -1,5 +1,13 @@
-import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
-import { normalizeCollectionLocationSearchParams, normalizeWasteCollectionLocationSortDirection, type WasteCollectionLocationSearchParams } from './collection-location-search-params.js';
+import {
+  normalizeAddressEntityType,
+  normalizeAddressSortField,
+  type WasteAddressSearchParams,
+} from './search-params.address.js';
+import {
+  normalizeCollectionLocationSearchParams,
+  normalizeWasteCollectionLocationSortDirection,
+  type WasteCollectionLocationSearchParams,
+} from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
 import {
   normalizeTourStatus,
@@ -17,7 +25,7 @@ const wasteManagementTabs = [
 ] as const;
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementFractionsViews = ['list', 'create', 'edit'] as const;
-const wasteManagementToursViews = ['list', 'create', 'edit'] as const;
+const wasteManagementToursViews = ['list', 'create', 'edit', 'assignments'] as const;
 const wasteManagementLocationsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementSchedulingViews = ['list', 'create', 'edit'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
@@ -80,7 +88,9 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}> & WasteAddressSearchParams & WasteCollectionLocationSearchParams;
+}> &
+  WasteAddressSearchParams &
+  WasteCollectionLocationSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -204,8 +214,13 @@ export const normalizeWasteManagementSearchParams = (
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
     addressEntityType: normalizeAddressEntityType(search.addressEntityType),
     addressParentId: compactOptionalString(search.addressParentId),
-    addressSortBy: normalizeAddressSortField(search.addressSortBy, normalizeAddressEntityType(search.addressEntityType)),
-    addressSortDirection: normalizeWasteCollectionLocationSortDirection(search.addressSortDirection),
+    addressSortBy: normalizeAddressSortField(
+      search.addressSortBy,
+      normalizeAddressEntityType(search.addressEntityType)
+    ),
+    addressSortDirection: normalizeWasteCollectionLocationSortDirection(
+      search.addressSortDirection
+    ),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),

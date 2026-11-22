@@ -1,11 +1,5 @@
 import type { WasteCustomTourDate, WasteTourRecord } from '@sva/waste-management-contracts';
 
-export type LocationTourLinkFormState = {
-  readonly id: string;
-  readonly locationId: string;
-  readonly tourId: string;
-};
-
 export type TourFormState = {
   readonly id: string;
   readonly name: string;

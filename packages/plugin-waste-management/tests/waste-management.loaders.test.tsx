@@ -166,6 +166,46 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
   });
 
+  it('keeps the current location overview and tours available when assignment read-back fails', async () => {
+    const link = { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' };
+    const overview = {
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [link],
+    };
+    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue(overview);
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [{ id: 'tour-1' }] });
+    const { result } = renderHook(() => {
+      const state = useWasteMasterDataState();
+      const { readLocationAssignmentOverview } = useWasteMasterDataOverview(
+        state,
+        (key) => key,
+        'locations'
+      );
+      return { state, readLocationAssignmentOverview };
+    });
+    await waitFor(() => expect(result.current.state.locationCoverageToursStatus).toBe('ready'));
+    apiMocks.getWasteManagementMasterDataOverview.mockRejectedValueOnce(
+      new Error('read-back failed')
+    );
+
+    await act(async () => {
+      await expect(result.current.readLocationAssignmentOverview()).resolves.toBeNull();
+    });
+    expect(result.current.state.error).toBeNull();
+    expect(result.current.state.overview?.locationTourLinks).toEqual([link]);
+    expect(result.current.state.availableTours).toHaveLength(1);
+    expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledOnce();
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenLastCalledWith({
+      scope: 'locations',
+      fresh: true,
+    });
+  });
+
   it('keeps an overview failure visible when the concurrent location list succeeds later', async () => {
     let resolvePage: ((value: object) => void) | undefined;
     apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('overview failed'));
@@ -399,6 +439,7 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'locations',
+      fresh: true,
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'fractions',
@@ -607,6 +648,7 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
         scope: 'locations',
+        fresh: true,
       });
     });
   });
@@ -705,6 +747,7 @@ describe('waste management data loaders', () => {
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'locations',
+      fresh: true,
     });
   });
 

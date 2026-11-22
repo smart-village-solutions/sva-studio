@@ -1,4 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import {
   Button,
   Dialog,
@@ -32,7 +33,7 @@ export const WasteTourExplicitAssignmentDialog = ({
   readonly open: boolean;
   readonly mode: 'create' | 'edit';
   readonly form: WasteTourExplicitAssignmentFormState;
-  readonly tours: readonly { readonly id: string; readonly name: string }[];
+  readonly tours: readonly WasteTourRecord[];
   readonly locationOptions: readonly { readonly id: string; readonly label: string }[];
   readonly saving: boolean;
   readonly message: StatusMessage | null;

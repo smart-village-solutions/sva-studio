@@ -18,6 +18,7 @@ import type React from 'react';
 import type { LocationTourLinkBulkFormState } from './waste-management.master-data.forms.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 type BulkDialogProps = {
   readonly open: boolean;
@@ -103,7 +104,7 @@ export const BulkLocationAssignmentsDialog = ({
                   </option>
                   {tours.map((tour) => (
                     <option key={tour.id} value={tour.id}>
-                      {tour.name}
+                      {formatTourSelectionLabel(pt, tour)}
                     </option>
                   ))}
                 </Select>

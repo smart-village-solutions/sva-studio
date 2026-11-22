@@ -335,10 +335,8 @@ const LocationAssignmentsEditor = ({
               </thead>
               <tbody>
                 {pagedTours.items.map((tour) => {
-                  const periodId =
-                    tour.firstDate || tour.endDate
-                      ? `waste-location-tour-period-${tour.id}`
-                      : undefined;
+                  const period = formatTourDateRange(pt, tour);
+                  const periodId = period ? `waste-location-tour-period-${tour.id}` : undefined;
                   const fractionNames = (tour.wasteFractionIds ?? [])
                     .map((fractionId: string) => fractionNamesById.get(fractionId))
                     .filter((value: string | undefined): value is string => Boolean(value));
@@ -361,7 +359,7 @@ const LocationAssignmentsEditor = ({
                         <p className="text-sm font-semibold text-foreground">{tour.name}</p>
                         {periodId ? (
                           <p id={periodId} className="text-xs text-muted-foreground">
-                            {formatTourDateRange(tour)}
+                            {period}
                           </p>
                         ) : null}
                         {pendingChanges.has(tour.id) ? (

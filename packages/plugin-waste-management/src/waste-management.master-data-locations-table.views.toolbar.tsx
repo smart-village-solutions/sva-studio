@@ -10,6 +10,7 @@ import {
   WasteLocationsStatusControl,
   WasteLocationsYearControl,
 } from './waste-management.master-data-locations-table.views.toolbar.controls.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 const WasteLocationsBulkActions = ({
   selectedCollectionLocationsCount,
@@ -82,7 +83,7 @@ const WasteLocationsFilters = ({
             <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
             {visibleTours.map((tour) => (
               <option key={tour.id} value={tour.id}>
-                {tour.name}
+                {formatTourSelectionLabel(pt, tour)}
               </option>
             ))}
           </Select>

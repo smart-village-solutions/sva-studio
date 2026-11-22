@@ -118,6 +118,34 @@ describe('LocationAssignmentsSection', () => {
     vi.useRealTimers();
   });
 
+  it('describes the validity on same-name tour selections without changing their IDs', () => {
+    const sameNameTours = [
+      { id: existing.tourId, name: 'Restmüll', firstDate: '2026-02-01', endDate: '2026-12-31' },
+      { id: added.tourId, name: 'Restmüll', firstDate: '2027-02-01' },
+      { id: 'custom', name: 'Restmüll', recurrence: 'custom' },
+    ] satisfies readonly Partial<WasteTourRecord>[];
+    render(
+      <LocationAssignmentsSection
+        locationId={existing.locationId}
+        tours={sameNameTours as readonly WasteTourRecord[]}
+        fractions={[]}
+        links={linkRecords([existing])}
+        onReload={onRead}
+      />
+    );
+    const byPeriod = (description: string) =>
+      screen.getByRole<HTMLInputElement>('checkbox', {
+        name: 'tours.table.selectRow:Restmüll',
+        description,
+      });
+    expect(byPeriod('01.02.2026 – 31.12.2026').checked).toBe(true);
+    expect(byPeriod('tours.fields.firstDate 01.02.2027').checked).toBe(false);
+    expect(byPeriod('tours.fields.customDates').checked).toBe(false);
+    fireEvent.click(byPeriod('tours.fields.firstDate 01.02.2027'));
+    expect(byPeriod('01.02.2026 – 31.12.2026').checked).toBe(true);
+    expect(byPeriod('tours.fields.firstDate 01.02.2027').checked).toBe(true);
+  });
+
   it('filters by overlapping validity years and lets explicit sorting override assigned-first order', () => {
     vi.setSystemTime(new Date('2026-11-23T11:00:00Z'));
     const entries = [

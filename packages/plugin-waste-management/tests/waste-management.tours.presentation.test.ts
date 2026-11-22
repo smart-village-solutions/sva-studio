@@ -6,11 +6,12 @@ import {
   calculateTourOccurrencesForYear,
   formatTourDateRange,
   formatTourRecurrence,
+  formatTourSelectionLabel,
   resolveTourShiftDetails,
 } from '../src/waste-management.tours.presentation.js';
 
 describe('waste-management.tours.presentation', () => {
-  it('formats all recurrence variants and missing date ranges', () => {
+  it('formats all recurrence variants', () => {
     const pt = (key: string) => key;
 
     expect(formatTourRecurrence(pt, 'weekly')).toBe('tours.recurrence.weekly');
@@ -22,13 +23,24 @@ describe('waste-management.tours.presentation', () => {
     expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe(
       'tours.meta.customRecurrenceLabel'
     );
-    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: '2026-04-08' } as never)).toBe(
-      '01.04.2026 – 08.04.2026'
+  });
+
+  it('distinguishes closed, open and individual tour dates in selection labels', () => {
+    const labels: Record<string, string> = {
+      'tours.fields.firstDate': 'Gültig ab',
+      'tours.fields.endDate': 'Gültig bis',
+      'tours.fields.customDates': 'Individuelle Termine',
+    };
+    const pt = (key: string) => labels[key] ?? key;
+    expect(formatTourDateRange(pt, { firstDate: '2026-04-01', endDate: '2027-04-08' })).toBe(
+      '01.04.2026 – 08.04.2027'
     );
-    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: undefined } as never)).toBe(
-      '01.04.2026'
+    expect(formatTourDateRange(pt, { firstDate: '2026-04-01' })).toBe('Gültig ab 01.04.2026');
+    expect(formatTourDateRange(pt, { endDate: '2026-04-08' })).toBe('Gültig bis 08.04.2026');
+    expect(formatTourDateRange(pt, {})).toBeUndefined();
+    expect(formatTourSelectionLabel(pt, { name: 'Papier', recurrence: 'custom' })).toBe(
+      'Papier (Individuelle Termine)'
     );
-    expect(formatTourDateRange({ firstDate: undefined, endDate: undefined } as never)).toBe('—');
   });
 
   it('collects recurrence-specific dates, ignores invalid ranges, and applies global shifts without explicit tour ids', () => {

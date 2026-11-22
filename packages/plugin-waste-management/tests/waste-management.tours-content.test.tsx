@@ -69,7 +69,7 @@ vi.mock('../src/waste-management.tours.presentation.js', () => ({
           },
         ]
       : [],
-  formatTourDateRange: (tour: { id: string }) => `range:${tour.id}`,
+  formatTourDateRange: (_translate: unknown, tour: { id: string }) => `range:${tour.id}`,
   formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) =>
     `recurrence:${recurrence ?? 'none'}`,
 }));

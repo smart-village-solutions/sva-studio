@@ -1,5 +1,6 @@
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { Checkbox } from '@sva/studio-ui-react';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
@@ -30,7 +31,7 @@ export const WasteSchedulingTourSelection = ({
                 )
               }
             />
-            <span>{tour.name}</span>
+            <span>{formatTourSelectionLabel(pt, tour)}</span>
           </label>
         );
       })

@@ -1,6 +1,7 @@
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Checkbox, StudioEmptyState } from '@sva/studio-ui-react';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 export const WasteMasterDataActiveTourBanner = ({
   selectedTour,
@@ -20,7 +21,7 @@ export const WasteMasterDataActiveTourBanner = ({
       <span className="text-sm text-muted-foreground">
         {pt('masterData.locationsWorkspace.filters.activeTour')}
       </span>
-      <span className="text-sm font-medium">{selectedTour.name}</span>
+      <span className="text-sm font-medium">{formatTourSelectionLabel(pt, selectedTour)}</span>
       <Button
         type="button"
         size="sm"

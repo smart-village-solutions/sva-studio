@@ -1,6 +1,7 @@
 import type {
   WasteCollectionLocationListItem,
   WasteCollectionLocationRecord,
+  WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconCopy, IconEdit, IconTrash } from '@tabler/icons-react';
@@ -12,6 +13,12 @@ import {
   toWasteCollectionLocationEditSearch,
   toWasteTourEditSearch,
 } from './waste-management.cross-link.navigation.js';
+import { formatTourDateRange } from './waste-management.tours.presentation.js';
+
+type LinkedTour = Pick<
+  WasteTourRecord,
+  'id' | 'name' | 'firstDate' | 'endDate' | 'recurrence' | 'customDates'
+>;
 
 const resolveLocationRowProjection = (
   location: WasteCollectionLocationRecord | WasteCollectionLocationListItem,
@@ -23,10 +30,11 @@ const resolveLocationRowProjection = (
       cityName: location.cityName,
       streetName: location.streetName,
       houseNumberName: location.houseNumber,
-      linkedTours:
-        maps.locationYear || maps.locationTourStatus
-          ? location.tours.filter((tour) => maps.toursById.has(tour.id))
-          : location.tours,
+      linkedTours: location.tours
+        .filter((tour) =>
+          (!maps.locationYear && !maps.locationTourStatus) || maps.toursById.has(tour.id)
+        )
+        .map((tour) => maps.toursById.get(tour.id) ?? tour),
     };
   }
 
@@ -48,7 +56,7 @@ const WasteLocationsRowTours = ({
   search,
   onOpenEditTour,
 }: {
-  readonly linkedTours: readonly { id: string; name: string }[];
+  readonly linkedTours: readonly LinkedTour[];
   readonly locationYear?: number;
   readonly locationTourStatus?: WasteMasterDataLocationsTableMaps['locationTourStatus'];
   readonly search?: WasteManagementSearchParams;
@@ -59,8 +67,17 @@ const WasteLocationsRowTours = ({
     <td className="px-3 py-3 align-top">
       {linkedTours.length ? (
         <div className="space-y-1">
-          {linkedTours.map((tour) =>
-            search ? (
+          {linkedTours.map((tour) => {
+            const period = formatTourDateRange(pt, tour);
+            const label = (
+              <>
+                <span>{tour.name}</span>
+                {period ? (
+                  <span className="block text-xs text-muted-foreground">{period}</span>
+                ) : null}
+              </>
+            );
+            return search ? (
               <Button
                 key={tour.id}
                 asChild
@@ -72,7 +89,7 @@ const WasteLocationsRowTours = ({
                   to="/plugins/waste-management"
                   search={toWasteTourEditSearch(search, tour.id)}
                 >
-                  {tour.name}
+                  {label}
                 </Link>
               </Button>
             ) : onOpenEditTour ? (
@@ -84,14 +101,14 @@ const WasteLocationsRowTours = ({
                 className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
                 onClick={() => onOpenEditTour(tour.id)}
               >
-                {tour.name}
+                {label}
               </Button>
             ) : (
               <p key={tour.id} className="text-sm">
-                {tour.name}
+                {label}
               </p>
-            )
-          )}
+            );
+          })}
         </div>
       ) : (
         <span className="text-sm text-muted-foreground">

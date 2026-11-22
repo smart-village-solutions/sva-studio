@@ -16,6 +16,7 @@ import { WasteSchedulingShiftsTable } from './waste-management.scheduling-shifts
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 const createAssignmentForm = (
   entry?: WasteTourAssignmentRecord,
@@ -120,7 +121,9 @@ export const WasteSchedulingContent = ({
   const locationLabels = new Map(
     assignmentLocationOptions.map((option) => [option.id, option.label] as const)
   );
-  const tourLabels = new Map(tours.map((tour) => [tour.id, tour.name] as const));
+  const tourLabels = new Map(
+    tours.map((tour) => [tour.id, formatTourSelectionLabel(pt, tour)] as const)
+  );
   const close = (open: boolean) => {
     setDialogOpen(open);
     if (!open) {

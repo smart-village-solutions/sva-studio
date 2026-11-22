@@ -2,6 +2,8 @@
 
 Der Bereich `Touren` im Waste-Management-Plugin erlaubt, den tourweiten Gültigkeitszeitraum mehrerer Touren gemeinsam zu ändern. Der Zeitraum besteht aus `Gültig ab` und `Gültig bis` und beeinflusst den wiederkehrenden Turnus der Tour. Einzelne Abholtermine und Terminverschiebungen bleiben unverändert. Abholpunkt-Zuordnungen besitzen keinen eigenen Gültigkeitszeitraum und übernehmen immer den Zeitraum ihrer Tour.
 
+In der Tour-Zuordnung am Abholpunkt, im Tourfilter und in der Sammelzuordnung steht der gespeicherte Zeitraum beim Tournamen. Auch in der Auswahl und Übersicht für Einsätze und Ausweichtermine können Sie so gleichnamige Touren unterscheiden. Bei einer offenen Grenze zeigt Studio **Gültig ab** oder **Gültig bis** mit dem vorhandenen Datum. Touren mit einzeln gepflegten Terminen sind mit **Individuelle Termine** gekennzeichnet.
+
 ## Status mehrerer Touren ändern
 
 Touren besitzen die drei fachlichen Status `Entwurf`, `Veröffentlicht` und `Archiviert`. Neue,

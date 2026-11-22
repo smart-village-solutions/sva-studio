@@ -14,6 +14,7 @@ import {
   wasteReasonTypeOptions,
 } from './waste-management.scheduling.options.js';
 import type { TourDateShiftFormState } from './waste-management.scheduling.shared.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
@@ -109,7 +110,7 @@ export const WasteSchedulingTourFields = ({
         <option value="">{pt('scheduling.tour.fields.tourUnset')}</option>
         {tours.map((tour) => (
           <option key={tour.id} value={tour.id}>
-            {tour.name}
+            {formatTourSelectionLabel(pt, tour)}
           </option>
         ))}
       </Select>

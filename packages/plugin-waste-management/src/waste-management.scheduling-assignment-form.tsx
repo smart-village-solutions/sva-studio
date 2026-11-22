@@ -6,6 +6,8 @@ import {
   StudioFieldGroup,
   Textarea,
 } from '@sva/studio-ui-react';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 export type WasteTourExplicitAssignmentFormState = Readonly<{
   id: string;
@@ -67,7 +69,7 @@ export const WasteTourExplicitAssignmentForm = ({
   onChange,
 }: {
   readonly form: WasteTourExplicitAssignmentFormState;
-  readonly tours: readonly { readonly id: string; readonly name: string }[];
+  readonly tours: readonly WasteTourRecord[];
   readonly locationOptions: readonly { readonly id: string; readonly label: string }[];
   readonly pt: Translate;
   readonly onChange: (patch: Partial<WasteTourExplicitAssignmentFormState>) => void;
@@ -83,7 +85,7 @@ export const WasteTourExplicitAssignmentForm = ({
         <option value="">{pt('scheduling.assignments.fields.tourUnset')}</option>
         {tours.map((tour) => (
           <option key={tour.id} value={tour.id}>
-            {tour.name}
+            {formatTourSelectionLabel(pt, tour)}
           </option>
         ))}
       </Select>

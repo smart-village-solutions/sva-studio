@@ -1,8 +1,9 @@
 import React from 'react';
-import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataEntityDialogs } from '../src/waste-management.master-data.entity-dialogs.js';
+import { wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace } from '../src/plugin.translations.de.masterData.locations-workspace.js';
 
 type DialogProps = {
   readonly message: unknown;
@@ -22,6 +23,17 @@ const dialogProps = vi.hoisted(() => ({
   houseNumber: [] as DialogProps[],
 }));
 
+vi.mock('@sva/plugin-sdk', () => ({
+  usePluginTranslation: () => (key: string, values?: Record<string, string | number>) => {
+    const addressKey = key.split('.').at(-1);
+    const translations = wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace.addresses;
+    const template = translations[addressKey as keyof typeof translations];
+    return typeof template === 'string'
+      ? template.replaceAll(/{{(\w+)}}/g, (_, variable: string) => String(values?.[variable] ?? ''))
+      : key;
+  },
+}));
+
 vi.mock('../src/waste-management.master-data-entity-dialogs.js', () => {
   const createMockDialog = (bucket: DialogProps[]) => (props: DialogProps) => {
     bucket.push(props);
@@ -38,8 +50,58 @@ vi.mock('../src/waste-management.master-data-entity-dialogs.js', () => {
 });
 
 describe('WasteMasterDataEntityDialogs', () => {
+  beforeEach(() => {
+    for (const props of Object.values(dialogProps)) props.length = 0;
+  });
+  afterEach(cleanup);
+
+  it.each([0, 3])('describes the move and requires the appropriate confirmation for %i affected subscriptions', async (emailReminderSubscriptions) => {
+    const onConfirm = vi.fn(async () => undefined);
+    const controller = {
+      pendingAddressMove: {
+        entityLabel: 'Ortsteil Ost',
+        sourceLabel: 'Gemeinde A',
+        targetLabel: 'Stadt B',
+        preview: {
+          counts: {
+            collectionLocations: 1,
+            locationTourLinks: 10,
+            locationTourPickupDates: 0,
+            emailReminderSubscriptions,
+            emailReminderSubscriptionItems: emailReminderSubscriptions,
+            emailReminderOutbox: emailReminderSubscriptions,
+            sentEmailReminderOutbox: 0,
+          },
+        },
+        onConfirm,
+      },
+      setSaving: vi.fn(),
+      setPendingAddressMove: vi.fn(),
+    };
+    const renderDialogs = () => <WasteMasterDataEntityDialogs controller={controller as never} />;
+    const { rerender } = render(renderDialogs());
+    expect(screen.getByRole('alertdialog').getAttribute('aria-describedby')).toBeTruthy();
+    expect(screen.getByText('Die Zuordnung für „Ortsteil Ost“ von „Gemeinde A“ nach „Stadt B“ ändern?')).toBeTruthy();
+    expect(screen.getByText('10 bestehende Tourzuordnungen bleiben erhalten.')).toBeTruthy();
+    expect(screen.getByText(new RegExp(`^${emailReminderSubscriptions} betroffene E-Mail-Abos`))).toBeTruthy();
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(controller.setPendingAddressMove).toHaveBeenCalledWith(null);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    rerender(renderDialogs());
+    const confirmLabel = emailReminderSubscriptions > 0
+      ? 'Verschiebung und Abo-Löschung bestätigen'
+      : 'Verschiebung bestätigen';
+    fireEvent.click(screen.getByRole('button', { name: confirmLabel }));
+    await waitFor(() => expect(controller.setSaving).toHaveBeenLastCalledWith(false));
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
   it('passes visibility-based messages, fallback collections, and reset-aware handlers to all dialogs', () => {
     const controller = {
+      pendingAddressMove: null,
       dialogOpen: true,
       dialogMode: 'create',
       fractionForm: { id: 'fraction-1', name: 'Rest' },
@@ -168,6 +230,7 @@ describe('WasteMasterDataEntityDialogs', () => {
       <WasteMasterDataEntityDialogs
         controller={
           {
+            pendingAddressMove: null,
             dialogOpen: false,
             dialogMode: 'create',
             fractionForm: {},

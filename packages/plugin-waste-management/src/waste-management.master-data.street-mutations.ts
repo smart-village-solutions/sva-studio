@@ -49,6 +49,7 @@ export const createWasteMasterDataStreetMutations = ({
           };
           await confirmWasteAddressMove({
             state, pt, entityType: 'street', entityId: existingStreet.id, targetParentId: submittedForm.cityId,
+            entityLabel: existingStreet.name,
             sourceLabel: cityLabel(existingStreet.cityId), targetLabel: cityLabel(submittedForm.cityId),
             save: (confirmationToken) => updateWasteManagementStreet(existingStreet.id, {
               ...wasteMasterDataInputMappers.toUpdateStreetInput(submittedForm), confirmationToken,

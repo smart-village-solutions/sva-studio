@@ -11,6 +11,7 @@ export type WasteLocationCoverageDataStatus = 'idle' | 'loading' | 'ready' | 'er
 
 export type PendingWasteAddressMove = Readonly<{
   preview: WasteAddressImpactPreview;
+  entityLabel: string;
   sourceLabel: string;
   targetLabel: string;
   onConfirm: () => Promise<void>;

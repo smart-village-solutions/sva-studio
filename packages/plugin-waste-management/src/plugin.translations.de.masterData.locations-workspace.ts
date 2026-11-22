@@ -141,11 +141,13 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       tableLabel: 'Adressstammdaten',
       tableCaption: 'Regionen und Adresshierarchie bearbeiten',
       moveTitle: 'Elternzuordnung bestätigen',
-      moveDescription: 'Die Zuordnung von „{{source}}“ nach „{{target}}“ ändern?',
+      moveDescription: 'Die Zuordnung für „{{entity}}“ von „{{source}}“ nach „{{target}}“ ändern?',
       moveConfirm: 'Verschiebung bestätigen',
       moveConfirmSubscriptions: 'Verschiebung und Abo-Löschung bestätigen',
       moveSaving: 'Verschiebung wird gespeichert…',
       moveLocations: '{{count}} Abholorte übernehmen die neue Adresszuordnung.',
+      moveRetainedTourLink: 'Die bestehende Tourzuordnung bleibt erhalten.',
+      moveRetainedTourLinks: '{{count}} bestehende Tourzuordnungen bleiben erhalten.',
       moveSubscriptions:
         '{{count}} betroffene E-Mail-Abos werden einschließlich {{items}} Positionen und {{outbox}} Outbox-Einträgen aller Status gelöscht.',
       moveError:

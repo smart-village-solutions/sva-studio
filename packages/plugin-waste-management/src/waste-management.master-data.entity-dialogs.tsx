@@ -39,6 +39,7 @@ const WasteAddressMoveConfirmation = ({ controller }: { readonly controller: Con
       open={pending !== null}
       title={pt('masterData.locationsWorkspace.addresses.moveTitle')}
       description={pt('masterData.locationsWorkspace.addresses.moveDescription', {
+        entity: pending?.entityLabel ?? '',
         source: pending?.sourceLabel ?? '',
         target: pending?.targetLabel ?? '',
       })}
@@ -69,10 +70,15 @@ const WasteAddressMoveConfirmation = ({ controller }: { readonly controller: Con
     >
       {counts ? <div className="space-y-2 text-sm">
         <p>{pt('masterData.locationsWorkspace.addresses.moveLocations', { count: counts.collectionLocations })}</p>
+        {counts.locationTourLinks > 0 ? (
+          <p>{pt(counts.locationTourLinks === 1
+            ? 'masterData.locationsWorkspace.addresses.moveRetainedTourLink'
+            : 'masterData.locationsWorkspace.addresses.moveRetainedTourLinks',
+          { count: counts.locationTourLinks })}</p>
+        ) : null}
         <p>{pt('masterData.locationsWorkspace.addresses.moveSubscriptions', { count: counts.emailReminderSubscriptions, items: counts.emailReminderSubscriptionItems, outbox: counts.emailReminderOutbox })}</p>
         {counts.sentEmailReminderOutbox > 0 ? <p className="font-medium text-destructive">{pt('masterData.locationsWorkspace.addresses.impact.sent', { count: counts.sentEmailReminderOutbox })}</p> : null}
         <details><summary className="cursor-pointer font-medium">{pt('masterData.locationsWorkspace.addresses.details')}</summary><div className="mt-2 space-y-1">
-          <p>{pt('masterData.locationsWorkspace.addresses.impact.links', { count: counts.locationTourLinks })}</p>
           <p>{pt('masterData.locationsWorkspace.addresses.impact.pickupDates', { count: counts.locationTourPickupDates })}</p>
         </div></details>
       </div> : null}

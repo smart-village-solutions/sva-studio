@@ -41,7 +41,7 @@ export const createWasteMasterDataCityMutations = ({
             : pt('masterData.locationsWorkspace.addresses.noParent');
           await confirmWasteAddressMove({
             state, pt, entityType: 'city', entityId: existingCity.id, targetParentId: nextRegionId,
-            sourceLabel, targetLabel,
+            entityLabel: existingCity.name, sourceLabel, targetLabel,
             save: (confirmationToken) => updateWasteManagementCity(existingCity.id, {
               ...wasteMasterDataInputMappers.toUpdateCityInput(submittedForm), confirmationToken,
             }),

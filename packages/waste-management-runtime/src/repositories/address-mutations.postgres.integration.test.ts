@@ -2,10 +2,20 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  createWasteHandlerDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+} from '../../tests/test-utils/handler-fixtures.js';
+import type { WasteAddressImpactPreview } from '@sva/waste-management-contracts';
+import { createWasteAddressEntityImpactHandlers } from '../handlers/address-entities.js';
+import { wasteManagementCityHandlers } from '../handlers/cities.js';
+import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
 import { mutateWasteAddressInTransaction } from './address-mutations.js';
 import { previewWasteAddressMutation } from './address-mutation-snapshot.js';
 import { outboxDispatchStatements } from './email-reminders.outbox-dispatch.js';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
+import { createWasteRegionCityRepositoryPart } from './master-data.regions-cities.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
 const schemaName = `waste_address_master_data_test_${randomUUID().replaceAll('-', '')}`;
@@ -30,7 +40,7 @@ const readMainserverRevision = async (): Promise<bigint> => {
   return BigInt(revision);
 };
 
-const inTransaction = async (work: () => Promise<unknown>, transactionClient = db()) => {
+const inTransaction = async <T>(work: () => Promise<T>, transactionClient = db()) => {
   await transactionClient.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
   try {
     const result = await work();
@@ -68,6 +78,89 @@ describe.skipIf(!databaseUrl)('Waste address mutations against PostgreSQL', () =
       await pool.query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE`);
       await pool.end();
     }
+  });
+
+  it('requires a fresh preview for a city PATCH and keeps all ten linked tours after the move', async () => {
+    const source = await insert("INSERT INTO waste_regions (name) VALUES ('Quellregion') RETURNING id");
+    const target = await insert("INSERT INTO waste_regions (name) VALUES ('Zielregion') RETURNING id");
+    const city = await insert(
+      "INSERT INTO waste_cities (name, region_id) VALUES ('Ortsteil Ost', $1) RETURNING id",
+      [source]
+    );
+    const location = await insert(
+      'INSERT INTO waste_collection_locations (region_id, city_id) VALUES ($1, $2) RETURNING id',
+      [source, city]
+    );
+    const tours = await db().query<{ id: string }>(
+      `INSERT INTO waste_tours (name, status, active)
+       SELECT 'Ortsteil Ost ' || n, 'published', TRUE FROM generate_series(1, 10) AS n RETURNING id`
+    );
+    const tourIds = tours.rows.map(({ id }) => id).sort();
+    await db().query(
+      'INSERT INTO waste_location_tour_links (location_id, tour_id) SELECT $1, unnest($2::uuid[])',
+      [location, tourIds]
+    );
+    const readLocation = () => db().query(
+      'SELECT region_id, city_id FROM waste_collection_locations WHERE id = $1', [location]
+    );
+    const readTourIds = async () => (await db().query<{ tour_id: string }>(
+      'SELECT tour_id FROM waste_location_tour_links WHERE location_id = $1 ORDER BY tour_id',
+      [location]
+    )).rows.map(({ tour_id }) => tour_id);
+    const repository = createWasteRegionCityRepositoryPart(createSqlExecutor(db()));
+    const actor = createWasteTestActor();
+    const deps = createWasteHandlerDeps(['waste-management.master-data.manage'], {
+      previewWasteAddressMutation: (_instanceId, input) => previewWasteAddressMutation(db(), input),
+      mutateWasteAddressInTransaction: (_instanceId, input) =>
+        inTransaction(() => mutateWasteAddressInTransaction(db(), input)),
+      loadWasteCityById: (_instanceId, id) => repository.getWasteCityById(id),
+    });
+    const prefix = '/api/v1/waste-management';
+    const handlers = createWasteAddressEntityImpactHandlers(() => deps, (request, handle) => handle(request, actor));
+    const requestPreview = async () => {
+      const response = await handlers.previewWasteAddressMutation(createWasteMutationRequest(
+        'POST', `${prefix}/address-entities/impact-preview`,
+        { entityType: 'city', entityId: city, mode: 'move', targetParentId: target }
+      ));
+      expect(response.status, await response.clone().text()).toBe(200);
+      const body = await response.json() as { data: WasteAddressImpactPreview; requestId: string };
+      expect(body.requestId).toBe('req-test');
+      expect(body.data.counts).toMatchObject({
+        collectionLocations: 1, locationTourLinks: 10, emailReminderSubscriptions: 0,
+      });
+      return body.data.token;
+    };
+    const patchCity = (confirmationToken?: string) => wasteManagementCityHandlers.updateWasteManagementCityInternal(
+      createWasteMutationRequest('PATCH', `${prefix}/cities/${city}`, { regionId: target, confirmationToken }),
+      actor,
+      deps
+    );
+
+    const staleToken = await requestPreview();
+    expect(await repository.getWasteCityById(city)).toMatchObject({ regionId: source });
+    const unconfirmed = await patchCity();
+    expect(unconfirmed.status).toBe(409);
+    await expect(unconfirmed.json()).resolves.toMatchObject({ error: { code: 'conflict' }, requestId: 'req-test' });
+
+    await db().query("UPDATE waste_cities SET name = 'Ortsteil Ost aktualisiert' WHERE id = $1", [city]);
+    const stale = await patchCity(staleToken);
+    expect(stale.status).toBe(409);
+    await expect(stale.json()).resolves.toMatchObject({
+      error: { code: 'conflict', message: expect.stringContaining('Vorschau ist nicht mehr aktuell') },
+      requestId: 'req-test',
+    });
+    expect(await repository.getWasteCityById(city)).toMatchObject({ regionId: source });
+    expect((await readLocation()).rows).toEqual([{ region_id: source, city_id: city }]);
+    expect(await readTourIds()).toEqual(tourIds);
+
+    const freshToken = await requestPreview();
+    expect(freshToken).not.toBe(staleToken);
+    const saved = await patchCity(freshToken);
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    await expect(saved.json()).resolves.toMatchObject({ data: { id: city, regionId: target }, requestId: 'req-test' });
+    expect(await repository.getWasteCityById(city)).toMatchObject({ regionId: target, name: 'Ortsteil Ost aktualisiert' });
+    expect((await readLocation()).rows).toEqual([{ region_id: target, city_id: city }]);
+    expect(await readTourIds()).toEqual(tourIds);
   });
 
   it('merges only siblings recursively, preserves both Hauptstr. in different cities, and transfers pickup relations atomically', async () => {

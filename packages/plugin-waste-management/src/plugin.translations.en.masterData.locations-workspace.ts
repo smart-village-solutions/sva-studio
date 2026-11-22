@@ -144,11 +144,13 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       tableLabel: 'Address master data',
       tableCaption: 'Edit regions and address hierarchy',
       moveTitle: 'Confirm parent change',
-      moveDescription: 'Change the parent from “{{source}}” to “{{target}}”?',
+      moveDescription: 'Change the parent of “{{entity}}” from “{{source}}” to “{{target}}”?',
       moveConfirm: 'Confirm move',
       moveConfirmSubscriptions: 'Confirm move and subscription deletion',
       moveSaving: 'Saving address move…',
       moveLocations: '{{count}} pickup locations will use the new address.',
+      moveRetainedTourLink: 'The existing tour assignment will be kept.',
+      moveRetainedTourLinks: 'All {{count}} existing tour assignments will be kept.',
       moveSubscriptions:
         '{{count}} affected email subscriptions will be deleted with {{items}} items and {{outbox}} outbox entries in all statuses.',
       moveError:

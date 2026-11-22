@@ -11,6 +11,7 @@ import {
   toWasteTourEditSearch,
 } from './waste-management.cross-link.navigation.js';
 import { WasteTourAssignmentDeleteDialog } from './waste-management.scheduling-assignment-delete-dialog.js';
+import { formatSchedulingDisplayDate } from './waste-management.scheduling-table-meta.js';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
 
@@ -69,7 +70,9 @@ const AssignmentRow = ({
   readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
 }) => (
   <tr className="border-b border-border-subtle align-top text-[14px] last:border-b-0 hover:bg-surface-inset">
-    <td className="px-3 py-3">{entry.pickupDate}</td>
+    <td className="px-3 py-3">
+      <time dateTime={entry.pickupDate}>{formatSchedulingDisplayDate(entry.pickupDate)}</time>
+    </td>
     <td className="px-3 py-3">
       {search ? (
         <Link

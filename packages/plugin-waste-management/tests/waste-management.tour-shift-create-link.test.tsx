@@ -18,7 +18,8 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 

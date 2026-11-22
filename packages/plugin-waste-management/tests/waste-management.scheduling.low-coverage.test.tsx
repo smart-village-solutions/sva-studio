@@ -19,7 +19,8 @@ const schedulingTableEntriesMock = vi.hoisted(() => vi.fn(() => [{ id: 'row-1' }
 const filterSchedulingTableEntriesMock = vi.hoisted(() => vi.fn((entries: unknown) => entries));
 const assignmentFormSpy = vi.fn();
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 
@@ -326,18 +327,18 @@ describe('waste-management scheduling low coverage views', () => {
         entries={
           [
             {
-              id: 'pickup-early',
-              tourId: 'tour-1',
-              pickupDate: '2026-06-01',
-              locationIds: ['location-2'],
-              note: 'B',
-            },
-            {
               id: 'pickup-late',
               tourId: 'tour-1',
-              pickupDate: '2026-07-01',
+              pickupDate: '2027-02-13',
               locationIds: ['location-1'],
               note: 'A',
+            },
+            {
+              id: 'pickup-early',
+              tourId: 'tour-1',
+              pickupDate: '2026-12-31',
+              locationIds: ['location-2'],
+              note: 'B',
             },
           ] as never
         }
@@ -350,8 +351,9 @@ describe('waste-management scheduling low coverage views', () => {
     );
 
     const rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('2026-06-01');
+    expect(rows[1]?.textContent).toContain('31.12.2026');
     expect(rows[1]?.textContent).toContain('location-2');
+    expect(rows[2]?.textContent).toContain('13.02.2027');
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'scheduling.assignments.actions.delete' })[0]!

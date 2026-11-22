@@ -73,6 +73,9 @@ Eine Zuordnung zu einer konkreten Straße wird weiterhin nur für diese Adresse 
 
 ## Verschiebungen nachvollziehen
 
+Studio zeigt Kalenderdaten in der deutschen Oberfläche im Format `TT.MM.JJJJ`.
+Tour-Einsätze und Ausweichtermine werden chronologisch nach ihrem Kalenderdatum sortiert.
+
 Touren, deren Termine ausschließlich individuell geplant werden (`Individuell`, `Bei Bedarf` oder ohne Wiederholungsrhythmus), sind von globalen Ausweichterminen und Feiertagsverschiebungen ausgenommen. Das gilt auch für globale Regeln mit einer expliziten Tourauswahl, für konkrete Einsätze mit Standzeiten und für importierte Einzeltermine. Tourbezogene Ausweichtermine bleiben wirksam, auch über den Jahreswechsel. Studio-Vorschau, Verschiebungszähler, öffentlicher Kalender einschließlich PDF und Mainserver-Aufbereitung verwenden dieselbe Abgrenzung.
 
 Feste Wiederholungen und eigene Rhythmen mit einem aufgelösten positiven Tagesabstand werden weiterhin global und nach Feiertagsregeln verschoben. Zusätzliche Einzeltermine und Einsätze einer solchen wiederkehrenden Tour folgen weiterhin deren Verschiebungsregeln. Die Ausnahme richtet sich nach der Terminlogik der Tour; gespeicherte Termine, Fraktionen und Hinweise werden dadurch nicht verändert. Bereits veröffentlichte Mainserver-Termine ändern sich erst durch einen erneuten Abgleich nach dem Rollout.

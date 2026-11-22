@@ -10,6 +10,7 @@ import type { WasteManagementSearchParams } from './search-params.js';
 import { clearTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
 import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import type { TourShiftCreateContextResolution } from './waste-management.tour-shift-navigation.js';
+import { formatSchedulingDisplayDate } from './waste-management.scheduling-table-meta.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 type WasteSchedulingCreateVariant = 'global-shift' | 'tour-shift';
@@ -126,7 +127,9 @@ const WasteSchedulingCreateContextFields = ({
           <p className="break-words text-muted-foreground">
             {pt('scheduling.create.contextDescription', {
               tour: contextualTourName,
-              date: context.originalDate ?? pt('scheduling.create.contextDateUnset'),
+              date: context.originalDate
+                ? formatSchedulingDisplayDate(context.originalDate)
+                : pt('scheduling.create.contextDateUnset'),
             })}
           </p>
         ) : (

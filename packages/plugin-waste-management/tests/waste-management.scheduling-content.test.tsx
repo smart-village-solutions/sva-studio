@@ -21,7 +21,8 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 
@@ -297,7 +298,7 @@ describe('WasteSchedulingContent', () => {
       />
     );
 
-    expect(screen.getByText('2026-07-01')).toBeTruthy();
+    expect(screen.getByText('01.07.2026').getAttribute('datetime')).toBe('2026-07-01');
     expect(screen.getByRole('link', { name: 'Tour Nord' })).toBeTruthy();
     expect(
       screen.getByRole('link', {

@@ -2,6 +2,7 @@ import type { WasteTourAssignmentRecord } from '@sva/waste-management-contracts'
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import { useState } from 'react';
+import { formatSchedulingDisplayDate } from './waste-management.scheduling-table-meta.js';
 
 export const WasteTourAssignmentDeleteDialog = ({
   entry,
@@ -36,7 +37,7 @@ export const WasteTourAssignmentDeleteDialog = ({
       title={pt('scheduling.assignments.dialog.deleteTitle')}
       description={pt('scheduling.assignments.dialog.deleteDescription', {
         tourId: entry?.tourId ?? '',
-        pickupDate: entry?.pickupDate ?? '',
+        pickupDate: entry ? formatSchedulingDisplayDate(entry.pickupDate) : '',
       })}
       confirmLabel={pt('scheduling.assignments.actions.confirmDelete')}
       pendingLabel={pt('common.deleting')}

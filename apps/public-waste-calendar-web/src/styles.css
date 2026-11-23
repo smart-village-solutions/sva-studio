@@ -22,6 +22,7 @@ body {
 }
 
 .page-shell {
+  container: public-waste-calendar / inline-size;
   min-height: 100%;
   padding: 0;
 }
@@ -30,7 +31,7 @@ body {
   width: 100%;
   max-width: 56rem;
   margin: 0 auto;
-  padding: clamp(0.75rem, 2vw, 1.5rem);
+  padding: clamp(0.75rem, 2cqi, 1.5rem);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -71,7 +72,7 @@ body {
 
 .pickup-month-title {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-size: clamp(1.5rem, 3cqi, 2.1rem);
   font-weight: 600;
   letter-spacing: -0.03em;
 }
@@ -354,7 +355,7 @@ body {
 
 .selection-step-title {
   margin: 0;
-  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  font-size: clamp(1.15rem, 2cqi, 1.35rem);
   line-height: 1.2;
 }
 
@@ -637,7 +638,7 @@ button.selection-path-chip:hover,
   gap: 0.75rem;
 }
 
-@media (max-width: 640px) {
+@container public-waste-calendar (max-width: 640px) {
   .selection-step-card {
     padding: 0.9rem 0;
   }
@@ -908,7 +909,7 @@ button.selection-path-chip:hover,
   transform: rotate(45deg);
 }
 
-@media (max-width: 720px) {
+@container public-waste-calendar (max-width: 720px) {
   .action-hub-toolbar {
     align-items: stretch;
   }
@@ -968,7 +969,7 @@ button.selection-path-chip:hover,
 }
 
 .pickup-day {
-  font-size: clamp(1.65rem, 4vw, 2.2rem);
+  font-size: clamp(1.65rem, 4cqi, 2.2rem);
   font-weight: 600;
   line-height: 1;
 }
@@ -1012,7 +1013,7 @@ button.selection-path-chip:hover,
 }
 
 .pickup-label {
-  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-size: clamp(1.25rem, 3cqi, 1.5rem);
   font-weight: 400;
 }
 
@@ -1138,11 +1139,7 @@ button.selection-path-chip:hover,
   cursor: pointer;
 }
 
-@media (max-width: 640px) {
-  .page-shell {
-    padding: 0;
-  }
-
+@container public-waste-calendar (max-width: 640px) {
   .panel {
     padding: 0.75rem;
   }

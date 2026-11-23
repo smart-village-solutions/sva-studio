@@ -484,6 +484,7 @@ test.describe('waste management plugin', () => {
     context,
     page,
   }) => {
+    test.setTimeout(90_000);
     await mockSharedShellRequests(context, {
       instanceId: 'de-musterhausen',
       permissionActions: [
@@ -527,9 +528,11 @@ test.describe('waste management plugin', () => {
       const popupPromise = page.waitForEvent('popup');
       await page.getByRole('link', { name: new RegExp(`^${linkLabel}`) }).click();
       const popup = await popupPromise;
+      // A new document initializes authentication and permissions before rendering the tabs.
       await expect(popup.getByRole('tab', { name: tabLabel, exact: true })).toHaveAttribute(
         'aria-selected',
-        'true'
+        'true',
+        { timeout: 30_000 }
       );
       const params = new URL(popup.url()).searchParams;
       expect(params.get('tab')).toBe(tabParam);

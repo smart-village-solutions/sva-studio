@@ -32,6 +32,7 @@ export const mountPublicWasteCalendar = (container: HTMLElement, apiOrigin: stri
     styles.replace(':root', ':host') +
     '\n:host { display: block; line-height: 1.5; text-align: start; }';
   const mount = document.createElement('div');
+  mount.className = 'page-shell';
   mount.lang = document.documentElement.lang || 'de';
   mount.setAttribute('role', 'region');
   mount.setAttribute('aria-label', createPublicWasteTranslator(mount.lang)('calendar.title'));

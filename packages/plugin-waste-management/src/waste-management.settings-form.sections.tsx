@@ -4,6 +4,7 @@ import { wasteManagementMasterDataContract } from '@sva/waste-management-contrac
 import { Input, Select, StudioField } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
+import { WasteCalendarEmbedCode } from './waste-management.calendar-embed-code.js';
 import { WasteSettingsTechnicalConfigFields } from './waste-management.settings-managed-fields.js';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
 import { StudioSwitch } from '@sva/studio-ui-react';
@@ -108,7 +109,12 @@ export const WasteHolidayStateSection = ({
   );
 };
 
-export const WasteCalendarWebUrlSection = ({ form, saving, onChange }: SharedSectionProps) => {
+export const WasteCalendarWebUrlSection = ({
+  form,
+  saving,
+  onChange,
+  savedCalendarWebUrl,
+}: SharedSectionProps & { readonly savedCalendarWebUrl?: string }) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -132,6 +138,7 @@ export const WasteCalendarWebUrlSection = ({ form, saving, onChange }: SharedSec
             placeholder="https://abfall.example.de"
           />
         </StudioField>
+        <WasteCalendarEmbedCode key={savedCalendarWebUrl} calendarWebUrl={savedCalendarWebUrl} />
       </div>
     </WasteSettingsSection>
   );

@@ -104,8 +104,8 @@ vi.mock('@sva/studio-ui-react', async () => ({
   Input: ({ id, value, onChange, placeholder, type = 'text' }: React.ComponentProps<'input'>) => (
     <input id={id} value={value} onChange={onChange} placeholder={placeholder} type={type} />
   ),
-  Textarea: ({ id, value, onChange }: React.ComponentProps<'textarea'>) => (
-    <textarea id={id} value={value} onChange={onChange} />
+  Textarea: ({ id, value, onChange, readOnly }: React.ComponentProps<'textarea'>) => (
+    <textarea id={id} value={value} onChange={onChange} readOnly={readOnly} />
   ),
   Select: ({
     id,
@@ -540,9 +540,10 @@ describe('waste-management low coverage views', () => {
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(typeof onChange.mock.calls[0]?.[0]).toBe('function');
+    expect(screen.queryByLabelText('settings.fields.calendarEmbedCode')).toBeNull();
   });
 
-  it('keeps single-field settings cards accessible via visually hidden labels', () => {
+  it('labels the settings fields and offers copyable embed code based on the saved link', async () => {
     render(
       <WasteSettingsForm
         form={{
@@ -551,7 +552,7 @@ describe('waste-management low coverage views', () => {
           schemaName: 'wm',
           enabled: true,
           selectedInterfaceId: 'supabase-1',
-          calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+          calendarWebUrl: 'https://draft.example.invalid/',
           holidayStateCode: 'NW',
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
@@ -567,6 +568,7 @@ describe('waste-management low coverage views', () => {
           selectedInterfaceId: 'supabase-1',
           selectedInterfaceName: 'Supabase A',
           selectedInterfaceTypeKey: 'supabase',
+          calendarWebUrl: 'https://frankfurt-oder.abfallkalender.pro/example-path',
           availableInterfaces: [
             {
               id: 'supabase-1',
@@ -594,6 +596,31 @@ describe('waste-management low coverage views', () => {
     expect(screen.getByText('settings.fields.holidayStateCode').className).toContain('sr-only');
     expect(screen.getByText('settings.fields.calendarWebUrl').className).toContain('sr-only');
     expect(screen.getByText('settings.fields.selectedInterface').className).toContain('sr-only');
+
+    const code = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: 'settings.fields.calendarEmbedCode',
+    });
+    expect(code.readOnly).toBe(true);
+    expect(code.value).toBe(
+      '<div data-public-waste-calendar></div>\n' +
+        '<script type="module" src="https://frankfurt-oder.abfallkalender.pro/embed.js"></script>'
+    );
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('permission denied'));
+    const copy = screen.getByRole('button', { name: 'settings.actions.copyCalendarEmbedCode' });
+    try {
+      fireEvent.click(copy);
+      await screen.findByText('settings.messages.calendarEmbedCodeCopied');
+      expect(writeText).toHaveBeenCalledWith(code.value);
+
+      fireEvent.click(copy);
+      await screen.findByText('settings.messages.calendarEmbedCodeCopyFailed');
+      expect(code.value).toContain('/embed.js');
+    } finally {
+      writeText.mockRestore();
+    }
   });
 
   it('renders the disabled switch branch and toggles an unchecked switch directly', () => {

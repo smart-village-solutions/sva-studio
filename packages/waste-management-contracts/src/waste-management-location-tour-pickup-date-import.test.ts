@@ -115,12 +115,28 @@ describe('waste location tour assignment import parser', () => {
       {
         rowNumber: 1,
         column: 'Datei',
-        message: expect.stringContaining('Ort – Tour – Abholdatum'),
+        message: expect.stringContaining('Einsatz-ID;Ort;Abholdatum;Hinweis;<Fraktionsname>'),
       },
       { rowNumber: 2, column: 'Standort', message: expect.stringContaining('Einsatz-ID') },
       { rowNumber: 4, column: 'Standort', message: expect.stringContaining('Einsatz-ID') },
     ]);
   });
+
+  it.each(['Ort;Tour;Abholdatum;Hinweis', 'Ort;Hinweis;Abholdatum;Papier'])(
+    'rejects misplaced pickup metadata in %s',
+    (header) => {
+      const result = parseWasteLocationTourPickupDateCsv({
+        text: `${header}\nPerleberg;SM.1;2027-02-03;09:00 Markt`,
+      });
+
+      expect(result).toMatchObject({ rows: [], fractionNames: [], invalidRowCount: 1 });
+      expect(result.issues).toContainEqual({
+        rowNumber: 1,
+        column: 'Abholdatum',
+        message: expect.stringContaining('vor den Fraktionsspalten'),
+      });
+    }
+  );
 
   it('returns a deterministic issue for empty csv files', () => {
     const result = parseWasteLocationTourPickupDateCsv({

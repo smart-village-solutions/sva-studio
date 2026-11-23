@@ -20,6 +20,8 @@ Für Fraktionen, Geografie und Abholpunkte, Abstandspresets, Touren, Abholpunkt-
 
 Die bisherigen CSV-/XLSX-Importe bleiben als kompatible, einseitige Eingangsadapter bestehen. Sie sind kein vollständiger Roundtrip-Vertrag. Der CSV-Spezialimport „Tourzuordnungen nach Fraktionen“ bleibt separat und erzeugt fehlende Fachdaten weiterhin mit seinen dokumentierten Defaults.
 
+Für einen datierten Halt die CSV-Vorlage „Tourzuordnungen nach Fraktionen“ verwenden. Eine gültige Kopfzeile ist `Einsatz-ID;Ort;Abholdatum;Hinweis;Schadstoffmobil`, wobei `Schadstoffmobil` für die konkrete Fraktion steht. In der Fraktionsspalte steht der zugehörige Tourname. Für jeden eigenständigen Halt eine eigene Einsatz-ID vergeben und das Abholdatum als `YYYY-MM-DD` schreiben. Uhrzeit und Standort gehören gemeinsam in `Hinweis`. Zusatzspalten wie `Straße` und `Hausnummern` stehen bei Bedarf vor `Abholdatum` und `Hinweis`.
+
 ## Feldsemantik
 
 - `required`: Der Wert muss im Import vorhanden und gültig sein.

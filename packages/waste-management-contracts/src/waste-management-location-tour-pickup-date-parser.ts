@@ -32,7 +32,7 @@ const parseUnassignedStopExport = (
       rowNumber: 1,
       column: 'Datei',
       message:
-        'Überführen Sie diesen Haltestellenexport in das CSV-Format „Ort – Tour – Abholdatum“. Übernehmen Sie Uhrzeit und Standort gemeinsam in die Spalte „Hinweis“.',
+        'Verwenden Sie die CSV-Vorlage „Tourzuordnungen nach Fraktionen“. Beispiel für die Kopfzeile: Einsatz-ID;Ort;Abholdatum;Hinweis;<Fraktionsname>. Tragen Sie den Tournamen in die Fraktionsspalte und Uhrzeit und Standort gemeinsam in „Hinweis“ ein.',
     },
   ];
   for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -310,7 +310,12 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     expect(state.save).not.toHaveBeenCalled();
-    expect(screen.getByRole('alertdialog', { name: 'Statusänderung bestätigen' })).toBeTruthy();
+    const confirmation = screen.getByRole('alertdialog', { name: 'Statusänderung bestätigen' });
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('alertdialog', { name: 'Statusänderung bestätigen' })).toBeNull();
+    expect(state.save).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Status ändern' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
   });

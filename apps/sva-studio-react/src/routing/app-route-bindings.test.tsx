@@ -650,7 +650,9 @@ vi.mock('@sva/plugin-faq', () => ({
   FaqEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="faq-edit-page" data-principal-value={principalControl?.value} />
   ),
-  FaqListPage: () => <div data-testid="faq-list-page" />,
+  FaqListPage: (props: Record<string, unknown>) => (
+    <div data-testid="faq-list-page" data-prop-keys={Object.keys(props).join(',')} />
+  ),
 }));
 
 vi.mock('@sva/plugin-cockpit-cards', () => ({
@@ -935,6 +937,60 @@ describe('appRouteBindings', () => {
     routeState.organizationContextError = null;
     view.rerender(<appRouteBindings.categories />);
     expect(screen.getByTestId('categories-page')).toBeTruthy();
+  });
+
+  it('mounts plugin list bindings without injecting the editor host context', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const { studioRoutePlugins: ssfRoutePlugins } = await import('./app-route-bindings.ssf');
+    const SsfFaqList = ssfRoutePlugins
+      .find((plugin) => plugin.id === 'faq')
+      ?.viewBindings?.find((binding) => binding.bindingKey === 'faqList')
+      ?.component as ComponentType;
+
+    for (const FaqList of [appRouteBindings.faqList, SsfFaqList]) {
+      render(<FaqList />);
+      expect(screen.getByTestId('faq-list-page').getAttribute('data-prop-keys')).toBe('');
+      cleanup();
+    }
+  });
+
+  it('gives every host fallback list its own route component so switching lists remounts', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const fallbackLists = (
+      ['newsList', 'eventsList', 'genericItemsList', 'poiList', 'surveysList'] as const
+    ).map((bindingKey) => appRouteBindings[bindingKey]);
+
+    expect(new Set(fallbackLists).size).toBe(fallbackLists.length);
+  });
+
+  it('renders plugin and host fallback lists in personal and organization contexts', async () => {
+    routeState.authUser = { id: 'user-1', displayName: 'Philipp Wilimzig' };
+    const organization = {
+      organizationId: 'org-2',
+      organizationKey: 'org-2',
+      displayName: 'Redaktion Musterhausen',
+      organizationType: 'municipality' as const,
+      contentAuthorPolicy: 'org_or_personal' as const,
+      isActive: true,
+      isDefaultContext: true,
+    };
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    for (const [activeOrganizationId, expectedPrincipal] of [
+      [undefined, 'user'],
+      ['org-2', 'organization'],
+    ] as const) {
+      routeState.organizationContext = { activeOrganizationId, organizations: [organization] };
+
+      render(<appRouteBindings.faqList />);
+      render(<appRouteBindings.newsList />);
+
+      expect(screen.getByTestId('faq-list-page')).toBeTruthy();
+      expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBe(
+        expectedPrincipal
+      );
+      cleanup();
+    }
   });
 
   it('renders the concrete modules binding instead of the system placeholder', async () => {

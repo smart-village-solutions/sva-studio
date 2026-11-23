@@ -160,24 +160,22 @@ export const createImportDataOperation =
       if (!catalogEntry) {
         throw new Error(`unknown_import_profile:${input.importProfileId}`);
       }
-      if (parsedLocationTourPickupDates) {
+      if (parsedLocationTourPickupDates && input.dryRun) {
         const preview = await previewLocationTourPickupDateImport(
           repository,
           parsedLocationTourPickupDates
         );
-        if (input.dryRun) {
-          return {
-            operation: 'import-data',
-            mode: 'executed',
-            importProfileId: input.importProfileId,
-            sourceFormat: input.sourceFormat,
-            dryRun: true,
-            rowCount: preview.validRowCount,
-            skippedRows: preview.invalidRowCount,
-            errorCount: preview.errors.length,
-            preview,
-          };
-        }
+        return {
+          operation: 'import-data',
+          mode: 'executed',
+          importProfileId: input.importProfileId,
+          sourceFormat: input.sourceFormat,
+          dryRun: true,
+          rowCount: preview.validRowCount,
+          skippedRows: preview.invalidRowCount,
+          errorCount: preview.errors.length,
+          preview,
+        };
       }
       if (input.dryRun) {
         return {

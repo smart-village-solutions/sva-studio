@@ -11,6 +11,7 @@ const createRepositoryMock = () => ({
     {
       id: 'fraction-paper',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: undefined,
       containerSize: undefined,
       color: '#00aaee',
@@ -226,7 +227,7 @@ describe('waste-management-operations.import', () => {
     expect(repository.upsertWasteLocationTourPickupDate).not.toHaveBeenCalled();
   });
 
-  it('rejects inconsistent assignment groups before persisting any import entity', async () => {
+  it('reports inconsistent assignment groups in preview and rejects them before writing', async () => {
     const repository = createRepositoryMock();
     const assignmentId = '73d06a46-9a54-4db3-8a41-b67c3ec9d88d';
     const parsed = {
@@ -236,7 +237,7 @@ describe('waste-management-operations.import', () => {
       fractionNames: ['Papier'],
       rows: ['Erster Hinweis', 'Anderer Hinweis'].map((note, index) => ({
         rowNumber: index + 2,
-        assignmentId,
+        assignmentId: index === 0 ? assignmentId.toUpperCase() : assignmentId,
         region: 'Prignitz',
         city: 'Perleberg',
         street: 'Ackerstraße',
@@ -250,13 +251,89 @@ describe('waste-management-operations.import', () => {
       issues: [],
     };
 
+    const preview = await previewLocationTourPickupDateImport(repository, parsed);
+    expect(preview).toMatchObject({ validRowCount: 0, invalidRowCount: 2 });
+    expect(preview.errors).toMatchObject([
+      { rowNumber: 2, column: 'Einsatz-ID' },
+      { rowNumber: 3, column: 'Einsatz-ID' },
+    ]);
     await expect(
       executeImport(repository, {
         profileId: 'waste-management.ortsbezogene-tourtermine',
         parsedLocationTourPickupDates: parsed,
       })
-    ).rejects.toThrow(`inconsistent_tour_assignment_group:${assignmentId}`);
+    ).rejects.toThrow('location_tour_pickup_date_import_has_issues');
     expect(repository.upsertWasteRegion).not.toHaveBeenCalled();
+    expect(repository.upsertWasteLocationTourLink).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).not.toHaveBeenCalled();
+  });
+
+  it('uses the planned regionless location for dated rows even when the city name exists in a region', async () => {
+    const repository = createRepositoryMock();
+    const cities = await repository.listWasteCities();
+    repository.listWasteCities.mockResolvedValue([
+      ...cities,
+      { ...cities[0], id: 'city-regionless', regionId: undefined },
+    ]);
+    const assignmentId = '73d06a46-9a54-4db3-8a41-b67c3ec9d88d';
+    const parsed = {
+      ...parsedLocationTourPickupDates,
+      rows: [
+        {
+          ...parsedLocationTourPickupDates.rows[0],
+          region: undefined,
+          assignmentId,
+          pickupDate: '2026-06-10',
+          tourNamesByFractionName: { Papier: 'PPK.7.2' },
+        },
+      ],
+      validRowCount: 1,
+    };
+
+    expect(await previewLocationTourPickupDateImport(repository, parsed)).toMatchObject({
+      errors: [],
+      validRowCount: 1,
+    });
+    await executeImport(repository, {
+      profileId: 'waste-management.ortsbezogene-tourtermine',
+      parsedLocationTourPickupDates: parsed,
+    });
+    expect(repository.upsertWasteCollectionLocation).toHaveBeenCalledWith(
+      expect.objectContaining({ cityId: 'city-regionless' })
+    );
+    expect(repository.upsertWasteTourAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ id: assignmentId, pickupDate: '2026-06-10' })
+    );
+  });
+
+  it('reports the source row of ambiguous dated cities and prevents partial writes', async () => {
+    const repository = createRepositoryMock();
+    const cities = await repository.listWasteCities();
+    repository.listWasteCities.mockResolvedValue([
+      ...cities,
+      { ...cities[0], id: 'city-other-region', regionId: 'other-region' },
+    ]);
+    const parsed = {
+      ...parsedLocationTourPickupDates,
+      rows: [
+        { ...parsedLocationTourPickupDates.rows[0], region: undefined, pickupDate: '2026-06-10' },
+        parsedLocationTourPickupDates.rows[1],
+      ],
+    };
+
+    expect(await previewLocationTourPickupDateImport(repository, parsed)).toMatchObject({
+      validRowCount: 1,
+      invalidRowCount: 1,
+      errors: [{ rowNumber: 2, column: 'Region' }],
+    });
+    await expect(
+      executeImport(repository, {
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        parsedLocationTourPickupDates: parsed,
+      })
+    ).rejects.toThrow('location_tour_pickup_date_import_has_issues');
+    expect(repository.upsertWasteCity).not.toHaveBeenCalled();
+    expect(repository.upsertWasteLocationTourLink).not.toHaveBeenCalled();
     expect(repository.upsertWasteTourAssignment).not.toHaveBeenCalled();
   });
 
@@ -407,6 +484,9 @@ describe('waste-management-operations.import', () => {
     expect(repository.upsertWasteHouseNumber).toHaveBeenCalledTimes(1);
     expect(repository.upsertWasteCollectionLocation).toHaveBeenCalledTimes(1);
     expect(repository.upsertWasteFraction).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteFraction).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Bioabfall', pdfShortLabel: 'BIO' })
+    );
     expect(repository.upsertWasteTour).toHaveBeenCalledTimes(1);
     expect(repository.upsertWasteLocationTourLink).toHaveBeenCalledTimes(2);
     const orderedWrites = [
@@ -457,6 +537,66 @@ describe('waste-management-operations.import', () => {
         currentStepKey: 'complete-operation',
       })
     );
+  });
+
+  it('reserves existing PDF short labels when creating fractions from CSV', async () => {
+    const repository = createRepositoryMock();
+    const fractions = await repository.listWasteFractions();
+    repository.listWasteFractions.mockResolvedValue([
+      ...fractions,
+      { ...fractions[0], id: 'fraction-biomass', name: 'Biomasse', pdfShortLabel: 'BIO' },
+    ]);
+
+    await executeImport(repository, {
+      profileId: 'waste-management.ortsbezogene-tourtermine',
+      parsedLocationTourPickupDates,
+    });
+
+    expect(repository.upsertWasteFraction).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Bioabfall', pdfShortLabel: 'BIO-2' })
+    );
+  });
+
+  it('reports every conflicting legacy source row before allowing any writes', async () => {
+    const repository = createRepositoryMock();
+    const stop = {
+      ...parsedLocationTourPickupDates.rows[0],
+      pickupDate: '2026-02-03',
+      tourNamesByFractionName: { Papier: 'PPK.7.2' },
+    };
+    const parsed = {
+      ...parsedLocationTourPickupDates,
+      rows: [
+        { ...stop, rowNumber: 2, note: '09:00 Uhr Markt' },
+        { ...stop, rowNumber: 4, region: undefined, note: '11:00 Uhr Schule' },
+        { ...stop, rowNumber: 6, pickupDate: '2026-02-10', note: 'Markt' },
+      ],
+      validRowCount: 3,
+    };
+
+    const preview = await previewLocationTourPickupDateImport(repository, parsed);
+    expect(preview).toMatchObject({ validRowCount: 1, invalidRowCount: 2 });
+    expect(preview.errors).toEqual([
+      {
+        rowNumber: 2,
+        column: 'Einsatz-ID',
+        message: expect.stringContaining('unterschiedlichen Hinweisen'),
+      },
+      {
+        rowNumber: 4,
+        column: 'Einsatz-ID',
+        message: expect.stringContaining('unterschiedlichen Hinweisen'),
+      },
+    ]);
+    expect(repository.listWasteCollectionLocations).toHaveBeenCalledTimes(1);
+    await expect(
+      executeImport(repository, {
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        parsedLocationTourPickupDates: parsed,
+      })
+    ).rejects.toThrowError('location_tour_pickup_date_import_has_issues');
+    expect(repository.upsertWasteFraction).not.toHaveBeenCalled();
+    expect(repository.upsertWasteTourAssignment).not.toHaveBeenCalled();
   });
 
   it('persists legacy CSV rows as single-location assignments with normalized optional notes', async () => {

@@ -22,7 +22,9 @@ import type { WasteMasterDataRepository } from '@sva/waste-management-runtime/re
 const hasOwnProperty = (value: object, key: PropertyKey): boolean =>
   Object.prototype.hasOwnProperty.call(value, key);
 
-const deriveWasteFractionShortLabel = (record: Readonly<Record<string, unknown>>): string => {
+export const deriveWasteFractionShortLabel = (
+  record: Readonly<Record<string, unknown>>
+): string => {
   const name =
     typeof record.name === 'string'
       ? record.name
@@ -34,6 +36,23 @@ const deriveWasteFractionShortLabel = (record: Readonly<Record<string, unknown>>
   return typeof record.id === 'string'
     ? record.id.replaceAll('-', '').slice(0, 3).toLocaleUpperCase('de')
     : '';
+};
+
+export const normalizeFractionShortLabel = (value: unknown): string =>
+  typeof value === 'string' ? value.trim().toLocaleUpperCase('de') : '';
+
+export const reserveDerivedWasteFractionShortLabel = (
+  baseLabel: string,
+  usedLabels: Set<string>
+): string => {
+  let label = baseLabel;
+  let suffix = 2;
+  while (usedLabels.has(label)) {
+    label = `${baseLabel}-${suffix}`;
+    suffix += 1;
+  }
+  usedLabels.add(label);
+  return label;
 };
 
 export const loadExistingWasteDataRecord = async (

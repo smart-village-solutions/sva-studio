@@ -5,7 +5,6 @@ import {
   getWasteManagementImportCatalogEntry,
   parseWasteLocationTourPickupDateCsv,
   type WasteLocationTourPickupDateImportParseResult,
-  type WasteLocationTourPickupDateImportPreview,
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
 } from '@sva/waste-management-contracts';
@@ -18,6 +17,7 @@ import {
   executeDateShiftImport,
   executeGeographyImport,
   executeToursImport,
+  persistLocationTourPickupDateImportPlan,
 } from './waste-management-operations.import.persist.js';
 import {
   defaultReadBinarySource,
@@ -25,6 +25,8 @@ import {
 } from './waste-management-operations.shared.js';
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import type { StudioJobProgress } from '@sva/core';
+
+export { previewLocationTourPickupDateImport } from './waste-management-operations.import.plan.js';
 
 type GenericImportRow = Record<string, string>;
 
@@ -135,25 +137,35 @@ export const parseLocationTourPickupDateImport = async (
   });
 };
 
-export const previewLocationTourPickupDateImport = async (
-  repository: WasteRepository,
-  parsed: WasteLocationTourPickupDateImportParseResult
-): Promise<WasteLocationTourPickupDateImportPreview> => {
-  const planned = await planLocationTourPickupDateImport(repository, { parsed, persist: false });
-  return {
-    profileId: 'waste-management.ortsbezogene-tourtermine',
-    delimiter: parsed.delimiter,
-    detectedDelimiter: parsed.detectedDelimiter,
-    fractionNames: parsed.fractionNames,
-    existingFractions: planned.existingFractions,
-    newFractions: planned.newFractions,
-    existingTours: planned.existingTours,
-    newTours: planned.newTours,
-    validRowCount: parsed.validRowCount,
-    invalidRowCount: parsed.invalidRowCount,
-    errors: parsed.issues,
-    summary: planned.summary,
-  };
+const wasteImportProgressBatchSize = 25;
+
+const createLocationTourPickupDateImportProgress = (input: {
+  readonly processedRows: number;
+  readonly totalRows: number;
+  readonly currentPhase: string;
+  readonly currentStepKey: string;
+}): StudioJobProgress => ({
+  completedSteps: input.processedRows,
+  totalSteps: input.totalRows,
+  currentPhase: input.currentPhase,
+  currentStepKey: input.currentStepKey,
+  details: {
+    processedRows: input.processedRows,
+    totalRows: input.totalRows,
+  },
+  lastUpdatedAt: new Date().toISOString(),
+});
+
+const reportLocationTourPickupDateImportProgress = async (
+  reportProgress: ((progress: StudioJobProgress) => Promise<void> | void) | undefined,
+  input: {
+    readonly processedRows: number;
+    readonly totalRows: number;
+    readonly currentPhase: string;
+    readonly currentStepKey: string;
+  }
+) => {
+  await reportProgress?.(createLocationTourPickupDateImportProgress(input));
 };
 
 const executeLocationTourPickupDateImport = async (
@@ -167,10 +179,52 @@ const executeLocationTourPickupDateImport = async (
     throw new Error('location_tour_pickup_date_import_has_issues');
   }
 
-  const planned = await planLocationTourPickupDateImport(repository, {
-    parsed: input.parsedLocationTourPickupDates,
-    persist: true,
-    reportProgress: input.reportProgress,
+  const planned = await planLocationTourPickupDateImport(
+    repository,
+    input.parsedLocationTourPickupDates
+  );
+  if (planned.issues.length > 0) {
+    throw new Error('location_tour_pickup_date_import_has_issues');
+  }
+
+  const totalRows = input.parsedLocationTourPickupDates.validRowCount;
+  let processedRows = 0;
+  await reportLocationTourPickupDateImportProgress(input.reportProgress, {
+    processedRows: 0,
+    totalRows,
+    currentPhase: 'waste-management.import-preparation',
+    currentStepKey: 'prepare-import',
+  });
+  await reportLocationTourPickupDateImportProgress(input.reportProgress, {
+    processedRows: 0,
+    totalRows,
+    currentPhase: 'waste-management.import-running',
+    currentStepKey: 'process-rows',
+  });
+
+  for (const _row of input.parsedLocationTourPickupDates.rows) {
+    processedRows += 1;
+    if (processedRows % wasteImportProgressBatchSize === 0 || processedRows === totalRows) {
+      await reportLocationTourPickupDateImportProgress(input.reportProgress, {
+        processedRows,
+        totalRows,
+        currentPhase: 'waste-management.import-running',
+        currentStepKey: 'process-rows',
+      });
+    }
+  }
+  await persistLocationTourPickupDateImportPlan(
+    repository,
+    planned,
+    planned.assignments,
+    planned.existingFractionRecords
+  );
+
+  await reportLocationTourPickupDateImportProgress(input.reportProgress, {
+    processedRows,
+    totalRows,
+    currentPhase: 'waste-management.completed',
+    currentStepKey: 'complete-operation',
   });
 
   return {

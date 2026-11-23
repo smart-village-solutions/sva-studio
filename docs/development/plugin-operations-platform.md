@@ -215,6 +215,7 @@ Fachchanges wie `add-waste-management-plugin` konsumieren diese Plattform und de
 - technische Settings- und Reconfigure-Pfade der aktiven Waste-Datenquelle bleiben von den Jobpfaden getrennt
 - fachliche Importkataloge und Mapping-Vorlagen dürfen im Plugin sichtbar werden, aber keine zweite Importpersistenz oder eigene Runner-API einführen
 - der CSV-Spezialimport `waste-management.ortsbezogene-tourtermine` nutzt denselben generischen Jobvertrag, meldet während des Commit-Pfads aber blockweise echten Laufzeitfortschritt mit Phasen sowie `processedRows` und `totalRows`
+- Sind für denselben Abholort, dieselbe Tour und dasselbe Abholdatum unterschiedliche Hinweise vorgesehen, braucht jeder Halt eine eigene `Einsatz-ID`. Die Importvorschau markiert jede betroffene CSV-Zeile ohne ID.
 
 ## Aktuelle Host-UI
 

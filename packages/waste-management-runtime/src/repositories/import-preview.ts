@@ -1,19 +1,21 @@
 import {
   parseWasteLocationTourPickupDateCsv,
-  planWasteLocationTourPickupDateImport,
-  type WasteLocationTourPickupDateImportPlanningSnapshot,
   type WasteLocationTourPickupDateImportPreview,
   type WasteManagementCsvDelimiter,
   type WasteManagementImportSourceFormat,
 } from '@sva/waste-management-contracts';
-import type { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
+import { previewLocationTourPickupDateImport } from '../operations/waste-management-operations.import.plan.js';
+import type { createWasteMasterDataRepository } from './master-data.js';
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
 
 const decodeBlobRef = async (
   instanceId: string,
   blobRef: string,
-  readStoredSource: (input: { instanceId: string; blobRef: string }) => Promise<{ body: Uint8Array }>
+  readStoredSource: (input: {
+    instanceId: string;
+    blobRef: string;
+  }) => Promise<{ body: Uint8Array }>
 ): Promise<string> => {
   if (blobRef.startsWith('plugin-operation-input:')) {
     const stored = await readStoredSource({ instanceId, blobRef });
@@ -34,33 +36,6 @@ const decodeBlobRef = async (
   return new TextDecoder('utf-8').decode(buffer);
 };
 
-const loadPlanningSnapshot = async (
-  repository: WasteRepository
-): Promise<WasteLocationTourPickupDateImportPlanningSnapshot> => {
-  const [fractions, regions, cities, streets, houseNumbers, locations, tours, assignments] =
-    await Promise.all([
-      repository.listWasteFractions(),
-      repository.listWasteRegions(),
-      repository.listWasteCities(),
-      repository.listWasteStreets(),
-      repository.listWasteHouseNumbers(),
-      repository.listWasteCollectionLocations(),
-      repository.listWasteTours(),
-      repository.listWasteLocationTourLinks(),
-    ]);
-
-  return {
-    fractions,
-    regions,
-    cities,
-    streets,
-    houseNumbers,
-    locations,
-    tours,
-    assignments,
-  };
-};
-
 export const previewWasteLocationTourPickupDateImport = async (
   repository: WasteRepository,
   input: {
@@ -69,7 +44,10 @@ export const previewWasteLocationTourPickupDateImport = async (
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
   },
-  readStoredSource: (input: { instanceId: string; blobRef: string }) => Promise<{ body: Uint8Array }>
+  readStoredSource: (input: {
+    instanceId: string;
+    blobRef: string;
+  }) => Promise<{ body: Uint8Array }>
 ): Promise<WasteLocationTourPickupDateImportPreview> => {
   if (input.sourceFormat !== 'text/csv') {
     throw new Error(`unsupported_import_source_format:${input.sourceFormat}`);
@@ -79,22 +57,5 @@ export const previewWasteLocationTourPickupDateImport = async (
     text: await decodeBlobRef(input.instanceId, input.blobRef, readStoredSource),
     delimiterOverride: input.delimiterOverride,
   });
-  const plan = planWasteLocationTourPickupDateImport(await loadPlanningSnapshot(repository), {
-    rows: parsed.rows,
-  });
-
-  return {
-    profileId: 'waste-management.ortsbezogene-tourtermine',
-    delimiter: parsed.delimiter,
-    detectedDelimiter: parsed.detectedDelimiter,
-    fractionNames: parsed.fractionNames,
-    existingFractions: plan.existingFractions,
-    newFractions: plan.newFractions,
-    existingTours: plan.existingTours,
-    newTours: plan.newTours,
-    validRowCount: parsed.validRowCount,
-    invalidRowCount: parsed.invalidRowCount,
-    errors: parsed.issues,
-    summary: plan.summary,
-  };
+  return previewLocationTourPickupDateImport(repository, parsed);
 };

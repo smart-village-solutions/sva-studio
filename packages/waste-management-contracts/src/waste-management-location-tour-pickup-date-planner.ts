@@ -1,4 +1,5 @@
 import type {
+  WasteLocationTourPickupDateImportIssue,
   WasteLocationTourPickupDateImportPlan,
   WasteLocationTourPickupDateImportPlanningSnapshot,
   WasteLocationTourPickupDateImportRow,
@@ -24,9 +25,30 @@ export const planWasteLocationTourPickupDateImport = (
   options?: { readonly createId?: () => string }
 ): WasteLocationTourPickupDateImportPlan => {
   const state = createState(snapshot, options?.createId ?? createRuntimeUuid);
+  const resolvedPickupDates: WasteLocationTourPickupDateImportPlan['resolvedPickupDates'][number][] =
+    [];
+  const issues: WasteLocationTourPickupDateImportIssue[] = [];
 
   for (const row of input.rows) {
-    applyRowToPlan(state, row);
+    try {
+      const resolved = applyRowToPlan(state, row);
+      if (row.pickupDate !== undefined) {
+        resolvedPickupDates.push({ row, ...resolved });
+      }
+    } catch (error) {
+      if (
+        row.pickupDate === undefined ||
+        !(error instanceof Error) ||
+        !error.message.startsWith('ambiguous_regionless_city_match:')
+      ) {
+        throw error;
+      }
+      issues.push({
+        rowNumber: row.rowNumber,
+        column: 'Region',
+        message: 'Der Ort ist mehrdeutig. Geben Sie die passende Region an.',
+      });
+    }
   }
 
   return {
@@ -35,6 +57,8 @@ export const planWasteLocationTourPickupDateImport = (
     newFractions: sortNames(state.newFractions),
     existingTours: sortNames(state.existingTours),
     newTours: sortNames(state.newTours),
+    resolvedPickupDates,
+    issues,
     upserts: {
       fractions: [...state.upserts.fractions.values()],
       regions: [...state.upserts.regions.values()],

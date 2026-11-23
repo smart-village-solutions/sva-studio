@@ -100,6 +100,28 @@ describe('waste location tour assignment import parser', () => {
     );
   });
 
+  it('identifies the stop export and points to the original rows that need assignment', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ortsteil;Datum;Wochentag;Zeit;Standort',
+        'Nord;03.02.2027;Mittwoch;09:00;Markt',
+        '',
+        'Nord;03.02.2027;Mittwoch;11:00;Schule',
+      ].join('\n'),
+    });
+
+    expect(result).toMatchObject({ validRowCount: 0, invalidRowCount: 2, rows: [] });
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 1,
+        column: 'Datei',
+        message: expect.stringContaining('Ort – Tour – Abholdatum'),
+      },
+      { rowNumber: 2, column: 'Standort', message: expect.stringContaining('Einsatz-ID') },
+      { rowNumber: 4, column: 'Standort', message: expect.stringContaining('Einsatz-ID') },
+    ]);
+  });
+
   it('returns a deterministic issue for empty csv files', () => {
     const result = parseWasteLocationTourPickupDateCsv({
       text: '',

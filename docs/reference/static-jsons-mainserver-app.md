@@ -132,7 +132,7 @@ Die Studio-Inhaltstypen **FAQ, Cockpit Cards und Projects** gibt es laut Nutzer 
 Für die weitere Einordnung sind drei Dimensionen getrennt zu halten:
 
 - **Fachliche Modulzugehörigkeit:** Welche App-Funktion betrifft ein Schlüssel?
-- **Position im App-Menü:** In welchem der sieben Bereiche wird die Einstellung bearbeitet?
+- **Position im App-Menü:** Unter welchem Punkt in der Studio-Seitenleiste **Anwendungen → App** wird die Einstellung bearbeitet? Der konkrete Pfad steht im jeweiligen Issue und folgt dem [Navigationsvertrag](../../openspec/changes/add-shared-app-configuration/specs/plugin-platform/spec.md).
 - **Zuständiges Studio-Plugin:** Welches bestehende oder später zu implementierende Plugin verantwortet diesen Bereich?
 
 Die 32 analytischen Module und Querschnittsbereiche des lokalen Katalogs werden nicht unverändert als 32 Menüeinträge oder neue Plugins übernommen. Diese Festlegung dokumentiert die spätere Bedienstruktur und Zuständigkeit; sie ist kein Auftrag, bereits jetzt Studio-Anbindung oder weitere technische Schichten anzulegen.

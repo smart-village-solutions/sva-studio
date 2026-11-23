@@ -46,14 +46,14 @@
 - [x] 5.4 Deutsche/englische Texte, gezielte UI-/Auth-/Runtime-Nachweise und aktuelle Dokumentation abschließen.
 
 
-## 6. Erster Schreibpfad im App-Arbeitsbereich
+## 6. Erster Schreibpfad auf der Seite **Anwendungen → App → App-Konfiguration**
 
-- [x] 6.1 Live geprüften GraphQL-Vertrag aus SVA-1787, SVA-1788, SVA-1789 und SVA-1792 anbinden. Dateiliste und exakte Version im App-Arbeitsbereich anbieten.
+- [x] 6.1 Live geprüften GraphQL-Vertrag aus SVA-1787, SVA-1788, SVA-1789 und SVA-1792 anbinden. Dateiliste und exakte Version auf der Seite **Anwendungen → App → App-Konfiguration** anbieten.
 - [x] 6.2 Hostrechte, Sessionbindung und CSRF prüfen. Die zwei vereinbarten Felder revisionsgesichert aktualisieren und ein unabhängiges Readback durchführen.
 - [x] 6.3 Geänderte Mainserver-Werte anzeigen, Konflikte je Feld entscheiden und nach Bestätigung erneut lesen.
 - [ ] 6.4 Browser- und Runtime-Abnahme über die Studio-Sandbox mit einem ausdrücklich freigegebenen Testdatensatz.
 
-## 7. Variantenaktionen im App-Arbeitsbereich
+## 7. Variantenaktionen auf der Seite **Anwendungen → App → App-Konfiguration**
 
 - [x] 7.1 Zielversion aus gewählter Vorlage im aktuellen GraphQL-Vertrag vollständig kopieren, wenn der Name unverändert bleibt. Vorhandenes Ziel prüfen und Kopie unabhängig verifizieren.
 - [x] 7.2 Bestätigte JSON-Variante gezielt per ID löschen, nachprüfen und Rechte sowie Studio-Mutationssperre serverseitig durchsetzen.

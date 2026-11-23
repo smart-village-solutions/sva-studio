@@ -90,11 +90,11 @@ Für geänderte Runtime-Bereiche gelten die bestehenden Pflicht-Gates: früh `pn
 
 ## Mainserver-Vertrag und erster Studio-Schreibpfad
 
-SVA-1788, SVA-1789 und SVA-1792 liefern den Variantenbestand und den exakten Detailabruf mit Rohtext und Revision. SVA-1787 sichert Inhaltsupdates nach ID ohne Namens- oder Versionsänderung mit `expectedRevision` ab. Der erste Editor wird im vorhandenen App-Arbeitsbereich mit seinen Lese- und Änderungsrechten eingebunden. Die vollständige Dateiliste ist sichtbar, das erste Formular bearbeitet die beiden vereinbarten Felder aus `globalSettings`. Weitere Fachformulare folgen getrennt.
+SVA-1788, SVA-1789 und SVA-1792 liefern den Variantenbestand und den exakten Detailabruf mit Rohtext und Revision. SVA-1787 sichert Inhaltsupdates nach ID ohne Namens- oder Versionsänderung mit `expectedRevision` ab. Der erste Editor wird unter **Anwendungen → App → App-Konfiguration** mit den bestehenden Lese- und Änderungsrechten eingebunden. Die vollständige Dateiliste ist sichtbar, das erste Formular bearbeitet die beiden vereinbarten Felder aus `globalSettings`. Weitere Fachformulare folgen getrennt.
 
 Studio hält die Liste und geladene Feldprojektionen im geöffneten Arbeitsbereich kontextgebunden bis zu 24 Stunden vor. Neue Änderungen werden beim Speichern direkt abgeglichen. Eine geänderte Revision zeigt Ausgangswerte, eigene Änderungen und aktuelle Werte. Überschneidungen erfordern eine Feldentscheidung. Der Server liest nach dieser Entscheidung erneut, wendet ausschließlich gewählte Änderungen am Rohtext an und bestätigt das Ergebnis separat per ID. Die Mainserver-Revisionsprüfung verhindert zwischenzeitlich veraltete Studio-Writes. Unklare Ergebnisse werden ausdrücklich angezeigt und nicht automatisch wiederholt. Die bestehende Vorschau unter „Schnittstellen“ entfällt.
 
-## Variantenaktionen im App-Arbeitsbereich
+## Variantenaktionen auf der Seite **Anwendungen → App → App-Konfiguration**
 
 Der Host verlangt zusätzlich zu den beiden Rechten des App-Arbeitsbereichs `integration.manage`. Die vorhandene instanzgebundene Mutationssperre koordiniert Feld-Updates, Kopien und Löschungen aus Studio. Quelle und Ziel werden am jeweiligen verifizierten Mandantenkontext ausgerichtet. Der Browser sendet lediglich Aktion, gewählte ID, bestätigte Revision und bei Kopien die Zielversion.
 

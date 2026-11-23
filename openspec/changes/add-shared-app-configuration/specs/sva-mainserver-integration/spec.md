@@ -97,7 +97,7 @@ Das System SHALL nach einer Änderungsvorschau direkt im Mainserver speichern, o
 
 ### Requirement: Erster App-Konfigurationseditor mit Revision
 
-Das System SHALL die Dateiliste des authentifizierten Mainserver-Mandanten im App-Arbeitsbereich anzeigen und die Variante exakt per ID laden. Der Host MUST die Session, den Modulzugang und die Konfigurationsrechte prüfen. Das erste Formular SHALL ausschließlich die zwei freigegebenen Feldpfade für Standortwahl und Kacheltitel von `globalSettings` ändern.
+Das System SHALL die Dateiliste des authentifizierten Mainserver-Mandanten auf der Seite **Anwendungen → App → App-Konfiguration** anzeigen und die Variante exakt per ID laden. Der Host MUST die Session, den Modulzugang und die Konfigurationsrechte prüfen. Das erste Formular SHALL ausschließlich die zwei freigegebenen Feldpfade für Standortwahl und Kacheltitel von `globalSettings` ändern.
 
 #### Scenario: Geänderten Mainserver-Stand prüfen
 

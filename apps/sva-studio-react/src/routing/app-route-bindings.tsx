@@ -5,7 +5,6 @@ import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 import { useAuth } from '../providers/auth-provider';
-import { appConfigurationReadAccess } from '../lib/app-configuration-access';
 import { useLocale } from '../providers/locale-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { useOrganizationContext } from '../hooks/use-organization-context';
@@ -27,8 +26,6 @@ export {
   type MainserverPrincipalResolution,
 } from './mainserver-principal-control';
 
-type StudioAppRouteBindings = BaseAppRouteBindings;
-
 const ContentDetailRoutePage = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
@@ -49,14 +46,29 @@ const ContentDetailRoutePage = () => {
   );
 };
 
-const hostAppRouteBindings: StudioAppRouteBindings = {
+const LazyAppConfigurationEditor = React.lazy(() =>
+  import('../routes/app-configuration/-editor').then((module) => ({
+    default: module.AppConfigurationEditor,
+  }))
+);
+
+const AppConfigurationRoutePage = () => (
+  <React.Suspense
+    fallback={<StudioLoadingState>{t('interfaces.appConfiguration.loading')}</StudioLoadingState>}
+  >
+    <LazyAppConfigurationEditor />
+  </React.Suspense>
+);
+
+const hostAppRouteBindings = {
   ...coreAppRouteBindings,
   appTexts: () => <CatalogsPage />,
+  appConfiguration: AppConfigurationRoutePage,
   adminAppTranslations: () => <CatalogsPage platform />,
   content: ContentListRoutePage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,
-};
+} satisfies BaseAppRouteBindings;
 
 export const SearchPluginRoutePage = ({
   Page,
@@ -92,40 +104,6 @@ export const SearchPluginRoutePage = ({
   return <Page key={contextKey} contextKey={contextKey} locale={locale} />;
 };
 
-const LazyAppConfigurationEditor = React.lazy(() =>
-  import('../routes/app-configuration/-editor').then((module) => ({
-    default: module.AppConfigurationEditor,
-  }))
-);
-
-function ApplicationWorkspacePage({ Page }: { Page: React.ComponentType }) {
-  const [open, setOpen] = React.useState(false);
-  const access = useEffectiveAccess();
-  if (!open && access.decide(appConfigurationReadAccess).status !== 'allowed') return <Page />;
-  return (
-    <div className="space-y-5">
-      <Page />
-      <Button
-        variant="secondary"
-        aria-expanded={open}
-        disabled={open}
-        onClick={() => setOpen(true)}
-      >
-        {t('interfaces.appConfiguration.open')}
-      </Button>
-      {open && (
-        <React.Suspense
-          fallback={
-            <StudioLoadingState>{t('interfaces.appConfiguration.loading')}</StudioLoadingState>
-          }
-        >
-          <LazyAppConfigurationEditor />
-        </React.Suspense>
-      )}
-    </div>
-  );
-}
-
 export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map((plugin) => ({
   ...plugin,
   routes:
@@ -144,13 +122,6 @@ export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map
           ),
         }))
       : plugin.routes.map((route) => {
-          if (
-            plugin.id === 'application-workspace' &&
-            route.path === '/plugins/application-workspace'
-          ) {
-            const Page = route.component as React.ComponentType;
-            return { ...route, component: () => <ApplicationWorkspacePage Page={Page} /> };
-          }
           if (!route.editorLeaveGuard) return route;
           const Page = route.component as React.ComponentType;
           return {
@@ -191,4 +162,4 @@ export const appRouteBindings = Object.assign(
   {},
   hostAppRouteBindings,
   contributedRouteComponents
-) as StudioAppRouteBindings & Readonly<Record<string, React.ComponentType>>;
+) as typeof hostAppRouteBindings & Readonly<Record<string, React.ComponentType>>;

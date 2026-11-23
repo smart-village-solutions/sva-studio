@@ -132,7 +132,7 @@ Die Studio-Inhaltstypen **FAQ, Cockpit Cards und Projects** gibt es laut Nutzer 
 Für die weitere Einordnung sind drei Dimensionen getrennt zu halten:
 
 - **Fachliche Modulzugehörigkeit:** Welche App-Funktion betrifft ein Schlüssel?
-- **Position im App-Menü:** In welchem der sieben Bereiche wird die Einstellung bearbeitet?
+- **Position im App-Menü:** Unter welchem Punkt in der Studio-Seitenleiste **Anwendungen → App** wird die Einstellung bearbeitet? Der konkrete Pfad steht im jeweiligen Issue und folgt dem [Navigationsvertrag](../../openspec/changes/add-shared-app-configuration/specs/plugin-platform/spec.md).
 - **Zuständiges Studio-Plugin:** Welches bestehende oder später zu implementierende Plugin verantwortet diesen Bereich?
 
 Die 32 analytischen Module und Querschnittsbereiche des lokalen Katalogs werden nicht unverändert als 32 Menüeinträge oder neue Plugins übernommen. Diese Festlegung dokumentiert die spätere Bedienstruktur und Zuständigkeit; sie ist kein Auftrag, bereits jetzt Studio-Anbindung oder weitere technische Schichten anzulegen.
@@ -145,7 +145,7 @@ Der Studio-Mainserver-Service führt den gemeinsamen JSON-Abgleich über den vor
 
 Die Zuständigkeit für den gemeinsamen Ablauf liegt in `@sva/sva-mainserver`. Studio prüft Mandantenkontext und die Rechte des App-Arbeitsbereichs. Beim Speichern werden nur die zulässigen Feldänderungen in das JSON eingespielt. Die Architekturentscheidung steht unter [Gemeinsamer Abgleich der App-Konfiguration](../architecture/08-cross-cutting-concepts.md#gemeinsamer-abgleich-der-app-konfiguration).
 
-Der erste Editor stellt unter **Anwendungen → App-Konfiguration öffnen** die tatsächlichen Dateien und Varianten zur Auswahl. Für `globalSettings` bearbeitet er die alternative Standortwahl und die Zeilenzahl der Kacheltitel. Die gewählte ID steuert den Schreibvorgang auch bei unversionierten Einträgen. Berechtigte können Varianten vollständig kopieren und gezielt per ID löschen. Der [OpenSpec-Change](../../openspec/changes/add-shared-app-configuration/proposal.md) beschreibt den Gesamtumfang.
+Der erste Editor stellt unter **Anwendungen → App → App-Konfiguration** die tatsächlichen Dateien und Varianten zur Auswahl. Für `globalSettings` bearbeitet er die alternative Standortwahl und die Zeilenzahl der Kacheltitel. Die gewählte ID steuert den Schreibvorgang auch bei unversionierten Einträgen. Berechtigte können Varianten vollständig kopieren und gezielt per ID löschen. Der [OpenSpec-Change](../../openspec/changes/add-shared-app-configuration/proposal.md) beschreibt den Gesamtumfang.
 
 Neue Versionen entstehen als vollständige Kopie einer vom Redakteur gewählten vorhandenen Variante. Studio sendet dazu den vollständigen Rohtext der Vorlage. Bereits vorhandene Zielversionen werden abgewiesen. Die Namensnormalisierung beim Anlegen begrenzt die Funktion auf Namen, die der Mainserver unverändert übernimmt. Vorlage und andere vorhandene Varianten werden durch die Neuanlage nicht verändert.
 

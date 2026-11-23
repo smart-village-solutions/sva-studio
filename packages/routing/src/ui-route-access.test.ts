@@ -44,7 +44,7 @@ describe('enforceUiRouteAccessRequirements', () => {
   it('redirects when the required module is missing', async () => {
     await expect(
       enforceUiRouteAccessRequirements(
-        { requiredModuleId: 'media' },
+        { requiredModuleIds: ['media'] },
         createBeforeLoadOptions({ assignedModules: ['news'] })
       )
     ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
@@ -53,7 +53,7 @@ describe('enforceUiRouteAccessRequirements', () => {
   it('redirects when the permission snapshot is degraded', async () => {
     await expect(
       enforceUiRouteAccessRequirements(
-        { requiredModuleId: 'media' },
+        { requiredModuleIds: ['media'] },
         createBeforeLoadOptions({
           assignedModules: ['media'],
           permissionStatus: 'degraded',
@@ -87,7 +87,7 @@ describe('enforceUiRouteAccessRequirements', () => {
   it('allows access when only the required module is satisfied', async () => {
     await expect(
       enforceUiRouteAccessRequirements(
-        { requiredModuleId: 'media' },
+        { requiredModuleIds: ['media'] },
         createBeforeLoadOptions({ assignedModules: ['media'] })
       )
     ).resolves.toBeUndefined();
@@ -97,7 +97,7 @@ describe('enforceUiRouteAccessRequirements', () => {
     await expect(
       enforceUiRouteAccessRequirements(
         {
-          requiredModuleId: 'media',
+          requiredModuleIds: ['media'],
           requiredPermissions: ['media.read'],
         },
         createBeforeLoadOptions({

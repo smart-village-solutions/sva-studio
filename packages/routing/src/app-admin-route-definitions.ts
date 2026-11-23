@@ -11,8 +11,16 @@ export const adminUiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'appTexts',
     path: uiRoutePaths.appTexts,
     guard: 'appTexts',
-    requiredModuleId: 'app',
+    requiredModuleIds: ['app'],
     documentation: page('mobile-app.texts', 'overview'),
+  },
+  {
+    binding: 'appConfiguration',
+    path: uiRoutePaths.appConfiguration,
+    guard: 'account',
+    requiredModuleIds: ['app', 'application-workspace'],
+    requiredPermissions: ['application-workspace.settings.read'],
+    documentation: page('mobile-app.configuration', 'overview'),
   },
   {
     binding: 'adminAppTranslations',

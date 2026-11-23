@@ -898,6 +898,41 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
   });
 
+  it('shows App-Konfiguration inside the App submenu for eligible users', () => {
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'demo',
+        assignedModules: ['app', 'application-workspace'],
+        permissionActions: ['application-workspace.settings.read'],
+      }),
+      route: '/app-configuration',
+    });
+
+    expect(screen.getByText('Anwendungen')).toBeTruthy();
+    const appGroup = screen.getByRole('button', { name: 'App' });
+    expect(appGroup.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('link', { name: 'App-Konfiguration' }).getAttribute('href')).toBe(
+      '/app-configuration'
+    );
+    fireEvent.click(appGroup);
+    expect(screen.queryByRole('link', { name: 'App-Konfiguration' })).toBeNull();
+  });
+
+  it('hides App-Konfiguration when the editor access check denies it', () => {
+    decideAccessMock.mockReturnValue({ status: 'denied', reason: 'tenant_permission_missing' });
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'demo',
+        assignedModules: ['app', 'application-workspace'],
+        permissionActions: ['app-texts.catalog.read'],
+      }),
+      route: '/app-texts',
+    });
+
+    expect(screen.getByRole('link', { name: 'App-Texte' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'App-Konfiguration' })).toBeNull();
+  });
+
   it('does not expose the central app group in a municipal session', () => {
     renderSidebar({ user: createSidebarUser({ instanceId: 'demo', roles: ['system_admin'] }) });
     expect(screen.queryByRole('button', { name: 'App' })).toBeNull();

@@ -103,6 +103,7 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
 }>;
 
 export type WasteEmailReminderPlanningOrder = Readonly<{
+  requiresReplan?: boolean;
   dedupeKey: string;
   status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
   attemptCount: number;

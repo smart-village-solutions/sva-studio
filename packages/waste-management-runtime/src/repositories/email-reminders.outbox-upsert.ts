@@ -3,6 +3,7 @@ import type {
   WasteEmailReminderOutboxEntryInput,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
+import { MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 
 type EnqueuedOutboxRow = Readonly<{ id: string }>;
 
@@ -39,6 +40,8 @@ SET transport_id = EXCLUDED.transport_id,
     status = 'pending',
     last_error = CASE
       WHEN waste_email_reminder_outbox.status = 'cancelled' THEN NULL
+      WHEN waste_email_reminder_outbox.last_error = '${REMINDER_REPLAN_REQUIRED}'
+        THEN CASE WHEN waste_email_reminder_outbox.attempt_count > 0 THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}' ELSE NULL END
       ELSE waste_email_reminder_outbox.last_error
     END,
     send_at = CASE

@@ -21,6 +21,7 @@ export const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
 export const OUTBOX_DISPATCH_CLAIM = 'dispatch_claimed';
 export const REMINDER_OUTCOME_UNKNOWN = 'mail_dispatch_outcome_unknown';
 export const MAIL_TRANSPORT_NOT_AVAILABLE = 'mail_transport_not_available';
+export const REMINDER_REPLAN_REQUIRED = 'reminder_replan_required';
 
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
@@ -35,6 +36,7 @@ WITH due AS (
     ON subscription.id = outbox.subscription_id
   WHERE (
     (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz
+      AND outbox.last_error IS DISTINCT FROM '${REMINDER_REPLAN_REQUIRED}'
       AND (outbox.message_kind = 'doi' OR outbox.attempt_count = 0
         OR outbox.last_error = '${MAIL_TRANSPORT_NOT_AVAILABLE}'))
     OR (

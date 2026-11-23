@@ -402,7 +402,9 @@ describe('waste email reminder repository', () => {
     ).resolves.toBe(true);
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending' AND send_at <= $1::timestamptz");
-    expect(statements[0]?.text).toContain("attempt_count = 0 OR last_error = 'mail_transport_not_available'");
+    expect(statements[0]?.text).toContain(
+      "attempt_count = 0 OR last_error IN ('mail_transport_not_available', 'reminder_replan_required')"
+    );
     expect(statements[0]?.text).not.toContain("status = 'processing'");
   });
 
@@ -420,7 +422,9 @@ describe('waste email reminder repository', () => {
 
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending'");
-    expect(statements[0]?.text).toContain("attempt_count = 0 OR last_error = 'mail_transport_not_available'");
+    expect(statements[0]?.text).toContain(
+      "attempt_count = 0 OR last_error IN ('mail_transport_not_available', 'reminder_replan_required')"
+    );
     expect(statements[0]?.text).not.toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
     expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);

@@ -110,7 +110,7 @@ export const groupReminderMembers = (
 };
 
 const retainsReminderDelivery = (order: WasteEmailReminderPlanningOrder): boolean =>
-  order.attemptCount > 0 ||
+  (order.attemptCount > 0 && !order.requiresReplan) ||
   order.status === 'processing' ||
   order.status === 'sent' ||
   order.status === 'failed';

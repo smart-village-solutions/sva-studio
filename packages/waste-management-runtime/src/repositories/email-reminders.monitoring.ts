@@ -5,7 +5,7 @@ import type {
   WasteEmailMonitoringQuery,
   WasteEmailSubscriptionSummary,
 } from '@sva/waste-management-contracts';
-import { REMINDER_OUTCOME_UNKNOWN } from './email-reminders.outbox-dispatch.js';
+import { REMINDER_OUTCOME_UNKNOWN, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 
 // Preserve the agreed edge characters without exposing short address parts in full.
 export const maskWasteEmail = (email: string | null): string => {
@@ -24,7 +24,10 @@ export const maskWasteEmail = (email: string | null): string => {
 export const classifyWasteEmailError = (
   value: string | null
 ): WasteEmailDeliverySummary['error'] => {
-  if (!value || value.startsWith('provider_message_id:') || value === 'dispatch_claimed')
+  if (
+    !value || value.startsWith('provider_message_id:') ||
+    value === 'dispatch_claimed' || value === REMINDER_REPLAN_REQUIRED
+  )
     return null;
   if (value === 'mail_transport_not_available' || value.startsWith('mail_transport_not_available:'))
     return 'transport_unavailable';

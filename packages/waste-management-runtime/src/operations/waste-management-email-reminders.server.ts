@@ -131,7 +131,7 @@ const collectReplaceableReminderKeys = (
   for (const order of existing) {
     if (order.status !== 'pending') continue;
     const members = order.memberKeys ?? [order.dedupeKey];
-    if (order.attemptCount === 0) {
+    if (order.attemptCount === 0 || order.requiresReplan) {
       replaceable.add(order.dedupeKey);
       for (const member of members) replaceable.add(member);
     } else if (members.some((member) => memberKeys.has(member))) {

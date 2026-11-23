@@ -280,7 +280,8 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
       { dedupe_key: sentKey, status: 'sent' },
       { dedupe_key: waitingKey, status: 'pending' },
     ]);
-    expect(await Promise.all([plan(client), plan(concurrent)])).toEqual(['inserted', 'refreshed']);
+    const planningResults = await Promise.all([plan(client), plan(concurrent)]);
+    expect(planningResults.sort()).toEqual(['inserted', 'refreshed']);
     expect(await readOrders()).toEqual(
       expect.arrayContaining([
         { dedupe_key: groupKey, status: 'pending' },

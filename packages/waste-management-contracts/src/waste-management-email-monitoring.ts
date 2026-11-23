@@ -1,5 +1,16 @@
 export const wasteEmailMonitoringPermission = 'waste-management.email-reminder-monitoring.read';
 
+export const isWasteReminderEmailAddress = (value: string): boolean => {
+  const email = value.trim();
+  const atIndex = email.indexOf('@');
+  if (atIndex < 1 || email.indexOf('@', atIndex + 1) !== -1 || /\s/u.test(email)) {
+    return false;
+  }
+
+  const dotIndex = email.indexOf('.', atIndex + 2);
+  return dotIndex !== -1 && dotIndex < email.length - 1;
+};
+
 export type WasteEmailSubscriptionStatus = 'pending' | 'active' | 'unsubscribed' | 'expired';
 export type WasteEmailDeliveryStatus = 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
 export type WasteEmailMonitoringQuery = Readonly<{
@@ -9,6 +20,10 @@ export type WasteEmailMonitoringQuery = Readonly<{
   subscriptionId?: string;
   deliveryPage: number;
 }>;
+export type WasteEmailMonitoringSearchQuery = Omit<WasteEmailMonitoringQuery, 'status'> &
+  Readonly<{
+    email: string;
+  }>;
 export type WasteEmailSubscriptionSummary = Readonly<{
   id: string;
   maskedEmail: string;
@@ -20,6 +35,8 @@ export type WasteEmailSubscriptionSummary = Readonly<{
   items: readonly Readonly<{ fraction: string; slotId: string }>[];
   /** Absent with older API versions; null means no matching stored message. */
   lastSentEmail?: Readonly<Pick<WasteEmailDeliverySummary, 'kind' | 'sentAt'>> | null;
+  /** Absent with older API versions; null means no stored confirmation email. */
+  doiEmail?: Readonly<Pick<WasteEmailDeliverySummary, 'status' | 'sentAt'>> | null;
   nextEmail?: Readonly<
     Pick<WasteEmailDeliverySummary, 'kind' | 'scheduledAt'> & {
       status: 'pending' | 'processing';
@@ -36,11 +53,13 @@ export type WasteEmailDeliverySummary = Readonly<{
   attempts: number;
   fraction: string | null;
   pickupDate: string | null;
-  error: 'transport_unavailable' | 'cancelled' | 'dispatch_failed' | null;
+  error: 'transport_unavailable' | 'cancelled' | 'dispatch_failed' | 'outcome_unknown' | null;
 }>;
 export type WasteEmailMonitoringOverview = Readonly<{
   subscriptions: readonly WasteEmailSubscriptionSummary[];
   total: number;
+  /** Tenant-wide active subscriptions, independent of the current list filter. */
+  activeTotal?: number;
   deliveries: readonly WasteEmailDeliverySummary[];
   deliveryTotal: number;
 }>;

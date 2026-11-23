@@ -1,34 +1,19 @@
 import { type MailDispatchPayload, type MailTransportConfig } from '@sva/core';
 import {
-  type WasteCollectionLocationRecord,
-  type WasteFractionRecord,
   type WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
-import { buildReminderHintText } from './waste-management-email-reminder-hints.js';
+import {
+  buildGroupReminderContent,
+  parseIsoDateUtc,
+  reminderAppointmentsSchema,
+  reminderMemberDedupeKey,
+  type ReminderMember,
+} from './waste-management-email-reminder-planning.js';
 
 const templatePlaceholderPattern = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
-
-export const createUtcIsoAtHour = (date: Date, hourUtc: number): string =>
-  new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hourUtc, 0, 0, 0)
-  ).toISOString();
-
-export const parseIsoDateUtc = (value: string): Date => {
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`invalid_iso_date:${value}`);
-  }
-  return parsed;
-};
-
-export const addDaysUtc = (value: Date, days: number): Date => {
-  const next = new Date(value);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
 
 const formatPickupDateLabel = (pickupDate: string): string =>
   new Intl.DateTimeFormat('de-DE', {
@@ -41,8 +26,22 @@ const formatPickupDateLabel = (pickupDate: string): string =>
 const renderTemplate = (template: string, values: Readonly<Record<string, string>>): string =>
   template.replace(templatePlaceholderPattern, (_match, rawKey: string) => values[rawKey] ?? '');
 
-const formatEmailLocationLabel = (value: string): string =>
-  value.replace(/Alle Straßen Alle Hausnummern$/u, 'alle Straßen und Hausnummern');
+const formatEmailLocationLabel = (value: string): string => {
+  if (!value.trim()) {
+    return value;
+  }
+  const [city, ...addressParts] = value.split(',').map((part) => part.trim());
+  const streetsAndHouseNumbers = /^alle\s+straßen(?:\s+(?:(?:alle|und)\s+)?hausnummern)?$/iu;
+  const houseNumbers = /(?:^|\s+)alle\s+hausnummern$/iu;
+  return [
+    city,
+    ...addressParts
+      .filter((part) => !streetsAndHouseNumbers.test(part))
+      .map((part) => part.replace(houseNumbers, '')),
+  ]
+    .filter(Boolean)
+    .join(', ');
+};
 
 const buildUnsubscribeUrl = (
   config: WasteManagementEmailReminderConfig,
@@ -64,69 +63,32 @@ const buildUnsubscribeUrl = (
   return url.toString();
 };
 
-export const matchSelectionLocations = (
-  locations: readonly WasteCollectionLocationRecord[],
-  subscription: {
-    readonly regionId?: string;
-    readonly cityId: string;
-    readonly streetId: string;
-    readonly houseNumberId?: string;
-  }
-): readonly WasteCollectionLocationRecord[] =>
-  locations.filter((location) => {
-    if (!location.active || location.cityId !== subscription.cityId) {
-      return false;
-    }
-    if (subscription.regionId) {
-      if (location.regionId !== undefined && location.regionId !== subscription.regionId) {
-        return false;
-      }
-    } else if (location.regionId !== undefined) {
-      return false;
-    }
-    if (subscription.streetId === 'all') {
-      return location.streetId === undefined;
-    }
-    if (location.streetId !== undefined && location.streetId !== subscription.streetId) {
-      return false;
-    }
-    if (
-      subscription.houseNumberId &&
-      location.houseNumberId !== undefined &&
-      location.houseNumberId !== subscription.houseNumberId
-    ) {
-      return false;
-    }
-    if (!subscription.houseNumberId && location.houseNumberId !== undefined) {
-      return false;
-    }
-    return true;
-  });
+type ReminderDispatchInput = Readonly<{
+  config: WasteManagementEmailReminderConfig;
+  subscriptionId: string;
+  email: string;
+  locationLabel: string;
+  pickupDate: string;
+  originalSendAt: string;
+  members: readonly ReminderMember[];
+  unsubscribeTokenHash: string;
+  unsubscribeTokenSecret: string;
+}>;
 
-export const buildReminderDispatchPayload = (input: {
-  readonly config: WasteManagementEmailReminderConfig;
-  readonly subscriptionId: string;
-  readonly email: string;
-  readonly locationLabel: string;
-  readonly fraction: WasteFractionRecord;
-  readonly pickupDate: string;
-  readonly hints?: readonly string[];
-  readonly unsubscribeTokenHash: string;
-  readonly unsubscribeTokenSecret: string;
-}): MailDispatchPayload => {
+export const buildReminderDispatchPayload = (input: ReminderDispatchInput): MailDispatchPayload => {
   const unsubscribeUrl = buildUnsubscribeUrl(input.config, {
     subscriptionId: input.subscriptionId,
     unsubscribeTokenHash: input.unsubscribeTokenHash,
     secret: input.unsubscribeTokenSecret,
   });
   const pickupDateLabel = formatPickupDateLabel(input.pickupDate);
+  const content = buildGroupReminderContent(input.members);
   const values = {
-    fractionName: input.fraction.name,
+    fractionName: content.fractionName,
     locationLabel: formatEmailLocationLabel(input.locationLabel),
     pickupDate: pickupDateLabel,
     unsubscribeUrl,
   } as const;
-  const hintText = buildReminderHintText(input.hints);
 
   return {
     orderId: input.subscriptionId,
@@ -150,8 +112,7 @@ export const buildReminderDispatchPayload = (input: {
       unsubscribeUrl,
       locationLabel: values.locationLabel,
       pickupDate: pickupDateLabel,
-      fractionName: input.fraction.name,
-      ...(hintText ? { hintText } : {}),
+      ...content,
       privacyPolicyUrl: input.config.privacyPolicyUrl,
       imprintUrl: input.config.imprintUrl,
       ...(input.config.serviceLabel ? { serviceLabel: input.config.serviceLabel } : {}),
@@ -161,7 +122,12 @@ export const buildReminderDispatchPayload = (input: {
       module: 'waste-management',
       flow: 'public-email-reminder-delivery',
       subscriptionId: input.subscriptionId,
-      fractionId: input.fraction.id,
+      originalSendAt: input.originalSendAt,
+      reminderMemberKeys: JSON.stringify(
+        [...new Set(input.members.map((member) =>
+          reminderMemberDedupeKey(input.subscriptionId, input.pickupDate, member)
+        ))].sort()
+      ),
       pickupDate: input.pickupDate,
     },
   };
@@ -342,34 +308,57 @@ const buildDoiDispatchMessage = (input: {
   });
 };
 
+const readReminderAppointments = (payload: MailDispatchPayload['templatePayload']) => {
+  if (payload.reminderAppointments === undefined) {
+    return [{ fractionName: payload.fractionName, hintText: payload.hintText }];
+  }
+  try {
+    return reminderAppointmentsSchema.parse(JSON.parse(payload.reminderAppointments));
+  } catch {
+    throw new Error('invalid_reminder_appointments');
+  }
+};
+
+const renderReminderAppointments = (payload: MailDispatchPayload['templatePayload']): string => {
+  const pickupDate = normalizeMailTextLine(payload.pickupDate);
+  return readReminderAppointments(payload)
+    .map((appointment) => {
+      const bulletLine = normalizeMailTextLine(appointment.fractionName)
+        ? `- ${appointment.fractionName}${pickupDate ? ` (${pickupDate})` : ''}`
+        : undefined;
+      const hintText = normalizeMailTextLine(appointment.hintText);
+      const hintLines = hintText
+        ?.split('\n')
+        .map((line) => (line ? `  ${line}` : ''))
+        .join('\n');
+      return [bulletLine, hintLines].filter(Boolean).join('\n');
+    })
+    .filter(Boolean)
+    .join('\n');
+};
+
 const buildReminderDispatchMessage = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
   readonly payload: MailDispatchPayload;
 }): MailDispatchMessage => {
   const { templatePayload } = input.payload;
-  const bulletLine = normalizeMailTextLine(templatePayload.fractionName)
-    ? `- ${templatePayload.fractionName}${normalizeMailTextLine(templatePayload.pickupDate) ? ` (${templatePayload.pickupDate})` : ''}`
-    : undefined;
-  const hintText = normalizeMailTextLine(templatePayload.hintText);
-  const appointmentSection = [
-    bulletLine,
-    hintText
-      ?.split('\n')
-      .map((line) => (line ? `  ${line}` : ''))
-      .join('\n'),
-  ]
-    .filter((line): line is string => Boolean(line))
-    .join('\n');
+  const storedLocationLabel = templatePayload.locationLabel ?? '';
+  const locationLabel = formatEmailLocationLabel(storedLocationLabel);
+  // Reminder text is rendered when queued, so update the stored label without rendering the templates again.
+  const formatQueuedText = (text?: string): string | undefined =>
+    storedLocationLabel && locationLabel && storedLocationLabel !== locationLabel
+      ? text?.split(storedLocationLabel).join(locationLabel)
+      : text;
   const serviceLabel = normalizeMailTextLine(
     templatePayload.serviceLabel ?? input.config.serviceLabel
   );
   const text = joinMailTextSections([
-    templatePayload.introText,
-    templatePayload.listIntroText,
-    appointmentSection,
+    formatQueuedText(templatePayload.introText),
+    formatQueuedText(templatePayload.listIntroText),
+    renderReminderAppointments(templatePayload),
     templatePayload.outroText,
-    templatePayload.reasonText,
+    formatQueuedText(templatePayload.reasonText),
     `${templatePayload.unsubscribeLabel}: ${templatePayload.unsubscribeUrl}`,
     `Datenschutz: ${templatePayload.privacyPolicyUrl}`,
     `Impressum: ${templatePayload.imprintUrl}`,
@@ -384,7 +373,7 @@ const buildReminderDispatchMessage = (input: {
     ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
     ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
     ...(replyTo ? { replyTo } : {}),
-    subject: templatePayload.subject,
+    subject: formatQueuedText(templatePayload.subject) ?? templatePayload.subject,
     text,
   };
 };

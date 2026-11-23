@@ -50,14 +50,16 @@ Die Weboberfläche zeigt unter „PDF / Druckversion“ einen Download-Button f�
 
 Das PDF wird im bestehenden Endpunkt `/api/public-waste/pdf` für Adresse, Jahr und gewählte Abfallarten erzeugt. Die Legende ist aus vorhandenen Fachdaten abgeleitet, kein separat bearbeitbares Textdokument:
 
-| Inhalt                                        | Bestehender Pflegeweg im Studio-Abfallkalender           |
-| --------------------------------------------- | -------------------------------------------------------- |
-| Fraktionsname, Kürzel, Farbe und Beschreibung | Abfallarten → betreffende Abfallart bearbeiten           |
-| Allgemeiner Tourhinweis                       | Touren → betreffende Tour → Beschreibung                 |
-| Hinweis zu einem Termin                       | Termine der Tour → betreffenden Termin → Hinweis         |
-| Logo und Kontaktblock                         | Ausgabe → PDF-Inhalte → Branding-Grafik und Kontaktblock |
+| Inhalt                          | Bestehender Pflegeweg im Studio-Abfallkalender           |
+| ------------------------------- | -------------------------------------------------------- |
+| Fraktionsname, Kürzel und Farbe | Abfallarten → betreffende Abfallart bearbeiten           |
+| Allgemeiner Tourhinweis         | Touren → betreffende Tour → Beschreibung                 |
+| Hinweis zu einem Termin         | Termine der Tour → betreffenden Termin → Hinweis         |
+| Logo und Kontaktblock           | Ausgabe → PDF-Inhalte → Branding-Grafik und Kontaktblock |
 
-Leere Beschreibungen erzeugen keine zusätzlichen Hinweise. HTML wird zu Klartext umgewandelt. Die kompakte Legende steht auf beiden Halbjahresseiten und enthält höchstens acht Zeilen: bei Verschiebungen zuerst deren Erklärung, danach Fraktionen und kontextbezogene Hinweise. Mindestens eine Hinweiszeile bleibt reserviert, wenn Hinweise vorliegen. Lange Zeilen werden mit `...` gekürzt; weitere Hinweise können bei ausgeschöpfter Zeilenzahl entfallen. Sie ist daher keine vollständige Wiedergabe sämtlicher Termindetails. Ein vollständiger Hinweisanhang oder eine andere Verteilung benötigt eine fachliche Layoutentscheidung; vorhandene Inhalte dürfen dafür nicht erfunden werden.
+Unter dem Kalenderraster stehen die Fraktionslegende links und die Tour- und Terminhinweise daneben. Die Legende beansprucht etwa ein Viertel der Breite und zeigt Farbbox, Kürzel und Fraktionsname. Bei Ausweichterminen beginnt sie mit der Erklärung des Sternchens. Fraktionsbeschreibungen bleiben in der Webansicht verfügbar. Ein hinterlegter allgemeiner PDF-Infotext steht im rechten Viertel. Ohne diesen Text nutzen die Hinweise die verbleibenden drei Viertel.
+
+Die Terminhinweise stehen bei ihrem jeweiligen Halbjahr. Mehrere unterschiedliche Haltepunkte am selben Tag werden einzeln erläutert, auch wenn sie im Raster eine gemeinsame Tagesmarkierung haben. HTML wird in Klartext umgewandelt. Hinweise und Infotext werden umgebrochen, bei Platzmangel erscheinen weitere Zeilen auf gekennzeichneten Folgeseiten.
 
 Die führende Quelle für `pdfBrandingAssetUrl` und `pdfContactBlock` ist `waste_settings` der Waste-Datenbank; Legacy-/Umgebungs-Fallbacks beschreibt das [Release-Runbook](../operations/public-waste-web-release-runbook.md). Eine fehlende oder nicht ladbare Grafik führt zum vorhandenen Platzhalter, dessen Text innerhalb des Rahmens bleibt. Der Export lädt eine konfigurierte öffentliche HTTPS-Grafik über den bestehenden geschützten Ladepfad und bettet sie proportional ein. Die Anwendung enthält kein fest eingebautes Landkreislogo. Für dessen Verwendung müssen die konkret freigegebene Grafik und eine passende Asset-URL vorliegen; eine Test-URL oder eine allgemeine Landkreisgrafik belegt keine Freigabe.
 
@@ -138,6 +140,8 @@ Der Verbraucher verbindet jede Kalenderantwort mit dem zugehörigen Katalogeintr
 `pdfAvailability` enthält für das Jahr des Referenztags, sein Vorjahr und sein Folgejahr die Jahre mit PDF-Terminen und die jeweils verfügbaren `fractionOptions`. Für die Verfügbarkeit zählt das vollständige Kalenderjahr nach wirksamem Abholdatum. Die Terminlisten und die Monats- und Jahresgruppen in derselben Antwort verwenden weiterhin den rollierenden Kalenderzeitraum.
 
 Die angebotenen E-Mail- und Kalendererinnerungen berücksichtigen Abfallarten aus direkten Tourverknüpfungen und aus datierten Tourzuweisungen für den ausgewählten Abholort. Eine Abfallart erscheint nur dann als Erinnerungsoption, wenn ihr jeweiliger Kanal aktiv ist und gültige Erinnerungszeitpunkte konfiguriert sind.
+
+In Bestätigungs- und Erinnerungsmails enthält der Vorlagenplatzhalter `{{locationLabel}}` den Ort und, falls ausgewählt, die konkrete Straße sowie die Hausnummer oder den Hausnummernbereich. Die Sammelangaben „Alle Straßen“ und „Alle Hausnummern“ entfallen in der E-Mail.
 
 ## Bewusste Nicht-Ziele
 

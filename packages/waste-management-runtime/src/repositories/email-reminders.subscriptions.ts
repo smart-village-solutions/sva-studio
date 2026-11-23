@@ -1,10 +1,15 @@
+import { createHash } from 'node:crypto';
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type {
   WasteEmailReminderPendingSignupInput,
   WasteEmailReminderPendingSignupItem,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
-import { STALE_OUTBOX_LEASE_INTERVAL } from './email-reminders.outbox-dispatch.js';
+
+export const normalizeWasteReminderEmail = (value: string): string => value.trim().toLowerCase();
+
+export const hashWasteReminderEmail = (value: string): string =>
+  `sha256:${createHash('sha256').update(normalizeWasteReminderEmail(value)).digest('hex')}`;
 
 type CountRow = Readonly<{
   total: number | string;
@@ -155,23 +160,24 @@ ORDER BY s.created_at ASC, i.created_at ASC;
 
 const buildDeleteExpiredPendingSubscriptionsStatement = (input: {
   readonly now: string;
-  readonly pendingSubscriptionTtlHours: number;
 }): SqlStatement => ({
   text: `
-DELETE FROM waste_email_reminder_subscriptions AS subscription
-WHERE subscription.status = 'pending'
-  AND subscription.expires_at <= $1::timestamptz
-  AND subscription.created_at <= $1::timestamptz - ($2::int * INTERVAL '1 hour')
-  AND NOT EXISTS (
-    SELECT 1
-    FROM waste_email_reminder_outbox AS outbox
-    WHERE outbox.subscription_id = subscription.id
-      AND outbox.message_kind = 'doi'
-      AND outbox.status = 'processing'
-      AND outbox.leased_at > $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
-  );
+WITH expired AS MATERIALIZED (
+  SELECT id FROM waste_email_reminder_subscriptions
+  WHERE status = 'pending' AND expires_at <= LEAST($1::timestamptz, clock_timestamp())
+  FOR UPDATE SKIP LOCKED
+), removed AS (
+  DELETE FROM waste_email_reminder_subscriptions AS subscription
+  USING expired WHERE subscription.id = expired.id
+  RETURNING subscription.id
+)
+SELECT
+  (SELECT COUNT(*)::int FROM removed) AS "expiredPendingCount",
+  (SELECT COUNT(*)::int FROM waste_email_reminder_outbox AS outbox
+   INNER JOIN removed ON removed.id = outbox.subscription_id
+   WHERE outbox.message_kind = 'doi' AND outbox.status IN ('pending', 'processing')) AS "expiredDoiCount";
 `,
-  values: [input.now, input.pendingSubscriptionTtlHours],
+  values: [input.now],
 });
 
 export const createSubscriptionMethods = (
@@ -236,8 +242,10 @@ export const createSubscriptionMethods = (
     return [...subscriptions.values()];
   },
   async deleteExpiredPendingSubscriptions(input) {
-    const result = await executor.execute(buildDeleteExpiredPendingSubscriptionsStatement(input));
-    return result.rowCount;
+    const result = await executor.execute<{ expiredPendingCount: number; expiredDoiCount: number }>(
+      buildDeleteExpiredPendingSubscriptionsStatement(input)
+    );
+    return result.rows[0] ?? { expiredPendingCount: 0, expiredDoiCount: 0 };
   },
 });
 

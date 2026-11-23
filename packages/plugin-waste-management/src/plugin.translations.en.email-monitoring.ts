@@ -4,7 +4,7 @@ export const wasteEmailMonitoringTranslationsEN = {
     title: 'Email subscriptions and delivery',
     description: 'View sign-ups for pickup reminders and the current status of their emails.',
     privacy:
-      'Parts of email addresses are hidden with asterisks for privacy. Full addresses and email contents are not displayed.',
+      'Parts of email addresses are hidden with asterisks in the results. Email contents are not displayed.',
     deliveryNotice:
       '“Accepted by email service” means that the mail service has accepted the message. This does not confirm that it reached the inbox. The list shows the latest saved status.',
     empty: 'No subscriptions match this selection.',
@@ -14,8 +14,15 @@ export const wasteEmailMonitoringTranslationsEN = {
     forbidden: 'This view requires its separate read permission.',
     refresh: 'Refresh',
     statusFilter: 'Subscription status',
+    emailSearch: {
+      label: 'Full email address',
+      submit: 'Search active subscriptions',
+      applied: 'Email search active',
+      invalid: 'Enter a complete email address.',
+    },
     all: 'All statuses',
     subscriptions: 'Subscriptions',
+    activeSubscriptions: 'Active email subscriptions {{count}}',
     deliveries: 'Messages for this subscription',
     select: 'View delivery',
     close: 'Close delivery',
@@ -39,11 +46,14 @@ export const wasteEmailMonitoringTranslationsEN = {
     fraction: 'Fraction / pickup date',
     failure: 'Error category',
     emailDelivery: 'Email sending',
+    doiStatus: 'Confirmation email status',
+    noDoiEmail: 'No confirmation email recorded',
     lastSentEmail: 'Last recorded send',
     nextEmail: 'Next scheduled email',
     noSentEmail: 'No sending record available',
     noNextEmail: 'No further email scheduled',
-    deliverySummaryNotice: 'Times show the stored processing record. Sent means acceptance by the email service, not delivery to the inbox. Further emails appear here once they have been scheduled.',
+    deliverySummaryNotice:
+      'Times show the stored processing record. Sent means acceptance by the email service, not delivery to the inbox. Further emails appear here once they have been scheduled.',
     actions: 'Actions',
     deliveryStatus: 'Sending status',
     dates: 'Dates and times',
@@ -92,6 +102,8 @@ export const wasteEmailMonitoringTranslationsEN = {
         'No email service was available during the last attempt. If the problem persists, contact technical support.',
       cancelled: 'This message is no longer scheduled to be sent.',
       dispatch_failed: 'There was a problem sending the message. Please contact technical support.',
+      outcome_unknown:
+        'It is unclear whether the mail service accepted the message. Technical support can check the delivery status with the service.',
     },
   },
 } as const;

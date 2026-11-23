@@ -19,6 +19,8 @@ import {
   comparableWasteDataRecord,
   loadExistingWasteDataRecord,
   materializeWasteDataRecord,
+  normalizeFractionShortLabel,
+  reserveDerivedWasteFractionShortLabel,
   upsertWasteDataRecord,
 } from './waste-management-data-exchange-records.server.js';
 import { validateWasteDataReferences } from './waste-management-data-exchange-references.server.js';
@@ -46,9 +48,6 @@ type PreparedImportRecord = Readonly<{
   existing: object | null;
   materialized: WasteManagementDataExchangeRecord;
 }>;
-
-const normalizeFractionShortLabel = (value: unknown): string =>
-  typeof value === 'string' ? value.trim().toLocaleUpperCase('de') : '';
 
 const usesDerivedFractionShortLabel = (entry: PreparedImportRecord): boolean => {
   if (entry.source.entityType !== 'fraction') return false;
@@ -92,13 +91,7 @@ const allocateFractionShortLabels = async (
     if (entry.materialized.active === false) {
       return { ...entry, materialized: { ...entry.materialized, pdfShortLabel: baseLabel } };
     }
-    let label = baseLabel;
-    let suffix = 2;
-    while (usedLabels.has(label)) {
-      label = `${baseLabel}-${suffix}`;
-      suffix += 1;
-    }
-    usedLabels.add(label);
+    const label = reserveDerivedWasteFractionShortLabel(baseLabel, usedLabels);
     return { ...entry, materialized: { ...entry.materialized, pdfShortLabel: label } };
   });
 };
@@ -207,7 +200,11 @@ export const importCanonicalWasteManagementJson = async (
   if (!input.blobRef) throw new Error('missing_blob_ref');
   const source = input.deps.readBinarySource
     ? await input.deps.readBinarySource(input.blobRef)
-    : await defaultReadBinarySource(input.blobRef, input.instanceId, input.deps.readPluginOperationInput);
+    : await defaultReadBinarySource(
+        input.blobRef,
+        input.instanceId,
+        input.deps.readPluginOperationInput
+      );
   const parsed = parseWasteManagementDataExchangeJson(new TextDecoder().decode(source), {
     applyDefaults: false,
   });
@@ -268,7 +265,11 @@ export const importCanonicalWasteManagementPackage = async (
   if (!input.blobRef) throw new Error('missing_blob_ref');
   const source = input.deps.readBinarySource
     ? await input.deps.readBinarySource(input.blobRef)
-    : await defaultReadBinarySource(input.blobRef, input.instanceId, input.deps.readPluginOperationInput);
+    : await defaultReadBinarySource(
+        input.blobRef,
+        input.instanceId,
+        input.deps.readPluginOperationInput
+      );
   const parsedProfiles = readWasteDataPackage(source);
   const packageSourceIds = collectWasteDataPackageSourceIds(parsedProfiles);
   const portableProfile = parsedProfiles.find(

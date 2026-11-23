@@ -1,12 +1,11 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteEmailReminderRepository } from './email-reminders.js';
-import { buildCancelPendingReminderOutboxEntriesStatement } from './email-reminders.outbox-reconcile.js';
+import { REMINDER_OUTCOME_UNKNOWN } from './email-reminders.outbox-dispatch.js';
 
 type SubscriptionStatusRow = Readonly<{
   id: string;
   status: string;
   location_label: string;
-  expires_at: string;
 }>;
 
 type UnsubscribeSubscriptionRow = Readonly<{
@@ -16,10 +15,10 @@ type UnsubscribeSubscriptionRow = Readonly<{
 
 const buildSelectSubscriptionByDoiTokenHashStatement = (tokenHash: string): SqlStatement => ({
   text: `
-SELECT id, status, location_label, expires_at
+SELECT id, status, location_label
 FROM waste_email_reminder_subscriptions
 WHERE doi_token_hash = $1
-LIMIT 1;
+FOR UPDATE;
 `,
   values: [tokenHash],
 });
@@ -28,10 +27,10 @@ const buildSelectSubscriptionByUnsubscribeTokenHashStatement = (
   tokenHash: string
 ): SqlStatement => ({
   text: `
-SELECT id, status, location_label, expires_at
+SELECT id, status, location_label
 FROM waste_email_reminder_subscriptions
 WHERE unsubscribe_token_hash = $1
-LIMIT 1;
+FOR UPDATE;
 `,
   values: [tokenHash],
 });
@@ -54,10 +53,12 @@ const buildActivateSubscriptionStatement = (input: {
   text: `
 UPDATE waste_email_reminder_subscriptions
 SET status = 'active',
-    activated_at = $2::timestamptz,
-    updated_at = $2::timestamptz
+    activated_at = GREATEST($2::timestamptz, clock_timestamp()),
+    updated_at = GREATEST($2::timestamptz, clock_timestamp())
 WHERE id = $1::uuid
-  AND status = 'pending';
+  AND status = 'pending'
+  AND expires_at > GREATEST($2::timestamptz, clock_timestamp())
+RETURNING id;
 `,
   values: [input.subscriptionId, input.now],
 });
@@ -67,12 +68,54 @@ const buildUnsubscribeSubscriptionStatement = (input: {
   readonly now: string;
 }): SqlStatement => ({
   text: `
-UPDATE waste_email_reminder_subscriptions
-SET status = 'unsubscribed',
-    unsubscribed_at = $2::timestamptz,
+WITH revoked AS (
+  UPDATE waste_email_reminder_subscriptions
+  SET status = 'unsubscribed',
+      email = NULL,
+      email_hash = NULL,
+      location_label = '',
+      house_number_id = NULL,
+      unsubscribed_at = COALESCE(unsubscribed_at, $2::timestamptz),
+      updated_at = CASE
+        WHEN status <> 'unsubscribed' OR email IS NOT NULL OR email_hash IS NOT NULL
+          OR location_label <> '' OR house_number_id IS NOT NULL
+        THEN $2::timestamptz
+        ELSE updated_at
+      END
+  WHERE id = $1::uuid
+    AND status IN ('pending', 'active', 'unsubscribed')
+  RETURNING id
+), history AS (
+  SELECT outbox.id,
+    CASE WHEN outbox.message_kind = 'reminder' THEN jsonb_strip_nulls(jsonb_build_object(
+      'templatePayload', CASE WHEN jsonb_typeof(outbox.payload #> '{templatePayload,fractionName}') = 'string'
+        THEN jsonb_build_object('fractionName', outbox.payload #> '{templatePayload,fractionName}') END,
+      'metadata', CASE WHEN jsonb_typeof(outbox.payload #> '{metadata,pickupDate}') = 'string'
+        THEN jsonb_build_object('pickupDate', outbox.payload #> '{metadata,pickupDate}') END
+    )) ELSE '{}'::jsonb END AS payload
+  FROM waste_email_reminder_outbox AS outbox
+  JOIN revoked ON revoked.id = outbox.subscription_id
+)
+UPDATE waste_email_reminder_outbox AS outbox
+SET payload = history.payload,
+    status = CASE WHEN outbox.status IN ('pending', 'processing') THEN 'cancelled' ELSE outbox.status END,
+    leased_at = NULL,
+    last_error = CASE
+      WHEN outbox.status IN ('pending', 'processing') THEN 'subscription_unsubscribed'
+      WHEN outbox.last_error IN ('subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable',
+        '${REMINDER_OUTCOME_UNKNOWN}') THEN outbox.last_error
+      WHEN outbox.status = 'failed' THEN 'dispatch_failed'
+      ELSE NULL
+    END,
     updated_at = $2::timestamptz
-WHERE id = $1::uuid
-  AND status IN ('pending', 'active');
+FROM history
+WHERE outbox.id = history.id
+  AND (outbox.payload IS DISTINCT FROM history.payload OR outbox.leased_at IS NOT NULL
+    OR outbox.status IN ('pending', 'processing')
+    OR (outbox.last_error IS NOT NULL AND outbox.last_error NOT IN (
+      'subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable', 'dispatch_failed',
+      '${REMINDER_OUTCOME_UNKNOWN}'
+    )));
 `,
   values: [input.subscriptionId, input.now],
 });
@@ -117,12 +160,12 @@ export const createTokenMethods = (
     if (subscription.status !== 'pending') {
       return { status: 'invalid' };
     }
-    if (new Date(subscription.expires_at).getTime() < new Date(input.now).getTime()) {
-      return { status: 'expired' };
-    }
-    await executor.execute(
+    const updated = await executor.execute(
       buildActivateSubscriptionStatement({ subscriptionId: subscription.id, now: input.now })
     );
+    if (updated.rowCount === 0) {
+      return { status: 'expired' };
+    }
     return {
       status: 'activated',
       subscriptionId: subscription.id,
@@ -137,29 +180,16 @@ export const createTokenMethods = (
     if (!subscription) {
       return { status: 'invalid' };
     }
-    if (subscription.status === 'unsubscribed') {
-      return {
-        status: 'already_unsubscribed',
-        subscriptionId: subscription.id,
-        locationLabel: subscription.location_label,
-      };
-    }
-    if (subscription.status !== 'pending' && subscription.status !== 'active') {
+    if (!['pending', 'active', 'unsubscribed'].includes(subscription.status)) {
       return { status: 'invalid' };
     }
     await executor.execute(
       buildUnsubscribeSubscriptionStatement({ subscriptionId: subscription.id, now: input.now })
     );
-    await executor.execute(
-      buildCancelPendingReminderOutboxEntriesStatement({
-        subscriptionId: subscription.id,
-        now: input.now,
-      })
-    );
     return {
-      status: 'unsubscribed',
+      status: subscription.status === 'unsubscribed' ? 'already_unsubscribed' : 'unsubscribed',
       subscriptionId: subscription.id,
-      locationLabel: subscription.location_label,
+      locationLabel: '',
     };
   },
 });

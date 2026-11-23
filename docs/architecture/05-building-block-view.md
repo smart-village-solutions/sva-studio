@@ -205,7 +205,7 @@ Modulen der jeweiligen Bausteine.
 - bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
 - stellt Regionen, Orte, Straßen und Hausnummern im URL-gestützten Tab `Stammdaten` bereit; vorhandene Adressdialoge bearbeiten Namen, Postleitzahlen, Nummern und Elternzuordnungen, während Abholorte im eigenen Arbeitsbereich bleiben
 - erlaubt beim Löschen alternativ die Übertragung auf einen Zieleintrag derselben Art; führt Dubletten ausschließlich innerhalb desselben Ziel-Elterneintrags rekursiv zusammen und erhält Abholorte samt Touren-/Terminbezügen. Quell-Abos werden gelöscht; Vorschau und serialisierbare Transaktion binden Quelle und Ziel gemeinsam.
-- zeigt vor Löschungen und Elternwechseln eine mandantengebundene Auswirkungsübersicht. Ein Elternwechsel mit betroffenen E-Mail-Abos benötigt eine gesonderte Bestätigung; Zuordnungsänderung sowie Löschung der Abos, ihrer Positionen und aller Outbox-Zeilen einschließlich `sent` erfolgen atomar. Touren, Fraktionen und allgemeine Terminregeln bleiben bestehen
+- zeigt vor Löschungen und Elternwechseln eine mandantengebundene Auswirkungsübersicht. Vor einem Elternwechsel nennt die Vorschau den betroffenen Adressdatensatz, die bisherige und die neue Zuordnung sowie die Anzahl erhaltener Tourzuordnungen. Ein Elternwechsel mit betroffenen E-Mail-Abos benötigt eine gesonderte Bestätigung. Die Zuordnungsänderung und die Löschung der Abos, ihrer Positionen und aller Outbox-Zeilen einschließlich `sent` erfolgen atomar. Touren, Fraktionen und allgemeine Terminregeln bleiben bestehen
 
 13. Instanz-Registry (`packages/instance-registry`)
 
@@ -464,11 +464,12 @@ Modulen der jeweiligen Bausteine.
 
 17. Waste-Reminder-Operationspfad (`apps/sva-studio-react` + `packages/waste-management-runtime`)
 
-- erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs: Materialisierung fraktions- und slotbezogener Reminder-Outbox-Einträge sowie inkrementelle Batch-Verarbeitung fälliger Outbox-Elemente
+- erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs für die Materialisierung gebündelter Erinnerungen und die Verarbeitung fälliger Outbox-Aufträge. Fraktion und Slot bleiben als fachliche Mitglieder im Auftrag erhalten. Der Dispatcher verarbeitet beide gespeicherten Auftragsformen
 - nutzt dafür die führende Waste-Fachkonfiguration aus dem `output`-Tab, die fraktionsbezogenen Reminder-Slots aus den Abfallarten und die zentrale Schnittstelle `mail_transport`
 - normalisiert die öffentliche Reminder-Konfiguration in `@sva/core` über kleine feldgruppenspezifische Reader für Pflichtwerte, URLs, Pfade, Adressen und optionale Texte; der öffentliche Objektvertrag und seine Feldreihenfolge bleiben dabei unverändert
 - hält den Mailversand selbst adapterbasiert; Studio erzeugt und leased nur transportagnostische `MailDispatchPayload`s und kann damit an eine separate Mail-App oder einen äquivalenten Runtime-Adapter angeschlossen werden
 - stellt den signierten `v1`-Abmeldetokenvertrag zentral über `@sva/waste-management-contracts/unsubscribe-token` bereit; Studio erzeugt und Public-Waste liest sowie verifiziert denselben Vertrag ohne direkte App-zu-App-Abhängigkeit oder Installation der Job-Runtime
+- sucht im geschützten Monitoring-POST ausschließlich aktive Abos der authentifizierten Instanz nach dem normalisierten Adresshash und liefert maskierte Treffer
 
 ### Foundation-Governance über Bausteingrenzen
 

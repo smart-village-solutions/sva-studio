@@ -231,6 +231,10 @@ describe('WasteToursFormContent', () => {
     expect(
       screen.getByRole('link', { name: 'tours.workspace.scheduling – tours.actions.opensInNewTab' })
     ).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'tours.workspace.tourAssignments – tours.actions.opensInNewTab' })
+        .getAttribute('target')
+    ).toBe('_blank');
     fireEvent.click(screen.getByRole('button', { name: 'tours.workspace.assignments' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.workspace.calendar' }));
     expect(onOpenAssignments).toHaveBeenCalledOnce();

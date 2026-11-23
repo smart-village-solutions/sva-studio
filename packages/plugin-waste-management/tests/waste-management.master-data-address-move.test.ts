@@ -23,10 +23,11 @@ describe('Waste address parent move confirmation', () => {
     const save = vi.fn(async () => undefined);
     const setPendingAddressMove = vi.fn();
     const input = {
-      state: { setPendingAddressMove } as never,
+      state: { setPendingAddressMove, setMessage: vi.fn() } as never,
       pt: ((key: string) => key) as never,
       entityType: 'city' as const,
       entityId: 'city-1',
+      entityLabel: 'Altstadt',
       targetParentId: 'region-2',
       sourceLabel: 'Nordstadt',
       targetLabel: 'Süd',
@@ -41,7 +42,7 @@ describe('Waste address parent move confirmation', () => {
     expect(save).not.toHaveBeenCalled();
     const pending = setPendingAddressMove.mock.calls[0]?.[0];
     expect(pending).toMatchObject({
-      sourceLabel: 'Nordstadt', targetLabel: 'Süd',
+      entityLabel: 'Altstadt', sourceLabel: 'Nordstadt', targetLabel: 'Süd',
       preview: { counts: { emailReminderSubscriptions: 2, emailReminderOutbox: 5, sentEmailReminderOutbox: 1 } },
     });
 
@@ -49,6 +50,8 @@ describe('Waste address parent move confirmation', () => {
     expect(save).toHaveBeenCalledOnce();
     expect(save).toHaveBeenCalledWith('confirmed-preview');
     expect(input.closeDialog).toHaveBeenCalledOnce();
+    expect(input.loadOverview).toHaveBeenCalledWith(true);
+    expect(input.loadCollectionLocationList).toHaveBeenCalledOnce();
   });
 
   it('also requires an explicit confirmation when the preview has no affected subscriptions', async () => {
@@ -60,10 +63,11 @@ describe('Waste address parent move confirmation', () => {
     const save = vi.fn(async () => undefined);
     const setPendingAddressMove = vi.fn();
     const input = {
-      state: { setPendingAddressMove } as never,
+      state: { setPendingAddressMove, setMessage: vi.fn() } as never,
       pt: ((key: string) => key) as never,
       entityType: 'city' as const,
       entityId: 'city-1',
+      entityLabel: 'Altstadt',
       targetParentId: 'region-2',
       sourceLabel: 'Nordstadt',
       targetLabel: 'Süd',

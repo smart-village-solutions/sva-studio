@@ -1,4 +1,5 @@
 import React from 'react';
+import type { WasteCollectionLocationQuery } from '@sva/waste-management-contracts';
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,7 @@ import { useWasteSchedulingOverview } from '../src/use-waste-scheduling-overview
 import { useWasteSchedulingState } from '../src/use-waste-scheduling-state.js';
 import { useWasteToursOverview } from '../src/use-waste-tours-overview.js';
 import { useWasteToursState } from '../src/use-waste-tours-state.js';
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
@@ -166,6 +168,46 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
   });
 
+  it('keeps the current location overview and tours available when assignment read-back fails', async () => {
+    const link = { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' };
+    const overview = {
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [link],
+    };
+    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue(overview);
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [{ id: 'tour-1' }] });
+    const { result } = renderHook(() => {
+      const state = useWasteMasterDataState();
+      const { readLocationAssignmentOverview } = useWasteMasterDataOverview(
+        state,
+        (key) => key,
+        'locations'
+      );
+      return { state, readLocationAssignmentOverview };
+    });
+    await waitFor(() => expect(result.current.state.locationCoverageToursStatus).toBe('ready'));
+    apiMocks.getWasteManagementMasterDataOverview.mockRejectedValueOnce(
+      new Error('read-back failed')
+    );
+
+    await act(async () => {
+      await expect(result.current.readLocationAssignmentOverview()).resolves.toBeNull();
+    });
+    expect(result.current.state.error).toBeNull();
+    expect(result.current.state.overview?.locationTourLinks).toEqual([link]);
+    expect(result.current.state.availableTours).toHaveLength(1);
+    expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledOnce();
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenLastCalledWith({
+      scope: 'locations',
+      fresh: true,
+    });
+  });
+
   it('keeps an overview failure visible when the concurrent location list succeeds later', async () => {
     let resolvePage: ((value: object) => void) | undefined;
     apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('overview failed'));
@@ -214,6 +256,59 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
     });
+  });
+
+  it('requests 100 locations by default and forwards explicitly selected page sizes', async () => {
+    const locations = Array.from({ length: 101 }, (_, index) => ({ id: `location-${index + 1}` }));
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(
+      async ({ page, pageSize }: WasteCollectionLocationQuery) => ({
+        items: locations.slice((page - 1) * pageSize, page * pageSize),
+        page,
+        pageSize,
+        total: locations.length,
+        pageCount: Math.ceil(locations.length / pageSize),
+      })
+    );
+    const setCollectionLocationPage = vi.fn();
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage,
+      setFilteredLocationIds: vi.fn(),
+    } as never;
+    const firstPage = normalizeWasteManagementSearchParams({ tab: 'locations' });
+    const { rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: firstPage } }
+    );
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith({
+        items: locations.slice(0, 100),
+        page: 1,
+        pageSize: 100,
+        total: 101,
+        pageCount: 2,
+      })
+    );
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 100 })
+    );
+    rerender({ search: { ...firstPage, page: 2 } });
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ items: [{ id: 'location-101' }], page: 2, pageSize: 100 })
+      )
+    );
+    rerender({
+      search: normalizeWasteManagementSearchParams({ tab: 'locations', pageSize: '25' }),
+    });
+    await waitFor(() =>
+      expect(setCollectionLocationPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ items: locations.slice(0, 25), page: 1, pageSize: 25 })
+      )
+    );
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 25 })
+    );
   });
 
   it('retains filtered ids across page and sort reloads and clears them for filters or refreshes', async () => {
@@ -399,6 +494,7 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'locations',
+      fresh: true,
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'fractions',
@@ -607,6 +703,7 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
         scope: 'locations',
+        fresh: true,
       });
     });
   });
@@ -705,6 +802,7 @@ describe('waste management data loaders', () => {
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'locations',
+      fresh: true,
     });
   });
 

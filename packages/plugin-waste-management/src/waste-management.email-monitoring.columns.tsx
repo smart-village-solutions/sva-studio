@@ -22,6 +22,29 @@ export const formatEmailMonitoringTimestamp = (value: string | null, fallback: s
 const pickupDate = (value: string) =>
   formatCalendarDate(value, readPluginLocales().locale) ?? value;
 
+const DoiStatus = ({
+  email,
+  pt,
+}: {
+  email: WasteEmailSubscriptionSummary['doiEmail'];
+  pt: EmailMonitoringTranslate;
+}) => {
+  if (email === undefined) return null;
+  return (
+    <div>
+      <dt className="font-medium">{pt('emailMonitoring.doiStatus')}</dt>
+      <dd>
+        {email
+          ? pt(`emailMonitoring.deliveryStates.${email.status}`)
+          : pt('emailMonitoring.noDoiEmail')}
+        {email?.status === 'sent' && email.sentAt
+          ? ` · ${formatEmailMonitoringTimestamp(email.sentAt, pt('emailMonitoring.unavailable'))}`
+          : null}
+      </dd>
+    </div>
+  );
+};
+
 export const emailMonitoringSubscriptionColumns = (
   pt: EmailMonitoringTranslate
 ): readonly StudioColumnDef<WasteEmailSubscriptionSummary>[] => [
@@ -69,6 +92,7 @@ export const emailMonitoringSubscriptionColumns = (
     header: pt('emailMonitoring.emailDelivery'),
     cell: (row) => (
       <dl className="max-w-72 space-y-3 text-sm">
+        <DoiStatus email={row.doiEmail} pt={pt} />
         <div>
           <dt className="font-medium">{pt('emailMonitoring.lastSentEmail')}</dt>
           <dd>

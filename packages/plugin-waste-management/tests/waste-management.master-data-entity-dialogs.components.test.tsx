@@ -9,6 +9,7 @@ import {
   RegionDialog,
   StreetDialog,
 } from '../src/waste-management.master-data-entity-dialogs';
+import { wasteMasterDataFormMappers } from '../src/waste-management.master-data.forms.js';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -420,6 +421,39 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       'masterData.houseNumbers.fields.number'
     );
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('displays the stored postal code of the selected city, using its ID for same-name entries', () => {
+    const timestamps = { createdAt: '', updatedAt: '' };
+    const regions = [
+      { id: 'region-north', name: 'Nord', ...timestamps },
+      { id: 'region-south', name: 'Süd', ...timestamps },
+    ];
+    const [north, south, missing] = [
+      { id: 'city-north', name: 'Neustadt', postalCode: '19348', regionId: 'region-north', ...timestamps },
+      { id: 'city-south', name: 'Neustadt', postalCode: '29410', regionId: 'region-south', ...timestamps },
+      { id: 'city-missing', name: 'Altstadt', regionId: 'region-south', ...timestamps },
+    ] as const;
+    const renderCity = (city: typeof north | typeof south | typeof missing) => (
+      <CityDialog
+        open
+        mode="edit"
+        form={wasteMasterDataFormMappers.cityToForm(city)}
+        regions={regions}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderCity(north));
+    const postalCode = () => (screen.getByLabelText('masterData.cities.fields.postalCode') as HTMLInputElement).value;
+    expect(postalCode()).toBe('19348');
+    rerender(renderCity(south));
+    expect(postalCode()).toBe('29410');
+    rerender(renderCity(missing));
+    expect(postalCode()).toBe('');
   });
 
   it('validates city postal codes at the server-side length boundary', async () => {

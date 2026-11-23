@@ -779,6 +779,13 @@ Das System SHALL explizite Einsätze für normale Waste-Touren mit Datum, option
 - **THEN** werden Datum, optionaler Hinweis und alle ausgewählten Abholorte atomar gespeichert
 - **AND** die Pflege verwendet die bestehende Tour-/Scheduling-Oberfläche ohne Schadstoffmobil-Sonderpfad
 
+#### Scenario: Redaktion öffnet den Arbeitsbereich für Tour-Einsätze
+
+- **WHEN** ein Benutzer den Tab **Tour-Einsätze** oder den entsprechenden Link einer Tour öffnet
+- **THEN** zeigt das System die vorhandenen Einsätze, bei einem Tour-Link gefiltert nach der betreffenden Tour
+- **AND** Anlegen, Bearbeiten und Löschen stehen Benutzern mit `waste-management.scheduling.manage` zur Verfügung
+- **AND** der Tab **Ausweichtermine** zeigt Feiertagsregeln sowie globale und tourbezogene Verschiebungen über seine bestehende Route
+
 #### Scenario: Mehrere Einsätze teilen Tour und Datum
 
 - **WHEN** mehrere Einsätze derselben Tour dasselbe Datum tragen
@@ -819,38 +826,58 @@ Das System SHALL für alle einer Tour zugeordneten Abholorte ausschließlich den
 
 ### Requirement: Tour-Zuordnungen sind fachlich sortiert
 
-Das System SHALL Abholorte im Dialog zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
+Das System SHALL Abholorte auf der Detailseite zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
 
-#### Scenario: Dialog zeigt getrennte Adressspalten
+#### Scenario: Detailseite zeigt getrennte Adressspalten
 
-- **WHEN** ein Benutzer den Dialog zur Tour-Zuordnung öffnet
+- **WHEN** ein Benutzer die Detailseite zur Tour-Zuordnung öffnet
 - **THEN** zeigt das System Auswahl, Region, Ort, Straße und Hausnummer in getrennten Tabellenspalten
 - **AND** das System zeigt weder den Aktivstatus noch einen zusätzlichen Zuordnungsstatus des Abholorts
 - **AND** zusammengesetzte Werte wie `Amt Meyenburg / Brügge / Alle Straßen / Alle Hausnummern` werden den vier passenden Adressspalten zugeordnet
 - **AND** auf schmalen Ansichten bleiben dieselben Fachwerte beschriftet und lesbar
 
-#### Scenario: Benutzer sortiert die gefilterten Abholorte nach Ort und Straße
+#### Scenario: Benutzer kombiniert Suche und Adressfilter
 
-- **WHEN** ein Benutzer die Sortierrichtung auswählt
-- **THEN** sortiert das System die vollständige aktuell gefilterte Ergebnismenge hierarchisch nach Ort, Straße und Hausnummer in der gewählten Richtung
-- **AND** die Filterung erfolgt vor der Sortierung
+- **WHEN** ein Benutzer auf der Detailseite nach einem Orts- oder Straßennamen sucht und Region, Ort oder Straße filtert
+- **THEN** trifft die Freitextsuche nur separate Orts- und Straßennamen
+- **AND** wendet das System alle Adressfilter gemeinsam auf zugeordnete und freie Abholorte an
+- **AND** stehen die Filteroptionen alphabetisch nach ihrer Bezeichnung
+- **AND** setzt ein Wechsel der Region oder des Orts nur nachgelagerte Auswahlen zurück, die im neuen Geltungsbereich fehlen
+
+#### Scenario: Liste und Tourdetails öffnen dieselbe Zuordnungsseite
+
+- **WHEN** der Benutzer die Abholortanzahl in der Tourenliste oder die Zuordnungsaktion in den Tourdetails öffnet
+- **THEN** öffnet sich die vollbreite Zuordnungsseite für die Tour-ID und erhält die Filter der Tourenliste
+- **AND** nach erfolgreichem Speichern oder Abbrechen kehrt die Ansicht zur gefilterten Tourenliste zurück
+
+#### Scenario: Rücksprung schützt ungespeicherte Zuordnungen
+
+- **WHEN** der Benutzer bei geänderter Auswahl zurückgehen möchte
+- **THEN** bestätigt der Benutzer das Verwerfen oder behält beim Weiterbearbeiten den Entwurf bei
+- **AND** bei unveränderter Auswahl führt der Rücksprung direkt zur gefilterten Tourenliste
+
+#### Scenario: Benutzer sortiert die gefilterten Abholorte über eine Spaltenüberschrift
+
+- **WHEN** ein Benutzer eine Adressspalte zum Sortieren auswählt
+- **THEN** sortiert das System nach dem gewählten Feld und verwendet die übrigen Felder aus Ort, Straße und Hausnummer als nachrangige Kriterien
+- **AND** beim erneuten Auswählen derselben Spalte wechselt die Richtung
+- **AND** das System filtert, sortiert die vollständige Treffermenge und bildet danach die Seiten
 - **AND** ausgewählte Abholorte stehen weiterhin vor nicht ausgewählten Abholorten
 - **AND** dieselbe Sortierhierarchie gilt innerhalb beider Gruppen
 - **AND** fehlende Werte stehen nach vorhandenen Werten
 - **AND** Bezeichnung und ID stellen bei gleichen Adresswerten eine stabile Reihenfolge sicher
 
-#### Scenario: Benutzer berücksichtigt die Region bei der Mehrfachsortierung
+#### Scenario: Benutzer wählt alle gefilterten Abholorte
 
-- **WHEN** ein Benutzer Region als optionales Sortierkriterium aktiviert
-- **THEN** sortiert das System hierarchisch nach Region, Ort, Straße und Hausnummer
-- **AND** die gewählte Sortierrichtung gilt für alle Adresskriterien
-- **AND** deaktiviert der Benutzer das Kriterium wieder, beginnt die Sortierhierarchie erneut mit dem Ort
+- **WHEN** ein Benutzer alle gefilterten Abholorte aus- oder abwählt
+- **THEN** ändert das System die Auswahl für alle Treffer auf sämtlichen Seiten
+- **AND** Auswahlen außerhalb des aktuellen Filters bleiben erhalten
 
 #### Scenario: Benutzer ändert Auswahl bei aktiver Sortierung
 
 - **WHEN** ein Benutzer einen sichtbaren Abholort aus- oder abwählt
 - **THEN** aktualisiert das System die ausgewählte beziehungsweise nicht ausgewählte Gruppe unmittelbar
-- **AND** die optionale Regionssortierung und die Sortierrichtung bleiben erhalten
+- **AND** die ausgewählte Spalte und die Sortierrichtung bleiben erhalten
 - **AND** Auswahlen außerhalb des aktuellen Filters bleiben unverändert gespeichert
 
 ### Requirement: Waste-Management prüft die lückenlose Fraktionszuordnung aktiver Abholorte
@@ -859,7 +886,7 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 
 #### Scenario: Mehrere Zuordnungen decken den Prüfzeitraum gemeinsam ab
 
-- **WHEN** sich die zentralen Gültigkeitszeiträume mehrerer einem aktiven Abholort zugeordneter Touren derselben Fraktion überlappen oder unmittelbar aneinander anschließen
+- **WHEN** die zentralen Gültigkeitszeiträume mehrerer einem aktiven Abholort zugeordneter Touren derselben Fraktion gemeinsam den Prüfzeitraum abdecken und die Prüfung des Jahresanfangs gegebenenfalls erfüllt ist
 - **THEN** bewertet das System den Abholort als vollständig abgedeckt
 
 #### Scenario: Abholort besitzt keine passende Zuordnung
@@ -875,9 +902,32 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 
 #### Scenario: Passende Zuordnungen lassen zeitliche Lücken
 
-- **WHEN** ein aktiver Abholort passenden Touren zugeordnet ist, deren zentrale Gültigkeitszeiträume den Prüfzeitraum nicht vollständig abdecken
+- **WHEN** ein aktiver Abholort passenden Touren zugeordnet ist und nach der Prüfung ihrer Gültigkeit und des Jahresanfangs eine Lücke bleibt
 - **THEN** weist das System den Abholort als `Zeitraum unvollständig` aus
 - **AND** zeigt die nicht abgedeckten Zeiträume an
+
+#### Scenario: Der erste wirksame Abholtermin liegt im erwarteten Jahresstartfenster
+
+- **WHEN** der Prüfzeitraum am 1. Januar beginnt und der Abholort einer regelmäßig wiederkehrenden Tour der gewählten Fraktion zugeordnet ist
+- **THEN** berechnet das System den ersten wirksamen regulären Abholtermin und lässt ab dem 1. Januar einschließlich einen Turnus als Startfenster zu
+- **AND** verlängert eine auf die konkrete Abholung wirkende Feiertagsverschiebung das Fenster entsprechend
+- **AND** bleibt ein späterer oder fehlender Ersttermin als Anfangslücke sichtbar
+- **AND** genügt für die Prüfung der gemeinsame Terminstand des Zieljahres mit den einschlägigen Verschiebungen
+
+#### Scenario: Benutzer prüft die Zuordnung nach Ortschaft
+
+- **WHEN** die Fraktionszuordnung ausgewertet wird
+- **THEN** zeigt das System je Orts-ID eine Zeile mit der Anzahl zugeordneter und relevanter Abholpunkte
+- **AND** unterscheidet das System vollständige, teilweise und fehlende Zuordnung einschließlich Ortschaften ohne aktive Abholpunkte
+- **AND** unterscheidet das System gleich benannte Ortschaften anhand ihrer Region
+- **AND** nennt das System im aufklappbaren Bereich die Abholpunkte ohne Zuordnung und listet zeitliche Lücken separat
+
+#### Scenario: Zuordnungsprüfung für laufende Abholungen in Prignitz
+
+- **WHEN** ein Benutzer die Zuordnungsprüfung im Mandanten `bb-prignitz` öffnet
+- **THEN** schließt das System die Fraktion mit exakt dem Namen `Schadstoffmobil` aus der Auswahl dieser Prüfung aus
+- **AND** verwirft das System eine zuvor gewählte Fraktion, die in dieser Prüfung nicht auswählbar ist
+- **AND** die Fraktion steht weiterhin in der Einsatzpflege, der Tourverwaltung und der öffentlichen Ausgabe nach deren jeweiligen Regeln zur Verfügung
 
 #### Scenario: Unbegrenzte Tourgrenze deckt den Prüfzeitraum ab
 
@@ -1126,6 +1176,15 @@ Das System SHALL in der Tourenübersicht einen reload-stabilen Filter für alle 
 - **WHEN** der Gültigkeitszeitraum einer Tour das ausgewählte Jahr nicht überschneidet
 - **AND** kein expliziter Termin der Tour im ausgewählten Jahr liegt
 - **THEN** blendet das System die Tour aus
+
+#### Scenario: Benutzer filtert die Tourauswahl an einem Abholort
+
+- **WHEN** ein Benutzer die Tour-Zuordnung eines Abholorts öffnet
+- **THEN** bietet das System dieselbe Jahresauswahl und Gültigkeitsprüfung wie in der Tourenübersicht an
+- **AND** standardmäßig stehen ausgewählte Touren zuerst
+- **AND** eine gewählte Spaltensortierung sortiert die gesamte Treffermenge vor der Pagination und hat Vorrang
+- **AND** die Auswahl aller gefilterten Touren erfasst sämtliche Seiten
+- **AND** der Benutzer behält Auswahlen außerhalb des Filters beim Speichern
 
 #### Scenario: Jahresfilter bleibt mit bestehenden Filtern kombinierbar
 

@@ -2,30 +2,20 @@ import type {
   WasteCustomTourDate,
   WasteCustomRecurrencePresetRecord,
   WasteLocationTourPickupDateRecord,
-  WasteLocationTourLinkRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 
 import type {
-  CreateWasteManagementLocationTourLinkInput,
   CreateWasteManagementTourInput,
-  UpdateWasteManagementLocationTourLinkInput,
   UpdateWasteManagementTourInput,
 } from './waste-management.api.js';
 import { compactOptionalString } from './waste-management.page.support.js';
 import type {
-  LocationTourLinkFormState,
   TourDateLocationAssignmentFormState,
   TourFormState,
 } from './waste-management.tours.types.js';
 
 const createId = () => crypto.randomUUID();
-
-export const createDefaultLocationTourLinkForm = (): LocationTourLinkFormState => ({
-  id: createId(),
-  locationId: '',
-  tourId: '',
-});
 
 export const createDefaultTourForm = (): TourFormState => ({
   id: createId(),
@@ -39,14 +29,6 @@ export const createDefaultTourForm = (): TourFormState => ({
   customDates: [],
   dateLocationAssignments: [],
   status: 'draft',
-});
-
-export const mapLocationTourLinkToForm = (
-  link: WasteLocationTourLinkRecord
-): LocationTourLinkFormState => ({
-  id: link.id,
-  locationId: link.locationId,
-  tourId: link.tourId,
 });
 
 export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
@@ -147,21 +129,6 @@ export const normalizeTourDateLocationAssignments = (
 
   return sortTourDateLocationAssignments([...byKey.values()]);
 };
-
-export const toCreateLocationTourLinkInput = (
-  form: LocationTourLinkFormState
-): CreateWasteManagementLocationTourLinkInput => ({
-  id: form.id,
-  locationId: form.locationId,
-  tourId: form.tourId,
-});
-
-export const toUpdateLocationTourLinkInput = (
-  form: LocationTourLinkFormState
-): UpdateWasteManagementLocationTourLinkInput => ({
-  locationId: form.locationId,
-  tourId: form.tourId,
-});
 
 const normalizeCustomDates = (
   value: TourFormState['customDates']

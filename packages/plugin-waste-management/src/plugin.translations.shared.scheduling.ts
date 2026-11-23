@@ -37,16 +37,9 @@ type WasteManagementSchedulingCopy = Readonly<{
 
 type WasteManagementToursAssignmentsCopy = Readonly<{
   title: string;
-  actions: CrudActionsCopy;
-  fields: Readonly<Record<string, string>>;
-  dialog: Readonly<{
-    createTitle: string;
-    editTitle: string;
-    description: string;
-    descriptionFallback: string;
-  }>;
-  meta: Readonly<Record<string, string>>;
-  workspace?: Readonly<Record<string, string>>;
+  actions: Readonly<Record<string, string>>;
+  discard: Readonly<Record<string, string>>;
+  workspace: Readonly<Record<string, string>>;
   messages: CrudMessagesCopy;
 }>;
 
@@ -148,16 +141,7 @@ export const createToursAssignmentsTranslations = <
   const TCopy extends WasteManagementToursAssignmentsCopy,
 >(
   copy: TCopy
-) =>
-  ({
-    title: copy.title,
-    actions: createCrudActions(copy.actions),
-    fields: copy.fields,
-    dialog: copy.dialog,
-    meta: copy.meta,
-    workspace: copy.workspace,
-    messages: createCrudMessages(copy.messages),
-  }) as const;
+) => copy;
 
 export const createToursYearCalendarTranslations = <
   const TCopy extends WasteManagementToursYearCalendarCopy,

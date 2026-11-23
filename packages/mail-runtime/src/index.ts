@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { createConnection, type Socket } from 'node:net';
 import type { MailTransportConfig } from '@sva/core';
 
 export type MailDispatchMessageAddress = Readonly<{
@@ -27,6 +28,7 @@ export type MailDispatcher = (input: {
   readonly instanceId: string;
   readonly transport: MailTransportConfig;
   readonly message: MailDispatchMessage;
+  readonly signal?: AbortSignal;
 }) => Promise<MailDispatchResult>;
 
 type NodemailerTransport = Readonly<{
@@ -114,23 +116,61 @@ const createSmtpTransportOptions = async (input: {
   };
 };
 
+const getAbortableSmtpSocket = (
+  transport: Extract<MailTransportConfig, { transportType: 'smtp' }>,
+  signal: AbortSignal
+) => (
+  _options: unknown,
+  callback: (error: Error | null, options?: { readonly connection: Socket }) => void
+): void => {
+  if (signal.aborted) {
+    callback(new Error('mail_dispatch_aborted'));
+    return;
+  }
+  const socket = createConnection({ host: transport.host, port: transport.port, signal });
+  const onError = (error: Error) => callback(error);
+  socket.once('error', onError);
+  socket.once('connect', () => {
+    socket.removeListener('error', onError);
+    callback(null, { connection: socket });
+  });
+};
+
+const withMailAbort = async <T>(signal: AbortSignal | undefined, send: () => Promise<T>): Promise<T> => {
+  if (!signal) return send();
+  signal.throwIfAborted();
+  let onAbort: () => void = () => undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(new Error('mail_dispatch_aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([send(), aborted]);
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+};
+
 export const createNodemailerMailDispatcher = (input: {
   readonly resolveSecretRef?: MailSecretRefResolver;
   readonly createTransport?: NodemailerTransportFactory;
 }): MailDispatcher => {
   const createTransport = input.createTransport ?? ((options) => nodemailer.createTransport(options));
 
-  return async ({ transport, message }): Promise<MailDispatchResult> => {
+  return async ({ transport, message, signal }): Promise<MailDispatchResult> => withMailAbort(signal, async () => {
     if (transport.transportType !== 'smtp') {
       throw new Error(`unsupported_mail_transport_type:${transport.transportType}`);
     }
 
-    const transporter = createTransport(
-      await createSmtpTransportOptions({
-        transport,
-        resolveSecretRef: input.resolveSecretRef,
-      })
-    );
+    const options = await createSmtpTransportOptions({
+      transport,
+      resolveSecretRef: input.resolveSecretRef,
+    });
+    signal?.throwIfAborted();
+    const transporter = createTransport({
+      ...options,
+      ...(signal ? { getSocket: getAbortableSmtpSocket(transport, signal) } : {}),
+    });
 
     const result = await transporter.sendMail({
       from: formatAddress(message.from),
@@ -146,5 +186,5 @@ export const createNodemailerMailDispatcher = (input: {
     return {
       ...(result.messageId ? { providerMessageId: result.messageId } : {}),
     };
-  };
+  });
 };

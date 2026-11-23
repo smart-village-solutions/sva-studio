@@ -335,8 +335,8 @@ describe('WasteMasterDataFractionsContent', () => {
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(tableProps.ariaLabel).toBe('masterData.fractions.table.ariaLabel');
     expect(tableProps.selectionMode).toBe('multiple');
-    expect(tableProps.toolbarStart).toBeTruthy();
-    expect(tableProps.toolbarEnd).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'masterData.fractions.filters.open' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' })).toBeTruthy();
     expect(tableProps.sorting).toMatchObject({
       mode: 'external',
       state: [{ id: 'nameWithContainerSize', desc: false }],
@@ -397,7 +397,7 @@ describe('WasteMasterDataFractionsContent', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
-    expect(onFractionsStatusChange).toHaveBeenCalledWith('all');
+    expect(onFractionsStatusChange).toHaveBeenCalledWith('all', { resetQuery: true });
 
     fireEvent.click(
       screen.getByRole('switch', {
@@ -485,7 +485,10 @@ describe('WasteMasterDataFractionsContent', () => {
       'fraction-2',
       'fraction-1',
     ]);
-    expect(screen.queryByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'masterData.fractions.filters.reset' })
+        .disabled
+    ).toBe(true);
 
     const [, pdfShortLabelColumn, , , statusColumn] = tableProps.columns as Array<{
       id: string;

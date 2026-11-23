@@ -19,7 +19,7 @@ const SortIcon = ({ direction }: { readonly direction: false | WasteToursSortDir
   return <IconArrowsSort className="h-4 w-4" aria-hidden="true" />;
 };
 
-const SortLabel = ({
+export const WasteTableSortButton = ({
   label,
   active,
   direction,
@@ -53,7 +53,7 @@ const TourSortColumn = ({ field, width, sortField, sortDirection, onSortChange, 
 }>) => (
   <th scope="col" className={`${width} px-3 py-3 font-semibold`}
     aria-sort={sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-    <SortLabel label={pt(`tours.table.${field}`)} active={sortField === field}
+    <WasteTableSortButton label={pt(`tours.table.${field}`)} active={sortField === field}
       direction={sortDirection} onClick={() => onSortChange(field)} />
   </th>
 );

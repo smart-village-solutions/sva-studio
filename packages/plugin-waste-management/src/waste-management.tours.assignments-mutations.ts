@@ -6,15 +6,12 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 export const createWasteToursAssignmentMutationHandlers = ({
   state,
   pt,
-  loadOverview,
 }: {
   readonly state: WasteToursState;
   readonly pt: Translate;
-  readonly loadOverview: (active?: boolean) => Promise<void>;
 }) => ({
   onSubmitAssignments: createToursAssignmentSubmitHandler({
     state,
     pt,
-    loadOverview,
   }),
 });

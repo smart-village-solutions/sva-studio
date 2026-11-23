@@ -115,10 +115,7 @@ const ensureAssignment = (state: PlannerState, locationId: string, tourId: strin
   state.summary.assignments.created += 1;
 };
 
-export const applyRowToPlan = (
-  state: PlannerState,
-  row: WasteLocationTourPickupDateImportRow
-): void => {
+export const applyRowToPlan = (state: PlannerState, row: WasteLocationTourPickupDateImportRow) => {
   const regionId = ensureRegion(state, row.region);
   const city = ensureCity(state, regionId, row.city);
   const street = ensureStreet(state, city.id, row.street);
@@ -130,9 +127,12 @@ export const applyRowToPlan = (
     houseNumberId: houseNumber.id,
   });
 
+  const tourIds = new Set<string>();
   for (const [fractionName, tourName] of Object.entries(row.tourNamesByFractionName)) {
     const fraction = ensureFraction(state, fractionName);
     const tour = ensureTour(state, tourName, fraction.id);
     ensureAssignment(state, location.id, tour.id);
+    tourIds.add(tour.id);
   }
+  return { locationId: location.id, tourIds: [...tourIds] };
 };

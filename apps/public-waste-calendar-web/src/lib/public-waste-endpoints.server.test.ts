@@ -290,7 +290,7 @@ describe('public waste endpoints', () => {
     );
     const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
     expect(pdfText).toContain('Abfallkalender 2026');
-    expect(pdfText).toContain('Küchen- & Gartenabfälle ohne Kunststoffbeutel.');
+    expect(pdfText).not.toContain('Küchen- & Gartenabfälle ohne Kunststoffbeutel.');
     expect(pdfText).toContain('Tour: Tour Nord');
     expect(pdfText).toContain('Behälter am Straßenrand bereitstellen.');
     expect(pdfText).toContain('19.05. Tour: Tour Nord');
@@ -307,6 +307,50 @@ describe('public waste endpoints', () => {
     });
     expect(pdfText).not.toContain('Stand ');
     expect(pdfText).not.toContain('Alle wirksamen Fraktionen und Verschiebungen sind enthalten.');
+  });
+
+  it('includes every distinct stop in the PDF for all six fractions', async () => {
+    const fractionIds = ['sm', 'bio', 'paper', 'glass', 'residual', 'packaging'];
+    const collection = {
+      date: '2026-09-08',
+      fractionId: 'sm',
+      fractionLabel: 'Schadstoffmobil',
+      fractionShortLabel: 'SM',
+      tourName: 'Schadstoffmobil',
+    };
+    const firstStop = { ...collection, id: 'sm-1', note: '09:00 Uhr, Rathausplatz.' };
+    const response = await handlePublicWastePdfRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          ...fractionIds.slice(1).map((fractionId, index) => ({
+            id: `pickup-${index}`,
+            date: `2026-09-0${index + 1}`,
+            fractionId,
+            fractionLabel: fractionId,
+            isShifted: index === 0,
+            note: null,
+          })),
+          firstStop,
+          { ...firstStop, id: 'sm-1-projected' },
+          { ...collection, id: 'sm-2', note: '10:00 Uhr, Feuerwehr.' },
+          { ...collection, id: 'sm-3', note: '11:00 Uhr, Betriebshof.' },
+          { ...collection, id: 'sm-prev', date: '2025-09-08', note: 'Termin im Vorjahr.' },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Alle Straßen'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=all&year=2026' +
+          fractionIds.map((fractionId) => `&fractionId=${fractionId}`).join('')
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({}),
+    });
+
+    expect(response.status).toBe(200);
+    const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
+    expect(pdfText.match(/09:00 Uhr, Rathausplatz\./g)).toHaveLength(1);
+    expect(pdfText).toContain('10:00 Uhr, Feuerwehr.');
+    expect(pdfText).toContain('11:00 Uhr, Betriebshof.');
+    expect(pdfText).not.toContain('Termin im Vorjahr.');
   });
 
   it('uses the same resolved calendar entries for web and PDF before export filters', async () => {

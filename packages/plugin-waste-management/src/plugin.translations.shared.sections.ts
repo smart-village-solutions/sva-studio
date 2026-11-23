@@ -7,15 +7,14 @@ type WasteManagementTabsCopy = Readonly<{
   locations: WasteManagementTabCardCopy;
   masterData: WasteManagementTabCardCopy;
   scheduling: WasteManagementTabCardCopy;
+  tourAssignments: WasteManagementTabCardCopy;
   output: WasteManagementTabCardCopy;
   tools: WasteManagementTabCardCopy;
   settings: WasteManagementTabCardCopy;
 }>;
 
 type WasteManagementSettingsCopy = Readonly<{
-  common: Readonly<{
-    actions: string;
-  }>;
+  common: Readonly<{ actions: string }>;
   technical: Readonly<{
     title: string;
     description: string;
@@ -176,6 +175,7 @@ export const createWasteManagementTabsTranslations = <const TCopy extends WasteM
       locations: createTabCard(copy.locations),
       masterData: createTabCard(copy.masterData),
       scheduling: createTabCard(copy.scheduling),
+      tourAssignments: createTabCard(copy.tourAssignments),
       output: createTabCard(copy.output),
       tools: createTabCard(copy.tools),
       settings: createTabCard(copy.settings),

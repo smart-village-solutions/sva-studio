@@ -8,6 +8,7 @@ import type {
 import { createWasteMasterDataRepository } from './master-data.js';
 import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
 import { queryRows, type QueryClient } from './address-mutation-shared.js';
+import { isSafeReminderRetrySql, MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 import {
   findFractionReplacementConflicts,
   replaceFractionIds,
@@ -159,7 +160,7 @@ const snapshot = async (client: QueryClient, input: WasteFractionDeleteInput) =>
             },
           ]
   );
-  const { outbox, cancelledOutboxIds } = await fractionDeletionReminders(
+  const reminders = await fractionDeletionReminders(
     client,
     input,
     state,
@@ -167,6 +168,7 @@ const snapshot = async (client: QueryClient, input: WasteFractionDeleteInput) =>
     nextTours,
     locations
   );
+  const { outbox, cancelledOutboxIds, replanOutboxIds } = reminders;
   let { conflicts, blockedReason } = checkDeletion(input, data);
   // An already claimed external delivery cannot be revoked by a database rollback.
   if (
@@ -174,7 +176,7 @@ const snapshot = async (client: QueryClient, input: WasteFractionDeleteInput) =>
       (row) =>
         cancelledOutboxIds.has(row.id) &&
         row.status === 'processing' &&
-        row.last_error === 'dispatch_claimed'
+        (row.last_error === 'dispatch_claimed' || row.dedupe_key.startsWith('reminder-group:'))
     )
   )
     blockedReason = 'reminder-dispatching';
@@ -182,11 +184,11 @@ const snapshot = async (client: QueryClient, input: WasteFractionDeleteInput) =>
   const preview = buildPreview(
     input,
     data,
-    { outbox, cancelledOutboxIds },
+    reminders,
     conflicts,
     blockedReason
   );
-  return { preview, tours, nextTours, cancelledOutboxIds };
+  return { preview, tours, nextTours, cancelledOutboxIds, replanOutboxIds };
 };
 
 export const processWasteFractionDeletion = async (
@@ -218,12 +220,17 @@ export const processWasteFractionDeletion = async (
       if (current.preview.token !== confirmationToken) throw new Error('fraction_preview_stale');
       if (current.preview.blockedReason)
         throw new Error(`fraction_delete_blocked:${current.preview.blockedReason}`);
-      if (current.cancelledOutboxIds.size)
+      if (current.cancelledOutboxIds.size || current.replanOutboxIds.size)
         await client.query(
           `UPDATE waste_email_reminder_outbox
-        SET status = 'cancelled', leased_at = NULL, last_error = 'reminder_no_longer_applicable', updated_at = NOW()
-        WHERE id = ANY($1::uuid[])`,
-          [[...current.cancelledOutboxIds]]
+        SET status = CASE WHEN id = ANY($1::uuid[]) THEN 'cancelled' ELSE status END,
+          last_error = CASE WHEN id = ANY($2::uuid[]) THEN $3
+            WHEN attempt_count > 0 AND ${isSafeReminderRetrySql()} THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
+            ELSE 'reminder_no_longer_applicable'
+          END,
+          leased_at = NULL, updated_at = NOW()
+        WHERE id = ANY($1::uuid[]) OR id = ANY($2::uuid[])`,
+          [[...current.cancelledOutboxIds], [...current.replanOutboxIds], REMINDER_REPLAN_REQUIRED]
         );
       if (input.mode === 'delete-tours') {
         await client.query('DELETE FROM waste_tours WHERE id = ANY($1::uuid[])', [

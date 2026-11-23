@@ -1,4 +1,7 @@
-import { type WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
+import {
+  isWasteReminderEmailAddress,
+  type WasteManagementEmailReminderConfig,
+} from '@sva/waste-management-contracts';
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 import type {
   PublicWasteReminderSignupRequest,
@@ -9,7 +12,6 @@ import { INVALID_REQUEST_MESSAGE, jsonResponse } from './public-waste-endpoints-
 
 const REMINDER_SIGNUP_NOT_READY_MESSAGE =
   'Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.';
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const isReminderItem = (
   item: unknown
@@ -35,7 +37,7 @@ const isPublicWasteReminderSignupRequest = (
   }
 
   const record = value as Record<string, unknown>;
-  if (typeof record.email !== 'string' || !EMAIL_PATTERN.test(record.email.trim())) {
+  if (typeof record.email !== 'string' || !isWasteReminderEmailAddress(record.email)) {
     return false;
   }
   if (

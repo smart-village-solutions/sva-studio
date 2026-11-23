@@ -112,28 +112,19 @@ vi.mock('../src/waste-management.master-data-locations-table.parts.js', () => ({
     onToggleFiltersOpen,
     onSortModeChange,
     onSortDirectionChange,
+    onTourFilterChange,
   }: {
     readonly onRequestDeleteSelected: () => void;
     readonly onToggleFiltersOpen: () => void;
     readonly onSortModeChange: (mode: 'addressWithRegion') => void;
     readonly onSortDirectionChange: (direction: 'desc') => void;
+    readonly onTourFilterChange: (tourId: string) => void;
   }) => (
     <div>
       <button onClick={onToggleFiltersOpen}>toggle-filters</button>
       <button onClick={() => onSortModeChange('addressWithRegion')}>include-region</button>
       <button onClick={() => onSortDirectionChange('desc')}>descending</button>
       <button onClick={onRequestDeleteSelected}>bulk-delete</button>
-    </div>
-  ),
-  WasteMasterDataActiveTourBanner: ({
-    selectedTour,
-    onTourFilterChange,
-  }: {
-    readonly selectedTour?: { name: string };
-    readonly onTourFilterChange: (tourId: string) => void;
-  }) => (
-    <div>
-      <span>{selectedTour?.name ?? 'no-tour'}</span>
       <button onClick={() => onTourFilterChange('')}>clear-tour-filter</button>
     </div>
   ),

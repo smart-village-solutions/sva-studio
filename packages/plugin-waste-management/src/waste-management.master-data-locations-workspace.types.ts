@@ -21,6 +21,8 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly fractionsStatus?: WasteLocationCoverageDataStatus;
   readonly toursStatus?: WasteLocationCoverageDataStatus;
   readonly auditCollectionLocations?: readonly WasteCollectionLocationRecord[];
+  readonly auditCities?: readonly WasteCityRecord[];
+  readonly auditRegions?: readonly WasteRegionRecord[];
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];

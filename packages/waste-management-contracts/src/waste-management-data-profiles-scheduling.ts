@@ -54,8 +54,8 @@ export const wasteManagementSchedulingDataProfiles = [
   },
   {
     profileId: wasteManagementDataProfileIds.locationTourLinks,
-    displayName: 'Abholort–Tour-Zuordnungen',
-    description: 'Direkte Zuordnung von Abholorten zu Touren.',
+    displayName: 'Abholpunkt–Tour-Zuordnungen',
+    description: 'Direkte Zuordnung von Abholpunkten zu Touren.',
     formatVersion: '1.0.0',
     dependencies: [
       wasteManagementDataProfileIds.geographyCollectionLocations,
@@ -74,7 +74,7 @@ export const wasteManagementSchedulingDataProfiles = [
   {
     profileId: wasteManagementDataProfileIds.tourAssignments,
     displayName: 'Tour-Einsätze',
-    description: 'Terminierte Tour-Einsätze mit einer oder mehreren Abholortreferenzen.',
+    description: 'Terminierte Tour-Einsätze mit einer oder mehreren Abholpunktreferenzen.',
     formatVersion: '1.0.0',
     dependencies: [
       wasteManagementDataProfileIds.geographyCollectionLocations,

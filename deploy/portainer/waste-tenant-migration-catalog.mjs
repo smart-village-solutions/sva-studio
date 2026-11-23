@@ -529,6 +529,40 @@ SELECT
         'sva_mainserver_revision_tour_fractions_change', 'sva_mainserver_revision_tour_fractions_update'))
   AS satisfied;`, values: Object.freeze([]) }),
   }),
+  Object.freeze({
+    id: '20261123_01_allow_waste_subscription_address_redaction',
+    statements: Object.freeze([
+      `ALTER TABLE public.waste_email_reminder_subscriptions
+        ALTER COLUMN email DROP NOT NULL,
+        ALTER COLUMN email_hash DROP NOT NULL;`,
+      `DO $subscription_address$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'public.waste_email_reminder_subscriptions'::regclass
+            AND conname = 'waste_email_reminder_subscriptions_live_address_check'
+        ) THEN
+          ALTER TABLE public.waste_email_reminder_subscriptions
+            ADD CONSTRAINT waste_email_reminder_subscriptions_live_address_check
+            CHECK (status NOT IN ('pending', 'active') OR (email IS NOT NULL AND email_hash IS NOT NULL));
+        END IF;
+      END $subscription_address$;`,
+    ]),
+    verification: Object.freeze({
+      sql: `SELECT
+        (SELECT COUNT(*) = 2 FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'waste_email_reminder_subscriptions'
+           AND column_name IN ('email', 'email_hash') AND data_type = 'text' AND is_nullable = 'YES')
+        AND EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'public.waste_email_reminder_subscriptions'::regclass
+            AND conname = 'waste_email_reminder_subscriptions_live_address_check'
+            AND contype = 'c' AND convalidated
+            AND pg_get_expr(conbin, conrelid) =
+              '((status <> ALL (ARRAY[''pending''::text, ''active''::text])) OR ((email IS NOT NULL) AND (email_hash IS NOT NULL)))'
+        ) AS satisfied;`,
+      values: Object.freeze([]),
+    }),
+  }),
 ]);
 
 // Explicitly selected by the existing runner only after all legacy writers have retired.

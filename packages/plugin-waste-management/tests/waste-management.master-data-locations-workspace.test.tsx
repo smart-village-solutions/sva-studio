@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataLocationsWorkspace } from '../src/waste-management.master-data-locations-workspace.js';
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));

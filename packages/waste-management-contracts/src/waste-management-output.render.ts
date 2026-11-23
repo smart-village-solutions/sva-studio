@@ -17,10 +17,11 @@ export const renderWasteCalendarPdf = (document: WasteCalendarPdfDocument): Buff
     document,
     addStreamObject: (streamContent, dictionary) => pdf.addStreamObject(streamContent, dictionary),
   });
-  const pageIds = document.pages.map((page) => {
-    const streamId = pdf.addStreamObject(
-      renderPageCommands(page, brandingImageResource?.objectName)
-    );
+  const pageStreams = document.pages.flatMap((page) =>
+    renderPageCommands(page, brandingImageResource?.objectName)
+  );
+  const pageIds = pageStreams.map((pageStream) => {
+    const streamId = pdf.addStreamObject(pageStream);
     const xObjectSection = brandingImageResource
       ? ` /XObject << /${brandingImageResource.objectName} ${brandingImageResource.id} 0 R >>`
       : '';

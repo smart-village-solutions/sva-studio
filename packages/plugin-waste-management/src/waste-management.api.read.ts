@@ -1,5 +1,8 @@
+import { createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
 import {
   wasteManagementImportCatalog,
+  type WasteEmailMonitoringOverview,
+  type WasteEmailMonitoringSearchQuery,
   type WasteCollectionLocationPage,
   type WasteCollectionLocationQuery,
   type WasteCollectionLocationSelectionFilter,
@@ -72,17 +75,19 @@ export const getWasteManagementHistoryOverview = async (input: {
 
 export const getWasteManagementMasterDataOverview = async (input?: {
   readonly scope?: 'fractions' | 'locations';
+  readonly fresh?: boolean;
 }): Promise<WasteManagementMasterDataOverview> => {
   const url = new URL('/api/v1/waste-management/master-data', 'https://studio.invalid');
   if (input?.scope) {
     url.searchParams.set('scope', input.scope);
   }
 
-  return requestWasteManagementRead(`master-data:${url.search}`, async () =>
+  const load = () =>
     requestWasteManagementItem<WasteManagementMasterDataOverview>({
       url: `${url.pathname}${url.search}`,
-    })
-  );
+      init: input?.fresh ? { cache: 'no-store' } : undefined,
+    });
+  return input?.fresh ? load() : requestWasteManagementRead(`master-data:${url.search}`, load);
 };
 
 const appendCollectionLocationFilters = (
@@ -137,13 +142,16 @@ export const getWasteManagementToursOverview = async (): Promise<WasteManagement
     })
   );
 
-export const getWasteManagementSchedulingOverview =
-  async (): Promise<WasteManagementSchedulingOverview> =>
-    requestWasteManagementRead('scheduling', async () =>
-      requestWasteManagementItem<WasteManagementSchedulingOverview>({
-        url: '/api/v1/waste-management/scheduling',
-      })
-    );
+export const getWasteManagementSchedulingOverview = async (input?: {
+  readonly fresh?: boolean;
+}): Promise<WasteManagementSchedulingOverview> => {
+  const load = () =>
+    requestWasteManagementItem<WasteManagementSchedulingOverview>({
+      url: '/api/v1/waste-management/scheduling',
+      init: input?.fresh ? { cache: 'no-store' } : undefined,
+    });
+  return input?.fresh ? load() : requestWasteManagementRead('scheduling', load);
+};
 
 export const getWasteEmailMonitoring = (
   query: import('@sva/waste-management-contracts').WasteEmailMonitoringQuery
@@ -155,7 +163,22 @@ export const getWasteEmailMonitoring = (
   });
   if (query.status) params.set('status', query.status);
   if (query.subscriptionId) params.set('subscriptionId', query.subscriptionId);
-  return requestWasteManagementItem<
-    import('@sva/waste-management-contracts').WasteEmailMonitoringOverview
-  >({ url: `/api/v1/waste-management/email-monitoring?${params}` });
+  return requestWasteManagementItem<WasteEmailMonitoringOverview>({
+    url: `/api/v1/waste-management/email-monitoring?${params}`,
+  });
 };
+
+export const searchWasteEmailMonitoring = (
+  query: WasteEmailMonitoringSearchQuery,
+  options?: { readonly signal?: AbortSignal }
+): Promise<WasteEmailMonitoringOverview> =>
+  requestWasteManagementItem<WasteEmailMonitoringOverview>({
+    url: '/api/v1/waste-management/email-monitoring/search',
+    init: {
+      method: 'POST',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(query),
+      cache: 'no-store',
+      signal: options?.signal,
+    },
+  });

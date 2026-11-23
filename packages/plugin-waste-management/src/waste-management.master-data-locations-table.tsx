@@ -3,14 +3,13 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useRef, useState } from 'react';
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import {
-  WasteMasterDataActiveTourBanner,
   WasteMasterDataLocationsTableToolbar,
   createLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
 import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-table.section.js';
-import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
 type WasteMasterDataLocationsTableContentProps = WasteMasterDataLocationsTableProps & {
   readonly filtersOpen: boolean;
@@ -24,7 +23,10 @@ const WasteMasterDataLocationsTableContent = ({
 }: WasteMasterDataLocationsTableContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const maps = createLocationsTableMaps(props);
-  const selectedTour = props.selectedTourId ? maps.toursById.get(props.selectedTourId) : undefined;
+  const regionName = props.search?.regionId
+    ? maps.regionsById.get(props.search.regionId)?.name
+    : undefined;
+  const cityName = props.search?.cityId ? maps.citiesById.get(props.search.cityId)?.name : undefined;
   const [pendingDeleteLocation, setPendingDeleteLocation] =
     useState<WasteCollectionLocationRecord | null>(null);
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
@@ -40,43 +42,39 @@ const WasteMasterDataLocationsTableContent = ({
         aria-label={pt('masterData.locationsWorkspace.table.caption')}
         className="rounded-none border border-border-subtle bg-card"
       >
-        <WastePanelTableTopBar>
-          <WasteMasterDataLocationsTableToolbar
-            search={props.search}
-            onQueryChange={props.onQueryChange}
-            onResetFilters={props.onResetFilters}
-            selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
-            availableTours={props.availableTours}
-            visibleTours={Array.from(maps.toursById.values())}
-            locationYear={props.locationYear}
-            onLocationYearChange={props.onLocationYearChange}
-            locationTourStatus={props.locationTourStatus}
-            onLocationTourStatusChange={props.onLocationTourStatusChange}
-            filtersOpen={filtersOpen}
-            selectedTourId={props.selectedTourId}
-            allFilteredLocationsSelected={props.allFilteredLocationsSelected}
-            onOpenCreateRegion={props.onOpenCreateRegion}
-            onOpenCreateCity={props.onOpenCreateCity}
-            onOpenCreateStreet={props.onOpenCreateStreet}
-            onOpenCreateHouseNumber={props.onOpenCreateHouseNumber}
-            onOpenCreateLocation={props.onOpenCreateLocation}
-            onOpenBulkAssignments={props.onOpenBulkAssignments}
-            onTourFilterChange={props.onTourFilterChange}
-            onToggleSelectAll={props.onToggleSelectAll}
-            sortMode={props.sortMode}
-            sortDirection={props.sortDirection}
-            onSortModeChange={props.onSortModeChange}
-            onSortDirectionChange={props.onSortDirectionChange}
-            onRequestDeleteSelected={() => {
-              setDeleteError(null);
-              setBulkDeleteRequested(true);
-            }}
-            onToggleFiltersOpen={onToggleFiltersOpen}
-          />
-        </WastePanelTableTopBar>
-        <WasteMasterDataActiveTourBanner
-          selectedTour={selectedTour}
+        <WasteMasterDataLocationsTableToolbar
+          search={props.search}
+          regionName={regionName}
+          cityName={cityName}
+          onQueryChange={props.onQueryChange}
+          onResetFilters={props.onResetFilters}
+          selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
+          availableTours={props.availableTours}
+          visibleTours={Array.from(maps.toursById.values())}
+          locationYear={props.locationYear}
+          onLocationYearChange={props.onLocationYearChange}
+          locationTourStatus={props.locationTourStatus}
+          onLocationTourStatusChange={props.onLocationTourStatusChange}
+          filtersOpen={filtersOpen}
+          selectedTourId={props.selectedTourId}
+          allFilteredLocationsSelected={props.allFilteredLocationsSelected}
+          onOpenCreateRegion={props.onOpenCreateRegion}
+          onOpenCreateCity={props.onOpenCreateCity}
+          onOpenCreateStreet={props.onOpenCreateStreet}
+          onOpenCreateHouseNumber={props.onOpenCreateHouseNumber}
+          onOpenCreateLocation={props.onOpenCreateLocation}
+          onOpenBulkAssignments={props.onOpenBulkAssignments}
           onTourFilterChange={props.onTourFilterChange}
+          onToggleSelectAll={props.onToggleSelectAll}
+          sortMode={props.sortMode}
+          sortDirection={props.sortDirection}
+          onSortModeChange={props.onSortModeChange}
+          onSortDirectionChange={props.onSortDirectionChange}
+          onRequestDeleteSelected={() => {
+            setDeleteError(null);
+            setBulkDeleteRequested(true);
+          }}
+          onToggleFiltersOpen={onToggleFiltersOpen}
         />
         <WasteMasterDataLocationsTableSection
           search={props.search}

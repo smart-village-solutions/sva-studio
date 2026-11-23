@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   WasteSchedulingContent,
   WasteSchedulingEmptyState,
+  WasteTourAssignmentsContent,
 } from '../src/waste-management.scheduling-content.js';
 
 const shiftsTableMock = vi.hoisted(() => vi.fn());
@@ -21,7 +22,8 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 
@@ -212,16 +214,11 @@ describe('WasteSchedulingContent', () => {
             },
           ] as never
         }
-        tours={[]}
-        tourAssignments={[]}
-        assignmentLocationOptions={[]}
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={onDeleteSchedulingRows}
-        onSaveTourAssignment={vi.fn(async () => undefined)}
-        onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
         page={2}
         pageSize={25}
@@ -261,10 +258,10 @@ describe('WasteSchedulingContent', () => {
     const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
-      <WasteSchedulingContent
-        search={{ tab: 'scheduling' } as never}
+      <WasteTourAssignmentsContent
+        canManage
+        search={{ tab: 'tourAssignments' } as never}
         message={null}
-        schedulingEntries={[]}
         tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
         tourAssignments={
           [
@@ -281,23 +278,14 @@ describe('WasteSchedulingContent', () => {
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern' },
           { id: 'location-2', label: 'Musterhausen / Nord / Schulhof / alle Hausnummern' },
         ]}
-        onOpenCreateShiftDialog={vi.fn()}
-        onEditHolidayRule={vi.fn()}
-        onEditGlobalShiftDialog={vi.fn()}
-        onEditTourShiftDialog={vi.fn()}
-        onDeleteSchedulingRows={vi.fn(async () => undefined)}
         onSaveTourAssignment={onSaveTourAssignment}
         onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
-        page={1}
-        pageSize={25}
-        onPageChange={vi.fn()}
-        onSyncPageChange={vi.fn()}
-        onPageSizeChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText('2026-07-01')).toBeTruthy();
+    expect(screen.queryByTestId('shifts-table')).toBeNull();
+    expect(screen.getByText('01.07.2026').getAttribute('datetime')).toBe('2026-07-01');
     expect(screen.getByRole('link', { name: 'Tour Nord' })).toBeTruthy();
     expect(
       screen.getByRole('link', {
@@ -329,9 +317,9 @@ describe('WasteSchedulingContent', () => {
     const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
-      <WasteSchedulingContent
+      <WasteTourAssignmentsContent
+        canManage
         message={null}
-        schedulingEntries={[]}
         tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
         tourAssignments={
           [
@@ -347,19 +335,9 @@ describe('WasteSchedulingContent', () => {
         assignmentLocationOptions={[
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern' },
         ]}
-        onOpenCreateShiftDialog={vi.fn()}
-        onEditHolidayRule={vi.fn()}
-        onEditGlobalShiftDialog={vi.fn()}
-        onEditTourShiftDialog={vi.fn()}
-        onDeleteSchedulingRows={vi.fn(async () => undefined)}
         onSaveTourAssignment={onSaveTourAssignment}
         onDeleteTourAssignment={onDeleteTourAssignment}
         saving={false}
-        page={1}
-        pageSize={25}
-        onPageChange={vi.fn()}
-        onSyncPageChange={vi.fn()}
-        onPageSizeChange={vi.fn()}
       />
     );
 
@@ -395,28 +373,18 @@ describe('WasteSchedulingContent', () => {
     const onSaveTourAssignment = vi.fn(async () => undefined);
 
     render(
-      <WasteSchedulingContent
-        search={{ tab: 'scheduling', tourId: 'tour-sm' } as never}
+      <WasteTourAssignmentsContent
+        canManage
+        search={{ tab: 'tourAssignments', tourId: 'tour-sm' } as never}
         message={null}
-        schedulingEntries={[]}
         tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
         tourAssignments={[]}
         assignmentLocationOptions={[
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz' },
         ]}
-        onOpenCreateShiftDialog={vi.fn()}
-        onEditHolidayRule={vi.fn()}
-        onEditGlobalShiftDialog={vi.fn()}
-        onEditTourShiftDialog={vi.fn()}
-        onDeleteSchedulingRows={vi.fn(async () => undefined)}
         onSaveTourAssignment={onSaveTourAssignment}
         onDeleteTourAssignment={vi.fn(async () => undefined)}
         saving={false}
-        page={1}
-        pageSize={25}
-        onPageChange={vi.fn()}
-        onSyncPageChange={vi.fn()}
-        onPageSizeChange={vi.fn()}
       />
     );
 

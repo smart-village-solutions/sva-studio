@@ -26,6 +26,9 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
+    <button {...props}>{children}</button>
+  ),
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="error">{children}</div>,
   StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="loading">{children}</div>,
 }));

@@ -10,6 +10,7 @@ import type {
   WasteManagementSearchParams,
   WasteManagementShiftContext,
 } from './search-params.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 const matchesSearch = (value: string, query: string) =>
   value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
@@ -70,9 +71,6 @@ export type WasteSchedulingTableEntry =
       sortLabel: string;
       canDelete: true;
     }>;
-
-const createTourNameMap = (availableTours: readonly WasteTourRecord[]) =>
-  new Map(availableTours.map((tour) => [tour.id, tour.name]));
 
 const resolveTourName = (tourNames: ReadonlyMap<string, string>, tourId: string) =>
   tourNames.get(tourId) ?? tourId;
@@ -195,7 +193,9 @@ export const createSchedulingTableEntries = ({
   readonly availableTours: readonly WasteTourRecord[];
   readonly pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }): readonly WasteSchedulingTableEntry[] => {
-  const tourNames = createTourNameMap(availableTours);
+  const tourNames = new Map(
+    availableTours.map((tour) => [tour.id, formatTourSelectionLabel(pt, tour)])
+  );
 
   return [
     ...holidayRules.map(createHolidayEntry),

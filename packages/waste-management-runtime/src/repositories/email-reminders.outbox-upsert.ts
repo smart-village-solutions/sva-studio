@@ -1,16 +1,26 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type {
   WasteEmailReminderOutboxEntryInput,
-  WasteEmailReminderOutboxRefreshInput,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
+import { isSafeReminderRetrySql, MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 
 type EnqueuedOutboxRow = Readonly<{ id: string }>;
+
+// The row lock prevents a planner snapshot from restoring payload data after revocation.
+const dispatchableSubscription = (subscriptionParam: string, kindParam: string): string => `
+SELECT id FROM waste_email_reminder_subscriptions
+WHERE id = ${subscriptionParam}::uuid
+  AND ((${kindParam}::text = 'reminder' AND status = 'active')
+    OR (${kindParam}::text = 'doi' AND status = 'pending' AND expires_at > clock_timestamp()))
+FOR SHARE
+`;
 
 const buildInsertGenericOutboxStatement = (
   input: WasteEmailReminderOutboxEntryInput
 ): SqlStatement => ({
   text: `
+WITH dispatchable_subscription AS MATERIALIZED (${dispatchableSubscription('$2', '$3')})
 INSERT INTO waste_email_reminder_outbox (
   id,
   subscription_id,
@@ -20,12 +30,26 @@ INSERT INTO waste_email_reminder_outbox (
   send_at,
   dedupe_key,
   status,
-  payload
+  payload,
+  attempt_count,
+  last_error
 )
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb)
+SELECT $1::uuid, id, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb, $9::int,
+  CASE WHEN $9::int > 0 THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}' END
+FROM dispatchable_subscription
 ON CONFLICT (dedupe_key) DO UPDATE
 SET transport_id = EXCLUDED.transport_id,
     template_key = EXCLUDED.template_key,
+    status = 'pending',
+    attempt_count = GREATEST(waste_email_reminder_outbox.attempt_count, EXCLUDED.attempt_count),
+    last_error = CASE
+      WHEN EXCLUDED.attempt_count > 0 OR (waste_email_reminder_outbox.attempt_count > 0
+        AND ${isSafeReminderRetrySql('waste_email_reminder_outbox')})
+        THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
+      WHEN waste_email_reminder_outbox.status = 'cancelled'
+        OR waste_email_reminder_outbox.last_error = '${REMINDER_REPLAN_REQUIRED}' THEN NULL
+      ELSE waste_email_reminder_outbox.last_error
+    END,
     send_at = CASE
       WHEN waste_email_reminder_outbox.attempt_count > 0
         THEN GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)
@@ -34,6 +58,13 @@ SET transport_id = EXCLUDED.transport_id,
     payload = EXCLUDED.payload,
     updated_at = NOW()
 WHERE waste_email_reminder_outbox.status = 'pending'
+  OR (
+    waste_email_reminder_outbox.status = 'cancelled'
+    AND ((waste_email_reminder_outbox.attempt_count = 0
+      AND waste_email_reminder_outbox.last_error = 'reminder_no_longer_applicable')
+      OR ${isSafeReminderRetrySql('waste_email_reminder_outbox')})
+    AND EXCLUDED.dedupe_key LIKE 'reminder-group:%'
+  )
 RETURNING id;
 `,
   values: [
@@ -45,13 +76,15 @@ RETURNING id;
     input.sendAt,
     input.dedupeKey,
     JSON.stringify(input.payload),
+    input.retryAttemptCount ?? 0,
   ],
 });
 
 const buildRefreshPendingOutboxStatement = (
-  input: WasteEmailReminderOutboxRefreshInput
+  input: Parameters<WasteEmailReminderRepository['refreshPendingOutboxEntry']>[0]
 ): SqlStatement => ({
   text: `
+WITH dispatchable_subscription AS MATERIALIZED (${dispatchableSubscription('$2', '$3')})
 UPDATE waste_email_reminder_outbox
 SET transport_id = $4,
     template_key = $5,
@@ -62,7 +95,7 @@ SET transport_id = $4,
     payload = $7::jsonb,
     updated_at = NOW()
 WHERE dedupe_key = $1
-  AND subscription_id = $2::uuid
+  AND subscription_id = (SELECT id FROM dispatchable_subscription)
   AND message_kind = $3
   AND status = 'pending'
 RETURNING id;

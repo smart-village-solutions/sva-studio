@@ -1289,6 +1289,8 @@ Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. `studio` und `ssf`
 - `@sva/plugin-waste-management` enthält Browser-UI und deklarative Beiträge. Serverseitige Waste-Handler, Fachoperationen, Datenquellen-/Provisionierungsadapter und Auditprojektionen liegen in `@sva/waste-management-runtime`.
 - Die Studio-App komponiert am vorhandenen Snapshot-Ladepunkt explizite Hostfähigkeiten. Der Plugin-Handler erhält den vom generischen Dispatcher geprüften Actor-, Session- und Organisationskontext, statt Authentifizierung erneut aufzurufen.
 - Authentifizierung, Tenantbindung, Berechtigungen, CSRF, Audit-Ausgabe, Queue und tenantgebundenes `withInstanceDb` bleiben Hostverantwortung. Die Waste-Runtime hält ihre Lifecycle- und fachlichen Zusatzprüfungen.
+- Die Tour-Zuordnung hält ihren Entwurf während einer Access-Revalidierung passiv im Browser. Der bestehende Session-Access-Snapshot bindet die Wiederaufnahme an dasselbe Konto, denselben Mandanten, dieselbe Organisation und bestätigtes Leserecht sowie `waste-management.tours.manage`. Ein Kontextwechsel oder der Verlust dieser Rechte verwirft den Entwurf. Wechsel des Snapshots unterbrechen die nächsten Schritte eines laufenden Speichervorgangs. Jeder Schreibrequest durchläuft weiterhin die serverseitige Prüfung.
+- Der Abholort-Editor bestätigt Zuordnungsänderungen über einen frischen Read der Ortsübersicht, nachdem alle zugehörigen Schreibanfragen abgeschlossen sind. Bei unklarem Ergebnis bleibt die nächste Aktion ein Read. Eine Wiederholung nach bestätigtem Teilerfolg schreibt nur die Änderungen, die im neu gelesenen Bestand noch fehlen.
 - Allgemeine Instanz- und Jobpfade enthalten keine Waste-ID-Sonderfälle. Ein Profil ohne Waste muss deshalb ohne Waste-Pakete booten und generische Instanz-/Jobzugriffe bereitstellen können.
 
 ### SSF-Sprachkatalog und Ausfallverhalten
@@ -1565,12 +1567,15 @@ ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornier
 zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
 
 Der bestehende Erinnerungsplaner hält vom Lesen der Fachdaten bis zum Eintragen beziehungsweise
-Abgleichen der Outbox eine Transaktion mit einer gemeinsamen tenantlokalen Advisory-Sperre
-gegenüber Fraktionslöschungen. Reguläre Tourbearbeitung wird dadurch nicht gesperrt. Dadurch kann
+Abgleichen der Outbox eine Transaktion mit einer exklusiven tenantlokalen Advisory-Sperre
+gegenüber anderen Erinnerungsplanern und Fraktionslöschungen. Reguläre Tourbearbeitung verwendet
+diese Sperre nicht. Dadurch kann
 eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Bereits beanspruchte
 externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
 nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
 Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.
+
+Der Monitoring-POST akzeptiert die Suchadresse im Request-Body und wendet den bestehenden CSRF-Schutz an. Die Anwendung hält Adresse und Suchhash aus URL, Antwort und Anwendungslogs heraus.
 
 ### Sicherheitsgrenze des Release-Changelogs
 

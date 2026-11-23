@@ -485,52 +485,48 @@ Das System SHALL im Abholortkatalog nur aktive, bereits öffentlich auswählbare
 - **THEN** enthält die Antwort keine E-Mail-Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- oder Jobdaten
 - **AND** verwendet der Endpunkt dieselbe eingeschränkte öffentliche Datenzugriffsgrenze wie die bestehenden Public-Waste-Read-Endpunkte
 
-### Requirement: PDF-Legende zeigt kontextbezogene Hinweise vertikal
+### Requirement: PDF zeigt Fraktionen, Tour- und Terminhinweise sowie allgemeinen Infotext getrennt
 
-Das System SHALL die Legende des PDF-Abfallkalenders direkt unterhalb des Kalenderrasters als vertikale Liste mit höchstens acht einzeiligen Einträgen darstellen.
+Das System SHALL unterhalb des Kalenderrasters die Fraktionslegende und vollständige Tour- und Terminhinweise in getrennten Spalten darstellen. Ein vorhandener allgemeiner PDF-Infotext erhält eine eigene Spalte.
 
 #### Scenario: Sichtbare Fraktion besitzt eine Beschreibung
 
 - **WHEN** eine im PDF sichtbare Fraktion eine Beschreibung besitzt
-- **THEN** zeigt ihre Legendenzeile Farbbox, Kürzel und den Text `<Bezeichnung> - <Beschreibung>` ohne feste Beschreibungsspalte
-- **AND** die Beschreibung verwendet den verbleibenden Platz bis zum rechten Seitenrand
+- **THEN** zeigt die linke Spalte Farbbox, Kürzel und Bezeichnung
+- **AND** blendet die PDF-Ausgabe die Fraktionsbeschreibung aus
 
-#### Scenario: Beschreibung enthält HTML-Auszeichnung
+#### Scenario: Allgemeiner PDF-Infotext ist hinterlegt
 
-- **WHEN** eine Fraktionsbeschreibung oder ein kontextbezogener Hinweis HTML-Auszeichnung enthält
+- **WHEN** die PDF-Einstellungen einen sichtbaren allgemeinen Infotext enthalten
+- **THEN** entfallen ungefähr 25 Prozent der Breite auf die Legende, 50 Prozent auf die Hinweise und 25 Prozent auf den Infotext
+- **AND** steht der Infotext ausschließlich im Bereich unter dem Kalenderraster
+
+#### Scenario: Allgemeiner PDF-Infotext fehlt
+
+- **WHEN** die PDF-Einstellungen keinen sichtbaren allgemeinen Infotext enthalten
+- **THEN** entfallen ungefähr 25 Prozent der Breite auf die Legende und 75 Prozent auf die Hinweise
+
+#### Scenario: Ein sichtbarer Termin hat einen eigenen Hinweis
+
+- **WHEN** mehrere sichtbare Termine derselben Fraktion am selben Datum unterschiedliche Hinweise besitzen
+- **THEN** erscheinen diese Hinweise vollständig mit Datums- und Tour- oder Fraktionsbezug auf der zugehörigen Halbjahresseite oder ihren Folgeseiten
+- **AND** gibt es weiterhin eine farbige Tagesmarkierung je Datum und Fraktion
+- **AND** gibt die PDF-Ausgabe identische Projektionen desselben Hinweises nur einmal aus
+- **AND** lässt sie Hinweise nicht sichtbarer Termine und Touren aus
+
+#### Scenario: Hinweise oder Infotext enthalten HTML-Auszeichnung
+
+- **WHEN** ein Tour- oder Terminhinweis oder der allgemeine Infotext HTML-Auszeichnung enthält
 - **THEN** wandelt die PDF-Ausgabe Absätze, Zeilenumbrüche und Listen in lesbaren Klartext um
-- **AND** enthält die PDF-Legende weder HTML-Tags noch Skriptinhalt oder angehängte Linkziele
-- **AND** werden HTML-Entities als die zugehörigen Klartextzeichen dargestellt
+- **AND** enthält die Ausgabe weder HTML-Tags noch Skriptinhalt oder angehängte Linkziele
+- **AND** stellt sie HTML-Entities als die zugehörigen Klartextzeichen dar
 
-#### Scenario: Sichtbare Tour oder einzelner Termin besitzt einen Hinweis
+#### Scenario: Inhalt überschreitet den verfügbaren Platz
 
-- **WHEN** eine Tour mindestens einen sichtbaren PDF-Termin erzeugt oder ein sichtbarer Termin einen eigenen Hinweis besitzt
-- **THEN** zeigt die Legende den jeweiligen Tour- beziehungsweise Terminbezug und den Hinweis getrennt durch ` - ` ohne feste Beschreibungsspalte
-- **AND** Hinweise nicht sichtbarer Touren oder Termine werden ausgelassen
-
-#### Scenario: Legendentext überschreitet die verfügbare Breite
-
-- **WHEN** ein Legendentext nicht vollständig in seine einzelne Zeile passt
-- **THEN** kürzt das System ihn anhand seiner gerenderten Breite
-- **AND** der sichtbare Text endet mit `...`
-- **AND** es entsteht kein Zeilenumbruch
-
-### Requirement: PDF reserviert Raum für höchstens acht Legendenzeilen
-
-Das System SHALL durch einen kompakteren Kopfbereich und den Wegfall der redundanten Fußzeile Raum für acht Legendenzeilen schaffen, ohne das Kalenderraster zu verkleinern.
-
-#### Scenario: PDF enthält die maximale Legendenmenge
-
-- **WHEN** acht Legendenzeilen dargestellt werden
-- **THEN** überlappt keine Legendenzeile das Kalenderraster oder den Seitenrand
-- **AND** der Kopfbereich zeigt weiterhin Titel, Abholort und Branding lesbar
-- **AND** die redundante Fußzeile `Abfallkalender <Jahr> · <Abholort>` wird nicht dargestellt
-
-#### Scenario: PDF enthält Ausweichtermine
-
-- **WHEN** mindestens ein sichtbarer Termin als Ausweichtermin gekennzeichnet ist
-- **THEN** belegt `* = Ausweichtermin` die erste Zeile innerhalb der höchstens acht Legendenzeilen
-- **AND** der Asterisk wird rot und fett dargestellt
+- **WHEN** Text die Spaltenbreite überschreitet oder der Platz unter dem Kalenderraster nicht ausreicht
+- **THEN** bricht die PDF-Ausgabe den Text anhand seiner gerenderten Breite um
+- **AND** setzt sie die übrigen Zeilen bei Bedarf auf gekennzeichneten Folgeseiten ohne Inhaltsverlust fort
+- **AND** bleiben Kalenderraster, Titel, Abholort und Branding lesbar
 
 ### Requirement: PDF kennzeichnet Ausweichtermine eindeutig
 
@@ -542,7 +538,7 @@ Das System SHALL jeden PDF-Abholungstermin, dessen wirksames Datum vom reguläre
 - **THEN** zeigt das PDF unmittelbar rechts neben der farbigen Fraktionsbox einen roten, fetten Asterisk
 - **AND** der Asterisk liegt außerhalb der farbigen Box
 - **AND** nachfolgende Fraktionsboxen überlappen den Asterisk nicht
-- **AND** erklärt eine eigene Legendenzeile den Asterisk mit `* = Ausweichtermin`
+- **AND** erklärt die erste Zeile der Fraktionslegende den roten, fetten Asterisk mit `* = Ausweichtermin`
 
 #### Scenario: Feiertagsregel erzeugt einen Ausweichtermin
 

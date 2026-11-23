@@ -10,6 +10,7 @@ export const confirmWasteAddressMove = async (input: {
   readonly pt: Translate;
   readonly entityType: WasteAddressEntityType;
   readonly entityId: string;
+  readonly entityLabel: string;
   readonly targetParentId?: string;
   readonly sourceLabel: string;
   readonly targetLabel: string;
@@ -39,6 +40,7 @@ export const confirmWasteAddressMove = async (input: {
   const setPendingPreview = (currentPreview: typeof preview) => {
     input.state.setPendingAddressMove({
       preview: currentPreview,
+      entityLabel: input.entityLabel,
       sourceLabel: input.sourceLabel,
       targetLabel: input.targetLabel,
       onConfirm: () => saveConfirmedMove(currentPreview.token),

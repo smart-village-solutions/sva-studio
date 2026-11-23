@@ -75,6 +75,18 @@ export const parseHeaderLayout = (
   const cityIndex = cursor;
   cursor += 1;
   const optionalHeaders = consumeOptionalHeaders(header, cursor);
+  const misplacedPickupHeader = header
+    .slice(optionalHeaders.nextIndex)
+    .map((column) => column.trim())
+    .find((column) => column === 'Abholdatum' || column === 'Hinweis');
+  if (misplacedPickupHeader) {
+    issues.push({
+      rowNumber: 1,
+      column: misplacedPickupHeader,
+      message: 'Die Spalten „Abholdatum“ und „Hinweis“ müssen in dieser Reihenfolge vor den Fraktionsspalten stehen.',
+    });
+    return null;
+  }
 
   return {
     assignmentIdIndex,

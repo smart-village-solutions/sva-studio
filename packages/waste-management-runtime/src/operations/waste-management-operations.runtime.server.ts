@@ -10,8 +10,8 @@ import {
 import { createExportDataOperation } from './waste-management-operations.export.server.js';
 import {
   createMaterializeEmailRemindersOperation,
-  createProcessEmailReminderOutboxOperation,
 } from './waste-management-email-reminders.server.js';
+import { createProcessEmailReminderOutboxOperation } from './waste-management-email-reminder-outbox.server.js';
 import type {
   WasteManagementOperationRuntime,
   WasteOperationRuntimeDeps,

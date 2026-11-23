@@ -18,6 +18,42 @@ import {
 } from './waste-management-location-tour-pickup-date-parser.row.js';
 export { detectWasteImportCsvDelimiter } from './waste-management-location-tour-pickup-date-parser.csv.js';
 
+const stopExportHeaders = ['Ortsteil', 'Datum', 'Wochentag', 'Zeit', 'Standort'];
+
+const parseUnassignedStopExport = (
+  lines: readonly string[],
+  layout: Pick<
+    WasteLocationTourPickupDateImportParseResult,
+    'delimiter' | 'detectedDelimiter' | 'header'
+  >
+): WasteLocationTourPickupDateImportParseResult => {
+  const issues: WasteLocationTourPickupDateImportIssue[] = [
+    {
+      rowNumber: 1,
+      column: 'Datei',
+      message:
+        'Verwenden Sie die CSV-Vorlage „Tourzuordnungen nach Fraktionen“. Beispiel für die Kopfzeile: Einsatz-ID;Ort;Abholdatum;Hinweis;<Fraktionsname>. Tragen Sie den Tournamen in die Fraktionsspalte und Uhrzeit und Standort gemeinsam in „Hinweis“ ein.',
+    },
+  ];
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
+    if (isEmptyRow(splitCsvLine(lines[lineIndex] ?? '', layout.delimiter))) continue;
+    issues.push({
+      rowNumber: lineIndex + 1,
+      column: 'Standort',
+      message:
+        'Ordnen Sie dem Eintrag einen Abholort und eine Tour zu und vergeben Sie eine eigene Einsatz-ID je Halt.',
+    });
+  }
+  return {
+    ...layout,
+    fractionNames: [],
+    rows: [],
+    validRowCount: 0,
+    invalidRowCount: issues.length - 1,
+    issues,
+  };
+};
+
 export const parseWasteLocationTourPickupDateCsv = (input: {
   readonly text: string;
   readonly delimiterOverride?: WasteManagementCsvDelimiter;
@@ -45,6 +81,12 @@ export const parseWasteLocationTourPickupDateCsv = (input: {
   const detectedDelimiter = detectWasteImportCsvDelimiter(lines[0] ?? '');
   const delimiter = input.delimiterOverride ?? detectedDelimiter;
   const header = splitCsvLine(lines[0] ?? '', delimiter);
+  if (
+    header.length === stopExportHeaders.length &&
+    stopExportHeaders.every((column, index) => column === header[index]?.trim())
+  ) {
+    return parseUnassignedStopExport(lines, { delimiter, detectedDelimiter, header });
+  }
   const issues: WasteLocationTourPickupDateImportIssue[] = [];
   const headerLayout = parseHeaderLayout(header, issues);
   const fractionNames = parseFractionNames(header, headerLayout, issues);
@@ -56,7 +98,6 @@ export const parseWasteLocationTourPickupDateCsv = (input: {
     if (isEmptyRow(cells)) {
       continue;
     }
-
     const row = parseDataRow({
       cells,
       rowNumber: lineIndex + 1,

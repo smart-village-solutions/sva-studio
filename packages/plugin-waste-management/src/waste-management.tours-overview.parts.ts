@@ -17,7 +17,10 @@ export const loadWasteToursAssignmentOverview = async ({
   readonly setMasterDataOverview: WasteToursState['setMasterDataOverview'];
 }) => {
   try {
-    const masterDataResponse = await getWasteManagementMasterDataOverview({ scope: 'locations' });
+    const masterDataResponse = await getWasteManagementMasterDataOverview({
+      scope: 'locations',
+      fresh: true,
+    });
     if (isMounted()) {
       setMasterDataOverview(masterDataResponse);
     }
@@ -55,64 +58,92 @@ export const loadWasteToursSchedulingOverview = async ({
   }
 };
 
-export const loadWasteToursOverview = async (state: Pick<WasteToursState,
-  'setAssignmentContextLoading' | 'setAvailableFractions' | 'setCustomRecurrencePresets' | 'setError' | 'setLoading' | 'setMasterDataOverview' | 'setOverview' | 'setSchedulingOverview' | 'setSchedulingLoadState' | 'schedulingRequestRef'
->, { ptRef, isMounted, loadGeneration, propagateError }: Readonly<{
+type WasteToursOverviewState = Pick<
+  WasteToursState,
+  | 'setAssignmentContextLoading'
+  | 'setAvailableFractions'
+  | 'setCustomRecurrencePresets'
+  | 'setError'
+  | 'setLoading'
+  | 'setMasterDataOverview'
+  | 'setOverview'
+  | 'setSchedulingOverview'
+  | 'setSchedulingLoadState'
+  | 'schedulingRequestRef'
+>;
+
+type WasteToursOverviewRequest = Readonly<{
   ptRef: RefObject<(key: string) => string>;
   isMounted: RefObject<boolean>;
   loadGeneration: RefObject<number>;
   propagateError: boolean;
-}>) => {
-  const { setAssignmentContextLoading, setAvailableFractions, setCustomRecurrencePresets, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview, setSchedulingLoadState, schedulingRequestRef } = state;
-      const generation = ++loadGeneration.current;
-      const schedulingRequest = ++schedulingRequestRef.current;
-      const isCurrentSchedulingRequest = () =>
-        isCurrent() && schedulingRequestRef.current === schedulingRequest;
-      const isCurrent = () => isMounted.current && generation === loadGeneration.current;
-      setSchedulingOverview(null);
-      setSchedulingLoadState('loading');
-      try {
-        const [toursResponse, fractionsResponse] = await Promise.all([
-          getWasteManagementToursOverview(),
-          getWasteManagementMasterDataOverview({ scope: 'fractions' }),
-        ]);
-        if (!isCurrent()) return;
-        setOverview(toursResponse);
-        setCustomRecurrencePresets(toursResponse.customRecurrencePresets ?? []);
-        setAvailableFractions(fractionsResponse.fractions);
-        setMasterDataOverview(null);
-        setAssignmentContextLoading(true);
-        setError(null);
+}>;
 
-        void loadWasteToursAssignmentOverview({
-          isMounted: isCurrent,
-          setAssignmentContextLoading,
-          setMasterDataOverview,
-        });
+export const loadWasteToursOverview = async (
+  state: WasteToursOverviewState,
+  { ptRef, isMounted, loadGeneration, propagateError }: WasteToursOverviewRequest
+) => {
+  const {
+    setAssignmentContextLoading,
+    setAvailableFractions,
+    setCustomRecurrencePresets,
+    setError,
+    setLoading,
+    setMasterDataOverview,
+    setOverview,
+    setSchedulingOverview,
+    setSchedulingLoadState,
+    schedulingRequestRef,
+  } = state;
+  const generation = ++loadGeneration.current;
+  const schedulingRequest = ++schedulingRequestRef.current;
+  const isCurrentSchedulingRequest = () =>
+    isCurrent() && schedulingRequestRef.current === schedulingRequest;
+  const isCurrent = () => isMounted.current && generation === loadGeneration.current;
+  setAssignmentContextLoading(true);
+  setSchedulingOverview(null);
+  setSchedulingLoadState('loading');
+  try {
+    const [toursResponse, fractionsResponse] = await Promise.all([
+      getWasteManagementToursOverview(),
+      getWasteManagementMasterDataOverview({ scope: 'fractions' }),
+    ]);
+    if (!isCurrent()) return;
+    setOverview(toursResponse);
+    setCustomRecurrencePresets(toursResponse.customRecurrencePresets ?? []);
+    setAvailableFractions(fractionsResponse.fractions);
+    setMasterDataOverview(null);
+    setError(null);
 
-        void loadWasteToursSchedulingOverview({
-          isMounted: isCurrentSchedulingRequest,
-          setSchedulingOverview,
-          setSchedulingLoadState,
-        });
-      } catch (loadError) {
-        if (!isCurrent()) {
-          if (propagateError) throw loadError;
-          return;
-        }
-        if (isCurrentSchedulingRequest()) setSchedulingLoadState('error');
-        if (propagateError) throw loadError;
-        const code = resolveApiErrorCode(loadError);
-        setMasterDataOverview(null);
-        setCustomRecurrencePresets([]);
-        setAssignmentContextLoading(false);
-        if (isCurrentSchedulingRequest()) setSchedulingOverview(null);
-        setError(
-          code === 'forbidden'
-            ? ptRef.current('tours.messages.loadForbidden')
-            : ptRef.current('tours.messages.loadError')
-        );
-      } finally {
-        if (isCurrent()) setLoading(false);
-      }
-  };
+    void loadWasteToursAssignmentOverview({
+      isMounted: isCurrent,
+      setAssignmentContextLoading,
+      setMasterDataOverview,
+    });
+
+    void loadWasteToursSchedulingOverview({
+      isMounted: isCurrentSchedulingRequest,
+      setSchedulingOverview,
+      setSchedulingLoadState,
+    });
+  } catch (loadError) {
+    if (!isCurrent()) {
+      if (propagateError) throw loadError;
+      return;
+    }
+    if (isCurrentSchedulingRequest()) setSchedulingLoadState('error');
+    setAssignmentContextLoading(false);
+    if (propagateError) throw loadError;
+    const code = resolveApiErrorCode(loadError);
+    setMasterDataOverview(null);
+    setCustomRecurrencePresets([]);
+    if (isCurrentSchedulingRequest()) setSchedulingOverview(null);
+    setError(
+      code === 'forbidden'
+        ? ptRef.current('tours.messages.loadForbidden')
+        : ptRef.current('tours.messages.loadError')
+    );
+  } finally {
+    if (isCurrent()) setLoading(false);
+  }
+};

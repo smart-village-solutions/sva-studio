@@ -1,227 +1,254 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox } from '@sva/studio-ui-react';
+import { toDatetimeLocalValue, usePluginTranslation } from '@sva/plugin-sdk';
+import { Button } from '@sva/studio-ui-react';
 
+import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import {
-  createWasteManagementLocationTourLink,
-  deleteWasteManagementLocationTourLink,
-} from './waste-management.api.js';
+  applyAssignmentWrites,
+  assignmentWriteStatus,
+  getLinkedTourIds,
+  readBackAssignments,
+  getUnconfirmedChanges,
+  type AssignmentAttempt,
+  type Draft,
+} from './waste-management.master-data-location-assignment-writes.js';
 import {
-  StatusNotice,
-  resolveApiErrorCode,
-  type StatusMessage,
-} from './waste-management.page.support.js';
-import { formatTourRecurrence } from './waste-management.tours.presentation.js';
-import { WasteToursRowFractionCell } from './waste-management.tours.table-row.parts.js';
+  LocationAssignmentFilters,
+  LocationAssignmentTable,
+  assignmentKey,
+  type AssignmentSort,
+  type AssignmentSortField,
+} from './waste-management.master-data-location-assignment-table.js';
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import { defaultWastePageSize } from './pagination-search-params.js';
+import {
+  createPagedItems,
+  WastePanelTableBottomBar,
+  WastePanelTableTopBar,
+} from './waste-management.table-frame.js';
+import { sortWasteTours } from './waste-management.tours.content.helpers.js';
+import {
+  matchesWasteTourValidityPeriod,
+  resolveWasteTourValidityYear,
+} from './waste-management.tours.validity-filter.js';
 
+const locationCounts = new Map<string, number>();
 const createFractionNameMap = (fractions: readonly WasteFractionRecord[]) =>
   new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const));
 
-export const LocationAssignmentsSection = ({
+type LocationAssignmentsProps = {
+  readonly locationId: string;
+  readonly tours: readonly WasteTourRecord[];
+  readonly fractions: readonly WasteFractionRecord[];
+  readonly links: readonly WasteLocationTourLinkRecord[];
+  readonly disabled?: boolean;
+  readonly onReload: (locationId: string) => Promise<readonly WasteLocationTourLinkRecord[] | null>;
+};
+
+export const LocationAssignmentsSection = (props: LocationAssignmentsProps) => (
+  <LocationAssignmentsEditor key={props.locationId} {...props} />
+);
+
+const LocationAssignmentsEditor = ({
   locationId,
   tours,
   fractions,
   links,
   disabled = false,
   onReload,
-}: {
-  readonly locationId: string;
-  readonly tours: readonly WasteTourRecord[];
-  readonly fractions: readonly WasteFractionRecord[];
-  readonly links: readonly WasteLocationTourLinkRecord[];
-  readonly disabled?: boolean;
-  readonly onReload: () => Promise<void>;
-}) => {
+}: LocationAssignmentsProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [selectedTourIds, setSelectedTourIds] = useState<readonly string[]>([]);
+  const [draft, setDraft] = useState<Draft>(() => new Map());
+  const [awaitingReadback, setAwaitingReadback] = useState<AssignmentAttempt | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [query, setQuery] = useState('');
+  const [period, setPeriod] = useState<WasteManagementTourValidityPeriod>('all');
+  const [sort, setSort] = useState<AssignmentSort | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(defaultWastePageSize);
+  const pendingRequest = useRef(false);
+  const creationIds = useRef(new Map<string, string>());
+  const linkedTourIds = useMemo(() => getLinkedTourIds(links), [links]);
 
   useEffect(() => {
-    setSelectedTourIds(Array.from(new Set(links.map((link) => link.tourId))));
-  }, [links, locationId]);
+    setDraft((current) => getUnconfirmedChanges(current, linkedTourIds));
+  }, [linkedTourIds]);
 
+  const referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
   const sortedTours = useMemo(
     () =>
-      [...tours].sort((left, right) =>
-        left.name.localeCompare(right.name, 'de', { sensitivity: 'base' })
-      ),
-    [tours]
+      sortWasteTours({
+        tours: tours.filter(
+          (tour) =>
+            tour.name.toLocaleLowerCase().includes(normalizedQuery) &&
+            matchesWasteTourValidityPeriod(tour, period, referenceYear)
+        ),
+        sortField: sort?.field ?? 'name',
+        sortDirection: sort?.direction ?? 'asc',
+        locationCountByTourId: locationCounts,
+        pt,
+      }),
+    [normalizedQuery, period, pt, referenceYear, sort, tours]
   );
-  const selectedTourIdSet = useMemo(() => new Set(selectedTourIds), [selectedTourIds]);
-  const linkedTourIdSet = useMemo(() => new Set(links.map((link) => link.tourId)), [links]);
   const fractionNamesById = useMemo(() => createFractionNameMap(fractions), [fractions]);
-  const allVisibleSelected =
-    sortedTours.length > 0 && sortedTours.every((tour) => selectedTourIdSet.has(tour.id));
-  const someVisibleSelected = sortedTours.some((tour) => selectedTourIdSet.has(tour.id));
+  const pendingChanges = getUnconfirmedChanges(draft, linkedTourIds);
+  const isSelected = (tourId: string) => pendingChanges.get(tourId) ?? linkedTourIds.has(tourId);
+  const selectedTours = sortedTours.filter(({ id }) => isSelected(id));
+  const orderedTours = sort
+    ? sortedTours
+    : [...selectedTours, ...sortedTours.filter(({ id }) => !isSelected(id))];
+  const pagedTours = createPagedItems({ items: orderedTours, page, pageSize });
+  const allFilteredSelected = sortedTours.length > 0 && selectedTours.length === sortedTours.length;
+  const someFilteredSelected = selectedTours.length > 0;
+  const selectionDisabled = disabled || saving || awaitingReadback !== null;
+  const actionDisabled = disabled || saving || (!awaitingReadback && pendingChanges.size === 0);
 
-  const toggleSelectedTour = (tourId: string, checked: boolean) => {
-    setSelectedTourIds((current) => {
-      if (checked) {
-        return current.includes(tourId) ? current : [...current, tourId];
+  const changeSort = (field: AssignmentSortField) => {
+    setSort((current) => ({
+      field,
+      direction: current?.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPage(1);
+  };
+
+  const toggleTours = (tourIds: readonly string[], checked: boolean) => {
+    setMessage(null);
+    setDraft((current) => {
+      const next = new Map(current);
+      for (const id of tourIds) {
+        if (checked === linkedTourIds.has(id)) next.delete(id);
+        else next.set(id, checked);
       }
-
-      return current.filter((currentTourId) => currentTourId !== tourId);
+      return next;
     });
   };
 
-  const handleSave = async () => {
-    const toursToCreate = selectedTourIds.filter((tourId) => !linkedTourIdSet.has(tourId));
-    const linksToDelete = links.filter((link) => !selectedTourIdSet.has(link.tourId));
-
-    if (toursToCreate.length === 0 && linksToDelete.length === 0) {
-      setMessage({
-        kind: 'success',
-        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
-      });
+  const verifyAssignmentWrites = async (attempt: AssignmentAttempt) => {
+    const refreshed = await readBackAssignments(onReload, locationId, attempt);
+    if (!refreshed) {
+      setAwaitingReadback(attempt);
+      setMessage({ kind: 'warning', text: pt(`${assignmentKey}.messages.readBackUnconfirmed`) });
       return;
     }
 
+    setAwaitingReadback(null);
+    const confirmedTourIds = getLinkedTourIds(refreshed);
+    for (const id of confirmedTourIds) creationIds.current.delete(id);
+    const remaining = getUnconfirmedChanges(attempt.draft, confirmedTourIds);
+    setDraft(remaining);
+    setMessage(assignmentWriteStatus(pt, attempt, remaining.size));
+  };
+
+  const handleSave = async () => {
+    if (actionDisabled || pendingRequest.current) return;
+    pendingRequest.current = true;
     setSaving(true);
     setMessage(null);
-
     try {
-      await Promise.all([
-        ...toursToCreate.map((tourId) =>
-          createWasteManagementLocationTourLink({
-            id: crypto.randomUUID(),
-            locationId,
-            tourId,
-          })
-        ),
-        ...linksToDelete.map((link) => deleteWasteManagementLocationTourLink(link.id)),
-      ]);
-
-      await onReload();
-      setMessage({
-        kind: 'success',
-        text: pt('masterData.collectionLocations.assignmentEditor.messages.saveSuccess'),
-      });
-    } catch (error) {
-      const code = resolveApiErrorCode(error);
-      setMessage({
-        kind: 'error',
-        text:
-          code === 'forbidden'
-            ? pt('masterData.collectionLocations.assignmentEditor.messages.saveForbidden')
-            : pt('masterData.collectionLocations.assignmentEditor.messages.saveError'),
-      });
+      const attempt =
+        awaitingReadback ??
+        (await applyAssignmentWrites(locationId, links, pendingChanges, creationIds.current));
+      await verifyAssignmentWrites(attempt);
     } finally {
+      pendingRequest.current = false;
       setSaving(false);
     }
   };
 
+  const actionLabel = saving ? 'saving' : 'save';
+  const reloadLabel = saving ? 'reloading' : 'reload';
+
   return (
     <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.title')}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.description')}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
-              value: String(selectedTourIds.length),
-            })}
-          </p>
-        </div>
-        <Button
-          type="button"
-          disabled={disabled || saving || sortedTours.length === 0}
-          onClick={() => void handleSave()}
-        >
-          {saving
-            ? pt('masterData.collectionLocations.assignmentEditor.actions.saving')
-            : pt('masterData.collectionLocations.assignmentEditor.actions.save')}
-        </Button>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.title')}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.description')}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {pt('masterData.collectionLocations.assignmentEditor.meta.selectedCount', {
+            value: String(linkedTourIds.size),
+          })}
+        </p>
       </div>
 
       <StatusNotice message={message} />
 
+      <WastePanelTableTopBar
+        actions={
+          <Button type="button" disabled={actionDisabled} onClick={() => void handleSave()}>
+            {pt(`${assignmentKey}.actions.${awaitingReadback ? reloadLabel : actionLabel}`)}
+          </Button>
+        }
+        activeFilters={
+          <>
+            {query.trim() ? (
+              <span>
+                {pt('tours.filters.nameLabel')} · {query.trim()}
+              </span>
+            ) : null}
+            {period !== 'all' ? (
+              <span>
+                {pt(`tours.filters.validityPeriod.${period}`, {
+                  year: resolveWasteTourValidityYear(period, referenceYear),
+                })}
+              </span>
+            ) : null}
+          </>
+        }
+      >
+        {tours.length > 0 ? (
+          <LocationAssignmentFilters
+            query={query}
+            period={period}
+            referenceYear={referenceYear}
+            onQueryChange={setQuery}
+            onPeriodChange={setPeriod}
+            onFilterChange={() => setPage(1)}
+          />
+        ) : null}
+      </WastePanelTableTopBar>
       {sortedTours.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {pt('masterData.collectionLocations.assignmentEditor.empty')}
+          {pt(`${assignmentKey}.${tours.length === 0 ? 'empty' : 'noMatches'}`)}
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border-subtle bg-background/70">
-          <div className="overflow-x-auto">
-            <table
-              className="min-w-full border-collapse"
-              aria-label={pt('masterData.collectionLocations.assignmentEditor.title')}
-            >
-              <thead className="bg-surface-inset text-left text-[13px] text-foreground">
-                <tr className="border-b border-border/70">
-                  <th scope="col" className="w-11 px-3 py-3">
-                    <Checkbox
-                      aria-label={pt('tours.table.selectAll')}
-                      checked={allVisibleSelected}
-                      indeterminate={someVisibleSelected && !allVisibleSelected}
-                      disabled={disabled || saving}
-                      onChange={(event) => {
-                        setSelectedTourIds(
-                          event.currentTarget.checked ? sortedTours.map((tour) => tour.id) : []
-                        );
-                      }}
-                    />
-                  </th>
-                  <th scope="col" className="w-[220px] px-3 py-3 font-semibold">
-                    {pt('tours.table.name')}
-                  </th>
-                  <th scope="col" className="w-[220px] px-3 py-3">
-                    {pt('tours.table.fractions')}
-                  </th>
-                  <th scope="col" className="w-[180px] px-3 py-3 font-semibold">
-                    {pt('tours.table.recurrence')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTours.map((tour) => {
-                  const fractionNames = (tour.wasteFractionIds ?? [])
-                    .map((fractionId: string) => fractionNamesById.get(fractionId))
-                    .filter((value: string | undefined): value is string => Boolean(value));
-
-                  return (
-                    <tr
-                      key={tour.id}
-                      className="border-b border-border/50 align-top last:border-b-0"
-                    >
-                      <td className="px-3 py-3">
-                        <Checkbox
-                          aria-label={pt('tours.table.selectRow', { value: tour.name })}
-                          checked={selectedTourIdSet.has(tour.id)}
-                          disabled={disabled || saving}
-                          onChange={(event) =>
-                            toggleSelectedTour(tour.id, event.currentTarget.checked)
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="text-sm font-semibold text-foreground">{tour.name}</p>
-                      </td>
-                      <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
-                      <td className="px-3 py-3 text-sm text-foreground">
-                        {formatTourRecurrence(
-                          pt,
-                          tour.recurrence,
-                          tour.customRecurrenceName,
-                          tour.customRecurrenceIntervalDays
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <LocationAssignmentTable
+          items={pagedTours.items}
+          sort={sort}
+          changeSort={changeSort}
+          fractionNamesById={fractionNamesById}
+          pendingChanges={pendingChanges}
+          isSelected={isSelected}
+          toggleTours={toggleTours}
+          sortedTours={sortedTours}
+          allFilteredSelected={allFilteredSelected}
+          someFilteredSelected={someFilteredSelected}
+          selectionDisabled={selectionDisabled}
+          footer={
+            <WastePanelTableBottomBar
+              pt={pt}
+              page={pagedTours.safePage}
+              pageSize={pageSize}
+              pageCount={pagedTours.pageCount}
+              totalItems={pagedTours.totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPage(1);
+              }}
+            />
+          }
+        />
       )}
     </section>
   );

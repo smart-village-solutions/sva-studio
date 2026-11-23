@@ -19,9 +19,21 @@ type EnqueuedOutboxRow = Readonly<{
 
 export const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
 export const OUTBOX_DISPATCH_CLAIM = 'dispatch_claimed';
+export const REMINDER_OUTCOME_UNKNOWN = 'mail_dispatch_outcome_unknown';
+export const MAIL_TRANSPORT_NOT_AVAILABLE = 'mail_transport_not_available';
+export const REMINDER_REPLAN_REQUIRED = 'reminder_replan_required';
+
+export const isSafeReminderRetrySql = (table?: string): string => {
+  const prefix = table ? `${table}.` : '';
+  return `COALESCE((
+  ${prefix}last_error IN ('${MAIL_TRANSPORT_NOT_AVAILABLE}', '${REMINDER_REPLAN_REQUIRED}')
+  OR ${prefix}last_error = '${MAIL_TRANSPORT_NOT_AVAILABLE}:' || ${prefix}transport_id
+), false)`;
+};
 
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
+  readonly leasedAt?: string;
   readonly limit: number;
 }): SqlStatement => ({
   text: `
@@ -31,11 +43,16 @@ WITH due AS (
   INNER JOIN waste_email_reminder_subscriptions AS subscription
     ON subscription.id = outbox.subscription_id
   WHERE (
-    (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz)
+    (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz
+      AND outbox.last_error IS DISTINCT FROM '${REMINDER_REPLAN_REQUIRED}'
+      AND (outbox.message_kind = 'doi' OR outbox.attempt_count = 0
+        OR ${isSafeReminderRetrySql('outbox')}))
     OR (
+      outbox.message_kind = 'doi'
+      AND
       outbox.status = 'processing'
       AND outbox.leased_at IS NOT NULL
-      AND outbox.leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+      AND outbox.leased_at <= $3::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
     )
   )
   AND (
@@ -48,10 +65,10 @@ WITH due AS (
 )
 UPDATE waste_email_reminder_outbox AS outbox
 SET status = 'processing',
-    leased_at = $1::timestamptz,
+    leased_at = $3::timestamptz,
     attempt_count = outbox.attempt_count + 1,
     last_error = NULL,
-    updated_at = $1::timestamptz
+    updated_at = $3::timestamptz
 FROM due
 WHERE outbox.id = due.id
 RETURNING
@@ -64,7 +81,7 @@ RETURNING
   outbox.attempt_count,
   outbox.payload;
 `,
-  values: [input.now, input.limit],
+  values: [input.now, input.limit, input.leasedAt ?? input.now],
 });
 
 const buildClaimOutboxEntryForDispatchStatement = (input: {
@@ -72,17 +89,25 @@ const buildClaimOutboxEntryForDispatchStatement = (input: {
   readonly leasedAt: string;
 }): SqlStatement => ({
   text: `
+WITH locked_subscription AS MATERIALIZED (
+  SELECT subscription.id, subscription.status, subscription.expires_at
+  FROM waste_email_reminder_outbox AS candidate
+  JOIN waste_email_reminder_subscriptions AS subscription ON subscription.id = candidate.subscription_id
+  WHERE candidate.id = $1::uuid
+  FOR UPDATE OF subscription
+)
 UPDATE waste_email_reminder_outbox AS outbox
 SET last_error = '${OUTBOX_DISPATCH_CLAIM}',
     updated_at = $2::timestamptz
-FROM waste_email_reminder_subscriptions AS subscription
+FROM locked_subscription AS subscription
 WHERE outbox.id = $1::uuid
   AND subscription.id = outbox.subscription_id
   AND outbox.status = 'processing'
   AND outbox.leased_at = $2::timestamptz
   AND outbox.last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
   AND (
-    (outbox.message_kind = 'doi' AND subscription.status = 'pending' AND subscription.expires_at > $2::timestamptz)
+    (outbox.message_kind = 'doi' AND subscription.status = 'pending'
+      AND subscription.expires_at > GREATEST($2::timestamptz, clock_timestamp()))
     OR (outbox.message_kind = 'reminder' AND subscription.status = 'active')
   )
 RETURNING outbox.id;

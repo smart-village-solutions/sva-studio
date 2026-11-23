@@ -7,6 +7,7 @@ export const wasteManagementPluginTranslationsENPage = {
     webVersionLinkLabel: 'Waste calendar web version',
     accessLoading: 'Checking permissions …',
     accessUnavailable: 'Permissions could not be loaded. Please try again using “Reload”.',
+    accessDenied: 'You do not have access to waste management.',
     syncStatus: {
       loadingTitle: 'Loading synchronization status',
       loadingText: 'Checking the current data revision.',

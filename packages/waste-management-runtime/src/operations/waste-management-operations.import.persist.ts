@@ -1,11 +1,17 @@
 import {
   wasteManagementMasterDataContract,
   wasteTourStatuses,
+  type WasteFractionRecord,
   type WasteLocationTourPickupDateImportPlan,
 } from '@sva/waste-management-contracts';
 
+import {
+  deriveWasteFractionShortLabel,
+  normalizeFractionShortLabel,
+  reserveDerivedWasteFractionShortLabel,
+} from './waste-management-data-exchange-records.server.js';
 import type {
-  ImportedLocationTourPickupDateRecord,
+  ImportedTourAssignment,
   WasteRepository,
 } from './waste-management-operations.import.plan.js';
 import {
@@ -23,38 +29,9 @@ type GenericImportRow = Record<string, string>;
 export const persistLocationTourPickupDateImportPlan = async (
   repository: WasteRepository,
   plan: WasteLocationTourPickupDateImportPlan,
-  importedPickupDates: readonly ImportedLocationTourPickupDateRecord[]
+  assignments: readonly ImportedTourAssignment[],
+  existingFractions: readonly WasteFractionRecord[]
 ) => {
-  const assignmentGroups = new Map<string, ImportedLocationTourPickupDateRecord[]>();
-  for (const pickupDate of importedPickupDates) {
-    const assignmentId = pickupDate.assignmentId ?? pickupDate.id;
-    const group = assignmentGroups.get(assignmentId) ?? [];
-    group.push(pickupDate);
-    assignmentGroups.set(assignmentId, group);
-  }
-  // Validate every group before the first write so malformed imports cannot be partially persisted.
-  const assignments = [...assignmentGroups.entries()].map(([assignmentId, entries]) => {
-    const first = entries[0];
-    if (!first) throw new Error(`empty_tour_assignment_group:${assignmentId}`);
-    if (
-      !entries.every(
-        (entry) =>
-          entry.tourId === first.tourId &&
-          entry.pickupDate === first.pickupDate &&
-          entry.note === first.note
-      )
-    ) {
-      throw new Error(`inconsistent_tour_assignment_group:${assignmentId}`);
-    }
-    return {
-      id: assignmentId,
-      tourId: first.tourId,
-      pickupDate: first.pickupDate,
-      note: first.note,
-      locationIds: [...new Set(entries.map((entry) => entry.locationId))],
-    };
-  });
-
   const persistStage = async <T>(
     items: readonly T[],
     persistItem: (item: T) => Promise<void>
@@ -90,10 +67,20 @@ export const persistLocationTourPickupDateImportPlan = async (
       active: location.active,
     });
   });
+  const usedFractionLabels = new Set(
+    existingFractions
+      .filter((fraction) => fraction.active)
+      .map((fraction) => normalizeFractionShortLabel(fraction.pdfShortLabel))
+  );
   await persistStage(plan.upserts.fractions, async (fraction) => {
+    const pdfShortLabel = reserveDerivedWasteFractionShortLabel(
+      deriveWasteFractionShortLabel(fraction) || 'WST',
+      usedFractionLabels
+    );
     await repository.upsertWasteFraction({
       id: fraction.id,
       name: fraction.name,
+      pdfShortLabel,
       translations: fraction.translations,
       containerSize: fraction.containerSize,
       color: fraction.color,

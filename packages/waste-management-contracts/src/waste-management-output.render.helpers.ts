@@ -38,7 +38,7 @@ const HELVETICA_WIDTHS: Readonly<Record<string, number>> = {
   '!': 278,
   '"': 355,
   '#': 556,
-  '$': 556,
+  $: 556,
   '%': 889,
   '&': 667,
   "'": 191,
@@ -123,18 +123,14 @@ const getHelveticaCharacterWidth = (character: string): number => {
   if (knownWidth !== undefined) {
     return knownWidth;
   }
-  return 556;
+  return 1000;
 };
 
 export const getHelveticaTextWidth = (text: string, fontSize: number): number =>
   Array.from(text).reduce((width, character) => width + getHelveticaCharacterWidth(character), 0) *
   (fontSize / 1000);
 
-export const truncateHelveticaText = (
-  text: string,
-  fontSize: number,
-  maxWidth: number
-): string => {
+export const truncateHelveticaText = (text: string, fontSize: number, maxWidth: number): string => {
   if (getHelveticaTextWidth(text, fontSize) <= maxWidth) {
     return text;
   }
@@ -155,31 +151,38 @@ export const truncateHelveticaText = (
   return `${visibleText.trimEnd()}${suffix}`;
 };
 
-export const splitLegendLabel = (label: string): readonly string[] => {
-  if (label.length <= 24) {
-    return [label];
-  }
+export const wrapHelveticaText = (text: string, fontSize: number, maxWidth: number): string[] =>
+  text.split('\n').flatMap((paragraph) => {
+    const lines: string[] = [];
+    let line = '';
+    let width = 0;
 
-  const words = label.split(/\s+/);
-  const lines: string[] = [];
-  let current = '';
-
-  for (const word of words) {
-    const next = current.length === 0 ? word : `${current} ${word}`;
-    if (next.length > 24 && current.length > 0) {
-      lines.push(current);
-      current = word;
-      continue;
+    for (const word of paragraph.trim().split(/\s+/u)) {
+      const wordWidth = getHelveticaTextWidth(word, fontSize);
+      const spaceWidth = getHelveticaTextWidth(' ', fontSize);
+      if (line && width + spaceWidth + wordWidth > maxWidth) {
+        lines.push(line);
+        line = '';
+        width = 0;
+      }
+      if (line) {
+        line += ' ';
+        width += spaceWidth;
+      }
+      for (const character of word) {
+        const characterWidth = getHelveticaTextWidth(character, fontSize);
+        if (line && width + characterWidth > maxWidth) {
+          lines.push(line);
+          line = '';
+          width = 0;
+        }
+        line += character;
+        width += characterWidth;
+      }
     }
-    current = next;
-  }
 
-  if (current.length > 0) {
-    lines.push(current);
-  }
-
-  return lines;
-};
+    return [...lines, line];
+  });
 
 export const pad2 = (value: number): string => value.toString().padStart(2, '0');
 
@@ -220,7 +223,8 @@ export const buildBrandingImageCommand = (
   const targetWidth = image.width * scale;
   const targetHeight = image.height * scale;
   const x = BRANDING_BOX.x + (BRANDING_BOX.width - targetWidth) / 2;
-  const y = pageHeight - BRANDING_BOX.top - BRANDING_BOX.height + (BRANDING_BOX.height - targetHeight) / 2;
+  const y =
+    pageHeight - BRANDING_BOX.top - BRANDING_BOX.height + (BRANDING_BOX.height - targetHeight) / 2;
   return `q ${targetWidth.toFixed(2)} 0 0 ${targetHeight.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /${imageObjectName} Do Q`;
 };
 

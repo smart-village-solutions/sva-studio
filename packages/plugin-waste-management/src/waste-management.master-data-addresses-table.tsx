@@ -2,6 +2,7 @@ import type {
   WasteAddressEntityType,
 } from '@sva/waste-management-contracts';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
+import type { ReactNode } from 'react';
 import {
   Button,
   StudioDataTable,
@@ -18,7 +19,7 @@ import {
   type AddressRow,
   type AddressSortingState,
 } from './waste-management.master-data-addresses.helpers.js';
-import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 type Controller = ReturnType<typeof useWasteMasterDataViewModel>;
 
@@ -27,6 +28,8 @@ type Props = Readonly<{
   controller: Controller;
   search: WasteManagementSearchParams;
   canManage: boolean;
+  filters: ReactNode;
+  activeFilters: ReactNode;
   allRows: readonly AddressRow[];
   filteredRows: readonly AddressRow[];
   pageItems: readonly AddressRow[];
@@ -154,16 +157,12 @@ const AddressRowsTable = ({
   canManage,
   allRows,
   pageItems,
-  onSearchChange,
   onOpenDelete,
   sorting,
   onSortingChange,
 }: Pick<Props, 'pt' | 'controller' | 'canManage' | 'allRows' | 'pageItems' |
-  'onSearchChange' | 'onOpenDelete' | 'sorting' | 'onSortingChange'> &
+  'onOpenDelete' | 'sorting' | 'onSortingChange'> &
   Readonly<{ type: WasteAddressEntityType }>) => {
-  const cities = controller.overview?.cities ?? [];
-  const streets = controller.overview?.streets ?? [];
-  const missingParentType = missingAddressParentType(type, cities.length, streets.length);
   const labels = {
     selectionColumn: '',
     actionsColumn: pt('masterData.locationsWorkspace.addresses.actions'),
@@ -194,22 +193,13 @@ const AddressRowsTable = ({
           descending: pt('masterData.locationsWorkspace.addresses.sortDescending'),
         },
       }}
-      toolbarEnd={canManage ? <AddressCreateAction pt={pt} controller={controller}
-        type={type} missingParentType={missingParentType} /> : null}
       rowActions={(row) => canManage ? <AddressRowActions pt={pt} controller={controller}
         row={row} onOpenDelete={onOpenDelete} /> : null}
       emptyState={
         allRows.length > 0 ? (
-          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-            <p>{pt('masterData.locationsWorkspace.addresses.emptySearch')}</p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onSearchChange({ addressParentId: undefined, q: '', page: 1 })}
-            >
-              {pt('masterData.locationsWorkspace.addresses.resetFilters')}
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            {pt('masterData.locationsWorkspace.addresses.emptySearch')}
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">
             {pt(`masterData.locationsWorkspace.addresses.empty.${type}`)}
@@ -222,8 +212,28 @@ const AddressRowsTable = ({
 
 export const WasteMasterDataAddressesTable = (props: Props) => {
   const type = props.search.addressEntityType;
+  const missingParentType = missingAddressParentType(
+    type,
+    props.controller.overview?.cities?.length ?? 0,
+    props.controller.overview?.streets?.length ?? 0
+  );
   return (
-    <>
+    <div className="rounded-none border border-border-subtle bg-card">
+      <WastePanelTableTopBar
+        actions={
+          props.canManage ? (
+            <AddressCreateAction
+              pt={props.pt}
+              controller={props.controller}
+              type={type}
+              missingParentType={missingParentType}
+            />
+          ) : null
+        }
+        activeFilters={props.activeFilters}
+      >
+        {props.filters}
+      </WastePanelTableTopBar>
       <AddressRowsTable
         pt={props.pt}
         controller={props.controller}
@@ -231,7 +241,6 @@ export const WasteMasterDataAddressesTable = (props: Props) => {
         canManage={props.canManage}
         allRows={props.allRows}
         pageItems={props.pageItems}
-        onSearchChange={props.onSearchChange}
         onOpenDelete={props.onOpenDelete}
         sorting={props.sorting}
         onSortingChange={props.onSortingChange}
@@ -245,6 +254,6 @@ export const WasteMasterDataAddressesTable = (props: Props) => {
         onPageChange={(nextPage) => props.onSearchChange({ page: nextPage })}
         onPageSizeChange={(nextSize) => props.onSearchChange({ pageSize: nextSize, page: 1 })}
       />
-    </>
+    </div>
   );
 };

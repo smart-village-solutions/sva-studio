@@ -3,6 +3,8 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
 import { loadWasteEmailMonitoring } from './email-reminders.monitoring.js';
+import { hashWasteReminderEmail } from './email-reminders.subscriptions.js';
+import { createWasteEmailReminderRepository } from './email-reminders.js';
 import type { SqlExecutor } from '@sva/data-repositories';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -75,6 +77,7 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
     const query = { page: 1, pageSize: 1, deliveryPage: 1, subscriptionId: subscription };
     const result = await loadWasteEmailMonitoring(executor, query);
     expect(result.total).toBe(1);
+    expect(result.activeTotal).toBe(1);
     expect(result.subscriptions[0]).toMatchObject({
       maskedEmail: 'p*****p@e********e',
       city: 'Testort',
@@ -83,6 +86,7 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
       activatedAt: '2026-11-01T10:01:00.000Z',
       lastSentEmail: null,
       nextEmail: null,
+      doiEmail: null,
     });
     expect(result.deliveries[0]).toMatchObject({
       fraction: 'Bio',
@@ -92,8 +96,11 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
       error: 'dispatch_failed',
     });
     expect(JSON.stringify(result)).not.toMatch(/philipp|private|unsubscribeUrl|recipient/);
-    expect((await loadWasteEmailMonitoring(executor, { ...query, status: 'pending' })).total).toBe(
-      0
+    expect(await loadWasteEmailMonitoring(executor, { ...query, status: 'pending' })).toMatchObject(
+      {
+        total: 0,
+        activeTotal: 1,
+      }
     );
     const second = await loadWasteEmailMonitoring(executor, { ...query, page: 2, deliveryPage: 2 });
     expect(second).toMatchObject({ total: 1, subscriptions: [], deliveryTotal: 1, deliveries: [] });
@@ -108,8 +115,8 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
     ]) {
       await client.query(
         `INSERT INTO waste_email_reminder_outbox
-         (subscription_id,message_kind,transport_id,template_key,send_at,sent_at,dedupe_key,status,payload)
-         VALUES ($1,$2,'smtp','template',$3,$4,$5,$6,'{}')`,
+         (subscription_id,message_kind,transport_id,template_key,send_at,sent_at,dedupe_key,status,payload,created_at)
+         VALUES ($1,$2,'smtp','template',$3,$4,$5,$6,'{}',$3)`,
         [subscription, kind, sendAt, sentAt, key, status]
       );
     }
@@ -131,12 +138,101 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
       scheduledAt: '2026-11-02T06:00:00.000Z',
     });
     expect(JSON.stringify(overview)).not.toMatch(/philipp|private|unsubscribeUrl|recipient/);
+
+    // A later reminder never overwrites the confirmation email's own state.
+    await client.query(
+      `UPDATE waste_email_reminder_outbox SET created_at = '2026-11-10T09:00:00Z'
+       WHERE subscription_id = $1 AND dedupe_key = 'ignored-failed'`,
+      [subscription]
+    );
+    const failedDoi = await loadWasteEmailMonitoring(executor, query);
+    expect(failedDoi.subscriptions[0]).toMatchObject({
+      lastSentEmail: { kind: 'reminder' },
+      doiEmail: { status: 'failed' },
+    });
+    await client.query(
+      `UPDATE waste_email_reminder_outbox SET status = 'sent', sent_at = '2026-11-01T10:00:00Z'
+       WHERE subscription_id = $1 AND dedupe_key = 'ignored-failed'`,
+      [subscription]
+    );
+    expect((await loadWasteEmailMonitoring(executor, query)).subscriptions[0]).toMatchObject({
+      lastSentEmail: { kind: 'reminder' },
+      doiEmail: { status: 'sent', sentAt: '2026-11-01T10:00:00.000Z' },
+    });
+
+    await client.query(
+      "UPDATE waste_email_reminder_subscriptions SET status = 'unsubscribed' WHERE id = $1",
+      [subscription]
+    );
+    expect(await loadWasteEmailMonitoring(executor, query)).toMatchObject({
+      total: 1,
+      activeTotal: 0,
+    });
     await client.query(`SET search_path TO ${otherSchema}, public`);
     expect(await loadWasteEmailMonitoring(executor, query)).toEqual({
       total: 0,
+      activeTotal: 0,
       subscriptions: [],
       deliveryTotal: 0,
       deliveries: [],
     });
+  });
+
+  it('finds only active subscriptions for an exact address and never returns foreign delivery details', async () => {
+    await client.query(`SET search_path TO ${schema}, public`);
+    const address = 'fixture@example.invalid';
+    const digest = hashWasteReminderEmail(address);
+    const insert = async (email: string, status: string) => {
+      const id = randomUUID();
+      const city = await client.query('INSERT INTO waste_cities (name) VALUES ($1) RETURNING id', [id]);
+      await client.query(`INSERT INTO waste_email_reminder_subscriptions
+        (id, email, email_hash, city_id, street_id, location_label, consent_version,
+         consent_accepted_at, expires_at, doi_token_hash, unsubscribe_token_hash, status)
+        VALUES ($1,$2,$3,$4,'all','Test','v1',now(),now()+INTERVAL '1 day',$5,$6,$7)`,
+      [id, email, hashWasteReminderEmail(email), city.rows[0]?.id, `doi-${id}`, `unsub-${id}`, status]);
+      return id;
+    };
+    const first = await insert(address, 'active');
+    const second = await insert(address, 'active');
+    const pending = await insert(address, 'pending');
+    await insert(address, 'unsubscribed');
+    await insert(address, 'expired');
+    const unrelated = await insert('fixture-other@example.invalid', 'active');
+    await client.query(`INSERT INTO waste_email_reminder_outbox
+      (subscription_id, message_kind, transport_id, template_key, send_at, dedupe_key, status, payload)
+      VALUES ($1,'doi','test','test',now(),$2,'sent','{}')`, [unrelated, `doi:${unrelated}`]);
+
+    const query = { page: 1, pageSize: 20, deliveryPage: 1, emailHash: digest };
+    const beforeDoi = await loadWasteEmailMonitoring(executor, { ...query, subscriptionId: unrelated });
+    expect(beforeDoi).toMatchObject({ total: 2, activeTotal: 3, deliveryTotal: 0, deliveries: [] });
+    expect(beforeDoi.subscriptions.map((row) => row.id).sort()).toEqual([first, second].sort());
+    expect(JSON.stringify(beforeDoi)).not.toContain(address);
+    expect(JSON.stringify(beforeDoi)).not.toContain(digest);
+    const repository = createWasteEmailReminderRepository(executor);
+    await client.query('BEGIN');
+    try {
+      expect(await repository.activateByDoiTokenHash({
+        tokenHash: `doi-${pending}`, now: new Date().toISOString(),
+      })).toMatchObject({ status: 'activated' });
+      expect(await repository.unsubscribeByTokenHash({
+        tokenHash: `unsub-${first}`, now: new Date().toISOString(),
+      })).toMatchObject({ status: 'unsubscribed' });
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+    const afterDoi = await loadWasteEmailMonitoring(executor, query);
+    expect(afterDoi.subscriptions.map((row) => row.id).sort()).toEqual([pending, second].sort());
+    expect(afterDoi).toMatchObject({ total: 2, activeTotal: 3 });
+    const limited = await loadWasteEmailMonitoring(executor, { ...query, page: 2, pageSize: 1 });
+    expect(limited.subscriptions).toHaveLength(1);
+    expect(limited).toMatchObject({ total: 2, activeTotal: 3 });
+
+    await client.query(`SET search_path TO ${otherSchema}, public`);
+    const foreign = await insert(address, 'active');
+    const foreignTenant = await loadWasteEmailMonitoring(executor, query);
+    expect(foreignTenant.subscriptions.map((row) => row.id)).toEqual([foreign]);
+    expect(foreignTenant).toMatchObject({ total: 1, activeTotal: 1 });
   });
 });

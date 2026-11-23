@@ -219,18 +219,14 @@ describe('WasteMasterDataLocationFormContent', () => {
       onChange: vi.fn(),
       onCancel: vi.fn(),
       onSubmit,
-      onReloadAssignments: vi.fn(async () => undefined),
+      onReloadAssignments: vi.fn(async () => null),
     };
-    const view = render(
-      <WasteMasterDataLocationFormContent {...props} resetRevision={0} />
-    );
+    const view = render(<WasteMasterDataLocationFormContent {...props} resetRevision={0} />);
 
     fireEvent.change(screen.getByLabelText('city'), { target: { value: 'city-2' } });
     expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('city-2');
 
-    view.rerender(
-      <WasteMasterDataLocationFormContent {...props} resetRevision={1} />
-    );
+    view.rerender(<WasteMasterDataLocationFormContent {...props} resetRevision={1} />);
     expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('city-1');
 
     fireEvent.submit(document.querySelector('#waste-location-form') as HTMLFormElement);
@@ -264,7 +260,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -319,7 +315,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -384,7 +380,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={onChange}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -451,7 +447,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -490,7 +486,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -538,7 +534,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 
@@ -574,7 +570,7 @@ describe('WasteMasterDataLocationFormContent', () => {
         onChange={vi.fn()}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
-        onReloadAssignments={vi.fn(async () => undefined)}
+        onReloadAssignments={vi.fn(async () => null)}
       />
     );
 

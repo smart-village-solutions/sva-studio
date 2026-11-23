@@ -4,33 +4,26 @@ import {
   subscribeSessionAccessSnapshot,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
-import {
-  Button,
-  Select,
-  StudioListPageTemplate,
-  StudioLoadingState,
-  StudioErrorState,
-} from '@sva/studio-ui-react';
+import { StudioListPageTemplate, StudioLoadingState, StudioErrorState } from '@sva/studio-ui-react';
 import {
   wasteEmailMonitoringPermission,
   type WasteEmailMonitoringOverview,
-  type WasteEmailSubscriptionStatus,
-  type WasteEmailSubscriptionSummary,
 } from '@sva/waste-management-contracts';
-import { getWasteEmailMonitoring } from './waste-management.api.read.js';
+import {
+  getWasteEmailMonitoring,
+  searchWasteEmailMonitoring,
+} from './waste-management.api.read.js';
 import {
   EmailMonitoringTables,
   emailMonitoringPageSize,
 } from './waste-management.email-monitoring.tables.js';
 import type { EmailMonitoringTranslate } from './waste-management.email-monitoring.columns.js';
+import {
+  MonitoringControls,
+  type EmailMonitoringSelection,
+} from './waste-management.email-monitoring.controls.js';
+import { resolveApiErrorCode } from './waste-management.page.support.js';
 
-type Selection = {
-  page: number;
-  status: WasteEmailSubscriptionStatus | '';
-  selected: WasteEmailSubscriptionSummary | null;
-  deliveryPage: number;
-  refresh: number;
-};
 type Result = { data: WasteEmailMonitoringOverview; listKey: string; deliveryKey: string };
 const emptyData: WasteEmailMonitoringOverview = {
   subscriptions: [],
@@ -38,92 +31,82 @@ const emptyData: WasteEmailMonitoringOverview = {
   deliveries: [],
   deliveryTotal: 0,
 };
-const MonitoringControls = ({
-  pt,
-  selection,
-  onChange,
-}: {
-  pt: EmailMonitoringTranslate;
-  selection: Selection;
-  onChange: (selection: Selection) => void;
-}) => (
-  <div className="flex flex-wrap items-end justify-between gap-4">
-    <label className="space-y-2 text-sm font-medium">
-      {pt('emailMonitoring.statusFilter')}
-      <Select
-        value={selection.status}
-        onChange={(event) =>
-          onChange({
-            ...selection,
-            status: event.target.value as Selection['status'],
-            page: 1,
-            selected: null,
-            deliveryPage: 1,
-          })
-        }
-      >
-        <option value="">{pt('emailMonitoring.all')}</option>
-        {(['pending', 'active', 'unsubscribed', 'expired'] as const).map((value) => (
-          <option key={value} value={value}>
-            {pt(`emailMonitoring.states.${value}`)}
-          </option>
-        ))}
-      </Select>
-    </label>
-    <Button
-      variant="secondary"
-      onClick={() => onChange({ ...selection, refresh: selection.refresh + 1 })}
-    >
-      {pt('emailMonitoring.refresh')}
-    </Button>
-  </div>
-);
-
-const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
-  const [selection, setSelection] = useState<Selection>({
+const useEmailMonitoring = () => {
+  const [selection, setSelection] = useState<EmailMonitoringSelection>({
     page: 1,
     status: '',
+    searchEmail: '',
+    searchVersion: 0,
     selected: null,
     deliveryPage: 1,
     refresh: 0,
   });
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const listKey = `${selection.page}:${selection.status}`;
+  const [error, setError] = useState<string | null>(null);
+  const listKey = `${selection.page}:${selection.status}:${selection.searchVersion}`;
   const deliveryKey = `${listKey}:${selection.selected?.id}:${selection.deliveryPage}`;
   useEffect(() => {
     let current = true;
+    const controller = new AbortController();
     setLoading(true);
-    setError(false);
-    void getWasteEmailMonitoring({
+    setError(null);
+    const query = {
       page: selection.page,
       pageSize: emailMonitoringPageSize,
       deliveryPage: selection.deliveryPage,
-      ...(selection.status ? { status: selection.status } : {}),
       ...(selection.selected ? { subscriptionId: selection.selected.id } : {}),
-    })
+    };
+    const request = selection.searchEmail
+      ? searchWasteEmailMonitoring(
+          { ...query, email: selection.searchEmail },
+          { signal: controller.signal }
+        )
+      : getWasteEmailMonitoring({
+          ...query,
+          ...(selection.status ? { status: selection.status } : {}),
+        });
+    void request
       .then((data) => {
         if (current) setResult({ data, listKey, deliveryKey });
       })
-      .catch(() => {
-        if (current) setError(true);
+      .catch((requestError: unknown) => {
+        if (current) {
+          setError(
+            selection.searchEmail && resolveApiErrorCode(requestError) === 'invalid_request'
+              ? 'emailMonitoring.emailSearch.invalid'
+              : 'emailMonitoring.error'
+          );
+        }
       })
       .finally(() => {
         if (current) setLoading(false);
       });
     return () => {
       current = false;
+      controller.abort();
     };
   }, [selection, listKey, deliveryKey]);
+  return { selection, setSelection, result, listKey, deliveryKey, error, loading };
+};
+
+const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
+  const { selection, setSelection, result, listKey, deliveryKey, error, loading } =
+    useEmailMonitoring();
   const data = result?.listKey === listKey ? result.data : emptyData;
   const deliveries = result?.deliveryKey === deliveryKey ? result.data.deliveries : [];
   const deliveryTotal = result?.deliveryKey === deliveryKey ? result.data.deliveryTotal : 0;
+  const activeTotal = result?.data.activeTotal;
   return (
     <div className="min-w-0 max-w-6xl space-y-6" aria-busy={loading}>
+      {activeTotal !== undefined && (
+        <p className="text-lg font-semibold tabular-nums" aria-live="polite">
+          {pt('emailMonitoring.activeSubscriptions', { count: activeTotal })}
+        </p>
+      )}
       <MonitoringControls pt={pt} selection={selection} onChange={setSelection} />
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.privacy')}</p>
-      {error && <StudioErrorState>{pt('emailMonitoring.error')}</StudioErrorState>}
+      {error && <StudioErrorState>{pt(error)}</StudioErrorState>}
       {loading && <StudioLoadingState>{pt('emailMonitoring.loading')}</StudioLoadingState>}
       <EmailMonitoringTables
         pt={pt}

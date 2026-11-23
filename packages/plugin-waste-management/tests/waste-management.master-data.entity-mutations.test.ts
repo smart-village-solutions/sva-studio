@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { CreateWasteManagementCollectionLocationInput } from '../src/waste-management.api.js';
 import { createWasteMasterDataMutationHandlers } from '../src/waste-management.master-data-mutations.js';
 import { confirmWasteAddressMove } from '../src/waste-management.master-data-address-move.js';
 import { createSubmitHandler } from '../src/waste-management.master-data-entity-dialogs.shared.js';
+import { resolveTourAssignmentLocationOptions } from '../src/waste-management.tours.locations.js';
 
 const apiMocks = vi.hoisted(() => ({
+  createWasteManagementStreet: vi.fn(async () => undefined),
+  createWasteManagementCollectionLocation: vi.fn<(input: CreateWasteManagementCollectionLocationInput) => Promise<void>>(async () => undefined),
   updateWasteManagementRegion: vi.fn(async () => undefined),
   updateWasteManagementCity: vi.fn(async () => undefined),
   updateWasteManagementStreet: vi.fn(async () => undefined),
@@ -28,6 +32,63 @@ const createSubmitEvent = () =>
 describe('waste master-data address entity mutations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('saves a street first and writes pickup locations only for the explicitly selected addresses', async () => {
+    const state = {
+      streetDialogMode: 'create',
+      streetForm: { id: 'street-1', name: 'Pferdeschwemme', cityId: 'city-1' },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setLastOutcome: vi.fn(),
+      setStreetDialogOpen: vi.fn(),
+      setLocationDialogOpen: vi.fn(),
+    };
+    const handlers = createWasteMasterDataMutationHandlers({
+      state: state as never,
+      pt: (key) => key,
+      search: {} as never,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: [],
+    });
+    const event = createSubmitEvent();
+    await handlers.onSubmitStreet(event, event.currentTarget);
+    expect(apiMocks.createWasteManagementStreet).toHaveBeenCalledExactlyOnceWith({
+      id: 'street-1',
+      name: 'Pferdeschwemme',
+      cityId: 'city-1',
+    });
+    expect(apiMocks.createWasteManagementCollectionLocation).not.toHaveBeenCalled();
+
+    const address = { active: true, regionId: 'region-1', cityId: 'city-1', streetId: 'street-1' };
+    const timestamp = { createdAt: '', updatedAt: '' };
+    const readAssignmentOptions = () => resolveTourAssignmentLocationOptions((key) => key, {
+      fractions: [],
+      regions: [{ id: address.regionId, name: 'Stadt Perleberg', ...timestamp }],
+      cities: [{ id: address.cityId, name: 'Perleberg', regionId: address.regionId, ...timestamp }],
+      streets: [{ ...state.streetForm, ...timestamp }],
+      houseNumbers: [
+        { id: 'house-2', number: '2', streetId: address.streetId, ...timestamp },
+        { id: 'house-8', number: '8', streetId: address.streetId, ...timestamp },
+      ],
+      locationTourLinks: [],
+      collectionLocations: apiMocks.createWasteManagementCollectionLocation.mock.calls.map(([input]) => ({
+        ...input, ...timestamp,
+      })),
+    });
+    expect(readAssignmentOptions()).toEqual([]);
+
+    await handlers.onSubmitLocation({ ...address, id: 'pickup-2', houseNumberId: 'house-2' }, 'create');
+    await handlers.onSubmitLocation({ ...address, id: 'pickup-8', houseNumberId: 'house-8' }, 'create');
+    expect(apiMocks.createWasteManagementCollectionLocation.mock.calls).toEqual([
+      [{ ...address, id: 'pickup-2', houseNumberId: 'house-2' }],
+      [{ ...address, id: 'pickup-8', houseNumberId: 'house-8' }],
+    ]);
+    expect(readAssignmentOptions().map(({ streetName, houseNumberName }) => [streetName, houseNumberName])).toEqual([
+      ['Pferdeschwemme', '2'],
+      ['Pferdeschwemme', '8'],
+    ]);
   });
 
   it('reloads the paginated location projection after successful address updates', async () => {

@@ -39,7 +39,10 @@ vi.mock('../src/waste-management.tours.content.js', () => ({
 
 vi.mock('../src/waste-management.tours.shared.js', () => ({
   createDefaultTourForm: () => ({ id: 'new-tour', name: '' }),
-  mapTourWithPickupDatesToForm: (tour: { id: string; name: string }) => ({ id: tour.id, name: tour.name }),
+  mapTourWithPickupDatesToForm: (tour: { id: string; name: string }) => ({
+    id: tour.id,
+    name: tour.name,
+  }),
 }));
 
 const createSearch = (): WasteManagementSearchParams => ({
@@ -65,9 +68,7 @@ const createSearch = (): WasteManagementSearchParams => ({
   globalDateShiftId: undefined,
 });
 
-const createController = (
-  overrides: Partial<WasteViewModel> = {}
-): WasteViewModel =>
+const createController = (overrides: Partial<WasteViewModel> = {}): WasteViewModel =>
   ({
     tours: [],
     overview: null,
@@ -76,8 +77,6 @@ const createController = (
     availableFractions: [],
     masterDataOverview: null,
     schedulingOverview: null,
-    openCreateAssignmentsDialog: vi.fn(),
-    openEditAssignmentsDialog: vi.fn(),
     openCalendar: vi.fn(),
     onToggleTourStatus: vi.fn(),
     onDeleteTour: vi.fn(),

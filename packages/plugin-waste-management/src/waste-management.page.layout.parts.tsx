@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Activity, type ReactNode } from 'react';
 import { StudioEmptyState, type StudioDetailTabIconName } from '@sva/studio-ui-react';
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
@@ -21,6 +21,7 @@ export const wasteManagementTabTranslationKeyMap = {
   locations: 'locations',
   masterData: 'masterData',
   scheduling: 'scheduling',
+  tourAssignments: 'tourAssignments',
   output: 'output',
   tools: 'tools',
   settings: 'settings',
@@ -32,6 +33,7 @@ export const wasteManagementTabIconMap = {
   locations: 'mapPin',
   masterData: 'database',
   scheduling: 'calendarClock',
+  tourAssignments: 'route',
   output: 'basis',
   tools: 'database',
   settings: 'settings',
@@ -41,17 +43,25 @@ export const createWasteManagementTabContentMap = (
   search: WasteManagementSearchParams,
   access: WasteManagementUiAccess,
   onAddressSearchChange: (patch: Partial<WasteManagementSearchParams>) => void,
-  rawSearch: Readonly<Record<string, unknown>> = search
+  rawSearch: Readonly<Record<string, unknown>> = search,
+  assignmentContextKey: string | null = null
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
   tours: (
-    <WasteToursPanel
-      search={search}
-      canDuplicateTour={access.canDuplicateTour}
-      canManageScheduling={access.canManageScheduling}
-    />
+    <Activity mode={search.tab === 'tours' ? 'visible' : 'hidden'}>
+      <WasteToursPanel
+        search={search}
+        assignmentContextKey={assignmentContextKey}
+        canDuplicateTour={access.canDuplicateTour}
+        canManageScheduling={access.canManageScheduling}
+      />
+    </Activity>
   ),
-  locations: <WasteMasterDataPanel search={search} tab="locations" />,
+  locations: (
+    <Activity mode={search.tab === 'locations' ? 'visible' : 'hidden'}>
+      <WasteMasterDataPanel search={search} tab="locations" />
+    </Activity>
+  ),
   masterData: (
     <WasteMasterDataAddressesPanel
       search={search}
@@ -59,7 +69,16 @@ export const createWasteManagementTabContentMap = (
       onSearchChange={onAddressSearchChange}
     />
   ),
-  scheduling: <WasteSchedulingPanel search={search} rawSearch={rawSearch} />,
+  scheduling: (
+    <Activity mode={search.tab === 'scheduling' ? 'visible' : 'hidden'}>
+      <WasteSchedulingPanel search={search} rawSearch={rawSearch} />
+    </Activity>
+  ),
+  tourAssignments: (
+    <Activity mode={search.tab === 'tourAssignments' ? 'visible' : 'hidden'}>
+      <WasteSchedulingPanel search={search} canManageAssignments={access.canManageScheduling} />
+    </Activity>
+  ),
   output: <WasteOutputPanel />,
   settings: <WasteSettingsPanel />,
   tools: <WasteToolsPanel access={access} overview={<WasteOverviewPanel search={search} />} />,

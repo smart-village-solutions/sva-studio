@@ -116,6 +116,28 @@ describe('previewWasteLocationTourPickupDateImport', () => {
     );
   });
 
+  it('shows conflicting legacy stops in the Studio preview', async () => {
+    const preview = await previewWasteLocationTourPickupDateImport(
+      createRepositoryMock(),
+      {
+        instanceId: 'tenant-a',
+        sourceFormat: 'text/csv',
+        blobRef: createCsvDataUrl([
+          'Ort;Straße;Abholdatum;Hinweis;Papier',
+          'Perleberg;Ackerstraße;2027-02-03;09:00 Uhr Markt;PPK.7.2',
+          'Perleberg;Ackerstraße;2027-02-03;11:00 Uhr Schule;PPK.7.2',
+        ]),
+      },
+      readStoredSource
+    );
+
+    expect(preview).toMatchObject({ validRowCount: 0, invalidRowCount: 2 });
+    expect(preview.errors).toMatchObject([
+      { rowNumber: 2, column: 'Einsatz-ID' },
+      { rowNumber: 3, column: 'Einsatz-ID' },
+    ]);
+  });
+
   it('parses non-base64 data urls and respects delimiter overrides', async () => {
     const preview = await previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
       instanceId: 'tenant-a',

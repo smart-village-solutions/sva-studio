@@ -29,6 +29,7 @@ export async function getMasterData(route: Route, state: WasteFacadeState): Prom
     streetsState,
     houseNumbersState,
     collectionLocationsState,
+    locationTourLinksState,
   } = state;
   await route.fulfill({
     status: 200,
@@ -41,7 +42,7 @@ export async function getMasterData(route: Route, state: WasteFacadeState): Prom
         streets: streetsState,
         houseNumbers: houseNumbersState,
         collectionLocations: collectionLocationsState,
-        locationTourLinks: [],
+        locationTourLinks: locationTourLinksState,
       },
     }),
   });
@@ -88,8 +89,53 @@ export async function getScheduling(route: Route): Promise<void> {
       data: {
         globalDateShifts: [],
         tourDateShifts: [],
+        locationTourPickupDates: [],
       },
     }),
   });
   return;
+}
+
+const storeLink = (
+  state: WasteFacadeState,
+  link: { id: string; locationId: string; tourId: string }
+) => {
+  const timestamps = {
+    createdAt: '2026-05-10T12:15:00.000Z',
+    updatedAt: '2026-05-10T12:15:00.000Z',
+  };
+  const record = { ...link, ...timestamps };
+  state.locationTourLinksState.push(record);
+  return record;
+};
+
+export async function createLocationTourLink(route: Route, state: WasteFacadeState) {
+  const { id, locationId, tourId } = route.request().postDataJSON() as {
+    id: string;
+    locationId: string;
+    tourId: string;
+  };
+  const data = storeLink(state, { id, locationId, tourId });
+  await route.fulfill({ status: 201, json: { data } });
+}
+
+export async function createLocationTourLinksBulk(route: Route, state: WasteFacadeState) {
+  const { locationIds, tourId } = route.request().postDataJSON() as {
+    locationIds: string[];
+    tourId: string;
+  };
+  const items = locationIds.map((locationId) =>
+    storeLink(state, { id: `link-${tourId}-${locationId}`, locationId, tourId })
+  );
+  await route.fulfill({ status: 201, json: { data: { createdCount: items.length, items } } });
+}
+
+export async function deleteLocationTourLink(route: Route, state: WasteFacadeState, id: string) {
+  const index = state.locationTourLinksState.findIndex((link) => link.id === id);
+  if (index === -1) {
+    await route.fulfill({ status: 404, json: { error: 'not_found' } });
+    return;
+  }
+  state.locationTourLinksState.splice(index, 1);
+  await route.fulfill({ status: 200, json: { data: { id } } });
 }

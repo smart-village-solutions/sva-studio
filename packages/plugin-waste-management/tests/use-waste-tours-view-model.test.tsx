@@ -22,9 +22,6 @@ const state = vi.hoisted(() => ({
       id: 'tour-1',
       dateLocationAssignments: [],
     },
-    assignmentsDialogOpen: false,
-    assignmentsDialogMode: 'create' as const,
-    linkForm: {},
     selectedTour: {
       id: 'tour-1',
       name: 'Schadstoffmobil',

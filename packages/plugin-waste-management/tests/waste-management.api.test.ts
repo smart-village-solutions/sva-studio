@@ -404,6 +404,30 @@ describe('waste-management api client', () => {
     });
   });
 
+  it('reads assignments independently of an already running location overview request', async () => {
+    const previous = Promise.withResolvers<Response>();
+    const response = (locationTourLinks: readonly object[]) =>
+      new Response(JSON.stringify({ data: { locationTourLinks } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    const link = { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' };
+    fetchMock.mockReturnValueOnce(previous.promise).mockResolvedValueOnce(response([link]));
+    const earlierRead = getWasteManagementMasterDataOverview({ scope: 'locations' });
+
+    await expect(
+      getWasteManagementMasterDataOverview({ scope: 'locations', fresh: true })
+    ).resolves.toMatchObject({ locationTourLinks: [link] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/waste-management/master-data?scope=locations',
+      expect.objectContaining({ cache: 'no-store' })
+    );
+
+    previous.resolve(response([]));
+    await expect(earlierRead).resolves.toMatchObject({ locationTourLinks: [] });
+  });
+
   it('creates and updates waste fractions through the host facade', async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -1390,6 +1414,27 @@ describe('waste-management api client', () => {
         credentials: 'include',
       })
     );
+  });
+
+  it('reads fresh scheduling data independently of a still-running overview request', async () => {
+    const { promise: firstResponse, resolve: resolveFirstResponse } = Promise.withResolvers<Response>();
+    const scheduling = (tourId: string) => Response.json({
+      data: { tourDateShifts: [{ tourId }], globalDateShifts: [], holidayRules: [], locationTourPickupDates: [] },
+    });
+    fetchMock.mockReturnValueOnce(firstResponse).mockResolvedValueOnce(scheduling('current-tour'));
+    const previousRequest = getWasteManagementSchedulingOverview();
+
+    try {
+      const freshRequest = getWasteManagementSchedulingOverview({ fresh: true });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2, '/api/v1/waste-management/scheduling', expect.objectContaining({ cache: 'no-store' })
+      );
+      await expect(freshRequest).resolves.toMatchObject({ tourDateShifts: [{ tourId: 'current-tour' }] });
+    } finally {
+      resolveFirstResponse(scheduling('previous-tour'));
+      await expect(previousRequest).resolves.toMatchObject({ tourDateShifts: [{ tourId: 'previous-tour' }] });
+    }
   });
 
   it('creates, updates and deletes location-tour pickup dates through the host facade', async () => {

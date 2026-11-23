@@ -2,10 +2,7 @@ import { useEffect } from 'react';
 
 import { createWasteToursActions } from './waste-management.tours.actions.js';
 import { useWasteToursOverview } from './use-waste-tours-overview.js';
-import {
-  resolveTourAssignmentLocationOptions,
-  resolveTourLocationOptions,
-} from './waste-management.tours.locations.js';
+import { resolveTourLocationOptions } from './waste-management.tours.locations.js';
 import { createWasteToursMutationHandlers } from './waste-management.tours-mutations.js';
 import { mapPickupDatesToTourDateLocationAssignments } from './waste-management.tours.shared.js';
 import { useWasteToursState } from './use-waste-tours-state.js';
@@ -61,11 +58,6 @@ export const useWasteToursViewModel = (pt: Translate, search: WasteManagementSea
     ...state,
     tours: filterTours(state.overview?.tours ?? [], effectiveSearch),
     locationOptions: resolveTourLocationOptions(pt, state.masterDataOverview),
-    assignmentLocationOptions: resolveTourAssignmentLocationOptions(
-      pt,
-      state.masterDataOverview,
-      state.selectedTour?.id
-    ),
     ...actions,
     ...mutations,
     reloadOverview: loadOverview,

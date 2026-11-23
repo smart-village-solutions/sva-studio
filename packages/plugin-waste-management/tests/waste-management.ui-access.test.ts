@@ -6,7 +6,7 @@ describe('waste-management.ui-access', () => {
   it('keeps read-only users away from settings and tools tabs', () => {
     const access = deriveWasteManagementUiAccess(['waste-management.read']);
 
-    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'masterData', 'scheduling']);
+    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'masterData', 'scheduling', 'tourAssignments']);
     expect(access.canAccessSettings).toBe(false);
     expect(access.canAccessTools).toBe(false);
     expect(access.canRunInitialize).toBe(false);
@@ -57,6 +57,7 @@ describe('waste-management.ui-access', () => {
       'locations',
       'masterData',
       'scheduling',
+      'tourAssignments',
       'output',
       'tools',
       'settings',
@@ -103,6 +104,7 @@ describe('waste-management.ui-access', () => {
       'locations',
       'masterData',
       'scheduling',
+      'tourAssignments',
       'tools',
     ]);
   });

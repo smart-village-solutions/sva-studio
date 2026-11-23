@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveTourAssignmentLocationOptions } from '../src/waste-management.tours.locations.js';
 
 describe('resolveTourAssignmentLocationOptions', () => {
-  it('exposes every address hierarchy value separately with localized fallbacks', () => {
+  it('keeps absent address fields empty and localizes the combined selection label', () => {
     const pt = (key: string) => key;
 
     expect(
@@ -31,8 +31,9 @@ describe('resolveTourAssignmentLocationOptions', () => {
         id: 'location-1',
         regionName: 'Amt Meyenburg',
         cityName: 'Brügge',
-        streetName: 'masterData.collectionLocations.meta.allStreets',
-        houseNumberName: 'masterData.collectionLocations.meta.allHouseNumbers',
+        streetName: '',
+        houseNumberName: '',
+        label: 'Amt Meyenburg / Brügge / masterData.collectionLocations.meta.allStreets / masterData.collectionLocations.meta.allHouseNumbers',
         assignedLinkId: 'link-1',
       }),
     ]);

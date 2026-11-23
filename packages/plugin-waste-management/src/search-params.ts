@@ -1,5 +1,13 @@
-import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
-import { normalizeCollectionLocationSearchParams, normalizeWasteCollectionLocationSortDirection, type WasteCollectionLocationSearchParams } from './collection-location-search-params.js';
+import {
+  normalizeAddressEntityType,
+  normalizeAddressSortField,
+  type WasteAddressSearchParams,
+} from './search-params.address.js';
+import {
+  normalizeCollectionLocationSearchParams,
+  normalizeWasteCollectionLocationSortDirection,
+  type WasteCollectionLocationSearchParams,
+} from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
 import {
   normalizeTourStatus,
@@ -11,13 +19,14 @@ const wasteManagementTabs = [
   'locations',
   'masterData',
   'scheduling',
+  'tourAssignments',
   'output',
   'tools',
   'settings',
 ] as const;
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementFractionsViews = ['list', 'create', 'edit'] as const;
-const wasteManagementToursViews = ['list', 'create', 'edit'] as const;
+const wasteManagementToursViews = ['list', 'create', 'edit', 'assignments'] as const;
 const wasteManagementLocationsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementSchedulingViews = ['list', 'create', 'edit'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
@@ -80,7 +89,9 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}> & WasteAddressSearchParams & WasteCollectionLocationSearchParams;
+}> &
+  WasteAddressSearchParams &
+  WasteCollectionLocationSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -142,12 +153,6 @@ const normalizeTourValidityPeriod = (value: unknown): WasteManagementTourValidit
     ? (value as WasteManagementTourValidityPeriod)
     : 'all';
 
-const normalizeFractionsStatus = (value: unknown): WasteManagementStatusFilter =>
-  typeof value === 'string' &&
-  wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
-    ? (value as WasteManagementStatusFilter)
-    : 'all';
-
 const normalizeShiftContext = (value: unknown): WasteManagementShiftContext =>
   typeof value === 'string' &&
   wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
@@ -192,8 +197,10 @@ export const normalizeWasteManagementSearchParams = (
 ): WasteManagementSearchParams => {
   const tab = normalizeTab(search.tab);
   const pageSize = normalizePageSize(search.pageSize);
-  const schedulingView = normalizeSchedulingView(search.schedulingView);
-  const schedulingEntryType = normalizeSchedulingEntryType(search.schedulingEntryType);
+  const schedulingView =
+    tab === 'tourAssignments' ? 'list' : normalizeSchedulingView(search.schedulingView);
+  const schedulingEntryType =
+    tab === 'tourAssignments' ? undefined : normalizeSchedulingEntryType(search.schedulingEntryType);
   const keepsTourShiftCreateContext =
     tab === 'scheduling' && schedulingView === 'create' && schedulingEntryType === 'tour-shift';
   const normalizedSchedulingOriginalDate = normalizeOptionalIsoDate(search.schedulingOriginalDate);
@@ -204,8 +211,13 @@ export const normalizeWasteManagementSearchParams = (
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
     addressEntityType: normalizeAddressEntityType(search.addressEntityType),
     addressParentId: compactOptionalString(search.addressParentId),
-    addressSortBy: normalizeAddressSortField(search.addressSortBy, normalizeAddressEntityType(search.addressEntityType)),
-    addressSortDirection: normalizeWasteCollectionLocationSortDirection(search.addressSortDirection),
+    addressSortBy: normalizeAddressSortField(
+      search.addressSortBy,
+      normalizeAddressEntityType(search.addressEntityType)
+    ),
+    addressSortDirection: normalizeWasteCollectionLocationSortDirection(
+      search.addressSortDirection
+    ),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),
@@ -213,7 +225,7 @@ export const normalizeWasteManagementSearchParams = (
     q: compactOptionalString(search.q) ?? '',
     page: normalizePositiveInteger(search.page, 1),
     pageSize,
-    fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
+    fractionsStatus: normalizeStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
     tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
@@ -233,7 +245,8 @@ export const normalizeWasteManagementSearchParams = (
     endDateFrom: normalizeOptionalIsoDate(search.endDateFrom),
     endDateTo: normalizeOptionalIsoDate(search.endDateTo),
     schedulingEntryType,
-    schedulingEntryId: compactOptionalString(search.schedulingEntryId),
+    schedulingEntryId:
+      tab === 'tourAssignments' ? undefined : compactOptionalString(search.schedulingEntryId),
     schedulingTourId: keepsTourShiftCreateContext ? schedulingTourId : undefined,
     schedulingOriginalDate: keepsTourShiftCreateContext
       ? normalizedSchedulingOriginalDate

@@ -1,36 +1,34 @@
 import type {
+  WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
+  WasteRegionRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconChecklist } from '@tabler/icons-react';
 import {
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type FormEvent,
-  type SetStateAction,
-} from 'react';
+  readSessionAccessSnapshot,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
+import { IconChecklist } from '@tabler/icons-react';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import {
   CoverageCheckForm,
   CoverageFractionsAvailability,
   CoverageToursAvailability,
 } from './waste-management.location-fraction-coverage-check.form.js';
-import {
-  CoverageResults,
-  type CoverageResult,
-} from './waste-management.location-fraction-coverage-check.parts.js';
-import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
+import { CoverageResults } from './waste-management.location-fraction-coverage-check.parts.js';
+import { useCoverageCheckForm } from './use-waste-location-coverage-check.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
-type CoverageCheckProps = Readonly<{
+export type CoverageCheckProps = Readonly<{
   search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
+  cities?: readonly WasteCityRecord[];
+  regions?: readonly WasteRegionRecord[];
   fractions: readonly WasteFractionRecord[];
   fractionsStatus?: WasteLocationCoverageDataStatus;
   toursStatus?: WasteLocationCoverageDataStatus;
@@ -41,13 +39,6 @@ type CoverageCheckProps = Readonly<{
   onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
   getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 }>;
-
-const getCoverageErrorKey = (fractionId: string, startDate: string, endDate: string) =>
-  !fractionId || !startDate || !endDate
-    ? 'masterData.locationsWorkspace.coverage.required'
-    : endDate < startDate
-      ? 'masterData.locationsWorkspace.coverage.invalidDateRange'
-      : null;
 
 const CoverageCheckHeader = () => {
   const pt = usePluginTranslation('wasteManagement');
@@ -67,100 +58,42 @@ const CoverageCheckHeader = () => {
   );
 };
 
-const useResetResult = (
-  props: CoverageCheckProps,
-  criteria: readonly [
-    fractionId: string,
-    startDate: string,
-    endDate: string,
-    includeDrafts: boolean,
-  ],
-  setResult: Dispatch<SetStateAction<CoverageResult | null>>
-) => {
-  const [fractionId, startDate, endDate, includeDrafts] = criteria;
-  useEffect(() => {
-    setResult(null);
-  }, [
-    endDate,
-    fractionId,
-    includeDrafts,
-    props.fractions,
-    props.fractionsStatus,
-    props.links,
-    props.locations,
-    props.tours,
-    props.toursStatus,
-    setResult,
-    startDate,
-  ]);
-};
-
-const useCoverageCheckForm = (props: CoverageCheckProps) => {
-  const [fractionId, setFractionId] = useState('');
-  const [year, setYear] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [includeDrafts, setIncludeDrafts] = useState(true);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [result, setResult] = useState<CoverageResult | null>(null);
-  useResetResult(props, [fractionId, startDate, endDate, includeDrafts], setResult);
-  const changeYear = (value: string) => {
-    setYear(value);
-    if (/^(20\d{2}|2100)$/.test(value)) {
-      setStartDate(`${value}-01-01`);
-      setEndDate(`${value}-12-31`);
-    } else {
-      setStartDate('');
-      setEndDate('');
-    }
-  };
-  const runCheck = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const nextError = getCoverageErrorKey(fractionId, startDate, endDate);
-    setErrorKey(nextError);
-    setResult(
-      nextError
-        ? null
-        : {
-            issues: checkLocationFractionCoverage({
-              locations: props.locations,
-              tours: props.tours,
-              links: props.links,
-              fractionId,
-              startDate,
-              endDate,
-              includeDrafts,
-            }),
-            checkedLocationCount: props.locations.filter((location) => location.active).length,
-            includeDrafts,
-          }
-    );
-  };
-  return {
-    fractionId,
-    setFractionId,
-    year,
-    setYear,
-    startDate,
-    setStartDate,
-    endDate,
-    setEndDate,
-    includeDrafts,
-    setIncludeDrafts,
-    errorKey,
-    result,
-    changeYear,
-    runCheck,
-  };
+const CoverageResultNotices = ({ includeDrafts }: { includeDrafts: boolean }) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {pt('masterData.locationsWorkspace.coverage.assignmentNotice')}
+      </p>
+      {includeDrafts ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {pt('masterData.locationsWorkspace.coverage.planningNotice')}
+        </p>
+      ) : null}
+    </>
+  );
 };
 
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const form = useCoverageCheckForm(props);
+  const { instanceId } = useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  // Prignitz uses this exact name for the occasional mobile hazardous-waste collection.
+  const fractions = useMemo(
+    () =>
+      instanceId === 'bb-prignitz'
+        ? props.fractions.filter((fraction) => fraction.name.trim() !== 'Schadstoffmobil')
+        : props.fractions,
+    [instanceId, props.fractions]
+  );
+  const form = useCoverageCheckForm({ ...props, fractions });
   const fractionsStatus = props.fractionsStatus ?? 'ready';
   const toursStatus = props.toursStatus ?? 'ready';
   const coverageDataUnavailable =
-    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
+    fractionsStatus !== 'ready' || toursStatus !== 'ready' || fractions.length === 0;
   const locationsById = useMemo(
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
@@ -176,8 +109,9 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     >
       <CoverageCheckHeader />
       <CoverageCheckForm
-        fractions={props.fractions}
+        fractions={fractions}
         disabled={coverageDataUnavailable}
+        checking={form.checking}
         fractionId={form.fractionId}
         year={form.year}
         startDate={form.startDate}
@@ -185,21 +119,12 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         includeDrafts={form.includeDrafts}
         onFractionChange={form.setFractionId}
         onYearChange={form.changeYear}
-        onStartDateChange={(value) => {
-          form.setYear('');
-          form.setStartDate(value);
-        }}
-        onEndDateChange={(value) => {
-          form.setYear('');
-          form.setEndDate(value);
-        }}
+        onStartDateChange={form.changeStartDate}
+        onEndDateChange={form.changeEndDate}
         onIncludeDraftsChange={form.setIncludeDrafts}
         onSubmit={form.runCheck}
       />
-      <CoverageFractionsAvailability
-        status={fractionsStatus}
-        hasFractions={props.fractions.length > 0}
-      />
+      <CoverageFractionsAvailability status={fractionsStatus} hasFractions={fractions.length > 0} />
       <CoverageToursAvailability status={toursStatus} />
       {form.errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
@@ -208,18 +133,13 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       ) : null}
       {form.result ? (
         <>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {pt('masterData.locationsWorkspace.coverage.assignmentNotice')}
-          </p>
-          {form.result.includeDrafts ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {pt('masterData.locationsWorkspace.coverage.planningNotice')}
-            </p>
-          ) : null}
+          <CoverageResultNotices includeDrafts={form.result.includeDrafts} />
           <CoverageResults
             result={form.result}
             search={props.search}
             locationsById={locationsById}
+            cities={props.cities}
+            regions={props.regions}
             onAssign={assignIssues}
             onEdit={props.onOpenEditLocation}
             getLocationLabel={props.getLocationLabel}

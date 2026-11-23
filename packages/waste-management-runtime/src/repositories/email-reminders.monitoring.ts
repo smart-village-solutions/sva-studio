@@ -5,9 +5,11 @@ import type {
   WasteEmailMonitoringQuery,
   WasteEmailSubscriptionSummary,
 } from '@sva/waste-management-contracts';
+import { REMINDER_OUTCOME_UNKNOWN, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 
 // Preserve the agreed edge characters without exposing short address parts in full.
-export const maskWasteEmail = (email: string): string => {
+export const maskWasteEmail = (email: string | null): string => {
+  if (email === null) return '***@***';
   const parts = email.split('@');
   if (parts.length !== 2 || parts.some((part) => !part)) return '***@***';
   return parts
@@ -20,34 +22,73 @@ export const maskWasteEmail = (email: string): string => {
 };
 
 export const classifyWasteEmailError = (
-  value: string | null
+  value: string | null,
+  status?: WasteEmailDeliverySummary['status']
 ): WasteEmailDeliverySummary['error'] => {
-  if (!value || value.startsWith('provider_message_id:') || value === 'dispatch_claimed')
-    return null;
-  if (value.startsWith('mail_transport_not_available:')) return 'transport_unavailable';
   if (
-    [
-      'subscription_unsubscribed',
-      'doi_token_expired',
-      'reminder_no_longer_applicable',
-    ].includes(value)
+    !value || value.startsWith('provider_message_id:') ||
+    value === 'dispatch_claimed' || value === REMINDER_REPLAN_REQUIRED
+  )
+    return null;
+  if (value === 'mail_transport_not_available' || value.startsWith('mail_transport_not_available:'))
+    return status === 'cancelled' ? 'cancelled' : 'transport_unavailable';
+  if (value === REMINDER_OUTCOME_UNKNOWN) return 'outcome_unknown';
+  if (
+    ['subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable'].includes(
+      value
+    )
   )
     return 'cancelled';
   return 'dispatch_failed';
 };
 
-type SubscriptionRow = Omit<WasteEmailSubscriptionSummary, 'maskedEmail'> & { email: string };
+type SubscriptionRow = Omit<WasteEmailSubscriptionSummary, 'maskedEmail'> & { email: string | null };
 type DeliveryRow = Omit<WasteEmailDeliverySummary, 'error'> & { lastError: string | null };
+
+export type WasteEmailMonitoringLookup = WasteEmailMonitoringQuery & Readonly<{
+  emailHash?: string;
+}>;
+
+const subscriptionFilters = `($1::text IS NULL OR status = $1)
+  AND ($2::text IS NULL OR (status = 'active' AND email_hash = $2))`;
+
+const loadWasteEmailDeliveryHistory = async (
+  executor: SqlExecutor,
+  subscriptionId: string,
+  { pageSize, deliveryPage }: WasteEmailMonitoringLookup
+) => {
+  const deliveryCount = await executor.execute<{ total: number }>({
+    text: 'SELECT COUNT(*)::int AS total FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid',
+    values: [subscriptionId],
+  });
+  const rows = await executor.execute<DeliveryRow>({
+    text: `SELECT id::text, message_kind AS kind, status,
+      to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt", to_char(send_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "scheduledAt", to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "sentAt",
+      attempt_count AS attempts, payload->'templatePayload'->>'fractionName' AS fraction,
+      payload->'metadata'->>'pickupDate' AS "pickupDate", last_error AS "lastError"
+      FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid
+      ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
+    values: [subscriptionId, pageSize, (deliveryPage - 1) * pageSize],
+  });
+  return {
+    deliveries: rows.rows.map(({ lastError, ...row }) => ({
+      ...row,
+      error: classifyWasteEmailError(lastError, row.status),
+    })),
+    deliveryTotal: deliveryCount.rows[0]?.total ?? 0,
+  };
+};
 
 export const loadWasteEmailMonitoring = async (
   executor: SqlExecutor,
-  query: WasteEmailMonitoringQuery
+  query: WasteEmailMonitoringLookup
 ): Promise<WasteEmailMonitoringOverview> => {
-  const filter = query.status ?? null;
-  const count = await executor.execute<{ total: number }>({
-    text: `SELECT COUNT(*)::int AS total FROM waste_email_reminder_subscriptions
-      WHERE ($1::text IS NULL OR status = $1)`,
-    values: [filter],
+  const filters = [query.status ?? null, query.emailHash ?? null];
+  const count = await executor.execute<{ total: number; activeTotal: number }>({
+    text: `SELECT COUNT(*) FILTER (WHERE ${subscriptionFilters})::int AS total,
+      COUNT(*) FILTER (WHERE status = 'active')::int AS "activeTotal"
+      FROM waste_email_reminder_subscriptions`,
+    values: filters,
   });
   const subscriptions = await executor.execute<SubscriptionRow>({
     text: `SELECT s.id::text, s.email, s.status, c.name AS city,
@@ -56,12 +97,13 @@ export const loadWasteEmailMonitoring = async (
       COALESCE((SELECT jsonb_agg(jsonb_build_object('fraction', COALESCE(f.name, i.fraction_id::text), 'slotId', i.slot_id) ORDER BY f.name, i.slot_id)
         FROM waste_email_reminder_subscription_items i LEFT JOIN waste_fractions f ON f.id = i.fraction_id
         WHERE i.subscription_id = s.id), '[]'::jsonb) AS items,
-      last_sent.message AS "lastSentEmail", next_email.message AS "nextEmail"
+      last_sent.message AS "lastSentEmail", next_email.message AS "nextEmail",
+      doi.message AS "doiEmail"
       FROM (
         SELECT id, email, status, city_id, created_at, activated_at, unsubscribed_at
         FROM waste_email_reminder_subscriptions
-        WHERE ($1::text IS NULL OR status = $1)
-        ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
+        WHERE ${subscriptionFilters}
+        ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4
       ) s
       LEFT JOIN waste_cities c ON c.id = s.city_id
       LEFT JOIN LATERAL (
@@ -76,38 +118,27 @@ export const loadWasteEmailMonitoring = async (
         FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND status IN ('pending', 'processing')
         ORDER BY CASE WHEN status = 'processing' THEN 0 ELSE 1 END, send_at ASC, id ASC LIMIT 1
       ) next_email ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object('status', status,
+          'sentAt', to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) AS message
+        FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND message_kind = 'doi'
+        ORDER BY created_at DESC, id DESC LIMIT 1
+      ) doi ON true
       ORDER BY s.created_at DESC, s.id DESC`,
-    values: [filter, query.pageSize, (query.page - 1) * query.pageSize],
+    values: [...filters, query.pageSize, (query.page - 1) * query.pageSize],
   });
-  let deliveries: readonly WasteEmailDeliverySummary[] = [];
-  let deliveryTotal = 0;
-  if (query.subscriptionId) {
-    const deliveryCount = await executor.execute<{ total: number }>({
-      text: 'SELECT COUNT(*)::int AS total FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid',
-      values: [query.subscriptionId],
-    });
-    deliveryTotal = deliveryCount.rows[0]?.total ?? 0;
-    const rows = await executor.execute<DeliveryRow>({
-      text: `SELECT id::text, message_kind AS kind, status,
-        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt", to_char(send_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "scheduledAt", to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "sentAt",
-        attempt_count AS attempts, payload->'templatePayload'->>'fractionName' AS fraction,
-        payload->'metadata'->>'pickupDate' AS "pickupDate", last_error AS "lastError"
-        FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid
-        ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
-      values: [query.subscriptionId, query.pageSize, (query.deliveryPage - 1) * query.pageSize],
-    });
-    deliveries = rows.rows.map(({ lastError, ...row }) => ({
-      ...row,
-      error: classifyWasteEmailError(lastError),
-    }));
-  }
+  const deliveryHistory = query.subscriptionId && (
+    !query.emailHash || subscriptions.rows.some((row) => row.id === query.subscriptionId)
+  )
+    ? await loadWasteEmailDeliveryHistory(executor, query.subscriptionId, query)
+    : { deliveries: [], deliveryTotal: 0 };
   return {
     subscriptions: subscriptions.rows.map(({ email, ...row }) => ({
       ...row,
       maskedEmail: maskWasteEmail(email),
     })),
     total: count.rows[0]?.total ?? 0,
-    deliveries,
-    deliveryTotal,
+    activeTotal: count.rows[0]?.activeTotal ?? 0,
+    ...deliveryHistory,
   };
 };

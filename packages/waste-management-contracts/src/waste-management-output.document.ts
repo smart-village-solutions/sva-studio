@@ -1,5 +1,9 @@
 import type {
   WasteCalendarPdfDocument,
+  WasteCalendarPdfDay,
+  WasteCalendarPdfEntry,
+  WasteCalendarPdfFractionLegendEntry,
+  WasteCalendarPdfMonth,
   WasteOutputLegendHint,
   WasteOutputPickupEntry,
 } from './waste-management-output.types.js';
@@ -15,47 +19,11 @@ import {
 
 type RgbColor = readonly [red: number, green: number, blue: number];
 
-type WasteCalendarPdfEntry = Readonly<{
-  code: string;
-  fillColor: RgbColor;
-  isShifted: boolean;
-}>;
-
-type WasteCalendarPdfLegendEntry = Readonly<{
-  kind: 'fraction';
-  code: string;
-  label: string;
-  description?: string;
-  fillColor: RgbColor;
-}>;
-
-type WasteCalendarPdfLegendRow =
-  | WasteCalendarPdfLegendEntry
-  | Readonly<{ kind: 'hint'; label: string; description: string }>
-  | Readonly<{ kind: 'shift'; label: string }>;
-
-const MAX_LEGEND_ROWS = 8;
-
 const normalizeLegendText = (value: string): string =>
   convertRichTextHtmlToPlainText(value, {
     includeLinkUrls: false,
     unorderedListItemPrefix: '* ',
-  }).replace(/\s+/gu, ' ');
-
-type WasteCalendarPdfDay = Readonly<{
-  isoDate: string;
-  dayOfMonth: number;
-  weekdayShort: string;
-  weekNumber: number | null;
-  holidayLabel: string | null;
-  entries: readonly WasteCalendarPdfEntry[];
-}>;
-
-type WasteCalendarPdfMonth = Readonly<{
-  month: number;
-  label: string;
-  days: readonly WasteCalendarPdfDay[];
-}>;
+  });
 
 const parseHexColor = (value: string): RgbColor => {
   const normalized = value.trim();
@@ -119,30 +87,18 @@ const buildFractionCode = (
 };
 
 const buildEntriesByDate = (pickups: readonly WasteOutputPickupEntry[]) => {
-  const legendFractions = new Map<string, WasteCalendarPdfLegendEntry>();
+  const legendFractions = new Map<string, WasteCalendarPdfFractionLegendEntry>();
   const usedCodes = new Set<string>();
   const entriesByDate = new Map<string, WasteCalendarPdfEntry[]>();
 
   for (const pickup of pickups) {
     const dayEntries = entriesByDate.get(pickup.date) ?? [];
     for (const fraction of pickup.fractions) {
-      const existingLegend = legendFractions.get(fraction.id);
-      const legendEntry = existingLegend
-        ? {
-            ...existingLegend,
-            ...(!existingLegend.description && fraction.description?.trim()
-              ? { description: normalizeLegendText(fraction.description) }
-              : {}),
-          }
-        : {
-            kind: 'fraction' as const,
-            code: buildFractionCode(fraction.label, fraction.shortLabel, usedCodes),
-            label: fraction.label,
-            ...(fraction.description?.trim()
-              ? { description: normalizeLegendText(fraction.description) }
-              : {}),
-            fillColor: parseHexColor(fraction.color),
-          };
+      const legendEntry = legendFractions.get(fraction.id) ?? {
+        code: buildFractionCode(fraction.label, fraction.shortLabel, usedCodes),
+        label: fraction.label,
+        fillColor: parseHexColor(fraction.color),
+      };
       legendFractions.set(fraction.id, legendEntry);
       dayEntries.push({
         code: legendEntry.code,
@@ -203,7 +159,7 @@ export const buildWasteCalendarPdfDocument = (input: {
     left.label.localeCompare(right.label, 'de')
   );
   const seenHintIds = new Set<string>();
-  const hintLegend = (input.legendHints ?? []).flatMap((hint) => {
+  const hints = (input.legendHints ?? []).flatMap((hint) => {
     const id = hint.id.trim();
     const label = normalizeLegendText(hint.label);
     const description = normalizeLegendText(hint.description);
@@ -211,30 +167,22 @@ export const buildWasteCalendarPdfDocument = (input: {
       return [];
     }
     seenHintIds.add(id);
-    return [{ kind: 'hint' as const, label, description }];
+    return [{ date: hint.date, label, description }];
   });
   const hasShiftedPickups = input.pickups.some((pickup) =>
     pickup.fractions.some((fraction) => fraction.isShifted === true)
   );
-  const contentRowLimit = MAX_LEGEND_ROWS - (hasShiftedPickups ? 1 : 0);
-  const reservedHintRows = hintLegend.length > 0 ? 1 : 0;
-  const visibleFractions = fractionLegend.slice(0, contentRowLimit - reservedHintRows);
-  const visibleHints = hintLegend.slice(0, contentRowLimit - visibleFractions.length);
-  const legend: WasteCalendarPdfLegendRow[] = [
-    ...(hasShiftedPickups ? ([{ kind: 'shift', label: '= Ausweichtermin' }] as const) : []),
-    ...visibleFractions,
-    ...visibleHints,
-  ];
+  const contactBlock = normalizeLegendText(input.contactBlock ?? '');
   const buildPage = (months: readonly number[]) => ({
     title: `Abfallkalender ${input.year}`,
     locationLabel: input.locationLabel,
-    ...(input.contactBlock?.trim()
-      ? { contactBlock: normalizeLegendText(input.contactBlock) }
-      : {}),
+    ...(contactBlock ? { contactBlock } : {}),
     brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? 'Kommunales Waste-Management',
     ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
     months: months.map((month) => buildMonth(input.year, month, holidayMap, entriesByDate)),
-    legend,
+    fractionLegend,
+    hasShiftedPickups,
+    hints: hints.filter((hint) => !hint.date || months.includes(Number(hint.date.slice(5, 7)))),
   });
 
   return {

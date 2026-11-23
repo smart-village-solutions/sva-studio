@@ -31,6 +31,27 @@ export const toEditTourSearch = (
   duplicateFromTourId: undefined,
 });
 
+export const toTourAssignmentsSearch = (
+  search: WasteManagementSearchParams,
+  tourId: string
+): WasteManagementSearchParams => ({
+  ...search,
+  tab: 'tours',
+  toursView: 'assignments',
+  tourId,
+  duplicateFromTourId: undefined,
+});
+
+export const toToursListSearch = (
+  search: WasteManagementSearchParams
+): WasteManagementSearchParams => ({
+  ...search,
+  tab: 'tours',
+  toursView: 'list',
+  tourId: undefined,
+  duplicateFromTourId: undefined,
+});
+
 const toDuplicateTourSearch = (
   search: WasteManagementSearchParams,
   duplicateFromTourId: string
@@ -174,6 +195,11 @@ export const useWasteToursListNavigation = (
   return {
     ...createToursFormNavigation(controller, search, navigate),
     ...createToursPagingNavigation(search, navigate),
+    openAssignments: (tour: WasteTourRecord) =>
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toTourAssignmentsSearch(search, tour.id),
+      }),
     openEditFraction: (wasteFractionId: string) => {
       void navigate({
         to: '/plugins/waste-management',

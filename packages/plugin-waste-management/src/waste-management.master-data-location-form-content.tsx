@@ -35,13 +35,16 @@ type WasteMasterDataLocationFormContentProps = {
   readonly availableTours: readonly WasteTourRecord[];
   readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
   readonly saving: boolean;
+  readonly assignmentOverviewRefreshing?: boolean;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
   readonly onCancel: () => void;
   readonly onSubmit: (
     values: CollectionLocationFormState,
     cityPostalCodeUpdate?: Readonly<{ cityId: string; postalCode: string }>
   ) => void | Promise<void>;
-  readonly onReloadAssignments: () => Promise<void>;
+  readonly onReloadAssignments: (
+    locationId: string
+  ) => Promise<readonly WasteLocationTourLinkRecord[] | null>;
 };
 
 const locationFormResolver: Resolver<CollectionLocationFormState> = async (values) => {
@@ -84,6 +87,7 @@ export const WasteMasterDataLocationFormContent = ({
   availableTours,
   locationTourLinks,
   saving,
+  assignmentOverviewRefreshing = false,
   onChange,
   onCancel,
   onSubmit,
@@ -156,6 +160,7 @@ export const WasteMasterDataLocationFormContent = ({
     }
   });
 
+  const titleMode = mode === 'create' ? 'create' : 'edit';
   const saveLabel = saving
     ? pt('masterData.collectionLocations.actions.saving')
     : mode === 'create'
@@ -180,16 +185,8 @@ export const WasteMasterDataLocationFormContent = ({
   return (
     <div className="space-y-6">
       <StudioPageHeader
-        title={
-          mode === 'create'
-            ? pt('masterData.collectionLocations.dialog.createTitle')
-            : pt('masterData.collectionLocations.dialog.editTitle')
-        }
-        description={
-          mode === 'create'
-            ? pt('masterData.collectionLocations.dialog.createDescription')
-            : pt('masterData.collectionLocations.dialog.editDescription')
-        }
+        title={pt(`masterData.collectionLocations.dialog.${titleMode}Title`)}
+        description={pt(`masterData.collectionLocations.dialog.${titleMode}Description`)}
         actions={topActions}
       />
 
@@ -232,7 +229,7 @@ export const WasteMasterDataLocationFormContent = ({
             tours={availableTours}
             fractions={fractions}
             links={currentLocationTourLinks}
-            disabled={saving}
+            disabled={saving || assignmentOverviewRefreshing}
             onReload={onReloadAssignments}
           />
         ) : null}

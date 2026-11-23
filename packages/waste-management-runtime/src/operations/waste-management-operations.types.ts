@@ -111,6 +111,7 @@ export type WasteOperationRuntimeDeps = {
     readonly transport: MailTransportConfig;
     readonly payload: MailDispatchPayload;
     readonly message: MailDispatchMessage;
+    readonly signal: AbortSignal;
   }) => Promise<{
     readonly providerMessageId?: string;
   }>;

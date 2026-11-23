@@ -1,5 +1,9 @@
-import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
-import { useSyncExternalStore } from 'react';
+import {
+  readSessionAccessSnapshot,
+  subscribeSessionAccessSnapshot,
+  type SessionAccessSnapshot,
+} from '@sva/plugin-sdk';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import type { WasteManagementTabId } from './search-params.js';
 
@@ -9,6 +13,7 @@ const readOnlyTabIds = [
   'locations',
   'masterData',
   'scheduling',
+  'tourAssignments',
 ] as const satisfies readonly WasteManagementTabId[];
 
 export type WasteManagementUiAccess = Readonly<{
@@ -16,6 +21,7 @@ export type WasteManagementUiAccess = Readonly<{
   canAccessSettings: boolean;
   canAccessTools: boolean;
   canDuplicateTour: boolean;
+  canManageTours: boolean;
   canManageScheduling: boolean;
   canManageMasterData: boolean;
   canRunInitialize: boolean;
@@ -78,6 +84,7 @@ export const deriveWasteManagementUiAccess = (
     canAccessSettings,
     canAccessTools,
     canDuplicateTour: canManageTours && canManageScheduling,
+    canManageTours,
     canManageScheduling,
     canManageMasterData,
     canRunInitialize,
@@ -93,6 +100,38 @@ export const deriveWasteManagementUiAccess = (
   };
 };
 
+const canReadWasteManagement = (access: SessionAccessSnapshot) =>
+  access.isResolved &&
+  access.assignedModules.includes('waste-management') &&
+  access.permissionActions.includes('waste-management.read');
+
+const getWasteManagementContextKey = ({
+  subjectId,
+  instanceId,
+  organizationId,
+}: SessionAccessSnapshot): string | null =>
+  subjectId && instanceId && organizationId !== undefined
+    ? JSON.stringify([subjectId, instanceId, organizationId])
+    : null;
+
+export const getWasteManagementNavigationContext = (access: SessionAccessSnapshot) =>
+  canReadWasteManagement(access) || !access.isResolved
+    ? getWasteManagementContextKey(access)
+    : null;
+
+export const captureWasteTourAssignmentWriteAccess = (contextKey: string) => {
+  const access = readSessionAccessSnapshot();
+  if (
+    !canReadWasteManagement(access) ||
+    !access.permissionActions.includes('waste-management.tours.manage') ||
+    getWasteManagementContextKey(access) !== contextKey
+  ) {
+    return null;
+  }
+
+  return () => readSessionAccessSnapshot() === access;
+};
+
 export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) => {
   const sessionAccess = useSyncExternalStore(
     subscribeSessionAccessSnapshot,
@@ -100,12 +139,17 @@ export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) =>
     readSessionAccessSnapshot
   );
 
-  return {
-    ...deriveWasteManagementUiAccess(
-      sessionAccess.permissionActions,
-      sessionAccess.isResolved ? undefined : currentTab
-    ),
-    isResolved: sessionAccess.isResolved,
-    hasError: sessionAccess.hasError,
-  };
+  return useMemo(
+    () => ({
+      ...deriveWasteManagementUiAccess(
+        sessionAccess.permissionActions,
+        sessionAccess.isResolved ? undefined : currentTab
+      ),
+      isResolved: sessionAccess.isResolved,
+      hasError: sessionAccess.hasError,
+      canRead: canReadWasteManagement(sessionAccess),
+      contextKey: getWasteManagementContextKey(sessionAccess),
+    }),
+    [currentTab, sessionAccess]
+  );
 };

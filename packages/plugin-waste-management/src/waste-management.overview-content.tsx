@@ -3,7 +3,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementHistoryOverview } from './waste-management.api.js';
 import { formatUpdatedAt } from './waste-management.page.support.js';
-import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
 type TechnicalItem = WasteManagementHistoryOverview['technical']['items'][number];
 type AuditItem = WasteManagementHistoryOverview['audit']['items'][number];
@@ -48,7 +48,6 @@ const TechnicalHistoryTable = ({
 
   return (
     <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
-      <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table
           className="min-w-full border-collapse"
@@ -118,7 +117,6 @@ const AuditHistoryTable = ({
 
   return (
     <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
-      <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table
           className="min-w-full border-collapse"

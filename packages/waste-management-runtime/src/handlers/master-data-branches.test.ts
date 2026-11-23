@@ -647,7 +647,7 @@ describe('waste-management master-data branch handlers', () => {
         loadWasteCollectionLocationById: vi.fn(async () => null),
         saveWasteCollectionLocation: vi.fn(async () => undefined),
       }),
-      expectedMessage: 'Der Waste-Abholort wurde nicht gefunden.',
+      expectedMessage: 'Der Waste-Abholpunkt wurde nicht gefunden.',
     },
     {
       label: 'location-tour-link update returns not_found for unknown records',
@@ -1102,7 +1102,7 @@ describe('waste-management master-data branch handlers', () => {
           throw new Error('db down');
         }),
       }),
-      expectedMessage: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+      expectedMessage: 'Der Waste-Abholpunkt konnte nicht gespeichert werden.',
     },
     {
       label: 'location-tour-link create maps persistence failures to database_unavailable',
@@ -1247,7 +1247,7 @@ describe('waste-management master-data branch handlers', () => {
         saveWasteCollectionLocation: vi.fn(async () => undefined),
         loadWasteCollectionLocationById: vi.fn(async () => null),
       }),
-      expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+      expectedMessage: 'Der Waste-Abholpunkt konnte nicht verifiziert werden.',
     },
     {
       label:
@@ -1551,7 +1551,7 @@ describe('waste-management master-data branch handlers', () => {
           loadWasteCollectionLocationById,
         };
       },
-      expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+      expectedMessage: 'Der Waste-Abholpunkt konnte nicht verifiziert werden.',
     },
     {
       label:
@@ -1848,7 +1848,7 @@ describe('waste-management master-data branch handlers', () => {
           throw new Error('db down');
         }),
       }),
-      expectedMessage: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+      expectedMessage: 'Der Waste-Abholpunkt konnte nicht gespeichert werden.',
     },
     {
       label: 'location-tour-link update maps persistence failures to database_unavailable',

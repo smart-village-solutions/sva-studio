@@ -18,32 +18,7 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 const noopRefreshTechnicalHistory = async () => undefined;
 
-export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
-  const state = useWasteMasterDataState();
-  const loadOverview = useWasteMasterDataOverview(state, pt, search.masterDataTab);
-  const {
-    clearFilteredLocationIds,
-    loadFilteredLocationIds,
-    refreshList: refreshCollectionLocationList,
-  } = useWasteCollectionLocationList(state, pt, search);
-  const derivedState = createWasteMasterDataDerivedState(state, pt, search);
-  const dialogActions = createWasteMasterDataDialogActions(state, search);
-  const selectionActions = createWasteMasterDataSelectionActions(
-    state,
-    search,
-    loadFilteredLocationIds,
-    clearFilteredLocationIds
-  );
-  const submitHandlers = createWasteMasterDataMutationHandlers({
-    state,
-    pt,
-    search,
-    loadOverview,
-    loadCollectionLocationList: refreshCollectionLocationList,
-    selectedCollectionLocationIds: state.selectedLocationIds,
-  });
-  const resetActions = createWasteMasterDataResetActions(state);
-
+const useWasteTypesRetry = (state: ReturnType<typeof useWasteMasterDataState>, pt: Translate) => {
   useWasteTrackedJob({
     lastJob: state.trackedSyncWasteTypesJob,
     refreshTechnicalHistory: noopRefreshTechnicalHistory,
@@ -59,7 +34,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     },
   });
 
-  const retrySyncWasteTypes = async () => {
+  return async () => {
     state.setMessage(null);
     try {
       const job = await startWasteManagementSyncWasteTypes();
@@ -77,9 +52,42 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
       });
     }
   };
+};
+
+export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
+  const state = useWasteMasterDataState();
+  const { loadOverview, overviewRefreshing, readLocationAssignmentOverview } =
+    useWasteMasterDataOverview(state, pt, search.masterDataTab);
+  const {
+    clearFilteredLocationIds,
+    loadFilteredLocationIds,
+    refreshList: refreshCollectionLocationList,
+  } = useWasteCollectionLocationList(state, pt, search);
+  const derivedState = createWasteMasterDataDerivedState(state, pt, search);
+  const dialogActions = createWasteMasterDataDialogActions(state, search);
+  const selectionActions = createWasteMasterDataSelectionActions(
+    state,
+    search,
+    loadFilteredLocationIds,
+    clearFilteredLocationIds
+  );
+  const submitHandlers = createWasteMasterDataMutationHandlers({
+    state,
+    pt,
+    search,
+    loadOverview: async () => {
+      await loadOverview();
+    },
+    loadCollectionLocationList: refreshCollectionLocationList,
+    selectedCollectionLocationIds: state.selectedLocationIds,
+  });
+  const resetActions = createWasteMasterDataResetActions(state);
+
+  const retrySyncWasteTypes = useWasteTypesRetry(state, pt);
 
   return {
     ...state,
+    overviewRefreshing,
     ...derivedState,
     ...dialogActions,
     ...selectionActions,
@@ -87,6 +95,10 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     ...resetActions,
     reloadOverview: async () => {
       await Promise.all([loadOverview(), refreshCollectionLocationList()]);
+    },
+    reloadLocationAssignmentLinks: async (locationId: string) => {
+      const overview = await readLocationAssignmentOverview();
+      return overview?.locationTourLinks.filter((link) => link.locationId === locationId) ?? null;
     },
     retrySyncWasteTypes,
   };

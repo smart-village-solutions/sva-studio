@@ -2,12 +2,9 @@ export const wasteManagementPluginTranslationsENSchedulingSections = {
   tourContext: {
     active: 'Tour: {{name}}',
     back: 'Back to tour',
-    clear: 'Show all tours',
   },
   assignments: {
-    title: 'Tour assignments',
-    description:
-      'Explicit tour assignments with a date, multiple pickup locations, and an optional note.',
+    title: 'Tour visits',
     empty: 'No explicit tour assignments have been stored yet.',
     actions: {
       openCreate: 'Create stop',

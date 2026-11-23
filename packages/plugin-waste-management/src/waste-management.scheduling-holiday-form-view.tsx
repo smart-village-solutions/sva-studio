@@ -5,6 +5,10 @@ import { useNavigate } from '@tanstack/react-router';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import { WasteHolidayRuleForm } from './waste-management.holiday-rules-form.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import {
+  formatSchedulingDisplayDate,
+  joinSchedulingMetaItems,
+} from './waste-management.scheduling-table-meta.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
@@ -63,7 +67,11 @@ export const WasteSchedulingHolidayFormView = ({
           <p className="text-sm font-medium">{rule.holidayName}</p>
           <p className="text-sm text-muted-foreground">
             {pt('scheduling.holidayRules.meta', {
-              value: `${rule.holidayDate} · ${rule.stateCode} · ${String(rule.year)}`,
+              value: joinSchedulingMetaItems([
+                formatSchedulingDisplayDate(rule.holidayDate),
+                rule.stateCode,
+                String(rule.year),
+              ]),
             })}
           </p>
         </div>

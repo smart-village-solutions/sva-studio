@@ -21,7 +21,8 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 vi.mock('../src/waste-management.master-data-locations-workspace.paged.js', () => ({

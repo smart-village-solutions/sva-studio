@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { hashWasteReminderEmail, normalizeWasteReminderEmail } from '@sva/waste-management-runtime/repositories';
 import type { PublicWasteReminderSignupResponse } from '../lib/public-waste-contract.js';
 import {
   createSha256Hash,
@@ -21,14 +22,12 @@ export { createPublicWasteReminderPageHandler } from './public-waste-email-remin
 const DEFAULT_PENDING_HEADLINE = 'Bestätigungslink versendet';
 const DEFAULT_PENDING_MESSAGE =
   'Bitte prüfen Sie Ihr E-Mail-Postfach und bestätigen Sie die Anmeldung über den enthaltenen Link.';
-const normalizeEmail = (value: string): string => value.trim().toLowerCase();
-
 export const createPublicWasteReminderSignupSubmitter =
   (deps: ReminderSignupDependencies) =>
   async (input: ReminderSignupInput): Promise<PublicWasteReminderSignupResponse> => {
-    const email = normalizeEmail(input.payload.email);
+    const email = normalizeWasteReminderEmail(input.payload.email);
     const hashValue = deps.hashValue ?? createSha256Hash;
-    const emailHash = hashValue(email);
+    const emailHash = (deps.hashValue ?? hashWasteReminderEmail)(email);
     const locationLabel = await input.repository.loadSelectionSummary({
       selection: input.payload.selection,
     });

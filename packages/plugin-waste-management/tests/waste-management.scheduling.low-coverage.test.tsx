@@ -19,7 +19,8 @@ const schedulingTableEntriesMock = vi.hoisted(() => vi.fn(() => [{ id: 'row-1' }
 const filterSchedulingTableEntriesMock = vi.hoisted(() => vi.fn((entries: unknown) => entries));
 const assignmentFormSpy = vi.fn();
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,
 }));
 
@@ -260,6 +261,7 @@ describe('waste-management scheduling low coverage views', () => {
 
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={
           [
             {
@@ -318,26 +320,53 @@ describe('waste-management scheduling low coverage views', () => {
     });
   });
 
+  it('lets readers view visits without create, edit or delete actions', () => {
+    render(
+      <WasteTourExplicitAssignmentsList
+        canManage={false}
+        entries={[
+          {
+            id: 'pickup',
+            tourId: 'tour-1',
+            pickupDate: '2027-02-04',
+            locationIds: ['location-1'],
+            note: 'Standort im Norden',
+          },
+        ] as never}
+        tourLabels={new Map([['tour-1', 'Tour A']])}
+        locationLabels={new Map([['location-1', 'Albertplatz']])}
+        onCreate={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('04.02.2027')).toBeTruthy();
+    expect(screen.getByText('Albertplatz')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
   it('sorts schadstoffmobil rows by pickup date first and closes the delete dialog through cancel', () => {
     const onDelete = vi.fn(async () => undefined);
 
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={
           [
             {
-              id: 'pickup-early',
-              tourId: 'tour-1',
-              pickupDate: '2026-06-01',
-              locationIds: ['location-2'],
-              note: 'B',
-            },
-            {
               id: 'pickup-late',
               tourId: 'tour-1',
-              pickupDate: '2026-07-01',
+              pickupDate: '2027-02-13',
               locationIds: ['location-1'],
               note: 'A',
+            },
+            {
+              id: 'pickup-early',
+              tourId: 'tour-1',
+              pickupDate: '2026-12-31',
+              locationIds: ['location-2'],
+              note: 'B',
             },
           ] as never
         }
@@ -350,8 +379,9 @@ describe('waste-management scheduling low coverage views', () => {
     );
 
     const rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('2026-06-01');
+    expect(rows[1]?.textContent).toContain('31.12.2026');
     expect(rows[1]?.textContent).toContain('location-2');
+    expect(rows[2]?.textContent).toContain('13.02.2027');
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'scheduling.assignments.actions.delete' })[0]!
@@ -364,6 +394,7 @@ describe('waste-management scheduling low coverage views', () => {
   it('shows the empty schadstoffmobil list state', () => {
     render(
       <WasteTourExplicitAssignmentsList
+        canManage
         entries={[]}
         tourLabels={new Map()}
         locationLabels={new Map()}

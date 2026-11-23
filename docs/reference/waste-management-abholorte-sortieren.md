@@ -1,6 +1,6 @@
-# Waste-Abholorte global sortieren und auswählen
+# Waste-Abholpunkte global sortieren und auswählen
 
-Die Abholortliste unter **Abfallkalender → Abholorte** wird
+Die Abholpunktliste unter **Abfallkalender → Abholpunkte** wird
 global in der instanzbezogenen Waste-Datenbank gefiltert, sortiert und
 paginiert. Die sichtbare Reihenfolge gilt deshalb für den gesamten Trefferbestand
 und nicht nur für die aktuelle Browserseite.
@@ -33,20 +33,42 @@ Gesamtbestand angewendet. Änderungen an einem Filter, an der Sortierung oder an
 der Seitengröße springen auf Seite eins zurück. Ein reiner Seitenwechsel behält
 alle anderen Einstellungen bei.
 
+Paginierte Tabellen im Abfallmodul zeigen standardmäßig 100 Einträge pro Seite.
+Wo die Seitengröße auswählbar ist, gilt die gewählte Größe.
+
 Sortiermodus und Richtung liegen wie die übrigen Listenparameter in der URL.
 Ein geteilter oder neu geladener Link stellt deshalb dieselbe Ansicht wieder
 her. Ungültige UI-Werte werden auf die Defaults normalisiert; unbekannte oder
 widersprüchliche Direktparameter weist der Server mit `400 invalid_request` ab.
 
+Jeder Tab verwendet seine eigenen Filter. Beim Wechsel über die Tab-Leiste
+erscheinen die zuletzt verwendeten Filter des Ziel-Tabs. **Filter zurücksetzen**
+setzt nur die Filter der geöffneten Liste zurück. Das Studio hält die zuletzt
+verwendeten Filter im Arbeitsspeicher für den laufenden Anmeldekontext.
+Nach Abmeldung oder einem neuen Browser-Tab gelten die Standardwerte oder die
+ausdrücklich in der geöffneten URL gesetzten Filter.
+
+## Tabellenköpfe im Abfallmodul
+
+Suche, Filter und **Filter zurücksetzen** stehen links, Listenaktionen rechts.
+Aktive Filter stehen in einer Zeile unter den Bedienelementen. Auf schmalen
+Ansichten werden die Bedienelemente umgebrochen.
+
+Dieses Muster gilt für Touren, Abholpunkte, Abfallarten, Stammdaten,
+Ausweichtermine, Tour-Einsätze, beide Richtungen der Tour-Zuordnung, den
+Datentools-Verlauf und das E-Mail-Monitoring. Auswahl und Speichern richten sich
+nach der jeweiligen Liste. In der Zuordnungsdetailseite steht die Aktion zum
+Speichern des gesamten Formulars am Seitenende.
+
 ## Auswahl über mehrere Seiten
 
-Ausgewählte Abholorte werden anhand ihrer IDs gehalten. Sie bleiben bei
+Ausgewählte Abholpunkte werden anhand ihrer IDs gehalten. Sie bleiben bei
 Sortier- und Seitenwechseln ausgewählt. **Alle gefilterten auswählen** verwendet
 eine serverseitige Auflösung sämtlicher IDs des aktuellen Filters, nicht nur die
 IDs der sichtbaren Seite.
 
 Beim Abwählen werden nur die Einträge des aktuellen Filters entfernt. Bereits
-ausgewählte Abholorte außerhalb dieses Filters bleiben erhalten. Der bestehende
+ausgewählte Abholpunkte außerhalb dieses Filters bleiben erhalten. Der bestehende
 Master-Data-Overview bleibt weiterhin für Hierarchien, Formulare und
 Zuordnungsansichten zuständig; die paginierte Projektion besitzt ausschließlich
 die Listenreihenfolge, Gesamtzahl und Seitendaten.
@@ -65,9 +87,9 @@ statt.
 
 ## Ansichten und Bearbeitungsrückweg
 
-Die **Abholortliste** sucht nach Ort und Straße über den Gesamtbestand. Region und
+Die **Abholpunktliste** sucht nach Ort und Straße über den Gesamtbestand. Region und
 Ort grenzen die Treffer ein; Jahr und Tourstatus grenzen die angezeigten
-Tourbezüge ein. Bereits zugeordnete Abholorte erhalten hier keine bevorzugte
+Tourbezüge ein. Bereits zugeordnete Abholpunkte erhalten hier keine bevorzugte
 Listenposition.
 
 Unter **Stammdaten** wird nach Region, Ort, Straße oder Hausnummer gesucht.
@@ -75,12 +97,47 @@ Mehrere Buchstaben können zusammenhängend eingegeben werden; Enter oder das
 Verlassen des Suchfelds übernimmt den Begriff. Die Sortierschaltflächen in den
 vorgesehenen Spalten sortieren den vollständigen Trefferbestand vor dem Blättern.
 
-Im Dialog **Tour-Zuordnung bearbeiten** beziehen sich Suche, Orts-/Straßenfilter
-und die bevorzugte Anzeige ausgewählter Abholorte auf die bearbeitete Tour.
-Die Adresssortierung wird über die Steuerelemente für Region und Richtung
-bedient; die Spaltenüberschriften dieses Dialogs sind keine Sortierschaltflächen.
+Auf der Detailseite **Tour-Zuordnung** sucht die Freitextsuche nach Ort und
+Straße. Die Filter für Region, Ort und Straße wirken gemeinsam und bieten
+alphabetisch sortierte Optionen. Beim Wechsel eines übergeordneten Filters
+bleiben die weiterhin passenden Auswahlen erhalten.
+Die Spaltenüberschriften sortieren die vollständige Treffermenge vor dem
+Blättern. Innerhalb der ausgewählten und der freien Abholpunkte gilt dieselbe
+Reihenfolge, ausgewählte Abholpunkte stehen zuerst. **Alle gefilterten auswählen**
+erfasst die Treffer auf sämtlichen Seiten und erhält Auswahlen außerhalb des Filters.
+Ein Statusabruf behält Suchtext, Filter, Sortierung und ungespeicherte Haken für
+die geöffnete Tour bei. Beim Abbrechen wird der Entwurf verworfen. Beim nächsten
+Öffnen zeigt die Seite den gespeicherten Zuordnungsstand der gewählten Tour.
+Während einer erneuten Berechtigungsprüfung pausiert die Bearbeitung. Nach
+bestätigtem Schreibrecht im selben Konto, Mandanten und Organisationskontext
+erscheint der Entwurf wieder. Bei einem Kontextwechsel oder bei Rechteentzug wird
+er verworfen.
 
-Wer aus der Abdeckungsprüfung einen Abholort zur Bearbeitung öffnet und
+Die Abholpunktanzahl in der Tourenliste und **Abholpunkte zuordnen** in den
+Tourdetails öffnen dieselbe Seite. **Zurück zur Tourenliste** führt zu den
+bisherigen Listenfiltern. Sind Zuordnungen geändert, bietet der Rücksprung
+**Weiter bearbeiten** und **Verwerfen und zurück** an. Nach erfolgreichem
+Speichern öffnet sich die gefilterte Tourenliste automatisch.
+
+Eine Straße wird auf der Zuordnungsseite auswählbar, sobald dafür ein Abholpunkt angelegt
+ist. Die Ansichten **Touren** und **Abholpunkte** laden ihre Zuordnungen beim
+Wechsel in den jeweiligen Tab erneut. In der Abholpunkt-Detailansicht steht der
+Gültigkeitszeitraum direkt unter dem Tournamen, damit gleich benannte Touren
+unterschiedlicher Jahrgänge unterscheidbar sind.
+
+In der Detailansicht eines Abholpunkts markiert die Liste der Tour-Zuordnungen
+offene Zuordnungen und Entfernungen. Die Filter grenzen die Touren nach Name und
+Gültigkeitsjahr ein. Eine über den Jahreswechsel gültige Tour erscheint in beiden
+Jahren. Standardmäßig stehen ausgewählte Touren zuerst. Eine Spaltensortierung
+ordnet alle Treffer vor dem Blättern. **Alle gefilterten Touren auswählen**
+erfasst die Treffer auf sämtlichen Seiten und erhält Auswahlen außerhalb des
+Filters. **Zuordnungen speichern** bestätigt
+Änderungen nach dem erneuten Lesen des gespeicherten Stands. Bei einem
+unklaren Ergebnis liest **Zuordnungen erneut lesen** den Stand erneut.
+Nach einem Teilerfolg bearbeitet der nächste Speichervorgang die noch offenen
+Änderungen.
+
+Wer aus der Abdeckungsprüfung einen Abholpunkt zur Bearbeitung öffnet und
 abbricht, erhält die bisherigen Listeneinstellungen einschließlich Tourfilter
 und Seite zurück. Fraktion, Jahr beziehungsweise Zeitraum und die Auswahl zum
 Einbeziehen von Entwürfen bleiben während dieser Bearbeitung erhalten.
@@ -89,6 +146,6 @@ betätigt wird. Diese lokalen Prüfkriterien werden nicht über einen Seitenrelo
 oder einen Wechsel in andere Arbeitsbereiche hinweg gespeichert.
 
 Lange Zuordnungsdialoge begrenzen ihre Höhe auf das Browserfenster. In der
-Sammelzuordnung ist der Bereich **Ausgewählte Abholorte** mit Tab erreichbar;
+Sammelzuordnung ist der Bereich **Ausgewählte Abholpunkte** mit Tab erreichbar;
 Pfeiltasten sowie Bild auf/Bild ab scrollen die Zusammenfassung. Tourauswahl,
 Abbrechen und Zuweisen bleiben über Tab erreichbar.

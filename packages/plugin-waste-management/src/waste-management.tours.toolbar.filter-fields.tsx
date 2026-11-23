@@ -46,15 +46,16 @@ const WasteToursToolbarFilterField = ({
   );
 };
 
-const TourValidityPeriodField = ({
+export const TourValidityPeriodField = ({
   value,
   onChange,
+  referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4)),
 }: Readonly<{
   value: WasteManagementTourValidityPeriod;
   onChange: (value: WasteManagementTourValidityPeriod) => void;
+  referenceYear?: number;
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
-  const referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
   return (
     <WasteToursToolbarFilterField label={pt('tours.filters.validityPeriodLabel')}>
       <Select

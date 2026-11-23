@@ -58,7 +58,7 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       fractionsLoading: 'Waste fractions are loading.',
       fractionsLoadError:
         'Waste fractions could not be loaded. Collection locations can still be edited.',
-      fractionsEmpty: 'No waste fractions have been created for this tenant yet.',
+      fractionsEmpty: 'No waste fractions are available for this check.',
       toursLoading: 'Tours are loading for the coverage check.',
       toursLoadError: 'Tours could not be loaded. Collection locations can still be edited.',
       startDate: 'Start date',
@@ -67,17 +67,25 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       planningNotice:
         'Drafts count as planned assignments here. Tours must be published for public collection dates.',
       assignmentNotice:
-        'This check evaluates tour assignments by their start and end dates, not the actual pickup sequence. A first date in January leaves the preceding days marked for review; check cadence continuation in the tour preview.',
+        'For a check starting on 1 January, Studio uses the first effective collection date of recurring tours. Later gaps are based on the validity dates of the tour assignments.',
       endDate: 'End date',
       check: 'Check',
+      checking: 'Checking collection dates …',
+      schedulingLoadError:
+        'Collection dates and holiday rules could not be loaded in full. Start the check again.',
       required: 'Select a waste fraction, start date and end date.',
       invalidDateRange: 'The end date must not be before the start date.',
       complete:
         'All {{value}} active collection locations are fully assigned during the selected period.',
+      noActiveLocations: 'There are no active collection locations to check.',
       summary:
         '{{checked}} active collection locations checked: {{missing}} without an assignment, {{incomplete}} with date gaps.',
       missing: 'No assignment',
       incomplete: 'Period incomplete',
+      localityTitle: 'Localities',
+      localityComplete: 'Fully assigned ({{assigned}} of {{total}} collection locations)',
+      localityPartial: 'Partially assigned ({{assigned}} of {{total}} collection locations)',
+      localityMissing: 'Unassigned ({{assigned}} of {{total}} collection locations)',
       gap: 'Not covered: {{startDate}} to {{endDate}}',
       edit: 'Edit assignments',
       selectAndAssign: 'Select {{value}} collection locations and assign a tour',
@@ -144,11 +152,13 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       tableLabel: 'Address master data',
       tableCaption: 'Edit regions and address hierarchy',
       moveTitle: 'Confirm parent change',
-      moveDescription: 'Change the parent from “{{source}}” to “{{target}}”?',
+      moveDescription: 'Change the parent of “{{entity}}” from “{{source}}” to “{{target}}”?',
       moveConfirm: 'Confirm move',
       moveConfirmSubscriptions: 'Confirm move and subscription deletion',
       moveSaving: 'Saving address move…',
       moveLocations: '{{count}} pickup locations will use the new address.',
+      moveRetainedTourLink: 'The existing tour assignment will be kept.',
+      moveRetainedTourLinks: 'All {{count}} existing tour assignments will be kept.',
       moveSubscriptions:
         '{{count}} affected email subscriptions will be deleted with {{items}} items and {{outbox}} outbox entries in all statuses.',
       moveError:

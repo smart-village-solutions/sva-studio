@@ -51,7 +51,10 @@ export type WasteFractionsContentProps = {
     sortBy: WasteManagementFractionSortField,
     sortDirection: WasteManagementFractionSortDirection
   ) => void;
-  readonly onFractionsStatusChange: (status: WasteManagementStatusFilter) => void;
+  readonly onFractionsStatusChange: (
+    status: WasteManagementStatusFilter,
+    options?: { readonly resetQuery: true }
+  ) => void;
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
@@ -136,21 +139,9 @@ export const useFractionBulkActions = ({
   return actions;
 };
 
-export const FractionPrimaryAction = ({
-  onOpenCreateFraction,
-}: {
-  readonly onOpenCreateFraction: () => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-  return (
-    <Button type="button" onClick={onOpenCreateFraction}>
-      {pt('masterData.fractions.actions.openCreate')}
-    </Button>
-  );
-};
-
 export const WasteFractionsFilterAction = ({
   fractionsStatus,
+  query,
   filterDialogOpen,
   draftFractionsStatus,
   onOpenFilterDialog,
@@ -160,6 +151,7 @@ export const WasteFractionsFilterAction = ({
   onResetFractionsStatus,
 }: {
   readonly fractionsStatus: WasteManagementStatusFilter;
+  readonly query: string;
   readonly filterDialogOpen: boolean;
   readonly draftFractionsStatus: WasteManagementStatusFilter;
   readonly onOpenFilterDialog: () => void;
@@ -172,17 +164,16 @@ export const WasteFractionsFilterAction = ({
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        {fractionsStatus !== 'all' ? (
-          <Button
-            type="button"
-            variant="tertiary"
-            className="h-11 rounded-md px-3"
-            onClick={onResetFractionsStatus}
-          >
-            {pt('masterData.fractions.filters.reset')}
-          </Button>
-        ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="tertiary"
+          className="h-11 rounded-md px-3"
+          disabled={fractionsStatus === 'all' && !query}
+          onClick={onResetFractionsStatus}
+        >
+          {pt('masterData.fractions.filters.reset')}
+        </Button>
         <Button
           type="button"
           variant="secondary"

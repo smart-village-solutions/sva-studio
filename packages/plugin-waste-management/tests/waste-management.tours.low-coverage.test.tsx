@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursDialogs } from '../src/waste-management.tours-dialogs-panel.js';
-import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
+import { TourAssignmentsPage } from '../src/waste-management.tours-assignments-page.js';
 import { TourAssignmentsTable } from '../src/waste-management.tours-assignments-table.js';
 import { WasteToursFormView } from '../src/waste-management.tours-form-view.js';
 import { WasteToursTableHeader } from '../src/waste-management.tours.table.parts.js';
@@ -12,7 +12,6 @@ import { WasteToursTourFields } from '../src/waste-management.tours-tour-fields.
 const navigateMock = vi.fn();
 const dialogSpy = vi.hoisted(() => ({
   tour: vi.fn(),
-  assignments: vi.fn(),
   calendar: vi.fn(),
 }));
 const fractionSelectionSpy = vi.fn();
@@ -20,6 +19,7 @@ const customDatesSpy = vi.fn();
 const formSwitchSpy = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => ({ status: 'idle' }),
   useNavigate: () => navigateMock,
 }));
 
@@ -89,14 +89,6 @@ vi.mock('../src/waste-management.tours.dialogs.js', () => ({
     return props.open ? (
       <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
         close-tour
-      </button>
-    ) : null;
-  },
-  TourAssignmentsDialog: (props: Record<string, unknown>) => {
-    dialogSpy.assignments(props);
-    return props.open ? (
-      <button onClick={() => (props.onOpenChange as (open: boolean) => void)(false)}>
-        close-assignments
       </button>
     ) : null;
   },
@@ -179,14 +171,8 @@ const createController = () =>
     setTourForm: vi.fn(),
     setSelectedTour: vi.fn(),
     onSubmitTour: vi.fn(),
-    assignmentsDialogOpen: true,
-    assignmentsDialogMode: 'create' as const,
-    linkForm: { id: 'link-1', tourId: 'tour-1' },
     overview: { tours: [{ id: 'tour-1', name: 'Schadstoffmobil' }] },
-    assignmentLocationOptions: [],
     assignmentContextLoading: false,
-    setAssignmentsDialogOpen: vi.fn(),
-    setLinkForm: vi.fn(),
     onSubmitAssignments: vi.fn(),
     calendarOpen: true,
     schedulingOverview: { locationTourPickupDates: [] },
@@ -205,31 +191,21 @@ describe('waste-management tours low coverage views', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     dialogSpy.tour.mockReset();
-    dialogSpy.assignments.mockReset();
     dialogSpy.calendar.mockReset();
   });
 
-  it('resets tour and assignment forms when the dialogs close', () => {
+  it('resets the tour form when the dialogs close', () => {
     const controller = createController();
 
     render(<WasteToursDialogs controller={controller} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'close-tour' }));
-    fireEvent.click(screen.getByRole('button', { name: 'close-assignments' }));
 
     expect(controller.setDialogOpen).toHaveBeenCalledWith(false);
     expect(controller.setTourForm).toHaveBeenCalledWith(
       expect.objectContaining({ id: expect.any(String) })
     );
     expect(controller.setSelectedTour).toHaveBeenCalledWith(null);
-    expect(controller.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
-    expect(controller.setLinkForm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: expect.any(String),
-        locationId: '',
-        tourId: '',
-      })
-    );
     expect(dialogSpy.calendar).toHaveBeenCalledWith(
       expect.objectContaining({ open: true, schedulingLoadState: 'loading' })
     );
@@ -243,22 +219,12 @@ describe('waste-management tours low coverage views', () => {
     const tourProps = dialogSpy.tour.mock.calls[0]?.[0] as {
       onChange: (patch: Record<string, unknown>) => void;
     };
-    const assignmentProps = dialogSpy.assignments.mock.calls[0]?.[0] as {
-      onChange: (patch: Record<string, unknown>) => void;
-    };
 
     tourProps.onChange({ name: 'Geaendert' });
-    assignmentProps.onChange({ locationId: 'location-2' });
 
     const nextTourForm = controller.setTourForm.mock.calls[0]?.[0](controller.tourForm);
-    const nextLinkForm = controller.setLinkForm.mock.calls[0]?.[0]({
-      id: 'link-1',
-      locationId: '',
-      tourId: 'tour-1',
-    });
 
     expect(nextTourForm).toEqual(expect.objectContaining({ name: 'Geaendert' }));
-    expect(nextLinkForm).toEqual(expect.objectContaining({ locationId: 'location-2' }));
   });
 
   it('renders the form view with duplication metadata, cancels back to the list, and submits create mode', () => {
@@ -321,21 +287,17 @@ describe('waste-management tours low coverage views', () => {
       ...(index === 717 ? { assignedLinkId: 'existing-link' } : {}),
     }));
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ tourId: 'tour' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour', name: 'Testtour' } as never}
         locations={locations}
         saving={false}
         message={null}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
     const table = screen.getByRole('table');
-    expect(within(table).getAllByRole('row')).toHaveLength(719);
+    expect(within(table).getAllByRole('row')).toHaveLength(101);
     // Existing assignments lead the complete selection, rather than changing the location list ordering.
     expect(within(table).getAllByRole('row')[1]?.textContent).toContain('Zielort');
     const input = screen.getByLabelText('filters.searchLabel');
@@ -352,29 +314,243 @@ describe('waste-management tours low coverage views', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(2);
     expect(within(table).getByText('Zielstraße')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
-    expect(within(table).getAllByRole('row')).toHaveLength(719);
+    expect(within(table).getAllByRole('row')).toHaveLength(101);
   });
 
-  it('renders assignment dialog loading and fallback description branches', () => {
+  it('combines alphabetic address filters and keeps child selections while they still fit', () => {
+    const entry = (regionName: string, cityName: string, streetName: string) => ({
+      id: `${regionName}-${cityName}-${streetName}`,
+      label: `${regionName} / ${cityName} / ${streetName}`,
+      regionId: regionName,
+      regionName,
+      cityId: cityName,
+      cityName,
+      streetId: streetName,
+      streetName,
+      houseNumberId: '',
+      houseNumberName: '',
+    });
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={
-          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
-        }
-        tour={null}
-        locations={[]}
-        saving
-        loading
-        message={{ kind: 'info', text: 'assignment-message' }}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={[
+          entry('Zossen', 'Zossen', 'Zielstraße'),
+          entry('Perleberg', 'Ziegelberg', 'Zielstraße'),
+          entry('Perleberg', 'Sükow', 'Birkenweg'),
+          entry('Perleberg', 'Sükow', ''),
+          entry('Perleberg', 'Perleberg', 'Am Markt'),
+          entry('Altes Amt', 'Berge', 'Perleberger Straße'),
+        ]}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
 
-    expect(screen.getByText('tours.assignments.dialog.descriptionFallback')).toBeTruthy();
+    const search = screen.getByLabelText('filters.searchLabel');
+    fireEvent.change(search, { target: { value: 'perleberg' } });
+    const rows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    expect(rows()).toHaveLength(2);
+    expect(rows().map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Perleberger Straße'),
+      expect.stringContaining('Am Markt'),
+    ]);
+    fireEvent.change(search, { target: { value: '' } });
+
+    const region = screen.getByLabelText('masterData.collectionLocations.fields.regionId');
+    const city = screen.getByLabelText('masterData.collectionLocations.fields.cityId');
+    const street = screen.getByLabelText('masterData.collectionLocations.fields.streetId');
+    const options = (select: HTMLElement) =>
+      within(select).getAllByRole('option').slice(1).map((option) => option.textContent);
+    expect(options(region)).toEqual(['Altes Amt', 'Perleberg', 'Zossen']);
+    fireEvent.change(street, { target: { value: 'Birkenweg' } });
+    fireEvent.change(city, { target: { value: 'Sükow' } });
+    fireEvent.change(region, { target: { value: 'Perleberg' } });
+    expect(options(city)).toEqual(['Perleberg', 'Sükow', 'Ziegelberg']);
+    expect(options(street)).toEqual(['Birkenweg']);
+    expect(city).toHaveProperty('value', 'Sükow');
+    expect(street).toHaveProperty('value', 'Birkenweg');
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]?.textContent).toContain('Sükow');
+
+    fireEvent.change(region, { target: { value: '' } });
+    expect(city).toHaveProperty('value', 'Sükow');
+    expect(street).toHaveProperty('value', 'Birkenweg');
+    fireEvent.change(region, { target: { value: 'Zossen' } });
+    expect(city).toHaveProperty('value', '');
+    expect(street).toHaveProperty('value', '');
+    expect(rows()[0]?.textContent).toContain('Zossen');
+  });
+
+  it('sorts the full filter result before paging and selects all its pages without losing hidden selections', () => {
+    const locations = Array.from({ length: 23 }, (_, index) => ({
+      id: String(index),
+      label: `Abholpunkt ${index}`,
+      regionId: 'region',
+      regionName: 'Prignitz',
+      cityId: index === 22 ? 'hidden' : 'filtered',
+      cityName: index === 22 ? 'Berge' : 'Perleberg',
+      streetId: 'street',
+      streetName: 'Markt',
+      houseNumberId: String(index),
+      houseNumberName: String(index + 1),
+    }));
+    const onSubmit = vi.fn();
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={locations.toReversed()}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'tours.assignments.workspace.selectLocation:{"value":"Abholpunkt 22"}',
+      })
+    );
+    fireEvent.change(screen.getByLabelText('meta.pagination.pageSizeLabel'), {
+      target: { value: '10' },
+    });
+    fireEvent.change(screen.getByLabelText('filters.searchLabel'), {
+      target: { value: 'Perleberg' },
+    });
+    const table = screen.getByRole('table');
+    const sort = within(table).getByRole('button', {
+      name: 'masterData.locationsWorkspace.table.houseNumbers',
+    });
+    fireEvent.click(sort);
+    fireEvent.click(sort);
+    const addressNumbers = () =>
+      within(table).getAllByRole('row').slice(1).map((row) => row.lastElementChild?.textContent);
+    expect(addressNumbers()).toEqual(['22', '21', '20', '19', '18', '17', '16', '15', '14', '13']);
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    expect(addressNumbers()).toEqual(['12', '11', '10', '9', '8', '7', '6', '5', '4', '3']);
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    expect(addressNumbers()).toEqual(['2', '1']);
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'masterData.collectionLocations.bulk.actions.selectAllFiltered',
+      })
+    );
+    const save = screen.getByRole('button', { name: 'tours.assignments.actions.save' });
+    fireEvent.submit(save.closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(new Map(locations.map(({ id }) => [id, true])));
+  });
+
+  it('keeps keyboard focus in the table when the selected row moves to an earlier page', () => {
+    const locations = Array.from({ length: 101 }, (_, index) => {
+      const id = String(index).padStart(3, '0');
+      return {
+        id,
+        label: id,
+        regionId: '',
+        regionName: '',
+        cityId: 'city',
+        cityName: 'Perleberg',
+        streetId: '',
+        streetName: '',
+        houseNumberId: '',
+        houseNumberName: '',
+      };
+    });
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={locations}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'tours.assignments.workspace.selectLocation:{"value":"100"}',
+    });
+    checkbox.focus();
+
+    fireEvent.click(checkbox);
+
+    expect(checkbox.isConnected).toBe(false);
+    expect(document.activeElement).toBe(
+      screen.getByRole('group', { name: 'tours.assignments.workspace.tableLabel' })
+    );
+  });
+
+  it('keeps assignment changes through an empty loading result for the same tour', () => {
+    const locations = ['location-1', 'location-2'].map((id, index) => ({
+      id,
+      label: id,
+      regionId: 'region-1',
+      regionName: 'Prignitz',
+      cityId: 'city-1',
+      cityName: 'Perleberg',
+      streetId: '',
+      streetName: '',
+      houseNumberId: '',
+      houseNumberName: '',
+      ...(index === 0 ? { assignedLinkId: 'link-1' } : {}),
+    }));
+    const onSubmit = vi.fn();
+    const renderDialog = (options: typeof locations, loading = false) => (
+      <TourAssignmentsPage
+        tour={{ id: 'tour-1', name: 'Tour 1' } as never}
+        locations={options}
+        saving={false}
+        loading={loading}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    const { rerender } = render(renderDialog(locations));
+    const location = (id: string) =>
+      screen.getByRole<HTMLInputElement>('checkbox', {
+        name: `tours.assignments.workspace.selectLocation:{"value":"${id}"}`,
+      });
+    const save = () =>
+      screen.getByRole<HTMLButtonElement>('button', {
+        name: 'tours.assignments.actions.save',
+      });
+
+    fireEvent.click(location('location-1'));
+    fireEvent.click(location('location-2'));
+    rerender(renderDialog([], true));
+    expect(save().disabled).toBe(true);
+    fireEvent.submit(save().closest('form')!);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    rerender(renderDialog(locations.map((entry) => ({ ...entry }))));
+    expect(location('location-1').checked).toBe(false);
+    expect(location('location-2').checked).toBe(true);
+    fireEvent.submit(save().closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(
+      new Map([
+        ['location-1', false],
+        ['location-2', true],
+      ])
+    );
+  });
+
+  it('renders the assignment page while loading', () => {
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour-1', name: 'Tour 1' } as never}
+        locations={[]}
+        saving
+        loading
+        message={{ kind: 'info', text: 'assignment-message' }}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Tour 1' })).toBeTruthy();
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'tours.assignments.actions.saving' })).toHaveProperty(
       'disabled',
@@ -383,16 +559,11 @@ describe('waste-management tours low coverage views', () => {
   });
 
   it('filters assignment locations, tracks hidden selections, resets filters, and submits the selected ids', () => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSubmit = vi.fn();
     const onOpenChange = vi.fn();
 
     render(
-      <TourAssignmentsDialog
-        open
-        mode="create"
-        form={
-          { id: 'link-1', locationId: '', tourId: 'tour-1', startDate: '', endDate: '' } as never
-        }
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
         locations={
           [
@@ -427,8 +598,7 @@ describe('waste-management tours low coverage views', () => {
         }
         saving={false}
         message={null}
-        onOpenChange={onOpenChange}
-        onChange={vi.fn()}
+        onBack={onOpenChange}
         onSubmit={onSubmit}
       />
     );
@@ -452,9 +622,9 @@ describe('waste-management tours low coverage views', () => {
       screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
     );
     fireEvent.submit(
-      screen.getByRole('button', { name: 'tours.assignments.actions.create' }).closest('form')!
+      screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form')!
     );
-    expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
+    expect(onSubmit).toHaveBeenCalledWith(new Map([['location-2', true]]));
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
     expect(screen.getByText('tours.assignments.workspace.visibleCount:{"value":2}')).toBeTruthy();
@@ -465,15 +635,12 @@ describe('waste-management tours low coverage views', () => {
     expect(screen.getByText('tours.assignments.workspace.noLocations')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.cancel' }));
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledOnce();
   });
 
   it('renders address values with multi-column sorting while keeping selected locations first', () => {
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ id: 'link-1', tourId: 'tour-1' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Bio.10.A.2' } as never}
         locations={
           [
@@ -522,8 +689,7 @@ describe('waste-management tours low coverage views', () => {
         saving={false}
         loading={false}
         message={null}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={vi.fn()}
       />
     );
@@ -558,16 +724,17 @@ describe('waste-management tours low coverage views', () => {
       expect.stringContaining('B-Ort'),
     ]);
 
-    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
+    const regionSort = within(table).getByRole('button', {
+      name: 'masterData.locationsWorkspace.table.region',
+    });
+    fireEvent.click(regionSort);
     expect(getRowIds()).toEqual([
       expect.stringContaining('Amt Z'),
       expect.stringContaining('Amt A'),
       expect.stringContaining('A-Ort'),
     ]);
 
-    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
-      target: { value: 'desc' },
-    });
+    fireEvent.click(regionSort);
 
     expect(getRowIds()).toEqual([
       expect.stringContaining('Amt Z'),
@@ -670,13 +837,10 @@ describe('waste-management tours low coverage views', () => {
   });
 
   it('filters assignment locations, manages hidden selections, and submits the selected ids', () => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSubmit = vi.fn();
 
     render(
-      <TourAssignmentsDialog
-        open
-        mode="edit"
-        form={{ id: 'link-1', tourId: 'tour-1' } as never}
+      <TourAssignmentsPage
         tour={{ id: 'tour-1', name: 'Schadstoffmobil' } as never}
         locations={
           [
@@ -709,14 +873,13 @@ describe('waste-management tours low coverage views', () => {
         saving={false}
         loading={false}
         message={{ kind: 'info', text: 'assignment-message' }}
-        onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onBack={vi.fn()}
         onSubmit={onSubmit}
       />
     );
 
     expect(screen.getByText('assignment-message')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Schul' } });
+    fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Nord' } });
     expect(
       screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')
     ).toBeTruthy();
@@ -733,12 +896,11 @@ describe('waste-management tours low coverage views', () => {
     }
     fireEvent.submit(form);
 
-    expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
+    expect(onSubmit).toHaveBeenCalledWith(new Map([['location-2', true]]));
   });
 
-  it('exposes the address hierarchy, optional region, and shared sort direction', () => {
-    const onIncludeRegionInSortingChange = vi.fn();
-    const onSortDirectionChange = vi.fn();
+  it('exposes all address sort buttons and puts aria-sort on the active column', () => {
+    const onSortChange = vi.fn();
 
     render(
       <TourAssignmentsTable
@@ -757,23 +919,26 @@ describe('waste-management tours low coverage views', () => {
         selectedLocationIds={[]}
         allVisibleSelected={false}
         someVisibleSelected={false}
-        includeRegionInSorting={false}
-        sortDirection="asc"
-        onIncludeRegionInSortingChange={onIncludeRegionInSortingChange}
-        onSortDirectionChange={onSortDirectionChange}
+        sortField="cityName"
+        sortDirection="desc"
+        onSortChange={onSortChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
       />
     );
 
-    expect(screen.getByText('tours.assignments.workspace.sortOrderWithoutRegion')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
-    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
-      target: { value: 'desc' },
-    });
-
-    expect(onIncludeRegionInSortingChange).toHaveBeenCalledWith(true);
-    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
+    expect(
+      screen.getByRole('columnheader', { name: 'masterData.locationsWorkspace.table.city' })
+        .getAttribute('aria-sort')
+    ).toBe('descending');
+    for (const [label, field] of [
+      ['region', 'regionName'],
+      ['street', 'streetName'],
+      ['houseNumbers', 'houseNumberName'],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name: `masterData.locationsWorkspace.table.${label}` }));
+      expect(onSortChange).toHaveBeenCalledWith(field);
+    }
   });
 
   it('renders the tours table header controls and forwards select-all plus sort interactions', () => {

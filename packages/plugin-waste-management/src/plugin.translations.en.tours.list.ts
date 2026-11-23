@@ -4,7 +4,8 @@ export const wasteManagementPluginTranslationsENToursList = {
     description: 'Open assignments, calendar and tour visits for this tour directly.',
     assignments: 'Assign collection locations',
     calendar: 'Annual calendar and holiday shifts',
-    scheduling: 'Tour visits and tour-specific shifts',
+    scheduling: 'Tour-specific shifts',
+    tourAssignments: 'Tour visits',
   },
   actions: {
     openCreate: 'New tour',

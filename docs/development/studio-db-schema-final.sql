@@ -2342,8 +2342,8 @@ CREATE TABLE public.waste_email_reminder_subscription_items (
 
 CREATE TABLE public.waste_email_reminder_subscriptions (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    email text NOT NULL,
-    email_hash text NOT NULL,
+    email text,
+    email_hash text,
     status text DEFAULT 'pending'::text NOT NULL,
     region_id uuid,
     city_id uuid NOT NULL,
@@ -2359,6 +2359,7 @@ CREATE TABLE public.waste_email_reminder_subscriptions (
     unsubscribed_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_subscriptions_live_address_check CHECK (((status <> ALL (ARRAY['pending'::text, 'active'::text])) OR ((email IS NOT NULL) AND (email_hash IS NOT NULL)))),
     CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'unsubscribed'::text, 'expired'::text])))
 );
 

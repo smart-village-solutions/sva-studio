@@ -1,10 +1,36 @@
 /** Real PostgreSQL evidence for destructive fraction operations, including rollback and drift. */
 import { randomUUID } from 'node:crypto';
+import type { ExternalInterfaceRecord, MailDispatchPayload } from '@sva/core';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
+import { createProcessEmailReminderOutboxOperation } from '../operations/waste-management-email-reminder-outbox.server.js';
+import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
 import { buildWasteTourFractionsContractStatements } from '../operations/waste-tour-fractions.schema.js';
+import { createWasteEmailReminderRepository } from './email-reminders.js';
 import { processWasteFractionDeletion } from './fraction-deletion.js';
+
+vi.mock('../operations/waste-management-email-reminder-config.server.js', () => ({
+  loadWasteEmailReminderSettings: async () => ({
+    config: {
+      enabled: true,
+      transportId: 'smtp',
+      fromEmail: 'calendar@example.invalid',
+      publicBaseUrl: 'https://calendar.example.invalid',
+      unsubscribePath: '/unsubscribe',
+      reminderSubjectTemplate: 'Pickup {{fractionName}}',
+      reminderIntroTemplate: '{{fractionName}}',
+      unsubscribeLinkLabel: 'Unsubscribe',
+      privacyPolicyUrl: 'https://calendar.example.invalid/privacy',
+      imprintUrl: 'https://calendar.example.invalid/imprint',
+      materializationLookaheadDays: 7,
+    },
+    unsubscribeSigningSecret: 'fixture-signing-secret',
+  }),
+}));
+vi.mock('../operations/waste-management-email-reminder-transport.server.js', () => ({
+  loadMailTransportConfigs: async () => new Map([['smtp', { enabled: true }]]),
+}));
 
 const url = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
 const pool = url ? new Pool({ connectionString: url, max: 3 }) : null;
@@ -24,6 +50,24 @@ const execute = async (mode: 'detach' | 'replace' | 'delete-tours', targetFracti
 };
 const count = async (table: string) =>
   Number((await client.query(`SELECT count(*) AS n FROM ${table}`)).rows[0].n);
+
+const createOutboxWorker = (
+  now: string,
+  dispatchMail: (input: { payload: MailDispatchPayload }) => Promise<{ providerMessageId?: string }>
+) => {
+  const record: ExternalInterfaceRecord = {
+    id: 'pg-fixture', instanceId: 'fixture', typeKey: 'postgresql', ownerKind: 'host', ownerId: 'host',
+    displayName: 'Fixture PostgreSQL', alias: 'default', enabled: true, isDefault: true,
+    category: 'database', authMode: 'database_url', publicConfig: { schemaName: schema },
+    secretConfigCiphertext: 'fixture', statusCheckKind: 'postgresql', visibleStatus: 'ok', updatedAt: now,
+  };
+  return createProcessEmailReminderOutboxOperation({
+    listInterfaceRecords: async () => [record],
+    revealSecret: () => JSON.stringify({ databaseUrl: url }),
+    now: () => new Date(now),
+    dispatchMail,
+  });
+};
 
 describe.skipIf(!url)('fraction deletion PostgreSQL', () => {
   beforeAll(async () => {
@@ -258,6 +302,207 @@ describe.skipIf(!url)('fraction deletion PostgreSQL', () => {
       { date: '2030-01-04', status: 'pending' },
     ]);
   });
+
+  it.each([
+    { attemptCount: 0, hasRemainingSubscriptionItem: true },
+    { attemptCount: 2, hasRemainingSubscriptionItem: true },
+    { attemptCount: 2, hasRemainingSubscriptionItem: false },
+  ])('replans a due mixed group before dispatch ($attemptCount attempts, $hasRemainingSubscriptionItem remaining)', async ({ attemptCount, hasRemainingSubscriptionItem }) => {
+    const subscriptionId = randomUUID();
+    const pickupDate = '2030-01-04';
+    const sendAt = '2030-01-03T06:00:00.000Z';
+    const pendingKey = `reminder-group:${subscriptionId}:${pickupDate}:${sendAt}`;
+    const unaffectedKey = `reminder-group:${subscriptionId}:2030-01-11:${sendAt}`;
+    const uncertainKey = `reminder-group:${subscriptionId}:2030-01-18:${sendAt}`;
+    const sourceMember = `reminder:${subscriptionId}:${source}:slot:first:${pickupDate}`;
+    const otherMember = `reminder:${subscriptionId}:${other}:slot:first:${pickupDate}`;
+    await client.query(
+      `INSERT INTO waste_email_reminder_subscriptions
+      (id,email,email_hash,city_id,street_id,location_label,consent_version,consent_accepted_at,doi_token_hash,unsubscribe_token_hash,expires_at,status)
+      VALUES ($1::uuid,'fixture@example.test','hash',$2,'all','City','v1',NOW(),$1::text,$1::text,'2099-01-01','active')`,
+      [subscriptionId, city]
+    );
+    if (hasRemainingSubscriptionItem) {
+      await client.query(
+        `UPDATE waste_fractions SET reminder_config = $2::jsonb WHERE id = $1`,
+        [other, JSON.stringify({ reminder_count: 'once', channels: { email: true }, email: {
+          slots: [{ id: 'slot:first', max_lead_days: 14, default_lead_days: 1 }],
+        } })]
+      );
+      await client.query(
+        `INSERT INTO waste_email_reminder_subscription_items (subscription_id,fraction_id,slot_id) VALUES ($1,$2,'slot:first')`,
+        [subscriptionId, other]
+      );
+    }
+    const repository = createWasteEmailReminderRepository(createSqlExecutor(client));
+    const order = (dedupeKey: string, memberKeys: readonly string[], earliestSendAt = sendAt) => ({
+      id: randomUUID(),
+      subscriptionId,
+      messageKind: 'reminder' as const,
+      transportId: 'smtp',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt: earliestSendAt,
+      dedupeKey,
+      payload: {
+        orderId: subscriptionId,
+        transportId: 'smtp',
+        messageKind: 'transactional' as const,
+        templateKey: 'waste.email-reminder.reminder',
+        addresses: [{ kind: 'to' as const, email: 'fixture@example.invalid' }],
+        templatePayload: {},
+        metadata: { reminderMemberKeys: JSON.stringify(memberKeys) },
+      },
+    });
+    await repository.enqueueOutboxEntry(order(pendingKey, [sourceMember, otherMember]));
+    const dueAt = attemptCount > 0 ? '2030-01-03T06:20:00.000Z' : sendAt;
+    if (attemptCount > 0) {
+      await client.query(
+        "UPDATE waste_email_reminder_outbox SET attempt_count = $2, send_at = $3, last_error = 'mail_transport_not_available' WHERE dedupe_key = $1",
+        [pendingKey, attemptCount, dueAt]
+      );
+    }
+    await repository.enqueueOutboxEntry(
+      order(unaffectedKey, [otherMember.replace(pickupDate, '2030-01-11')], '2030-01-10T06:00:00.000Z')
+    );
+    await repository.enqueueOutboxEntry(
+      order(
+        uncertainKey,
+        [sourceMember, otherMember].map((key) => key.replace(pickupDate, '2030-01-18'))
+      )
+    );
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET status = 'processing', attempt_count = 1, leased_at = NOW() WHERE dedupe_key = $1",
+      [uncertainKey]
+    );
+    expect((await processWasteFractionDeletion(client, input)).blockedReason).toBe(
+      'reminder-dispatching'
+    );
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET status = 'failed', leased_at = NULL, last_error = 'mail_dispatch_outcome_unknown' WHERE dedupe_key = $1",
+      [uncertainKey]
+    );
+    expect((await execute('detach')).counts.pendingReminders).toBe(0);
+    const status = async (dedupeKey: string) =>
+      (
+        await client.query('SELECT status FROM waste_email_reminder_outbox WHERE dedupe_key = $1', [
+          dedupeKey,
+        ])
+      ).rows[0]?.status;
+    expect(await status(pendingKey)).toBe('pending');
+    expect(await status(unaffectedKey)).toBe('pending');
+    expect(await status(uncertainKey)).toBe('failed');
+    if (attemptCount > 0) expect(await repository.hasDueReminderOutboxEntries({ now: sendAt })).toBe(false);
+    const dispatcher = await pool!.connect();
+    try {
+      await dispatcher.query(`SET search_path TO ${schema}, public`);
+      const dispatchRepo = createWasteEmailReminderRepository(createSqlExecutor(dispatcher));
+      expect(await dispatchRepo.hasDueReminderOutboxEntries({ now: dueAt })).toBe(true);
+      expect(await dispatchRepo.leaseDueOutboxEntries({ now: dueAt, limit: 1 })).toEqual([]);
+      expect(await dispatchRepo.markUnresolvedReminderDeliveries({ now: dueAt })).toBe(0);
+    } finally {
+      dispatcher.release();
+    }
+    const dispatchMail = vi.fn(async (_input: { payload: MailDispatchPayload }) => ({ providerMessageId: 'accepted' }));
+    const processOutbox = createOutboxWorker(dueAt, dispatchMail);
+    await processOutbox('fixture', { operation: 'process-email-reminder-outbox', materialize: 'if-reminder-due' });
+    expect(await status(uncertainKey)).toBe('failed');
+    if (hasRemainingSubscriptionItem) {
+      expect(dispatchMail).toHaveBeenCalledOnce();
+      expect(dispatchMail.mock.calls[0]?.[0].payload).toMatchObject({
+        templatePayload: { fractionName: 'Other', subject: 'Pickup Other' },
+        metadata: { reminderMemberKeys: JSON.stringify([otherMember]) },
+      });
+      const delivered = await client.query<{status: string; attempt_count: number; send_at: Date}>(
+        'SELECT status, attempt_count, send_at FROM waste_email_reminder_outbox WHERE dedupe_key = $1',
+        [pendingKey]
+      );
+      expect(delivered.rows).toEqual([{
+        status: 'sent', attempt_count: attemptCount + 1, send_at: new Date(dueAt),
+      }]);
+    } else {
+      expect(dispatchMail).not.toHaveBeenCalled();
+      expect(await status(pendingKey)).toBe('cancelled');
+      expect(await repository.hasDueReminderOutboxEntries({ now: dueAt })).toBe(false);
+    }
+  });
+
+  it('replans a safe retry after lead-time and transport changes before dispatch', async () => {
+    const subscriptionId = randomUUID();
+    const pickupDate = '2030-01-04';
+    const originalSendAt = '2030-01-03T06:00:00.000Z';
+    const retryAt = '2030-01-03T06:20:00.000Z';
+    const currentKey = `reminder-group:${subscriptionId}:${pickupDate}:${originalSendAt}`;
+    const changedKey = `reminder-group:${subscriptionId}:${pickupDate}:2030-01-02T06:00:00.000Z`;
+    const movedKey = `reminder-group:${subscriptionId}:${pickupDate}:2030-01-01T06:00:00.000Z`;
+    const sourceMember = `reminder:${subscriptionId}:${source}:slot:first:${pickupDate}`;
+    const otherMember = `reminder:${subscriptionId}:${other}:slot:first:${pickupDate}`;
+    await client.query(
+      `INSERT INTO waste_email_reminder_subscriptions
+       (id,email,email_hash,city_id,street_id,location_label,consent_version,consent_accepted_at,doi_token_hash,unsubscribe_token_hash,expires_at,status)
+       VALUES ($1::uuid,'fixture@example.test','hash',$2,'all','City','v1',NOW(),$1::text,$1::text,'2099-01-01','active')`,
+      [subscriptionId, city]
+    );
+    for (const [fractionId, leadTime] of [[source, 2], [other, 1]] as const) {
+      const reminderConfig = {
+        reminder_count: 'once', channels: { email: true }, email: {
+          slots: [{ id: 'slot:first', max_lead_days: 14, default_lead_days: leadTime }],
+        },
+      };
+      await client.query('UPDATE waste_fractions SET reminder_config = $2::jsonb WHERE id = $1', [
+        fractionId, JSON.stringify(reminderConfig),
+      ]);
+      await client.query(
+        "INSERT INTO waste_email_reminder_subscription_items (subscription_id,fraction_id,slot_id) VALUES ($1,$2,'slot:first')",
+        [subscriptionId, fractionId]
+      );
+    }
+    await client.query(
+      `INSERT INTO waste_email_reminder_outbox
+       (subscription_id,message_kind,transport_id,template_key,send_at,dedupe_key,payload,attempt_count,last_error)
+       VALUES ($1,'reminder','retired-smtp','waste.email-reminder.reminder',$2,$3,$4::jsonb,2,'mail_transport_not_available')`,
+      [subscriptionId, retryAt, currentKey, JSON.stringify({
+        metadata: { pickupDate, reminderMemberKeys: JSON.stringify([sourceMember, otherMember]) },
+      })]
+    );
+    const dispatch = vi.fn(async (_input: { payload: MailDispatchPayload }) => ({ providerMessageId: 'accepted' }));
+    await createOutboxWorker('2030-01-03T06:05:00.000Z', dispatch)('fixture', {
+      operation: 'process-email-reminder-outbox', materialize: true,
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+    const readGroups = async () => (await client.query(
+      `SELECT dedupe_key, status, send_at, transport_id, attempt_count,
+        (payload->'metadata'->>'reminderMemberKeys')::jsonb AS members
+       FROM waste_email_reminder_outbox WHERE dedupe_key = ANY($1::text[]) ORDER BY dedupe_key`,
+      [[movedKey, changedKey, currentKey]]
+    )).rows;
+    expect(await readGroups()).toEqual([
+      { dedupe_key: changedKey, status: 'pending', send_at: new Date(retryAt), transport_id: 'smtp', attempt_count: 2, members: [sourceMember] },
+      { dedupe_key: currentKey, status: 'pending', send_at: new Date(retryAt), transport_id: 'smtp', attempt_count: 2, members: [otherMember] },
+    ]);
+    await client.query(
+      `UPDATE waste_fractions SET reminder_config = jsonb_set(
+         reminder_config, '{email,slots,0,default_lead_days}', '3'::jsonb
+       ) WHERE id = $1`,
+      [other]
+    );
+    await createOutboxWorker('2030-01-03T06:10:00.000Z', dispatch)('fixture', {
+      operation: 'process-email-reminder-outbox', materialize: true,
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(await readGroups()).toEqual([
+      { dedupe_key: movedKey, status: 'pending', send_at: new Date(retryAt), transport_id: 'smtp', attempt_count: 2, members: [otherMember] },
+      { dedupe_key: changedKey, status: 'pending', send_at: new Date(retryAt), transport_id: 'smtp', attempt_count: 2, members: [sourceMember] },
+      { dedupe_key: currentKey, status: 'cancelled', send_at: new Date(retryAt), transport_id: 'smtp', attempt_count: 2, members: [otherMember] },
+    ]);
+    await createOutboxWorker(retryAt, dispatch)('fixture', {
+      operation: 'process-email-reminder-outbox', materialize: 'if-reminder-due',
+    });
+    expect(dispatch.mock.calls.map(([{ payload }]) => payload.templatePayload.fractionName).sort()).toEqual([
+      'Other', 'Source',
+    ]);
+    expect((await readGroups()).map((row) => row.status)).toEqual(['sent', 'sent', 'cancelled']);
+  });
+
   it('uses the application principal without direct relation-write privileges', async () => {
     const role = `fraction_app_${randomUUID().replaceAll('-', '')}`;
     await client.query(`CREATE ROLE ${role}; GRANT USAGE ON SCHEMA ${schema} TO ${role};

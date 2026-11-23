@@ -365,7 +365,8 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('leased_at');
     expect(statements[0]?.text).toContain('last_error = NULL');
     expect(statements[1]?.text).toContain("SET last_error = 'dispatch_claimed'");
-    expect(statements[1]?.text).toContain('subscription.expires_at > $2::timestamptz');
+    expect(statements[1]?.text).toContain('FOR UPDATE OF subscription');
+    expect(statements[1]?.text).toContain('subscription.expires_at > GREATEST($2::timestamptz, clock_timestamp())');
     expect(statements[1]?.text).toContain('leased_at = $2::timestamptz');
     expect(statements[2]?.text).toContain("SET status = 'sent'");
     expect(statements[2]?.text).toContain("last_error = 'dispatch_claimed'");
@@ -375,35 +376,18 @@ describe('waste email reminder repository', () => {
     expect(statements[3]?.text).toContain("last_error = 'dispatch_claimed'");
   });
 
-  it('cancels expired DOI mail and purges old pending subscriptions with their cascade records', async () => {
+  it('purges expired pending subscriptions with their cascade records at the link boundary', async () => {
     const { executor, statements, queuedResults } = createExecutor();
-    queuedResults.push({ rowCount: 2, rows: [] }, { rowCount: 1, rows: [] });
+    queuedResults.push({ rowCount: 1, rows: [{ expiredDoiCount: 2, expiredPendingCount: 1 }] });
     const repository = createWasteEmailReminderRepository(executor);
+    await expect(repository.deleteExpiredPendingSubscriptions({
+      now: '2026-06-20T06:00:00.000Z',
+    })).resolves.toEqual({ expiredDoiCount: 2, expiredPendingCount: 1 });
 
-    await expect(
-      repository.cancelExpiredDoiOutboxEntries({
-        now: '2026-06-20T06:00:00.000Z',
-      })
-    ).resolves.toBe(2);
-    await expect(
-      repository.deleteExpiredPendingSubscriptions({
-        now: '2026-06-20T06:00:00.000Z',
-        pendingSubscriptionTtlHours: 72,
-      })
-    ).resolves.toBe(1);
-
-    expect(statements[0]?.text).toContain("outbox.message_kind = 'doi'");
-    expect(statements[0]?.text).toContain('subscription.expires_at <= $1::timestamptz');
-    expect(statements[1]?.text).toContain("subscription.status = 'pending'");
-    expect(statements[1]?.text).toContain("INTERVAL '1 hour'");
-    expect(statements[1]?.text).toContain('NOT EXISTS (');
-    expect(statements[1]?.text).toContain('outbox.subscription_id = subscription.id');
-    expect(statements[1]?.text).toContain("outbox.message_kind = 'doi'");
-    expect(statements[1]?.text).toContain("outbox.status = 'processing'");
-    expect(statements[1]?.text).toContain(
-      "outbox.leased_at > $1::timestamptz - INTERVAL '15 minutes'"
-    );
-    expect(statements[1]?.values).toEqual(['2026-06-20T06:00:00.000Z', 72]);
+    expect(statements[0]?.text).toContain("status = 'pending' AND expires_at <= LEAST($1::timestamptz, clock_timestamp())");
+    expect(statements[0]?.text).toContain('FOR UPDATE SKIP LOCKED');
+    expect(statements[0]?.text).toContain('DELETE FROM waste_email_reminder_subscriptions');
+    expect(statements[0]?.values).toEqual(['2026-06-20T06:00:00.000Z']);
   });
 
   it('checks for due reminder mail using the outbox status and send time', async () => {
@@ -418,7 +402,10 @@ describe('waste email reminder repository', () => {
     ).resolves.toBe(true);
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending' AND send_at <= $1::timestamptz");
-    expect(statements[0]?.text).toContain("status = 'processing' AND leased_at <=");
+    expect(statements[0]?.text).toContain(
+      "last_error = 'mail_transport_not_available:' || transport_id"
+    );
+    expect(statements[0]?.text).not.toContain("status = 'processing'");
   });
 
   it('cancels reminder outbox entries that are no longer materialized', async () => {
@@ -434,9 +421,11 @@ describe('waste email reminder repository', () => {
     ).resolves.toBe(2);
 
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
-    expect(statements[0]?.text).toContain("status IN ('pending', 'processing')");
-    expect(statements[0]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
-    expect(statements[0]?.text).toContain("leased_at <= $2::timestamptz - INTERVAL '15 minutes'");
+    expect(statements[0]?.text).toContain("status = 'pending'");
+    expect(statements[0]?.text).toContain(
+      "last_error = 'mail_transport_not_available:' || transport_id"
+    );
+    expect(statements[0]?.text).not.toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
     expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);
   });
@@ -454,6 +443,7 @@ describe('waste email reminder repository', () => {
         },
       ],
     });
+    queuedResults.push({ rowCount: 1, rows: [{ id: 'activated' }] });
     const repository = createWasteEmailReminderRepository(executor);
 
     await expect(
@@ -469,7 +459,9 @@ describe('waste email reminder repository', () => {
 
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('WHERE doi_token_hash = $1');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
     expect(statements[1]?.text).toContain("SET status = 'active'");
+    expect(statements[1]?.text).toContain('expires_at > GREATEST');
   });
 
   it('returns expired for an outdated pending DOI token hash', async () => {
@@ -496,7 +488,7 @@ describe('waste email reminder repository', () => {
       status: 'expired',
     });
 
-    expect(statements).toHaveLength(1);
+    expect(statements).toHaveLength(2);
   });
 
   it('returns invalid or already_active for non-activatable DOI token hashes', async () => {
@@ -590,16 +582,16 @@ describe('waste email reminder repository', () => {
     ).resolves.toEqual({
       status: 'unsubscribed',
       subscriptionId: '11111111-1111-4111-8111-111111111111',
-      locationLabel: 'Perleberg, Ackerstr. 12',
+      locationLabel: '',
     });
 
-    expect(statements).toHaveLength(3);
+    expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('WHERE unsubscribe_token_hash = $1');
     expect(statements[1]?.text).toContain("SET status = 'unsubscribed'");
-    expect(statements[2]?.text).toContain("message_kind = 'reminder'");
-    expect(statements[2]?.text).toContain("SET status = 'cancelled'");
-    expect(statements[2]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
-    expect(statements[2]?.text).toContain("leased_at <= $2::timestamptz - INTERVAL '15 minutes'");
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[1]?.text).toContain('email = NULL');
+    expect(statements[1]?.text).toContain('email_hash = NULL');
+    expect(statements[1]?.text).toContain('SET payload = history.payload');
   });
 
   it('returns invalid or already_unsubscribed for non-unsubscribable token hashes', async () => {
@@ -637,10 +629,10 @@ describe('waste email reminder repository', () => {
     ).resolves.toEqual({
       status: 'already_unsubscribed',
       subscriptionId: '11111111-1111-4111-8111-111111111111',
-      locationLabel: 'Perleberg, Ackerstr. 12',
+      locationLabel: '',
     });
 
-    expect(statements).toHaveLength(1);
+    expect(statements).toHaveLength(2);
   });
 
   it('returns invalid for unsubscribe token hashes with unsupported subscription states', async () => {

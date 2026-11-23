@@ -15,6 +15,8 @@ import {
   createPagedItems,
   usePagedRouteSync,
   WastePanelTableBottomBar,
+  WastePanelTableTopBar,
+  type WastePanelTableTopBarProps,
 } from './waste-management.table-frame.js';
 
 type WasteSchedulingShiftsTableProps = {
@@ -37,6 +39,7 @@ type WasteSchedulingShiftsTableProps = {
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly toolbar?: WastePanelTableTopBarProps;
 };
 
 export const WasteSchedulingShiftsTable = ({
@@ -53,6 +56,7 @@ export const WasteSchedulingShiftsTable = ({
   onPageChange,
   onSyncPageChange,
   onPageSizeChange,
+  toolbar,
 }: WasteSchedulingShiftsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [pendingDeleteRows, setPendingDeleteRows] = useState<readonly WasteSchedulingTableEntry[]>(
@@ -86,6 +90,17 @@ export const WasteSchedulingShiftsTable = ({
 
   return (
     <div className="[&>div]:rounded-none [&>div]:border-x-0">
+      <WastePanelTableTopBar
+        {...toolbar}
+        actions={
+          <>
+            {toolbar?.actions}
+            <Button type="button" className="rounded-md" onClick={onOpenCreateShiftDialog}>
+              {pt('scheduling.actions.openCreate')}
+            </Button>
+          </>
+        }
+      />
       <StudioDataTable
         sorting={{ mode: 'disabled' }}
         ariaLabel={pt('scheduling.table.ariaLabel')}
@@ -97,11 +112,6 @@ export const WasteSchedulingShiftsTable = ({
         selectionMode={hasDeletableRows ? 'multiple' : 'none'}
         canSelectRow={(row) => row.canDelete}
         bulkActions={hasDeletableRows ? bulkActions : []}
-        toolbarEnd={
-          <Button type="button" className="rounded-md" onClick={onOpenCreateShiftDialog}>
-            {pt('scheduling.actions.openCreate')}
-          </Button>
-        }
         emptyState={
           <p className="text-sm text-muted-foreground">{pt('scheduling.messages.emptyBody')}</p>
         }

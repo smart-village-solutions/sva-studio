@@ -12,7 +12,8 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));
@@ -153,7 +154,7 @@ describe('waste-management holiday views', () => {
     expect(
       screen.getByText('scheduling.holidayRules.editDescription:{"value":"Pfingstmontag"}')
     ).toBeTruthy();
-    expect(screen.getByText('scheduling.holidayRules.meta:{"value":"2026-05-25 · BB · 2026"}')).toBeTruthy();
+    expect(screen.getByText('scheduling.holidayRules.meta:{"value":"25.05.2026 · BB · 2026"}')).toBeTruthy();
     expect(screen.getByText('holiday-rule-form')).toBeTruthy();
     expect(holidayFormSpy).toHaveBeenCalledWith(
       expect.objectContaining({

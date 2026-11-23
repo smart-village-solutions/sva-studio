@@ -98,6 +98,7 @@ test.describe('waste management plugin', () => {
             data: {
               subscriptions: [subscription],
               total: 1,
+              activeTotal: 3,
               deliveryTotal: selected ? 1 : 0,
               deliveries: selected
                 ? [
@@ -119,6 +120,22 @@ test.describe('waste management plugin', () => {
           },
         });
       });
+      const address = 'Rédaktion@example.invalid';
+      const match = { ...subscription, maskedEmail: 'r******n@e********d' };
+      const searchPath = '/api/v1/waste-management/email-monitoring/search';
+      await page.route(`**${searchPath}`, (route) =>
+        route.fulfill({
+          json: {
+            data: {
+              subscriptions: [match],
+              total: 1,
+              activeTotal: 3,
+              deliveryTotal: 0,
+              deliveries: [],
+            },
+          },
+        })
+      );
       await page.goto('/health/live');
       await establishServerReadableAuthSession(page.context(), page);
       await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
@@ -128,8 +145,12 @@ test.describe('waste management plugin', () => {
         page.getByText('Abo bestätigt', { exact: true }).filter({ visible: true })
       ).toBeVisible();
       await expect(page.getByText('legacy-slot')).toHaveCount(0);
-      await expect(page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })).toBeVisible();
-      await expect(page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(
+        page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(
+        page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath(`monitoring-list-${width}.png`),
         fullPage: true,
@@ -152,10 +173,211 @@ test.describe('waste management plugin', () => {
       await expect(page.getByText(subscription.id, { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Versand schließen' }).click();
       await expect(page.getByRole('heading', { name: 'Abonnements', exact: true })).toBeFocused();
+
+      const urlBeforeSearch = page.url();
+      const searchRequest = page.waitForRequest(
+        (request) => new URL(request.url()).pathname === searchPath
+      );
+      const emailField = page.getByRole('textbox', { name: 'Vollständige E-Mail-Adresse' });
+      await emailField.fill(address);
+      await emailField.press('Enter');
+      const submitted = await searchRequest;
+      expect(submitted.method()).toBe('POST');
+      expect(new URL(submitted.url()).search).toBe('');
+      expect(submitted.postDataJSON()).toEqual({
+        email: address,
+        page: 1,
+        pageSize: 100,
+        deliveryPage: 1,
+      });
+      await expect(
+        page.getByText(match.maskedEmail, { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText('Aktive E-Mail-Abos 3', { exact: true })).toBeVisible();
+      await expect(page.getByRole('combobox', { name: 'Abo-Status' })).toBeDisabled();
+      await expect(page.getByText(address, { exact: true })).toHaveCount(0);
+      await expect(page).toHaveURL(urlBeforeSearch);
+
+      await emailField.clear();
+      await expect(
+        page.getByText(subscription.maskedEmail, { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByRole('combobox', { name: 'Abo-Status' })).toBeEnabled();
     });
   }
 
   test.describe.configure({ timeout: 120_000 });
+  test('reads tour assignments in both directions after switching tabs', async ({ page }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-musterhausen',
+      permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
+    });
+    const timestamps = {
+      createdAt: '2026-05-10T12:00:00.000Z',
+      updatedAt: '2026-05-10T12:00:00.000Z',
+    };
+    const pferdeschwemme = 'location-pferdeschwemme';
+    const otherLocation = 'location-markt';
+    const fixture = await mockWasteFacade(page, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [2026, 2027].map((year) => ({
+        id: `tour-${year}`,
+        name: 'Restmüll',
+        recurrence: 'weekly',
+        wasteFractionIds: [],
+        status: 'published',
+        firstDate: `${year}-01-05`,
+        endDate: `${year}-12-31`,
+        ...timestamps,
+      })),
+      cities: [{ id: 'city-1', name: 'Perleberg', regionId: 'region-1', ...timestamps }],
+      regions: [{ id: 'region-1', name: 'Prignitz', ...timestamps }],
+      streets: ['Pferdeschwemme', 'Markt'].map((name) => ({
+        id: `street-${name.toLowerCase()}`,
+        name,
+        cityId: 'city-1',
+        ...timestamps,
+      })),
+      collectionLocations: [pferdeschwemme, otherLocation].map((id) => ({
+        id,
+        regionId: 'region-1',
+        cityId: 'city-1',
+        streetId: id.replace('location-', 'street-'),
+        active: true,
+        ...timestamps,
+      })),
+      locationTourLinks: [
+        { id: 'link-existing', locationId: otherLocation, tourId: 'tour-2027', ...timestamps },
+      ],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    page.setDefaultTimeout(12_000);
+    await navigateClientSide(
+      page,
+      `/plugins/waste-management?tab=locations&locationsView=edit&collectionLocationId=${pferdeschwemme}&q=Pferde`
+    );
+
+    const locationAssignments = page.getByRole('table', { name: 'Tour-Zuordnungen' });
+    const tourRowCheckbox = (year: number) =>
+      locationAssignments
+        .getByRole('row')
+        .filter({ hasText: String(year) })
+        .getByRole('checkbox');
+    const locationsTab = page.getByRole('tab', { name: 'Abholpunkte', exact: true });
+    const toursTab = page.getByRole('tab', { name: 'Touren', exact: true });
+    const assignmentHeading = page.getByRole('heading', { name: 'Tour-Zuordnung', exact: true });
+    const returnToList = page.getByRole('button', { name: 'Zurück zur Tourenliste', exact: true });
+    const confirmDiscard = page.getByRole('alertdialog', { name: 'Änderungen verwerfen?' });
+    const locationCheckbox = page.getByRole('checkbox', {
+      name: /Abholpunkt .*Pferdeschwemme.* auswählen/,
+    });
+    const assignmentCount = (year: number) =>
+      page.getByTestId(`tour-assignment-count-tour-${year}`);
+    const storedPairs = () =>
+      fixture.locationTourLinks.map(({ locationId, tourId }) => `${locationId}/${tourId}`).sort();
+    const initialPairs = [`${otherLocation}/tour-2027`];
+    const locationSave = page.getByRole('button', { name: 'Zuordnungen speichern', exact: true });
+    const expectLocationSaved = async () =>
+      expect(page.getByText('Die Tour-Zuordnungen wurden aktualisiert.')).toBeVisible();
+
+    await expect(locationAssignments.getByRole('checkbox', { name: /Restmüll/ })).toHaveCount(2);
+    await toursTab.click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('');
+    await page.getByRole('button', { name: 'Filtern', exact: true }).click();
+    const tourFilters = page.getByRole('dialog', { name: 'Touren filtern' });
+    await tourFilters.getByRole('textbox', { name: 'Name' }).fill('Restm');
+    await tourFilters.getByRole('button', { name: 'Anwenden', exact: true }).click();
+    await expect(page).toHaveURL(/q=Restm/);
+    await assignmentCount(2027).click();
+    await expect(assignmentHeading).toBeVisible();
+    await expect(returnToList).toBeFocused();
+    await expect(page).toHaveURL(/toursView=assignments/);
+    await page.getByRole('textbox', { name: 'Suche' }).fill('Pferdeschwemme');
+    await expect(page.getByText('1 außerhalb des Filters ausgewählt')).toBeVisible();
+    await locationCheckbox.check();
+    await returnToList.click();
+    await expect(confirmDiscard).toBeVisible();
+    await confirmDiscard.getByRole('button', { name: 'Weiter bearbeiten' }).click();
+    await expect(confirmDiscard).toBeHidden();
+    await expect(locationCheckbox).toBeChecked();
+    await expect(page.getByRole('textbox', { name: 'Suche' })).toHaveValue('Pferdeschwemme');
+    await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect(page).toHaveURL(/q=Restm/);
+    await expect.poll(storedPairs).toEqual([...initialPairs, `${pferdeschwemme}/tour-2027`]);
+
+    await locationsTab.click();
+    await expect(page).toHaveURL(/q=Pferde/);
+    await expect(page).toHaveURL(/locationsView=edit/);
+    await expect(tourRowCheckbox(2027)).toBeChecked();
+    await expect(tourRowCheckbox(2026)).not.toBeChecked();
+    await tourRowCheckbox(2027).uncheck();
+    await locationSave.click();
+    await expectLocationSaved();
+    await expect.poll(storedPairs).toEqual(initialPairs);
+
+    await toursTab.click();
+    await expect(assignmentCount(2027)).toHaveText('1');
+    await assignmentCount(2027).click();
+    await expect(locationCheckbox).not.toBeChecked();
+    await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+
+    await locationsTab.click();
+    await tourRowCheckbox(2026).check();
+    await locationSave.click();
+    await expectLocationSaved();
+    await expect.poll(storedPairs).toEqual([...initialPairs, `${pferdeschwemme}/tour-2026`]);
+
+    await toursTab.click();
+    await expect(assignmentCount(2026)).toHaveText('1');
+    await assignmentCount(2026).click();
+    await expect(locationCheckbox).toBeChecked();
+    await locationCheckbox.uncheck();
+    await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect.poll(storedPairs).toEqual(initialPairs);
+
+    await locationsTab.click();
+    await expect(tourRowCheckbox(2026)).not.toBeChecked();
+    await expect(tourRowCheckbox(2027)).not.toBeChecked();
+
+    await toursTab.click();
+    const tourRow = page.getByRole('row').filter({ has: assignmentCount(2026) });
+    await tourRow.getByRole('link', { name: 'Restmüll', exact: true }).click();
+    await page.getByRole('button', { name: 'Abholpunkte zuordnen', exact: true }).click();
+    await expect(assignmentHeading).toBeVisible();
+    await expect(page).toHaveURL(/tourId=tour-2026/);
+    await page.setViewportSize({ width: 640, height: 780 });
+    await expect(page.getByRole('textbox', { name: 'Suche' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 780 });
+    await returnToList.focus();
+    await page.keyboard.press('Tab');
+    const search = page.getByRole('textbox', { name: 'Suche' });
+    await expect(search).toBeFocused();
+    await search.fill('Pferdeschwemme');
+    await expect(locationCheckbox).toBeVisible();
+    await locationCheckbox.focus();
+    await page.keyboard.press('Space');
+    await expect(locationCheckbox).toBeChecked();
+    await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    await expect(confirmDiscard).toBeVisible();
+    await confirmDiscard.getByRole('button', { name: 'Verwerfen und zurück' }).click();
+    await expect(assignmentHeading).toBeHidden();
+    await expect(page).toHaveURL(/q=Restm/);
+    await expect.poll(storedPairs).toEqual(initialPairs);
+  });
+
   test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
     page,
   }) => {
@@ -258,6 +480,65 @@ test.describe('waste management plugin', () => {
     await expect(dialog.getByText('Keine berechneten Termine in diesem Monat.')).toHaveCount(0);
   });
 
+  test('opens separate assignment and date-shift tabs from the same tour', async ({
+    context,
+    page,
+  }) => {
+    await mockSharedShellRequests(context, {
+      instanceId: 'de-musterhausen',
+      permissionActions: [
+        'waste-management.read',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ],
+    });
+    await mockWasteFacade(context, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: [],
+          recurrence: 'weekly',
+          firstDate: '2026-05-12',
+          status: 'published',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(context, page);
+    await openWastePlugin(page);
+    await navigateClientSide(page, '/plugins/waste-management?tab=tours&toursView=edit&tourId=tour-1');
+
+    for (const [linkLabel, tabLabel, tabParam] of [
+      ['Tour-Einsätze', 'Tour-Einsätze', 'tourAssignments'],
+      ['Tourbezogene Ausweichtermine', 'Ausweichtermine', 'scheduling'],
+    ]) {
+      const popupPromise = page.waitForEvent('popup');
+      await page.getByRole('link', { name: new RegExp(`^${linkLabel}`) }).click();
+      const popup = await popupPromise;
+      await expect(popup.getByRole('tab', { name: tabLabel, exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      const params = new URL(popup.url()).searchParams;
+      expect(params.get('tab')).toBe(tabParam);
+      expect(params.get('tourId')).toBe('tour-1');
+      await popup.close();
+    }
+    await expect(page).toHaveURL(/toursView=edit/u);
+  });
+
   test('opens contextual tour-shift creation in a new tab without losing the tour workflow', async ({
     context,
     page,
@@ -296,6 +577,8 @@ test.describe('waste management plugin', () => {
       ],
     });
 
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(context, page);
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
@@ -310,7 +593,6 @@ test.describe('waste management plugin', () => {
     await expect(createShiftLink).toHaveAttribute('rel', 'noopener noreferrer');
 
     const sourceUrl = page.url();
-    await establishServerReadableAuthSession(context, page);
     const popupPromise = page.waitForEvent('popup');
     await createShiftLink.click();
     const popup = await popupPromise;
@@ -703,30 +985,30 @@ test.describe('waste management plugin', () => {
     await captureStudioDesignState(page, 'waste-custom-date-picker', '[role=dialog]');
     await page.getByRole('button', { name: 'Auswahl übernehmen', exact: true }).click();
     await page.getByRole('button', { name: 'Termin bearbeiten', exact: true }).click();
-    await page.getByRole('button', { name: 'Abholort zuweisen', exact: true }).click();
-    const locationTrigger = page.getByRole('button', { name: 'Abholort', exact: true });
+    await page.getByRole('button', { name: 'Abholpunkt zuweisen', exact: true }).click();
+    const locationTrigger = page.getByRole('button', { name: 'Abholpunkt', exact: true });
     await locationTrigger.press('Enter');
-    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).fill('Markt');
+    await page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true }).fill('Markt');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(locationTrigger).toBeFocused();
     await expect(locationTrigger).toContainText('Markt');
     await locationTrigger.press('Enter');
-    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).press('Tab');
+    await page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true }).press('Tab');
     const clearLocation = page.getByRole('button', {
-      name: 'Abholortauswahl aufheben',
+      name: 'Abholpunktauswahl aufheben',
       exact: true,
     });
     await expect(clearLocation).toBeFocused();
     await clearLocation.press('Tab');
     await expect(page.getByRole('textbox', { name: 'Hinweis', exact: true })).toBeFocused();
-    await expect(page.getByRole('combobox', { name: 'Abholort suchen', exact: true })).toHaveCount(
+    await expect(page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })).toHaveCount(
       0
     );
     await locationTrigger.press('Enter');
     await captureStudioDesignState(page, 'waste-location-search', 'main, [role=dialog]');
     await expect(
-      page.getByRole('combobox', { name: 'Abholort suchen', exact: true })
+      page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })
     ).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(locationTrigger).toBeFocused();

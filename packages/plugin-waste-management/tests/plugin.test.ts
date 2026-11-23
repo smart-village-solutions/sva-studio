@@ -48,9 +48,14 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares each existing Waste method and path once as a server handler', () => {
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
-    expect(descriptors).toHaveLength(69);
-    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(52);
-    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(69);
+    expect(descriptors).toHaveLength(70);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(53);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(70);
+    expect(descriptors).toContainEqual(expect.objectContaining({
+      path: '/api/v1/waste-management/email-monitoring/search',
+      method: 'POST',
+      actionId: 'waste-management.email-reminder-monitoring.read',
+    }));
     expect(descriptors).toContainEqual(expect.objectContaining({
       path: '/api/v1/waste-management/fractions/impact-preview', method: 'POST',
       actionId: 'waste-management.master-data.manage',
@@ -222,7 +227,7 @@ describe('pluginWasteManagement contract', () => {
       schedulingView: 'list',
       q: '',
       page: 2,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -267,7 +272,7 @@ describe('pluginWasteManagement contract', () => {
       schedulingView: 'list',
       q: '',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       fractionsStatus: 'all',
       status: 'all',
       tourStatus: 'all',
@@ -327,7 +332,7 @@ describe('pluginWasteManagement contract', () => {
       {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
-        displayName: 'Geografie und Abholorte',
+        displayName: 'Geografie und Abholpunkte',
         sourceFormats: [
           'text/csv',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

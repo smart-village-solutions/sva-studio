@@ -14,5 +14,5 @@ export const createWasteToursMutationHandlers = ({
   readonly loadOverview: (active?: boolean) => Promise<void>;
 }) => ({
   ...createWasteToursTourMutationHandlers({ state, pt, loadOverview }),
-  ...createWasteToursAssignmentMutationHandlers({ state, pt, loadOverview }),
+  ...createWasteToursAssignmentMutationHandlers({ state, pt }),
 });

@@ -5,9 +5,9 @@ export const wasteEmailMonitoringTranslationsDE = {
     description:
       'Hier sehen Sie Anmeldungen für Abfuhrerinnerungen und den aktuellen Stand der zugehörigen E-Mails.',
     privacy:
-      'Zum Datenschutz sind Teile der E-Mail-Adressen mit Sternchen verdeckt. Vollständige Adressen und E-Mail-Inhalte werden nicht angezeigt.',
+      'In der Ergebnisliste sind Teile der E-Mail-Adressen mit Sternchen verdeckt. E-Mail-Inhalte werden nicht angezeigt.',
     deliveryNotice:
-      '„An E-Mail-Dienst übergeben“ bedeutet: Der Versanddienst hat die Nachricht angenommen. Ob sie im Postfach angekommen ist, ist hier nicht erkennbar. Die Liste zeigt den zuletzt gespeicherten Stand.',
+      '„Vom Versanddienst angenommen“ bedeutet, dass der Versanddienst die Nachricht zur Zustellung angenommen hat. Ob sie im Postfach angekommen ist, ist hier nicht erkennbar. Die Liste zeigt den zuletzt gespeicherten Stand.',
     empty: 'Keine Abonnements für diese Auswahl.',
     emptyDeliveries: 'Keine gespeicherten Nachrichten für dieses Abo.',
     loading: 'Auswertung wird geladen …',
@@ -15,8 +15,15 @@ export const wasteEmailMonitoringTranslationsDE = {
     forbidden: 'Für diese Auswertung ist das gesonderte Leserecht erforderlich.',
     refresh: 'Aktualisieren',
     statusFilter: 'Abo-Status',
+    emailSearch: {
+      label: 'Vollständige E-Mail-Adresse',
+      submit: 'Aktive Abos suchen',
+      applied: 'E-Mail-Suche aktiv',
+      invalid: 'Geben Sie eine vollständige E-Mail-Adresse ein.',
+    },
     all: 'Alle Status',
     subscriptions: 'Abonnements',
+    activeSubscriptions: 'Aktive E-Mail-Abos {{count}}',
     deliveries: 'Nachrichten zum Abo',
     select: 'Versand ansehen',
     close: 'Versand schließen',
@@ -40,11 +47,14 @@ export const wasteEmailMonitoringTranslationsDE = {
     fraction: 'Fraktion / Abholtermin',
     failure: 'Fehlerkategorie',
     emailDelivery: 'E-Mail-Versand',
+    doiStatus: 'Versandstatus der Bestätigungsmail',
+    noDoiEmail: 'Keine Bestätigungsmail verzeichnet',
     lastSentEmail: 'Zuletzt versendet',
     nextEmail: 'Als Nächstes vorgemerkt',
     noSentEmail: 'Kein Versand verzeichnet',
     noNextEmail: 'Keine weitere E-Mail vorgemerkt',
-    deliverySummaryNotice: 'Die Zeiten zeigen den gespeicherten Stand der Versandbearbeitung. „Versendet“ bestätigt die Annahme durch den E-Mail-Dienst, nicht den Empfang im Postfach. Weitere E-Mails erscheinen hier, sobald sie vorgemerkt sind.',
+    deliverySummaryNotice:
+      'Die Zeiten zeigen den gespeicherten Stand der Versandbearbeitung. „Versendet“ bestätigt die Annahme durch den E-Mail-Dienst, nicht den Empfang im Postfach. Weitere E-Mails erscheinen hier, sobald sie vorgemerkt sind.',
     actions: 'Aktionen',
     deliveryStatus: 'Versandstatus',
     dates: 'Zeitangaben',
@@ -80,7 +90,7 @@ export const wasteEmailMonitoringTranslationsDE = {
     deliveryStates: {
       pending: 'Versand ausstehend',
       processing: 'Versand wird vorbereitet',
-      sent: 'An E-Mail-Dienst übergeben',
+      sent: 'Vom Versanddienst angenommen',
       failed: 'Fehlgeschlagen',
       cancelled: 'Versand gestoppt',
     },
@@ -94,6 +104,8 @@ export const wasteEmailMonitoringTranslationsDE = {
       cancelled: 'Diese Nachricht ist nicht mehr für den Versand vorgesehen.',
       dispatch_failed:
         'Beim Versand ist ein Problem aufgetreten. Bitte an die technische Betreuung wenden.',
+      outcome_unknown:
+        'Es ist unklar, ob der Versanddienst die Nachricht angenommen hat. Die technische Betreuung kann den Versandstatus beim Dienst prüfen.',
     },
   },
 } as const;

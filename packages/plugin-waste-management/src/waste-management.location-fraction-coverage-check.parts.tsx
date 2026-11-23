@@ -1,79 +1,24 @@
-import type { WasteCollectionLocationRecord } from '@sva/waste-management-contracts';
+import type {
+  WasteCityRecord,
+  WasteCollectionLocationRecord,
+  WasteRegionRecord,
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
-import { IconEdit, IconRoute } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
+import { Button, cn } from '@sva/studio-ui-react';
+import { IconRoute } from '@tabler/icons-react';
 
 import type { WasteLocationFractionCoverageIssue } from './waste-management.location-fraction-coverage.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import { toWasteCollectionLocationEditSearch } from './waste-management.cross-link.navigation.js';
+import {
+  CoverageIssueItem,
+  CoverageLocalities,
+} from './waste-management.location-fraction-coverage-check.items.js';
 
 export type CoverageResult = Readonly<{
   issues: readonly WasteLocationFractionCoverageIssue[];
   checkedLocationCount: number;
   includeDrafts: boolean;
 }>;
-
-const formatDate = (date: string): string => {
-  const [year, month, day] = date.split('-');
-  return `${day}.${month}.${year}`;
-};
-
-const CoverageIssueItem = ({
-  issue,
-  location,
-  search,
-  onEdit,
-  getLocationLabel,
-}: Readonly<{
-  issue: WasteLocationFractionCoverageIssue;
-  location: WasteCollectionLocationRecord;
-  search?: WasteManagementSearchParams;
-  onEdit: (location: WasteCollectionLocationRecord) => void;
-  getLocationLabel: (location: WasteCollectionLocationRecord) => string;
-}>) => {
-  const pt = usePluginTranslation('wasteManagement');
-  return (
-    <li className="flex flex-col gap-2 rounded-md border border-border-subtle bg-card p-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="space-y-1">
-        <p className="font-medium text-foreground">{getLocationLabel(location)}</p>
-        {issue.kind === 'incomplete' ? (
-          <ul className="space-y-1 text-sm text-muted-foreground">
-            {issue.gaps.map((gap) => (
-              <li key={`${gap.startDate}:${gap.endDate}`}>
-                {pt('masterData.locationsWorkspace.coverage.gap', {
-                  startDate: formatDate(gap.startDate),
-                  endDate: formatDate(gap.endDate),
-                })}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-      <Button
-        asChild={Boolean(search)}
-        variant="secondary"
-        size="sm"
-        {...(!search ? { onClick: () => onEdit(location) } : {})}
-      >
-        {search ? (
-          <Link
-            to="/plugins/waste-management"
-            search={toWasteCollectionLocationEditSearch(search, location.id)}
-          >
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
-            {pt('masterData.locationsWorkspace.coverage.edit')}
-          </Link>
-        ) : (
-          <>
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
-            {pt('masterData.locationsWorkspace.coverage.edit')}
-          </>
-        )}
-      </Button>
-    </li>
-  );
-};
 
 const CoverageIssueSection = ({
   id,
@@ -115,9 +60,57 @@ const CoverageIssueSection = ({
     </section>
   ) : null;
 
+const CoverageSummary = ({
+  result,
+  missingCount,
+  incompleteCount,
+  onAssign,
+}: {
+  result: CoverageResult;
+  missingCount: number;
+  incompleteCount: number;
+  onAssign: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const hasCheckedLocations = result.checkedLocationCount > 0;
+  return result.issues.length === 0 ? (
+    <p
+      aria-live="polite"
+      className={cn(
+        'rounded-md border p-3 text-sm text-foreground',
+        hasCheckedLocations ? 'border-success/30 bg-success/5' : 'border-border-subtle bg-card'
+      )}
+    >
+      {hasCheckedLocations
+        ? pt('masterData.locationsWorkspace.coverage.complete', {
+            value: result.checkedLocationCount,
+          })
+        : pt('masterData.locationsWorkspace.coverage.noActiveLocations')}
+    </p>
+  ) : (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 p-3">
+      <p className="text-sm text-foreground" aria-live="polite">
+        {pt('masterData.locationsWorkspace.coverage.summary', {
+          checked: result.checkedLocationCount,
+          missing: missingCount,
+          incomplete: incompleteCount,
+        })}
+      </p>
+      <Button type="button" variant="secondary" onClick={onAssign}>
+        <IconRoute aria-hidden="true" className="h-4 w-4" />
+        {pt('masterData.locationsWorkspace.coverage.selectAndAssign', {
+          value: result.issues.length,
+        })}
+      </Button>
+    </div>
+  );
+};
+
 export const CoverageResults = ({
   result,
   locationsById,
+  cities = [],
+  regions = [],
   search,
   onAssign,
   onEdit,
@@ -125,6 +118,8 @@ export const CoverageResults = ({
 }: Readonly<{
   result: CoverageResult;
   locationsById: ReadonlyMap<string, WasteCollectionLocationRecord>;
+  cities?: readonly WasteCityRecord[];
+  regions?: readonly WasteRegionRecord[];
   search?: WasteManagementSearchParams;
   onAssign: () => void;
   onEdit: (location: WasteCollectionLocationRecord) => void;
@@ -133,39 +128,34 @@ export const CoverageResults = ({
   const pt = usePluginTranslation('wasteManagement');
   const missing = result.issues.filter((issue) => issue.kind === 'missing');
   const incomplete = result.issues.filter((issue) => issue.kind === 'incomplete');
-  if (result.issues.length === 0) {
-    return (
-      <p
-        className="mt-4 rounded-md border border-success/30 bg-success/5 p-3 text-sm text-foreground"
-        aria-live="polite"
-      >
-        {pt('masterData.locationsWorkspace.coverage.complete', {
-          value: result.checkedLocationCount,
-        })}
-      </p>
-    );
-  }
+  const cityIds = new Set(cities.map((city) => city.id));
+  const ungroupedMissing = missing.filter((issue) => {
+    const location = locationsById.get(issue.locationId);
+    return location && !cityIds.has(location.cityId);
+  });
   return (
-    <div className="mt-4 space-y-4" aria-live="polite">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 p-3">
-        <p className="text-sm text-foreground">
-          {pt('masterData.locationsWorkspace.coverage.summary', {
-            checked: result.checkedLocationCount,
-            missing: missing.length,
-            incomplete: incomplete.length,
-          })}
-        </p>
-        <Button type="button" variant="secondary" onClick={onAssign}>
-          <IconRoute aria-hidden="true" className="h-4 w-4" />
-          {pt('masterData.locationsWorkspace.coverage.selectAndAssign', {
-            value: result.issues.length,
-          })}
-        </Button>
-      </div>
+    <div className="mt-4 space-y-4">
+      <CoverageSummary
+        result={result}
+        missingCount={missing.length}
+        incompleteCount={incomplete.length}
+        onAssign={onAssign}
+      />
+      {cities.length > 0 ? (
+        <CoverageLocalities
+          cities={cities}
+          regions={regions}
+          locationsById={locationsById}
+          missing={missing}
+          search={search}
+          onEdit={onEdit}
+          getLocationLabel={getLocationLabel}
+        />
+      ) : null}
       <CoverageIssueSection
         id="waste-location-coverage-missing"
         title={pt('masterData.locationsWorkspace.coverage.missing')}
-        issues={missing}
+        issues={ungroupedMissing}
         locationsById={locationsById}
         search={search}
         onEdit={onEdit}

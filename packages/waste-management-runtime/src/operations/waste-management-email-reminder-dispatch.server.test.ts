@@ -3,17 +3,23 @@ import { describe, expect, it } from 'vitest';
 import type { MailDispatchPayload, MailTransportConfig } from '@sva/core';
 import type {
   WasteCollectionLocationRecord,
+  WasteFractionRecord,
   WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
 
 import {
-  addDaysUtc,
   buildDispatchMessage,
   buildReminderDispatchPayload,
+} from './waste-management-email-reminder-dispatch.server';
+import {
+  addDaysUtc,
   createUtcIsoAtHour,
+  groupReminderMembers,
   matchSelectionLocations,
   parseIsoDateUtc,
-} from './waste-management-email-reminder-dispatch.server';
+  reminderMemberDedupeKey,
+  selectUnreservedReminderGroups,
+} from './waste-management-email-reminder-planning';
 
 const createReminderConfig = (
   overrides: Partial<WasteManagementEmailReminderConfig> = {}
@@ -141,6 +147,24 @@ const createDoiPayload = (overrides: Partial<MailDispatchPayload> = {}): MailDis
   ...overrides,
 });
 
+const paperFraction: WasteFractionRecord = {
+  id: 'fraction-paper',
+  name: 'Papier',
+  pdfShortLabel: 'PAP',
+  translations: { de: 'Papier' },
+  containerSize: undefined,
+  color: '#0000ff',
+  description: undefined,
+  active: true,
+  reminderConfig: {
+    reminderCount: 'once',
+    channels: { push: false, email: true, calendar: false },
+    email: { slots: [{ id: 'paper:first', defaultLeadDays: 1, maxLeadDays: 3 }] },
+  },
+  createdAt: '',
+  updatedAt: '',
+};
+
 describe('waste email reminder dispatch helpers', () => {
   it('builds UTC dates and rejects invalid pickup dates', () => {
     expect(createUtcIsoAtHour(new Date('2026-06-15T12:30:00.000Z'), 6)).toBe(
@@ -240,43 +264,183 @@ describe('waste email reminder dispatch helpers', () => {
       subscriptionId: 'subscription-1',
       email: 'max@example.org',
       locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
-      fraction: {
-        id: 'fraction-paper',
-        name: 'Papier',
-        pdfShortLabel: 'PAP',
-        translations: { de: 'Papier' },
-        containerSize: undefined,
-        color: '#0000ff',
-        description: undefined,
-        active: true,
-        reminderConfig: {
-          reminderCount: 'once',
-          channels: { push: false, email: true, calendar: false },
-          email: { slots: [{ id: 'paper:first', defaultLeadDays: 1, maxLeadDays: 3 }] },
-        },
-        createdAt: '',
-        updatedAt: '',
-      },
       pickupDate: '2026-06-16',
-      hints: [
-        '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
-        '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
-        '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
-      ],
+      originalSendAt: '2026-06-15T06:00:00.000Z',
+      members: [{
+        fraction: paperFraction,
+        slotId: 'paper:first',
+        hints: [
+          '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+          '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
+          '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+        ],
+      }],
       unsubscribeTokenHash: 'sha256:unsubscribe',
       unsubscribeTokenSecret: 'secret',
     });
 
     expect(payload.addresses).toEqual([{ kind: 'to', email: 'max@example.org' }]);
     expect(payload.templatePayload).not.toHaveProperty('serviceLabel');
-    expect(payload.templatePayload.locationLabel).toBe('Gumtow, alle Straßen und Hausnummern');
-    expect(payload.templatePayload.subject).toContain('Gumtow, alle Straßen und Hausnummern');
-    expect(payload.templatePayload.hintText).toBe(
-      ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n')
-    );
+    expect(payload.templatePayload.locationLabel).toBe('Gumtow');
+    expect(payload.templatePayload.subject).toBe('Abfalltermine fuer Gumtow');
+    expect(JSON.parse(payload.templatePayload.reminderAppointments)).toEqual([{
+      fractionName: paperFraction.name,
+      hintText: ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n'),
+    }]);
     expect(payload.templatePayload.unsubscribeUrl).toContain(
       'https://demo.abfallkalender.example/erinnerungen/abmelden?token='
     );
+  });
+
+  it('groups only identical subscription, effective pickup date and original send time', () => {
+    const base = {
+      subscriptionId: 'subscription-1',
+      pickupDate: '2027-01-04',
+      originalSendAt: '2027-01-03T06:00:00.000Z',
+      slotId: 'slot:first',
+      fraction: paperFraction,
+    };
+    const groups = groupReminderMembers([
+      base,
+      { ...base, slotId: 'slot:second' },
+      { ...base, fraction: { id: 'residual', name: 'Hausmüll' } },
+      { ...base, originalSendAt: '2027-01-02T06:00:00.000Z' },
+      { ...base, pickupDate: '2027-01-05' },
+      { ...base, subscriptionId: 'subscription-2' },
+    ]);
+    expect(groups).toHaveLength(4);
+    expect(groups[0]).toMatchObject({
+      dedupeKey: 'reminder-group:subscription-1:2027-01-04:2027-01-03T06:00:00.000Z',
+      originalSendAt: base.originalSendAt,
+      members: [
+        { fraction: paperFraction, slotId: 'slot:first' },
+        { fraction: paperFraction, slotId: 'slot:second' },
+        { fraction: { id: 'residual' }, slotId: 'slot:first' },
+      ],
+    });
+  });
+
+  it('keeps sent and started members out of a new group and freezes started groups', () => {
+    const delivery = {
+      subscriptionId: 'subscription-1',
+      pickupDate: '2027-01-04',
+      originalSendAt: '2027-01-03T06:00:00.000Z',
+    };
+    const paper = { slotId: 'slot:first', fraction: paperFraction };
+    const residual = { slotId: 'slot:first', fraction: { id: 'residual', name: 'Hausmüll' } };
+    const bio = { slotId: 'slot:first', fraction: { id: 'bio', name: 'Bioabfall' } };
+    const [group] = groupReminderMembers(
+      [paper, residual, bio].map((member) => ({ ...delivery, ...member }))
+    );
+    expect(group).toBeDefined();
+    if (!group) return;
+    const memberKey = (member: typeof paper | typeof residual | typeof bio) =>
+      reminderMemberDedupeKey(delivery.subscriptionId, delivery.pickupDate, member);
+    expect(
+      selectUnreservedReminderGroups(
+        [group],
+        [
+          { dedupeKey: memberKey(paper), status: 'sent', attemptCount: 1 },
+          { dedupeKey: memberKey(residual), status: 'processing', attemptCount: 1 },
+          { dedupeKey: memberKey(bio), status: 'pending', attemptCount: 0 },
+        ]
+      )
+    ).toEqual([{ ...group, members: [bio] }]);
+    expect(
+      selectUnreservedReminderGroups(
+        [group],
+        [
+          {
+            dedupeKey: group.dedupeKey,
+            status: 'failed',
+            attemptCount: 1,
+            memberKeys: [memberKey(paper)],
+          },
+        ]
+      )
+    ).toEqual([]);
+    expect(
+      selectUnreservedReminderGroups(
+        [group],
+        [
+          {
+            dedupeKey: 'earlier-group',
+            status: 'pending',
+            attemptCount: 1,
+            memberKeys: [memberKey(bio)],
+          },
+        ]
+      )
+    ).toEqual([{ ...group, members: [paper, residual] }]);
+  });
+
+  it('renders all fractions and their own hints from a persisted group payload', () => {
+    const config = createReminderConfig({
+      reminderSubjectTemplate: 'Abholung {{fractionName}}',
+      reminderIntroTemplate: 'Am {{pickupDate}} werden {{fractionName}} abgeholt.',
+    });
+    const payload = buildReminderDispatchPayload({
+      config,
+      subscriptionId: 'subscription-1',
+      email: 'max@example.org',
+      locationLabel: 'Gumtow',
+      originalSendAt: '2027-01-03T06:00:00.000Z',
+      pickupDate: '2027-01-04',
+      members: [
+        { fraction: paperFraction, slotId: 'slot:first', hints: ['<p>Papier bündeln.</p>'] },
+        { fraction: paperFraction, slotId: 'slot:second', hints: ['<p>Papier bündeln.</p>'] },
+        {
+          fraction: { id: 'residual', name: 'Hausmüll' },
+          slotId: 'slot:first',
+          hints: ['Behälter bereitstellen.'],
+        },
+      ],
+      unsubscribeTokenHash: 'sha256:unsubscribe',
+      unsubscribeTokenSecret: 'secret',
+    });
+    expect(payload.metadata).toMatchObject({
+      originalSendAt: '2027-01-03T06:00:00.000Z',
+      pickupDate: '2027-01-04',
+      reminderMemberKeys: JSON.stringify(
+        [
+          `reminder:subscription-1:${paperFraction.id}:slot:first:2027-01-04`,
+          `reminder:subscription-1:${paperFraction.id}:slot:second:2027-01-04`,
+          'reminder:subscription-1:residual:slot:first:2027-01-04',
+        ].sort()
+      ),
+    });
+    const names = `Hausmüll, ${paperFraction.name}`;
+    expect(payload.templatePayload.fractionName).toBe(names);
+    const storedPayload = JSON.parse(JSON.stringify(payload)) as MailDispatchPayload;
+    const message = buildDispatchMessage({
+      config,
+      transport: createTransport(),
+      payload: storedPayload,
+    });
+    expect(message.subject).toBe(`Abholung ${names}`);
+    expect(message.text).toContain(
+      [
+        `- Hausmüll (${payload.templatePayload.pickupDate})`,
+        '  Behälter bereitstellen.',
+        `- ${paperFraction.name} (${payload.templatePayload.pickupDate})`,
+        '  Papier bündeln.',
+      ].join('\n')
+    );
+    expect(message.text.split(payload.templatePayload.unsubscribeUrl)).toHaveLength(2);
+  });
+
+  it('rejects malformed group content before rendering a dispatch message', () => {
+    const payload = createReminderPayload();
+    expect(() =>
+      buildDispatchMessage({
+        config: createReminderConfig(),
+        transport: createTransport(),
+        payload: {
+          ...payload,
+          templatePayload: { ...payload.templatePayload, reminderAppointments: '[{}]' },
+        },
+      })
+    ).toThrow('invalid_reminder_appointments');
   });
 
   it('builds reminder dispatch messages with cc, bcc and transport-level reply-to fallbacks', () => {
@@ -465,20 +629,78 @@ describe('waste email reminder dispatch helpers', () => {
     });
   });
 
-  it('uses a readable catch-all address in DOI subject, text, and location', () => {
-    const message = buildDispatchMessage({
-      config: createReminderConfig(),
-      transport: createTransport(),
+  it.each([
+    ['Gumtow, Alle Straßen', 'Gumtow'],
+    ['Gumtow, Alle Straßen Alle Hausnummern', 'Gumtow'],
+    ['Gumtow, alle Straßen und Hausnummern', 'Gumtow'],
+    ['Perleberg, Pferdeschwemme Alle Hausnummern', 'Perleberg, Pferdeschwemme'],
+    [' Perleberg , Pferdeschwemme , Alle Hausnummern ', 'Perleberg, Pferdeschwemme'],
+    ['Perleberg, Pferdeschwemme 2', 'Perleberg, Pferdeschwemme 2'],
+    ['Perleberg, Pferdeschwemme 2-8', 'Perleberg, Pferdeschwemme 2-8'],
+  ])('shortens %s in both rendered mail types', (locationLabel, expected) => {
+    const config = createReminderConfig({
+      reminderIntroTemplate: 'Adresse: {{locationLabel}}.',
+      reminderReasonText: 'Erinnerung für {{locationLabel}}.',
+    });
+    const transport = createTransport();
+    const doi = buildDispatchMessage({
+      config,
+      transport,
       payload: createDoiPayload({
         templatePayload: {
           ...createDoiPayload().templatePayload,
-          locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
+          locationLabel,
         },
       }),
     });
+    const reminderPayload = buildReminderDispatchPayload({
+      config,
+      subscriptionId: 'subscription-1',
+      email: 'recipient@invalid.example',
+      locationLabel,
+      pickupDate: '2026-06-16',
+      originalSendAt: '2026-06-15T06:00:00.000Z',
+      members: [{ fraction: paperFraction, slotId: 'paper:first' }],
+      unsubscribeTokenHash: 'sha256:unsubscribe',
+      unsubscribeTokenSecret: 'secret',
+    });
+    const reminder = buildDispatchMessage({ config, transport, payload: reminderPayload });
 
-    expect(message.subject).toContain('Gumtow, alle Straßen und Hausnummern');
-    expect(message.text).toContain('Ort: Gumtow, alle Straßen und Hausnummern');
+    expect(doi.subject).toBe(`Bitte Anmeldung fuer ${expected} bestaetigen`);
+    expect(doi.text).toContain(`Bitte bestaetigen Sie Ihre Anmeldung fuer ${expected}.`);
+    expect(doi.text).toContain(`Ort: ${expected}\n`);
+    expect(reminderPayload.templatePayload.locationLabel).toBe(expected);
+    expect(reminder.subject).toBe(`Abfalltermine fuer ${expected}`);
+    expect(reminder.text).toContain(`Adresse: ${expected}.`);
+    expect(reminder.text).toContain(`Erinnerung für ${expected}.`);
+  });
+
+  it.each([
+    ['Gumtow, alle Straßen und Hausnummern', 'Gumtow'],
+    ['Perleberg, Pferdeschwemme Alle Hausnummern', 'Perleberg, Pferdeschwemme'],
+  ])('updates %s in an already rendered reminder', (locationLabel, expected) => {
+    const payload = createReminderPayload({
+      templatePayload: {
+        ...createReminderPayload().templatePayload,
+        locationLabel,
+        subject: `Archivierter Betreff: ${locationLabel}`,
+        introText: `Archivierte Einleitung für ${locationLabel}.`,
+        listIntroText: `Für ${locationLabel} gilt:`,
+        reasonText: `Abonniert für ${locationLabel}.`,
+        hintText: 'Alle Hausnummern sind im Tourenplan erfasst.',
+      },
+    });
+    const message = buildDispatchMessage({
+      config: createReminderConfig(),
+      transport: createTransport(),
+      payload,
+    });
+
+    expect(message.subject).toBe(`Archivierter Betreff: ${expected}`);
+    expect(message.text).toContain(`Archivierte Einleitung für ${expected}.`);
+    expect(message.text).toContain(`Für ${expected} gilt:`);
+    expect(message.text).toContain(`Abonniert für ${expected}.`);
+    expect(message.text).toContain('Alle Hausnummern sind im Tourenplan erfasst.');
   });
 
   it('uses configured DOI labels only when payload labels are absent', () => {

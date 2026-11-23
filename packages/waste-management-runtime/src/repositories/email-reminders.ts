@@ -100,9 +100,17 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
   sendAt: string;
   dedupeKey: string;
   payload: MailDispatchPayload;
+  /** Carry the retry limit when a waiting pickup moves to another group key. */
+  retryAttemptCount?: number;
 }>;
 
-export type WasteEmailReminderOutboxRefreshInput = Omit<WasteEmailReminderOutboxEntryInput, 'id'>;
+export type WasteEmailReminderPlanningOrder = Readonly<{
+  retryAt?: string;
+  dedupeKey: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
+  attemptCount: number;
+  memberKeys?: readonly string[];
+}>;
 
 export type WasteEmailReminderOutboxLease = Readonly<{
   id: string;
@@ -124,22 +132,27 @@ export type WasteEmailReminderRepository = Readonly<{
   listActiveSubscriptions: () => Promise<readonly WasteEmailReminderActiveSubscription[]>;
   deleteExpiredPendingSubscriptions: (input: {
     readonly now: string;
-    readonly pendingSubscriptionTtlHours: number;
-  }) => Promise<number>;
+  }) => Promise<{ readonly expiredPendingCount: number; readonly expiredDoiCount: number }>;
   enqueueOutboxEntry: (
     input: WasteEmailReminderOutboxEntryInput
   ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
-  refreshPendingOutboxEntry: (input: WasteEmailReminderOutboxRefreshInput) => Promise<boolean>;
+  refreshPendingOutboxEntry: (input: Omit<WasteEmailReminderOutboxEntryInput, 'id'>) => Promise<boolean>;
   cancelInvalidReminderOutboxEntries: (input: {
     readonly validDedupeKeys: readonly string[];
     readonly now: string;
   }) => Promise<number>;
   hasDueReminderOutboxEntries: (input: { readonly now: string }) => Promise<boolean>;
+  loadLockedReminderPlanningOrders: (input: {
+    readonly subscriptionId: string;
+    readonly pickupDates: readonly string[];
+    readonly dedupeKeys: readonly string[];
+  }) => Promise<readonly WasteEmailReminderPlanningOrder[] | null>;
+  markUnresolvedReminderDeliveries: (input: { readonly now: string }) => Promise<number>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
+    readonly leasedAt?: string;
     readonly limit: number;
   }) => Promise<readonly WasteEmailReminderOutboxLease[]>;
-  cancelExpiredDoiOutboxEntries: (input: { readonly now: string }) => Promise<number>;
   claimOutboxEntryForDispatch: (input: {
     readonly outboxId: string;
     readonly leasedAt: string;
@@ -189,11 +202,9 @@ export const wasteEmailReminderStatements = {
   listActiveSubscriptions: subscriptionStatements.listActiveSubscriptions,
   deleteExpiredPendingSubscriptions: subscriptionStatements.deleteExpiredPendingSubscriptions,
   leaseDueOutboxEntries: outboxDispatchStatements.leaseDueOutboxEntries,
-  cancelExpiredDoiOutboxEntries: outboxReconcileStatements.cancelExpiredDoiOutboxEntries,
   claimOutboxEntryForDispatch: outboxDispatchStatements.claimOutboxEntryForDispatch,
   markOutboxEntrySent: outboxDispatchStatements.markOutboxEntrySent,
   markOutboxEntryFailed: outboxDispatchStatements.markOutboxEntryFailed,
-  cancelPendingReminderOutboxEntries: outboxReconcileStatements.cancelPendingReminderOutboxEntries,
   cancelInvalidReminderOutboxEntries: outboxReconcileStatements.cancelInvalidReminderOutboxEntries,
   selectSubscriptionByDoiTokenHash: tokenStatements.selectSubscriptionByDoiTokenHash,
   selectSubscriptionByUnsubscribeTokenHash:

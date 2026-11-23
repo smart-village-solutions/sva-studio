@@ -103,4 +103,17 @@ describe('waste-management cross-link navigation', () => {
       })
     );
   });
+
+  it('opens individual tour visits with the same tour context and no shift filter', () => {
+    expect(toWasteTourSchedulingSearch(search, 'tour-2', 'tourAssignments')).toEqual(
+      expect.objectContaining({
+        tab: 'tourAssignments',
+        schedulingView: 'list',
+        schedulingEntryId: undefined,
+        tourId: 'tour-2',
+        shiftContext: 'all',
+        q: '',
+      })
+    );
+  });
 });

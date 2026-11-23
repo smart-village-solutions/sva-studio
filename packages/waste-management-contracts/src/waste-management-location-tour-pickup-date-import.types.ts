@@ -116,4 +116,10 @@ export type WasteLocationTourPickupDateImportPlan = {
   readonly existingTours: readonly string[];
   readonly newTours: readonly string[];
   readonly upserts: WasteLocationTourPickupDateImportUpserts;
+  readonly resolvedPickupDates: readonly {
+    readonly row: WasteLocationTourPickupDateImportRow;
+    readonly locationId: string;
+    readonly tourIds: readonly string[];
+  }[];
+  readonly issues: readonly WasteLocationTourPickupDateImportIssue[];
 };

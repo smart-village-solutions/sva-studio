@@ -1,6 +1,7 @@
 export const wasteManagementPluginTranslationsENFilters = {
   "filters": {
     "searchLabel": "Search",
+    "reset": "Reset filters",
     "searchPlaceholder": "Search by city, street, tour or waste fraction",
     "statusLabel": "Status",
     "shiftContextLabel": "Deviation context",

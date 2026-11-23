@@ -29,7 +29,10 @@ const copyResponse = z.object({
   createOrUpdateStaticContent: z.object({ id: appConfigurationIdSchema }),
 });
 const deleteResponse = z.object({
-  destroyRecord: z.object({ id: appConfigurationIdSchema, statusCode: z.literal(200) }),
+  destroyRecord: z.object({
+    id: z.number().int().positive().transform(String),
+    statusCode: z.literal(200),
+  }),
 });
 
 const hasTargetVersion = (

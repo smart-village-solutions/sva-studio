@@ -216,7 +216,7 @@ describe('App configuration variant transport', () => {
     const { execute, service } = setup();
     execute
       .mockResolvedValueOnce({ staticContent: source })
-      .mockResolvedValueOnce({ destroyRecord: { id: source.id, statusCode: 200 } })
+      .mockResolvedValueOnce({ destroyRecord: { id: Number(source.id), statusCode: 200 } })
       .mockResolvedValueOnce({ staticContent: after });
     expect(await service.changeAppConfigurationVariant(connection, remove)).toEqual({ status });
     expect(execute.mock.calls[1]?.[0]).toMatchObject({

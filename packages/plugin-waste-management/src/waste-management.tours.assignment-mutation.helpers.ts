@@ -15,6 +15,37 @@ type AssignmentMutationContext = {
   readonly pt: (key: string) => string;
 };
 
+const writeAssignments = async (
+  tourId: string,
+  currentLinkCount: number,
+  createIds: readonly string[],
+  deletes: readonly { id: string }[],
+  assertWriteAccess: () => void
+) => {
+  if (currentLinkCount === 0 && createIds.length === 1) {
+    await createWasteManagementLocationTourLink({
+      id: crypto.randomUUID(),
+      locationId: createIds[0]!,
+      tourId,
+    });
+  } else if (createIds.length > 0) {
+    await submitWasteLocationTourLinksBulkInChunks(
+      wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput({ tourId }, createIds),
+      (input) => {
+        assertWriteAccess();
+        return createWasteManagementLocationTourLinksBulk(input);
+      }
+    );
+  }
+
+  assertWriteAccess();
+  const results = await Promise.allSettled(
+    deletes.map((link) => deleteWasteManagementLocationTourLink(link.id))
+  );
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure) throw failure.reason;
+};
+
 export const createToursAssignmentSubmitHandler =
   ({ state, pt }: AssignmentMutationContext) =>
   async (
@@ -48,9 +79,9 @@ export const createToursAssignmentSubmitHandler =
       const deletes = currentLinks.filter((link) => changes.get(link.locationId) === false);
       if (createIds.length === 0 && deletes.length === 0) return true;
 
-      const writeError = await writeAssignments(currentLinks.length, createIds, deletes).catch(
-        (error: unknown) => error
-      );
+      const writeError = await writeAssignments(
+        tourId, currentLinks.length, createIds, deletes, assertWriteAccess
+      ).catch((error: unknown) => error);
       const persistedLinks = await reloadAssignments();
       const persistedIds = new Set(persistedLinks.map((link) => link.locationId));
       if ([...changes].some(([id, selected]) => persistedIds.has(id) !== selected)) {
@@ -77,34 +108,5 @@ export const createToursAssignmentSubmitHandler =
       return false;
     } finally {
       state.setSaving(false);
-    }
-
-    async function writeAssignments(
-      currentLinkCount: number,
-      createIds: readonly string[],
-      deletes: readonly { id: string }[]
-    ) {
-      if (currentLinkCount === 0 && createIds.length === 1) {
-        await createWasteManagementLocationTourLink({
-          id: crypto.randomUUID(),
-          locationId: createIds[0]!,
-          tourId,
-        });
-      } else if (createIds.length > 0) {
-        await submitWasteLocationTourLinksBulkInChunks(
-          wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput({ tourId }, createIds),
-          (input) => {
-            assertWriteAccess();
-            return createWasteManagementLocationTourLinksBulk(input);
-          }
-        );
-      }
-
-      assertWriteAccess();
-      const results = await Promise.allSettled(
-        deletes.map((link) => deleteWasteManagementLocationTourLink(link.id))
-      );
-      const failure = results.find((result) => result.status === 'rejected');
-      if (failure) throw failure.reason;
     }
   };

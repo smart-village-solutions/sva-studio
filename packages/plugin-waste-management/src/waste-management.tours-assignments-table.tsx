@@ -44,10 +44,7 @@ type TourAssignmentsTableProps = {
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
 };
 
-export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const selectedLocationIdSet = new Set(props.selectedLocationIds);
-  const sort = props.sortDirection === 'asc' ? 'ascending' : 'descending';
+const useAssignmentTableFocus = (locations: TourAssignmentsTableProps['locations']) => {
   const tableGroup = useRef<HTMLDivElement>(null);
   const toggledCheckbox = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
@@ -60,7 +57,18 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
     ) {
       tableGroup.current?.focus();
     }
-  }, [props.locations]);
+  }, [locations]);
+  const rememberFocusedCheckbox = (checkbox: HTMLInputElement) => {
+    if (checkbox.ownerDocument.activeElement === checkbox) toggledCheckbox.current = checkbox;
+  };
+  return { tableGroup, rememberFocusedCheckbox };
+};
+
+export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const selectedLocationIdSet = new Set(props.selectedLocationIds);
+  const sort = props.sortDirection === 'asc' ? 'ascending' : 'descending';
+  const { tableGroup, rememberFocusedCheckbox } = useAssignmentTableFocus(props.locations);
 
   return (
     <div
@@ -116,9 +124,7 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
                   checked={selectedLocationIdSet.has(location.id)}
                   onChange={(event) => {
                     const checkbox = event.currentTarget;
-                    if (checkbox.ownerDocument.activeElement === checkbox) {
-                      toggledCheckbox.current = checkbox;
-                    }
+                    rememberFocusedCheckbox(checkbox);
                     props.onToggleLocation(location.id, checkbox.checked);
                   }}
                 />

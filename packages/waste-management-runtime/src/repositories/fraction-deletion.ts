@@ -224,8 +224,7 @@ export const processWasteFractionDeletion = async (
         await client.query(
           `UPDATE waste_email_reminder_outbox
         SET status = CASE WHEN id = ANY($1::uuid[]) THEN 'cancelled' ELSE status END,
-          last_error = CASE
-            WHEN id = ANY($2::uuid[]) THEN $3
+          last_error = CASE WHEN id = ANY($2::uuid[]) THEN $3
             WHEN attempt_count > 0 AND ${isSafeReminderRetrySql()} THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
             ELSE 'reminder_no_longer_applicable'
           END,

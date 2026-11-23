@@ -280,7 +280,7 @@ export const createMaterializeEmailRemindersOperation = (
           ? await reminderRepository.enqueueOutboxEntry({
               id: randomUUID(),
               ...outboxEntry,
-              ...(waitingOrder.attemptCount > 0 && { retryAttemptCount: waitingOrder.attemptCount }),
+              retryAttemptCount: waitingOrder.attemptCount,
               sendAt: [referenceTime.toISOString(), waitingOrder.retryAt].reduce(
                 (latest, candidate) => candidate > latest ? candidate : latest,
                 outboxEntry.sendAt

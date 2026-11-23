@@ -104,6 +104,13 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
 
 export type WasteEmailReminderOutboxRefreshInput = Omit<WasteEmailReminderOutboxEntryInput, 'id'>;
 
+export type WasteEmailReminderPlanningOrder = Readonly<{
+  dedupeKey: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
+  attemptCount: number;
+  memberKeys?: readonly string[];
+}>;
+
 export type WasteEmailReminderOutboxLease = Readonly<{
   id: string;
   subscriptionId: string;
@@ -134,6 +141,12 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly now: string;
   }) => Promise<number>;
   hasDueReminderOutboxEntries: (input: { readonly now: string }) => Promise<boolean>;
+  loadLockedReminderPlanningOrders: (input: {
+    readonly subscriptionId: string;
+    readonly pickupDates: readonly string[];
+    readonly dedupeKeys: readonly string[];
+  }) => Promise<readonly WasteEmailReminderPlanningOrder[] | null>;
+  markUnresolvedReminderDeliveries: (input: { readonly now: string }) => Promise<number>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;

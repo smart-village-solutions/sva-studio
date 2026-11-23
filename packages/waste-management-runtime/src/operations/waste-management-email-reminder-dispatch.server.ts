@@ -6,7 +6,9 @@ import {
 } from '@sva/waste-management-contracts';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
+import { z } from 'zod';
 
+import type { WasteEmailReminderPlanningOrder } from '../repositories/email-reminders.js';
 import { buildReminderHintText } from './waste-management-email-reminder-hints.js';
 
 const templatePlaceholderPattern = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
@@ -117,30 +119,141 @@ export const matchSelectionLocations = (
     return true;
   });
 
-export const buildReminderDispatchPayload = (input: {
-  readonly config: WasteManagementEmailReminderConfig;
-  readonly subscriptionId: string;
-  readonly email: string;
-  readonly locationLabel: string;
-  readonly fraction: WasteFractionRecord;
-  readonly pickupDate: string;
-  readonly hints?: readonly string[];
-  readonly unsubscribeTokenHash: string;
-  readonly unsubscribeTokenSecret: string;
-}): MailDispatchPayload => {
+type ReminderMember = Readonly<{
+  fraction: Pick<WasteFractionRecord, 'id' | 'name'>;
+  slotId: string;
+  hints?: readonly string[];
+}>;
+
+type ReminderGroupIdentity = Readonly<{
+  subscriptionId: string;
+  pickupDate: string;
+  originalSendAt: string;
+}>;
+
+type ReminderGroup = ReminderGroupIdentity &
+  Readonly<{
+    dedupeKey: string;
+    members: readonly ReminderMember[];
+  }>;
+
+type ReminderDispatchInput = Readonly<{
+  config: WasteManagementEmailReminderConfig;
+  subscriptionId: string;
+  email: string;
+  locationLabel: string;
+  pickupDate: string;
+  originalSendAt: string;
+  members: readonly ReminderMember[];
+  unsubscribeTokenHash: string;
+  unsubscribeTokenSecret: string;
+}>;
+
+export const reminderMemberDedupeKey = (
+  subscriptionId: string,
+  pickupDate: string,
+  member: ReminderMember
+): string => `reminder:${subscriptionId}:${member.fraction.id}:${member.slotId}:${pickupDate}`;
+
+export const groupReminderMembers = (
+  planned: readonly (ReminderGroupIdentity & ReminderMember)[]
+): readonly ReminderGroup[] => {
+  const groups = new Map<
+    string,
+    ReminderGroupIdentity & { dedupeKey: string; members: ReminderMember[] }
+  >();
+  for (const { subscriptionId, pickupDate, originalSendAt, fraction, slotId, hints } of planned) {
+    const dedupeKey = `reminder-group:${subscriptionId}:${pickupDate}:${originalSendAt}`;
+    const group = groups.get(dedupeKey) ?? {
+      dedupeKey,
+      subscriptionId,
+      pickupDate,
+      originalSendAt,
+      members: [],
+    };
+    group.members.push({ fraction, slotId, hints });
+    groups.set(dedupeKey, group);
+  }
+  return Array.from(groups.values());
+};
+
+const retainsReminderDelivery = (order: WasteEmailReminderPlanningOrder): boolean =>
+  order.attemptCount > 0 ||
+  order.status === 'processing' ||
+  order.status === 'sent' ||
+  order.status === 'failed';
+
+export const selectUnreservedReminderGroups = (
+  groups: readonly ReminderGroup[],
+  existing: readonly WasteEmailReminderPlanningOrder[]
+): readonly ReminderGroup[] => {
+  const ordersThatRetainDelivery = existing.filter(retainsReminderDelivery);
+  const retainedGroups = new Set(ordersThatRetainDelivery.map((order) => order.dedupeKey));
+  const retainedMembers = new Set(
+    ordersThatRetainDelivery.flatMap((order) => order.memberKeys ?? [order.dedupeKey])
+  );
+  return groups.flatMap((group) => {
+    if (retainedGroups.has(group.dedupeKey)) return [];
+    const members = group.members.filter(
+      (member) =>
+        !retainedMembers.has(
+          reminderMemberDedupeKey(group.subscriptionId, group.pickupDate, member)
+        )
+    );
+    return members.length > 0 ? [{ ...group, members }] : [];
+  });
+};
+
+const reminderAppointmentsSchema = z
+  .array(
+    z.object({
+      fractionName: z.string().trim().min(1),
+      hintText: z.string().optional(),
+    })
+  )
+  .nonempty();
+
+const buildGroupReminderContent = (members: readonly ReminderMember[]) => {
+  const byFraction = new Map<string, { fractionName: string; hints: string[] }>();
+  for (const member of members) {
+    const current = byFraction.get(member.fraction.id) ?? {
+      fractionName: member.fraction.name,
+      hints: [],
+    };
+    current.hints.push(...(member.hints ?? []));
+    byFraction.set(member.fraction.id, current);
+  }
+  const appointments = reminderAppointmentsSchema.parse(
+    Array.from(byFraction.entries())
+      .sort(
+        ([leftId, left], [rightId, right]) =>
+          left.fractionName.localeCompare(right.fractionName, 'de') || leftId.localeCompare(rightId)
+      )
+      .map(([, value]) => ({
+        fractionName: value.fractionName,
+        hintText: buildReminderHintText(value.hints),
+      }))
+  );
+  return {
+    fractionName: appointments.map(({ fractionName }) => fractionName).join(', '),
+    reminderAppointments: JSON.stringify(appointments),
+  };
+};
+
+export const buildReminderDispatchPayload = (input: ReminderDispatchInput): MailDispatchPayload => {
   const unsubscribeUrl = buildUnsubscribeUrl(input.config, {
     subscriptionId: input.subscriptionId,
     unsubscribeTokenHash: input.unsubscribeTokenHash,
     secret: input.unsubscribeTokenSecret,
   });
   const pickupDateLabel = formatPickupDateLabel(input.pickupDate);
+  const content = buildGroupReminderContent(input.members);
   const values = {
-    fractionName: input.fraction.name,
+    fractionName: content.fractionName,
     locationLabel: formatEmailLocationLabel(input.locationLabel),
     pickupDate: pickupDateLabel,
     unsubscribeUrl,
   } as const;
-  const hintText = buildReminderHintText(input.hints);
 
   return {
     orderId: input.subscriptionId,
@@ -164,8 +277,7 @@ export const buildReminderDispatchPayload = (input: {
       unsubscribeUrl,
       locationLabel: values.locationLabel,
       pickupDate: pickupDateLabel,
-      fractionName: input.fraction.name,
-      ...(hintText ? { hintText } : {}),
+      ...content,
       privacyPolicyUrl: input.config.privacyPolicyUrl,
       imprintUrl: input.config.imprintUrl,
       ...(input.config.serviceLabel ? { serviceLabel: input.config.serviceLabel } : {}),
@@ -175,7 +287,12 @@ export const buildReminderDispatchPayload = (input: {
       module: 'waste-management',
       flow: 'public-email-reminder-delivery',
       subscriptionId: input.subscriptionId,
-      fractionId: input.fraction.id,
+      originalSendAt: input.originalSendAt,
+      reminderMemberKeys: JSON.stringify(
+        [...new Set(input.members.map((member) =>
+          reminderMemberDedupeKey(input.subscriptionId, input.pickupDate, member)
+        ))].sort()
+      ),
       pickupDate: input.pickupDate,
     },
   };
@@ -356,6 +473,35 @@ const buildDoiDispatchMessage = (input: {
   });
 };
 
+const readReminderAppointments = (payload: MailDispatchPayload['templatePayload']) => {
+  if (payload.reminderAppointments === undefined) {
+    return [{ fractionName: payload.fractionName, hintText: payload.hintText }];
+  }
+  try {
+    return reminderAppointmentsSchema.parse(JSON.parse(payload.reminderAppointments));
+  } catch {
+    throw new Error('invalid_reminder_appointments');
+  }
+};
+
+const renderReminderAppointments = (payload: MailDispatchPayload['templatePayload']): string => {
+  const pickupDate = normalizeMailTextLine(payload.pickupDate);
+  return readReminderAppointments(payload)
+    .map((appointment) => {
+      const bulletLine = normalizeMailTextLine(appointment.fractionName)
+        ? `- ${appointment.fractionName}${pickupDate ? ` (${pickupDate})` : ''}`
+        : undefined;
+      const hintText = normalizeMailTextLine(appointment.hintText);
+      const hintLines = hintText
+        ?.split('\n')
+        .map((line) => (line ? `  ${line}` : ''))
+        .join('\n');
+      return [bulletLine, hintLines].filter(Boolean).join('\n');
+    })
+    .filter(Boolean)
+    .join('\n');
+};
+
 const buildReminderDispatchMessage = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
@@ -369,26 +515,13 @@ const buildReminderDispatchMessage = (input: {
     storedLocationLabel && locationLabel && storedLocationLabel !== locationLabel
       ? text?.split(storedLocationLabel).join(locationLabel)
       : text;
-  const bulletLine = normalizeMailTextLine(templatePayload.fractionName)
-    ? `- ${templatePayload.fractionName}${normalizeMailTextLine(templatePayload.pickupDate) ? ` (${templatePayload.pickupDate})` : ''}`
-    : undefined;
-  const hintText = normalizeMailTextLine(templatePayload.hintText);
-  const appointmentSection = [
-    bulletLine,
-    hintText
-      ?.split('\n')
-      .map((line) => (line ? `  ${line}` : ''))
-      .join('\n'),
-  ]
-    .filter((line): line is string => Boolean(line))
-    .join('\n');
   const serviceLabel = normalizeMailTextLine(
     templatePayload.serviceLabel ?? input.config.serviceLabel
   );
   const text = joinMailTextSections([
     formatQueuedText(templatePayload.introText),
     formatQueuedText(templatePayload.listIntroText),
-    appointmentSection,
+    renderReminderAppointments(templatePayload),
     templatePayload.outroText,
     formatQueuedText(templatePayload.reasonText),
     `${templatePayload.unsubscribeLabel}: ${templatePayload.unsubscribeUrl}`,

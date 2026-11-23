@@ -8,11 +8,13 @@ import type { WasteMaterializationContext } from '../operations/waste-management
 import { buildMaterializedLocationTourPickupDates } from '../operations/waste-management-mainserver-sync.materialization.js';
 import { matchSelectionLocations } from '../operations/waste-management-email-reminder-dispatch.server.js';
 import { queryRows, type QueryClient } from './address-mutation-shared.js';
+import { REMINDER_OUTCOME_UNKNOWN } from './email-reminders.outbox-dispatch.js';
 type OutboxRow = Readonly<{
   id: string;
   dedupe_key: string;
   status: string;
   last_error: string | null;
+  member_keys: readonly string[];
   region_id: string | null;
   city_id: string;
   street_id: string;
@@ -29,16 +31,27 @@ const loadOutbox = async (
       ...(input.mode === 'delete-tours' ? tours.flatMap((tour) => tour.wasteFractionIds) : []),
     ]),
   ];
-  // Dedupe keys have a fixed subscription UUID and fraction UUID prefix; slot IDs may contain colons.
+  // Both formats use the same member keys. Slot IDs may contain colons.
   const outbox = await queryRows<OutboxRow>(
     client,
     `
-    SELECT o.id::text, o.dedupe_key, o.status, o.last_error,
+    SELECT o.id::text, o.dedupe_key, o.status, o.last_error, members.member_keys,
       s.region_id::text, s.city_id::text, s.street_id, s.house_number_id::text
     FROM waste_email_reminder_outbox o JOIN waste_email_reminder_subscriptions s ON s.id = o.subscription_id
+    CROSS JOIN LATERAL (
+      SELECT ARRAY(
+        SELECT jsonb_array_elements_text(
+          COALESCE((o.payload->'metadata'->>'reminderMemberKeys')::jsonb, to_jsonb(ARRAY[o.dedupe_key]))
+        )
+      ) AS member_keys
+    ) members
     WHERE o.message_kind = 'reminder' AND o.status IN ('pending', 'processing', 'failed')
-      AND split_part(o.dedupe_key, ':', 3) = ANY($1::text[]) ORDER BY o.id`,
-    [relatedFractionIds]
+      AND o.last_error IS DISTINCT FROM $2
+      AND (o.status <> 'failed' OR o.dedupe_key NOT LIKE 'reminder-group:%')
+      AND EXISTS (SELECT 1 FROM unnest(members.member_keys) AS member(key)
+        WHERE split_part(member.key, ':', 3) = ANY($1::text[]))
+    ORDER BY o.id`,
+    [relatedFractionIds, REMINDER_OUTCOME_UNKNOWN]
   );
   return outbox;
 };
@@ -50,11 +63,13 @@ const cancelledReminders = (
   locations: readonly WasteCollectionLocationRecord[]
 ) => {
   const cancelledOutboxIds = new Set(
-    outbox.filter((row) => row.dedupe_key.split(':')[2] === input.fractionId).map((row) => row.id)
+    outbox
+      .filter((row) => row.member_keys.some((key) => key.split(':')[2] === input.fractionId))
+      .map((row) => row.id)
   );
   if (input.mode === 'delete-tours' && outbox.length) {
     // Keep reminders for surviving pickups; cancel only keys that lose their last effective pickup.
-    const dates = outbox.map((row) => row.dedupe_key.slice(-10));
+    const dates = outbox.flatMap((row) => row.member_keys.map((key) => key.slice(-10)));
     const shiftDates = [...state.tourDateShifts, ...state.globalDateShifts]
       .filter((shift) => shift.hasYear)
       .flatMap((shift) => [shift.originalDate, shift.actualDate]);
@@ -75,8 +90,6 @@ const cancelledReminders = (
     });
     const nextTourById = new Map(nextTours.map((tour) => [tour.id, tour]));
     for (const row of outbox) {
-      const fractionId = row.dedupe_key.split(':')[2];
-      const date = row.dedupe_key.slice(-10);
       const matching = new Set(
         matchSelectionLocations(locations, {
           regionId: row.region_id ?? undefined,
@@ -86,11 +99,14 @@ const cancelledReminders = (
         }).map((location) => location.id)
       );
       if (
-        !occurrences.some(
-          (occurrence) =>
-            matching.has(occurrence.locationId) &&
-            occurrence.pickupDate === date &&
-            nextTourById.get(occurrence.tourId)?.wasteFractionIds.includes(fractionId)
+        row.member_keys.some(
+          (key) =>
+            !occurrences.some(
+              (occurrence) =>
+                matching.has(occurrence.locationId) &&
+                occurrence.pickupDate === key.slice(-10) &&
+                nextTourById.get(occurrence.tourId)?.wasteFractionIds.includes(key.split(':')[2])
+            )
         )
       ) {
         cancelledOutboxIds.add(row.id);

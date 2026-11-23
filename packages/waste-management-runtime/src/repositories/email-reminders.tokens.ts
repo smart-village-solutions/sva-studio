@@ -1,5 +1,6 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteEmailReminderRepository } from './email-reminders.js';
+import { REMINDER_OUTCOME_UNKNOWN } from './email-reminders.outbox-dispatch.js';
 
 type SubscriptionStatusRow = Readonly<{
   id: string;
@@ -91,7 +92,8 @@ SET payload = '{}'::jsonb,
     leased_at = NULL,
     last_error = CASE
       WHEN outbox.status IN ('pending', 'processing') THEN 'subscription_unsubscribed'
-      WHEN outbox.last_error IN ('subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable') THEN outbox.last_error
+      WHEN outbox.last_error IN ('subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable',
+        '${REMINDER_OUTCOME_UNKNOWN}') THEN outbox.last_error
       WHEN outbox.status = 'failed' THEN 'dispatch_failed'
       ELSE NULL
     END,
@@ -101,7 +103,8 @@ WHERE outbox.subscription_id = revoked.id
   AND (outbox.payload <> '{}'::jsonb OR outbox.leased_at IS NOT NULL
     OR outbox.status IN ('pending', 'processing')
     OR (outbox.last_error IS NOT NULL AND outbox.last_error NOT IN (
-      'subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable', 'dispatch_failed'
+      'subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable', 'dispatch_failed',
+      '${REMINDER_OUTCOME_UNKNOWN}'
     )));
 `,
   values: [input.subscriptionId, input.now],

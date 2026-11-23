@@ -402,7 +402,8 @@ describe('waste email reminder repository', () => {
     ).resolves.toBe(true);
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending' AND send_at <= $1::timestamptz");
-    expect(statements[0]?.text).toContain("status = 'processing' AND leased_at <=");
+    expect(statements[0]?.text).toContain("attempt_count = 0 OR last_error = 'mail_transport_not_available'");
+    expect(statements[0]?.text).not.toContain("status = 'processing'");
   });
 
   it('cancels reminder outbox entries that are no longer materialized', async () => {
@@ -418,9 +419,9 @@ describe('waste email reminder repository', () => {
     ).resolves.toBe(2);
 
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
-    expect(statements[0]?.text).toContain("status IN ('pending', 'processing')");
-    expect(statements[0]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
-    expect(statements[0]?.text).toContain("leased_at <= $2::timestamptz - INTERVAL '15 minutes'");
+    expect(statements[0]?.text).toContain("status = 'pending'");
+    expect(statements[0]?.text).toContain("attempt_count = 0 OR last_error = 'mail_transport_not_available'");
+    expect(statements[0]?.text).not.toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
     expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);
   });

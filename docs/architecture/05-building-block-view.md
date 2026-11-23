@@ -464,11 +464,12 @@ Modulen der jeweiligen Bausteine.
 
 17. Waste-Reminder-Operationspfad (`apps/sva-studio-react` + `packages/waste-management-runtime`)
 
-- erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs: Materialisierung fraktions- und slotbezogener Reminder-Outbox-Einträge sowie inkrementelle Batch-Verarbeitung fälliger Outbox-Elemente
+- erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs für die Materialisierung gebündelter Erinnerungen und die Verarbeitung fälliger Outbox-Aufträge. Fraktion und Slot bleiben als fachliche Mitglieder im Auftrag erhalten. Der Dispatcher verarbeitet beide gespeicherten Auftragsformen
 - nutzt dafür die führende Waste-Fachkonfiguration aus dem `output`-Tab, die fraktionsbezogenen Reminder-Slots aus den Abfallarten und die zentrale Schnittstelle `mail_transport`
 - normalisiert die öffentliche Reminder-Konfiguration in `@sva/core` über kleine feldgruppenspezifische Reader für Pflichtwerte, URLs, Pfade, Adressen und optionale Texte; der öffentliche Objektvertrag und seine Feldreihenfolge bleiben dabei unverändert
 - hält den Mailversand selbst adapterbasiert; Studio erzeugt und leased nur transportagnostische `MailDispatchPayload`s und kann damit an eine separate Mail-App oder einen äquivalenten Runtime-Adapter angeschlossen werden
 - stellt den signierten `v1`-Abmeldetokenvertrag zentral über `@sva/waste-management-contracts/unsubscribe-token` bereit; Studio erzeugt und Public-Waste liest sowie verifiziert denselben Vertrag ohne direkte App-zu-App-Abhängigkeit oder Installation der Job-Runtime
+- sucht im geschützten Monitoring-POST ausschließlich aktive Abos der authentifizierten Instanz nach dem normalisierten Adresshash und liefert maskierte Treffer
 
 ### Foundation-Governance über Bausteingrenzen
 

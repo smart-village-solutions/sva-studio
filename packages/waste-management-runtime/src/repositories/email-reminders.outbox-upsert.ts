@@ -37,6 +37,11 @@ FROM dispatchable_subscription
 ON CONFLICT (dedupe_key) DO UPDATE
 SET transport_id = EXCLUDED.transport_id,
     template_key = EXCLUDED.template_key,
+    status = 'pending',
+    last_error = CASE
+      WHEN waste_email_reminder_outbox.status = 'cancelled' THEN NULL
+      ELSE waste_email_reminder_outbox.last_error
+    END,
     send_at = CASE
       WHEN waste_email_reminder_outbox.attempt_count > 0
         THEN GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)
@@ -45,6 +50,12 @@ SET transport_id = EXCLUDED.transport_id,
     payload = EXCLUDED.payload,
     updated_at = NOW()
 WHERE waste_email_reminder_outbox.status = 'pending'
+  OR (
+    waste_email_reminder_outbox.status = 'cancelled'
+    AND waste_email_reminder_outbox.attempt_count = 0
+    AND waste_email_reminder_outbox.last_error = 'reminder_no_longer_applicable'
+    AND EXCLUDED.dedupe_key LIKE 'reminder-group:%'
+  )
 RETURNING id;
 `,
   values: [

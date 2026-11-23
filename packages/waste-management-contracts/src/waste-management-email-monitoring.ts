@@ -44,7 +44,7 @@ export type WasteEmailDeliverySummary = Readonly<{
   attempts: number;
   fraction: string | null;
   pickupDate: string | null;
-  error: 'transport_unavailable' | 'cancelled' | 'dispatch_failed' | null;
+  error: 'transport_unavailable' | 'cancelled' | 'dispatch_failed' | 'outcome_unknown' | null;
 }>;
 export type WasteEmailMonitoringOverview = Readonly<{
   subscriptions: readonly WasteEmailSubscriptionSummary[];

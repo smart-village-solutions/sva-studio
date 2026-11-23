@@ -19,6 +19,8 @@ type EnqueuedOutboxRow = Readonly<{
 
 export const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
 export const OUTBOX_DISPATCH_CLAIM = 'dispatch_claimed';
+export const REMINDER_OUTCOME_UNKNOWN = 'mail_dispatch_outcome_unknown';
+export const MAIL_TRANSPORT_NOT_AVAILABLE = 'mail_transport_not_available';
 
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
@@ -31,8 +33,12 @@ WITH due AS (
   INNER JOIN waste_email_reminder_subscriptions AS subscription
     ON subscription.id = outbox.subscription_id
   WHERE (
-    (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz)
+    (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz
+      AND (outbox.message_kind = 'doi' OR outbox.attempt_count = 0
+        OR outbox.last_error = '${MAIL_TRANSPORT_NOT_AVAILABLE}'))
     OR (
+      outbox.message_kind = 'doi'
+      AND
       outbox.status = 'processing'
       AND outbox.leased_at IS NOT NULL
       AND outbox.leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}

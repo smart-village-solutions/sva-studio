@@ -15,6 +15,8 @@ const withReminderReconciliation = <T extends object>(repository: T) => ({
   refreshPendingOutboxEntry: vi.fn(async () => false),
   cancelInvalidReminderOutboxEntries: vi.fn(async () => 0),
   hasDueReminderOutboxEntries: vi.fn(async () => false),
+  loadLockedReminderPlanningOrders: vi.fn(async () => []),
+  markUnresolvedReminderDeliveries: vi.fn(async () => 0),
   deleteExpiredPendingSubscriptions: vi.fn(async () => ({ expiredDoiCount: 0, expiredPendingCount: 0 })),
   claimOutboxEntryForDispatch: vi.fn(async () => true),
   ...repository,
@@ -468,7 +470,7 @@ describe('waste management operations runtime', () => {
     expect(leaseDueOutboxEntries).not.toHaveBeenCalled();
   });
 
-  it('marks failed outbox entries with retry or terminal failure depending on attempt count', async () => {
+  it('retries unavailable transport and records an unverified provider response without retry', async () => {
     const markOutboxEntryFailed = vi.fn(
       async (_input: {
         readonly outboxId: string;
@@ -476,11 +478,15 @@ describe('waste management operations runtime', () => {
         readonly retryAt?: string;
       }) => true
     );
+    const dispatchMail = vi.fn(async () => {
+      throw new Error('fixture provider response lost');
+    });
     const reminderRepository = {
       leaseDueOutboxEntries: vi.fn(async () => [
         {
           id: 'outbox-retry',
-          transportId: 'transport-smtp',
+          messageKind: 'reminder',
+          transportId: 'transport-missing',
           attemptCount: 0,
           payload: {
             transportId: 'transport-smtp',
@@ -508,8 +514,9 @@ describe('waste management operations runtime', () => {
         },
         {
           id: 'outbox-failed',
+          messageKind: 'reminder',
           transportId: 'transport-smtp',
-          attemptCount: 1,
+          attemptCount: 0,
           payload: {
             transportId: 'transport-smtp',
             templateKey: 'waste.email-reminder.reminder',
@@ -566,9 +573,7 @@ describe('waste management operations runtime', () => {
           }))
         )
       ),
-      dispatchMail: vi.fn(async () => {
-        throw new Error('smtp_unavailable');
-      }),
+      dispatchMail,
       now: () => new Date('2026-06-15T06:00:00.000Z'),
     });
 
@@ -579,11 +584,12 @@ describe('waste management operations runtime', () => {
       retryDelayMinutes: 10,
     });
 
+    expect(dispatchMail).toHaveBeenCalledTimes(1);
     expect(markOutboxEntryFailed).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         outboxId: 'outbox-retry',
-        errorMessage: 'mail_dispatch_failed',
+        errorMessage: 'mail_transport_not_available',
         retryAt: '2026-06-15T06:10:00.000Z',
       })
     );
@@ -591,7 +597,7 @@ describe('waste management operations runtime', () => {
       2,
       expect.objectContaining({
         outboxId: 'outbox-failed',
-        errorMessage: 'mail_dispatch_failed',
+        errorMessage: 'mail_dispatch_outcome_unknown',
       })
     );
     expect(markOutboxEntryFailed.mock.calls[1]?.[0]).not.toHaveProperty('retryAt');
@@ -801,14 +807,22 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('materializes reminders for explicit assignments even when public signup is disabled', async () => {
+  it.each([
+    { label: 'same send time', paperLeadDays: 1, pickupDate: '2026-06-16', sendDates: ['2026-06-15'] },
+    { label: 'different send times', paperLeadDays: 0, pickupDate: '2026-06-16', sendDates: ['2026-06-15', '2026-06-16'] },
+    { label: 'shifted pickup date', paperLeadDays: 1, pickupDate: '2026-06-17', sendDates: ['2026-06-16'] },
+  ])('materializes explicit assignments with $label even when signup is disabled', async ({
+    paperLeadDays,
+    pickupDate,
+    sendDates,
+  }) => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const listWasteTours = vi.fn(async () => [
       {
         id: 'tour-1',
         name: 'Biotour',
         description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
-        wasteFractionIds: ['fraction-bio'],
+        wasteFractionIds: ['fraction-bio', 'fraction-paper'],
         recurrence: null,
         firstDate: undefined,
         endDate: undefined,
@@ -825,7 +839,10 @@ describe('waste management operations runtime', () => {
           cityId: 'city-1',
           streetId: 'street-1',
           unsubscribeTokenHash: 'sha256:unsubscribe',
-          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+          items: [
+            { fractionId: 'fraction-bio', slotId: 'bio:first' },
+            { fractionId: 'fraction-paper', slotId: 'paper:first' },
+          ],
         },
       ]),
       enqueueOutboxEntry,
@@ -845,6 +862,23 @@ describe('waste management operations runtime', () => {
             reminderCount: 'once',
             channels: { push: false, email: true, calendar: false },
             email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'fraction-paper',
+          name: 'Papiertonne',
+          pdfShortLabel: 'PAP',
+          translations: { de: 'Papiertonne' },
+          containerSize: undefined,
+          color: '#000080',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'paper:first', defaultLeadDays: paperLeadDays }] },
           },
           createdAt: '',
           updatedAt: '',
@@ -872,7 +906,16 @@ describe('waste management operations runtime', () => {
           note: '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
         },
       ]),
-      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => pickupDate === '2026-06-16' ? [] : [{
+        id: 'shift-1',
+        tourId: 'tour-1',
+        originalDate: '2026-06-16',
+        actualDate: pickupDate,
+        hasYear: true,
+        followUpMode: 'none',
+        createdAt: '',
+        updatedAt: '',
+      }]),
       listWasteGlobalDateShifts: vi.fn(async () => []),
       listWasteHolidayRules: vi.fn(async () => []),
     });
@@ -922,22 +965,34 @@ describe('waste management operations runtime', () => {
     });
 
     expect(listWasteTours).toHaveBeenCalledWith({ status: 'published' });
-    expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
-    expect(enqueueOutboxEntry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: expect.objectContaining({
-          templatePayload: expect.objectContaining({
-            hintText: ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join(
-              '\n'
-            ),
+    expect(enqueueOutboxEntry).toHaveBeenCalledTimes(sendDates.length);
+    const fractionsByOrder = sendDates.length === 1
+      ? [['Biotonne', 'Papiertonne']]
+      : [['Biotonne'], ['Papiertonne']];
+    for (const [index, sendDate] of sendDates.entries()) {
+      const sendAt = `${sendDate}T06:00:00.000Z`;
+      expect(enqueueOutboxEntry).toHaveBeenNthCalledWith(
+        index + 1,
+        expect.objectContaining({
+          sendAt,
+          payload: expect.objectContaining({
+            metadata: expect.objectContaining({ pickupDate, originalSendAt: sendAt }),
+            templatePayload: expect.objectContaining({
+              reminderAppointments: JSON.stringify(
+                fractionsByOrder[index]?.map((fractionName) => ({
+                  fractionName,
+                  hintText: ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n'),
+                }))
+              ),
+            }),
           }),
-        }),
-      })
-    );
+        })
+      );
+    }
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
-      createdOutboxCount: 1,
+      createdOutboxCount: sendDates.length,
     });
   });
 
@@ -1173,7 +1228,7 @@ describe('waste management operations runtime', () => {
     expect(refreshPendingOutboxEntry).toHaveBeenCalledWith(
       expect.objectContaining({
         sendAt: '2026-06-09T06:00:00.000Z',
-        dedupeKey: 'reminder:subscription-1:fraction-bio:bio:first:2026-06-10',
+        dedupeKey: 'reminder-group:subscription-1:2026-06-10:2026-06-09T06:00:00.000Z',
       })
     );
     expect(result.details).toMatchObject({
@@ -2024,7 +2079,10 @@ describe('waste management operations runtime', () => {
         sendAt: '2026-06-14T06:00:00.000Z',
         payload: expect.objectContaining({
           templatePayload: expect.objectContaining({
-            hintText: 'Geänderter Termin-Hinweis',
+            reminderAppointments: JSON.stringify([{
+              fractionName: 'Biotonne',
+              hintText: 'Geänderter Termin-Hinweis',
+            }]),
           }),
         }),
       })

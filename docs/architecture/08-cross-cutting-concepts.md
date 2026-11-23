@@ -1567,12 +1567,15 @@ ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornier
 zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
 
 Der bestehende Erinnerungsplaner hält vom Lesen der Fachdaten bis zum Eintragen beziehungsweise
-Abgleichen der Outbox eine Transaktion mit einer gemeinsamen tenantlokalen Advisory-Sperre
-gegenüber Fraktionslöschungen. Reguläre Tourbearbeitung wird dadurch nicht gesperrt. Dadurch kann
+Abgleichen der Outbox eine Transaktion mit einer exklusiven tenantlokalen Advisory-Sperre
+gegenüber anderen Erinnerungsplanern und Fraktionslöschungen. Reguläre Tourbearbeitung verwendet
+diese Sperre nicht. Dadurch kann
 eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Bereits beanspruchte
 externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
 nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
 Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.
+
+Der Monitoring-POST akzeptiert die Suchadresse im Request-Body und wendet den bestehenden CSRF-Schutz an. Die Anwendung hält Adresse und Suchhash aus URL, Antwort und Anwendungslogs heraus.
 
 ### Sicherheitsgrenze des Release-Changelogs
 

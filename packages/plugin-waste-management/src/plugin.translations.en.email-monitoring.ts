@@ -102,6 +102,8 @@ export const wasteEmailMonitoringTranslationsEN = {
         'No email service was available during the last attempt. If the problem persists, contact technical support.',
       cancelled: 'This message is no longer scheduled to be sent.',
       dispatch_failed: 'There was a problem sending the message. Please contact technical support.',
+      outcome_unknown:
+        'It is unclear whether the mail service accepted the message. Technical support can check the delivery status with the service.',
     },
   },
 } as const;

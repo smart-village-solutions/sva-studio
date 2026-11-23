@@ -174,7 +174,7 @@ const snapshot = async (client: QueryClient, input: WasteFractionDeleteInput) =>
       (row) =>
         cancelledOutboxIds.has(row.id) &&
         row.status === 'processing' &&
-        row.last_error === 'dispatch_claimed'
+        (row.last_error === 'dispatch_claimed' || row.dedupe_key.startsWith('reminder-group:'))
     )
   )
     blockedReason = 'reminder-dispatching';

@@ -104,6 +104,8 @@ export const wasteEmailMonitoringTranslationsDE = {
       cancelled: 'Diese Nachricht ist nicht mehr für den Versand vorgesehen.',
       dispatch_failed:
         'Beim Versand ist ein Problem aufgetreten. Bitte an die technische Betreuung wenden.',
+      outcome_unknown:
+        'Es ist unklar, ob der Versanddienst die Nachricht angenommen hat. Die technische Betreuung kann den Versandstatus beim Dienst prüfen.',
     },
   },
 } as const;

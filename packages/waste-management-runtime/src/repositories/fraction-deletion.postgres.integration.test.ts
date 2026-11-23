@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
+import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
 import { buildWasteTourFractionsContractStatements } from '../operations/waste-tour-fractions.schema.js';
+import { createWasteEmailReminderRepository } from './email-reminders.js';
 import { processWasteFractionDeletion } from './fraction-deletion.js';
 
 const url = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -257,6 +259,83 @@ describe.skipIf(!url)('fraction deletion PostgreSQL', () => {
       { date: '2030-01-03', status: 'cancelled' },
       { date: '2030-01-04', status: 'pending' },
     ]);
+  });
+
+  it('cancels a mixed group on fraction deletion and allows only its remaining members to be replanned', async () => {
+    const subscriptionId = randomUUID();
+    const pickupDate = '2030-01-04';
+    const sendAt = '2030-01-03T06:00:00.000Z';
+    const pendingKey = `reminder-group:${subscriptionId}:${pickupDate}:${sendAt}`;
+    const unaffectedKey = `reminder-group:${subscriptionId}:2030-01-11:${sendAt}`;
+    const uncertainKey = `reminder-group:${subscriptionId}:2030-01-18:${sendAt}`;
+    const sourceMember = `reminder:${subscriptionId}:${source}:slot:first:${pickupDate}`;
+    const otherMember = `reminder:${subscriptionId}:${other}:slot:first:${pickupDate}`;
+    await client.query(
+      `INSERT INTO waste_email_reminder_subscriptions
+      (id,email,email_hash,city_id,street_id,location_label,consent_version,consent_accepted_at,doi_token_hash,unsubscribe_token_hash,expires_at,status)
+      VALUES ($1::uuid,'fixture@example.test','hash',$2,'all','City','v1',NOW(),$1::text,$1::text,'2099-01-01','active')`,
+      [subscriptionId, city]
+    );
+    const repository = createWasteEmailReminderRepository(createSqlExecutor(client));
+    const order = (dedupeKey: string, memberKeys: readonly string[]) => ({
+      id: randomUUID(),
+      subscriptionId,
+      messageKind: 'reminder' as const,
+      transportId: 'smtp',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt,
+      dedupeKey,
+      payload: {
+        orderId: subscriptionId,
+        transportId: 'smtp',
+        messageKind: 'transactional' as const,
+        templateKey: 'waste.email-reminder.reminder',
+        addresses: [{ kind: 'to' as const, email: 'fixture@example.invalid' }],
+        templatePayload: {},
+        metadata: { reminderMemberKeys: JSON.stringify(memberKeys) },
+      },
+    });
+    await repository.enqueueOutboxEntry(order(pendingKey, [sourceMember, otherMember]));
+    await repository.enqueueOutboxEntry(
+      order(unaffectedKey, [otherMember.replace(pickupDate, '2030-01-11')])
+    );
+    await repository.enqueueOutboxEntry(
+      order(
+        uncertainKey,
+        [sourceMember, otherMember].map((key) => key.replace(pickupDate, '2030-01-18'))
+      )
+    );
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET status = 'processing', attempt_count = 1, leased_at = NOW() WHERE dedupe_key = $1",
+      [uncertainKey]
+    );
+    expect((await processWasteFractionDeletion(client, input)).blockedReason).toBe(
+      'reminder-dispatching'
+    );
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET status = 'failed', leased_at = NULL, last_error = 'mail_dispatch_outcome_unknown' WHERE dedupe_key = $1",
+      [uncertainKey]
+    );
+    expect((await execute('detach')).counts.pendingReminders).toBe(1);
+    const status = async (dedupeKey: string) =>
+      (
+        await client.query('SELECT status FROM waste_email_reminder_outbox WHERE dedupe_key = $1', [
+          dedupeKey,
+        ])
+      ).rows[0]?.status;
+    expect(await status(pendingKey)).toBe('cancelled');
+    expect(await status(unaffectedKey)).toBe('pending');
+    expect(await status(uncertainKey)).toBe('failed');
+
+    expect(await repository.enqueueOutboxEntry(order(pendingKey, [otherMember]))).toBe('refreshed');
+    expect(await repository.enqueueOutboxEntry(order(uncertainKey, [otherMember]))).toBe(
+      'duplicate'
+    );
+    const refreshed = await client.query(
+      "SELECT status, payload->'metadata'->>'reminderMemberKeys' AS members FROM waste_email_reminder_outbox WHERE dedupe_key = $1",
+      [pendingKey]
+    );
+    expect(refreshed.rows).toEqual([{ status: 'pending', members: JSON.stringify([otherMember]) }]);
   });
   it('uses the application principal without direct relation-write privileges', async () => {
     const role = `fraction_app_${randomUUID().replaceAll('-', '')}`;

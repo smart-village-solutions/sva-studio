@@ -5,7 +5,7 @@
 - [x] 1.3 Vorhandene GraphQL-/Admin-REST-/Auth-Pfade im lokalen Mainserver lesen und belegte Fähigkeiten von fehlender Zugriffsfreigabe trennen.
 - [x] 1.4 Zwei kleine Feldgruppen anhand tatsächlicher App-Verbraucher auswählen; keine Wirkung allein aus Katalogpfaden ableiten.
 - [x] 1.5 Nutzerpräferenz für GraphQL festhalten und den Studio-Schema-Snapshot gegen die lokalen Resolver prüfen: vollständige JSON-Variantenliste und exakter Read nach ID fehlen; Update normalisiert den Namen. Admin-REST ist kein vorgesehener Integrationsweg.
-- [ ] 1.6 Die dokumentierte GraphQL-Vertragslücke für vollständige Variantenverwaltung, Namenserhalt und unabhängigen Readback mit unverändertem Mainserver auflösen. Keine zusätzliche Admin-Session, Rollenänderung, Mainserver-Erweiterung oder Reduktion des Produktumfangs stillschweigend einplanen.
+- [ ] 1.6 Verbleibende GraphQL-Vertragslücke für die Neuanlage mit exaktem Namen auflösen. Lesen, Inhaltsupdate und unabhängiger Abruf sind in Abschnitt 6 umgesetzt; die Einschränkung bei Kopien steht in Abschnitt 7.
 - [ ] 1.7 Nach Klärung alle Vorgänge über denselben autorisierten GraphQL-/Principal-Kontext nachweisen. Mutationstest ausschließlich in ausdrücklich freigegebener Testumgebung mit benannten Testeinträgen; keine Produktivkonfiguration dafür ändern.
 
 ## 2. Gemeinsamer Host-/Adaptervertrag
@@ -19,7 +19,7 @@
 - [ ] 2.5.1 Vollständige Versionskopie im tatsächlichen Host-Ablauf vorbereiten; bestätigte Vorlage, vorhandenes Ziel und vollständigen Bestand prüfen. Kein Create aus einem Teilformular.
 - [ ] 2.5.2 Versionskopie an tatsächlichen Variantenbestand, übergreifendes Recht und Create anbinden; gezielte Löschung einschließlich Bestätigung und unabhängigem Abwesenheitsnachweis implementieren.
 - [x] 2.6.1 Automatischen Transport-Retry für die bestehende Static-Content-Mutation deaktivieren. Mutationsfehler einschließlich fehlender Antwort-ID mit dem bestehenden terminalen Job-Fehlergrund markieren, damit auch der Handler nicht automatisch wiederholt wird. Acht Mutations- und zwei Lookup-Regressionen prüfen beide Grenzen. Keine neue Outcome-Reconciliation.
-- [ ] 2.6.2 Unklaren Ausgang vor einer ausdrücklich ausgelösten Wiederholung tatsächlich abgleichen und den Host-/UI-Status ohne falsche Erfolgs-/Nichtgespeichert-Aussage ausgeben. Fehlender exakter GraphQL-Lesepfad bleibt offen.
+- [ ] 2.6.2 Unklaren Ausgang vor einer ausdrücklich ausgelösten Wiederholung tatsächlich abgleichen und den Host-/UI-Status ohne falsche Erfolgs-/Nichtgespeichert-Aussage ausgeben. Der exakte Lesepfad ist in Abschnitt 6 angebunden.
 - [ ] 2.7.1 Readback-Ergebnisvergleich gemeinsam mit dem tatsächlichen unabhängigen Lesepfad implementieren; Mutation-ID und Fallback-Antwort bestätigen keinen Erfolg.
 - [ ] 2.7.2 Tatsächlich unabhängigen exakten Lesepfad, datensparsames Audit und Host-Fehlerabbildung anschließen; Waste-Verbraucher am selben zuständigen Pfad regressionssicher erhalten.
 
@@ -57,5 +57,5 @@
 
 - [x] 7.1 Zielversion aus gewählter Vorlage im aktuellen GraphQL-Vertrag vollständig kopieren, wenn der Name unverändert bleibt. Vorhandenes Ziel prüfen und Kopie unabhängig verifizieren.
 - [x] 7.2 Bestätigte JSON-Variante gezielt per ID löschen, nachprüfen und Rechte sowie Studio-Mutationssperre serverseitig durchsetzen.
-- [ ] 7.3 Vollständige Neuanlage für Namen mit Mainserver-Normalisierung nachweisen.
+- [ ] 7.3 Vollständige Neuanlage für Namen mit Mainserver-Normalisierung nachweisen ([SVA-1794](https://tpwd.atlassian.net/browse/SVA-1794), für diesen PR zurückgestellt).
 - [ ] 7.4 Browser- und Runtime-Abnahme der Variantenaktionen mit freigegebenen Sandbox-Testdatensätzen.

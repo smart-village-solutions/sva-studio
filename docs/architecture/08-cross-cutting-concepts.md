@@ -30,7 +30,7 @@ Der serverseitige JSON-Abgleich gehört in das bestehende Package `@sva/sva-main
 | Fachplugin                | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage                                                           |
 | Studio-Host               | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade                                           |
 | `@sva/sva-mainserver`     | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
-| Mainserver                | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar                                            |
+| Mainserver                | Speicherung über die bestehende GraphQL-API; Inhaltsupdates prüfen die erwartete Revision atomar, Löschungen verwenden die gewählte ID                                            |
 
 Plugins nutzen ausschließlich den gemeinsamen Host-Vertrag. Sie erhalten weder einen generischen GraphQL-Executor noch Credentials und implementieren keine eigenen Retry-, Merge- oder Readback-Verfahren. Gemeinsame clientfähige Typen und Aufrufe werden über die bestehenden öffentlichen SDK-Verträge bereitgestellt; Fachvalidierungen bleiben beim zuständigen Plugin und werden auch serverseitig ausgeführt.
 

@@ -52,3 +52,10 @@
 - [x] 6.2 Hostrechte, Sessionbindung und CSRF prüfen. Die zwei vereinbarten Felder revisionsgesichert aktualisieren und ein unabhängiges Readback durchführen.
 - [x] 6.3 Geänderte Mainserver-Werte anzeigen, Konflikte je Feld entscheiden und nach Bestätigung erneut lesen.
 - [ ] 6.4 Browser- und Runtime-Abnahme über die Studio-Sandbox mit einem ausdrücklich freigegebenen Testdatensatz.
+
+## 7. Variantenaktionen im App-Arbeitsbereich
+
+- [x] 7.1 Zielversion aus gewählter Vorlage im aktuellen GraphQL-Vertrag vollständig kopieren, wenn der Name unverändert bleibt. Vorhandenes Ziel prüfen und Kopie unabhängig verifizieren.
+- [x] 7.2 Bestätigte JSON-Variante gezielt per ID löschen, nachprüfen und Rechte sowie Studio-Mutationssperre serverseitig durchsetzen.
+- [ ] 7.3 Vollständige Neuanlage für Namen mit Mainserver-Normalisierung nachweisen.
+- [ ] 7.4 Browser- und Runtime-Abnahme der Variantenaktionen mit freigegebenen Sandbox-Testdatensätzen.

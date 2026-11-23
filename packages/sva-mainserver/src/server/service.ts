@@ -305,14 +305,13 @@ export const verifySvaMainserverJobDeleted = (
   ...args: Parameters<DefaultService['verifyJobDeleted']>
 ) => getDefaultService().verifyJobDeleted(...args);
 
-export const listSvaMainserverAppConfiguration = (
-  ...args: Parameters<DefaultService['listAppConfiguration']>
+export const listSvaMainserverAppConfiguration: DefaultService['listAppConfiguration'] = (
+  ...args
 ) => getDefaultService().listAppConfiguration(...args);
-
-export const getSvaMainserverAppConfiguration = (
-  ...args: Parameters<DefaultService['getAppConfiguration']>
-) => getDefaultService().getAppConfiguration(...args);
-
-export const saveSvaMainserverAppConfiguration = (
-  ...args: Parameters<DefaultService['saveAppConfiguration']>
+export const getSvaMainserverAppConfiguration: DefaultService['getAppConfiguration'] = (...args) =>
+  getDefaultService().getAppConfiguration(...args);
+export const changeSvaMainserverAppConfigurationVariant: DefaultService['changeAppConfigurationVariant'] =
+  (...args) => getDefaultService().changeAppConfigurationVariant(...args);
+export const saveSvaMainserverAppConfiguration: DefaultService['saveAppConfiguration'] = (
+  ...args
 ) => getDefaultService().saveAppConfiguration(...args);

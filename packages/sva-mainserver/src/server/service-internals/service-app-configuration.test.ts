@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readAppConfigurationFields } from '../app-configuration-reconciliation.js';
 import { createAppConfigurationService } from './service-app-configuration.js';
 
 const raw = '{"appDesignSystem":{"serviceTiles":{"numberOfLines":2}},"foreign":9007199254740993}';
@@ -15,7 +14,10 @@ const record = {
 const command = {
   id: record.id,
   baselineRevision: 'r1',
-  baseline: readAppConfigurationFields(raw)!,
+  baseline: {
+    alternativeLocation: { state: 'missing' },
+    tileTitleLines: { state: 'value', value: 2 },
+  } as const,
   changes: { tileTitleLines: 4 },
 };
 const connection = { instanceId: 'sandbox', keycloakSubject: 'user' };
@@ -115,5 +117,117 @@ describe('App configuration Mainserver transport', () => {
       status: 'unconfirmed',
     });
     expect(execute).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('App configuration variant transport', () => {
+  const source = { ...record, name: 'globalsettings' };
+  const create = {
+    operation: 'create',
+    id: source.id,
+    revision: source.revision,
+    version: '2.1.0',
+  } as const;
+  const remove = { operation: 'delete', id: source.id, revision: source.revision } as const;
+
+  it('copies full raw JSON to a newly created ID and independently checks the result', async () => {
+    const { execute, service } = setup();
+    execute
+      .mockResolvedValueOnce({ staticContent: source })
+      .mockResolvedValueOnce({ staticContents: [source] })
+      .mockResolvedValueOnce({ createOrUpdateStaticContent: { id: '3' } })
+      .mockResolvedValueOnce({ staticContent: { ...source, id: '3', version: '2.1.0' } });
+
+    const result = await service.changeAppConfigurationVariant(connection, create);
+    expect(result).toMatchObject({ status: 'created', document: { id: '3', version: '2.1.0' } });
+    expect(result.status === 'created' && result.document).not.toHaveProperty('content');
+    expect(execute.mock.calls[2]?.[0]).toMatchObject({
+      allowRetry: false,
+      operationName: 'SvaMainserverCopyStaticJson',
+      variables: { name: source.name, content: raw, version: '2.1.0' },
+    });
+    expect(execute.mock.calls[2]?.[0].variables).not.toHaveProperty('id');
+    expect(execute.mock.calls[3]?.[0]).toMatchObject({
+      operationName: 'SvaMainserverStaticJsonById',
+      variables: { id: '3' },
+    });
+  });
+
+  it('checks the target again before allowing a manual retry after a timeout', async () => {
+    const { execute, service } = setup();
+    execute
+      .mockResolvedValueOnce({ staticContent: source })
+      .mockResolvedValueOnce({ staticContents: [source] })
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce({ staticContent: source })
+      .mockResolvedValueOnce({
+        staticContents: [source, { ...source, id: '3', version: create.version }],
+      });
+    expect(await service.changeAppConfigurationVariant(connection, create)).toEqual({
+      status: 'unconfirmed',
+    });
+    expect(await service.changeAppConfigurationVariant(connection, create)).toEqual({
+      status: 'exists',
+    });
+    expect(execute.mock.calls.filter(([request]) => request.allowRetry === false)).toHaveLength(1);
+  });
+
+  it('does not write if the Mainserver would change the file name', async () => {
+    const { execute, service } = setup();
+    execute.mockResolvedValueOnce({ staticContent: record });
+    expect(await service.changeAppConfigurationVariant(connection, create)).toEqual({
+      status: 'unsupported',
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['2.1', '2.1.0'],
+    [null, null],
+  ])('does not create over existing target %s', async (existing, requested) => {
+    const { execute, service } = setup();
+    execute
+      .mockResolvedValueOnce({ staticContent: { ...source, version: '1.0' } })
+      .mockResolvedValueOnce({
+        staticContents: [{ ...source, id: '3', name: 'globalSettings', version: existing }],
+      });
+    expect(
+      await service.changeAppConfigurationVariant(connection, { ...create, version: requested })
+    ).toEqual({ status: 'exists' });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([create, remove])(
+    'does not mutate if the selected revision is stale ($operation)',
+    async (command) => {
+      const { execute, service } = setup();
+      execute.mockResolvedValueOnce({ staticContent: { ...source, revision: 'r2' } });
+      expect(await service.changeAppConfigurationVariant(connection, command)).toEqual({
+        status: 'stale',
+      });
+      expect(execute).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each([
+    [null, 'deleted'],
+    [source, 'unconfirmed'],
+  ])('only confirms deletion after the exact ID disappears', async (after, status) => {
+    const { execute, service } = setup();
+    execute
+      .mockResolvedValueOnce({ staticContent: source })
+      .mockResolvedValueOnce({ destroyRecord: { id: source.id, statusCode: 200 } })
+      .mockResolvedValueOnce({ staticContent: after });
+    expect(await service.changeAppConfigurationVariant(connection, remove)).toEqual({ status });
+    expect(execute.mock.calls[1]?.[0]).toMatchObject({
+      allowRetry: false,
+      operationName: 'SvaMainserverDeleteStaticJson',
+      variables: { id: source.id },
+    });
+    expect(execute.mock.calls[1]?.[0].document).toContain('recordType: "StaticContent"');
+    expect(execute.mock.calls[2]?.[0]).toMatchObject({
+      operationName: 'SvaMainserverStaticJsonById',
+      variables: { id: source.id },
+    });
   });
 });

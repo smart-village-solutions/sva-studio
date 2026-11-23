@@ -1,5 +1,6 @@
 import {
   appConfigurationReadAccess,
+  appConfigurationVariantAccess,
   appConfigurationWriteAccess,
 } from './app-configuration-access';
 import {
@@ -8,20 +9,29 @@ import {
   readConfiguredPluginTenantAccess,
   validateCsrf,
   withAuthenticatedUser,
+  withExternalContentMutationLock,
 } from '@sva/auth-runtime/server';
 import type {
   AppConfigurationDocument,
   AppConfigurationRecord,
   AppConfigurationSave,
   AppConfigurationSyncResult,
+  AppConfigurationVariantCommand,
+  AppConfigurationVariantResult,
 } from '@sva/sva-mainserver';
 
 type ReadCommand = { id?: string };
 type Result<T> = { ok: true; data: T } | { ok: false; error: 'denied' | 'failed' };
 
+const accessByOperation = {
+  read: appConfigurationReadAccess,
+  update: appConfigurationWriteAccess,
+  variants: appConfigurationVariantAccess,
+};
+
 const run = async <T>(
   request: Request,
-  action: 'application-workspace.settings.read' | 'application-workspace.settings.update',
+  operation: keyof typeof accessByOperation,
   execute: (
     input: Parameters<
       typeof import('@sva/sva-mainserver/server').listSvaMainserverAppConfiguration
@@ -31,7 +41,7 @@ const run = async <T>(
   const response = await withAuthenticatedUser(request, async (ctx) => {
     const instanceId = ctx.user.instanceId;
     if (!instanceId) return new Response(null, { status: 403 });
-    const writing = action === 'application-workspace.settings.update';
+    const writing = operation !== 'read';
     const tenantAccess = await readConfiguredPluginTenantAccess(
       instanceId,
       'application-workspace'
@@ -44,7 +54,7 @@ const run = async <T>(
     });
     if (!resolved.ok) return new Response(null, { status: 503 });
     const decision = evaluateTenantPluginAccess({
-      requirement: writing ? appConfigurationWriteAccess : appConfigurationReadAccess,
+      requirement: accessByOperation[operation],
       instanceId,
       organizationId: ctx.activeOrganizationId,
       pluginId: 'application-workspace',
@@ -56,17 +66,25 @@ const run = async <T>(
       if (csrf) return csrf;
     }
     try {
-      const data = await execute({
-        instanceId,
-        keycloakSubject: ctx.user.id,
-        activeOrganizationId: ctx.activeOrganizationId,
-      });
+      const executeInContext = () =>
+        execute({
+          instanceId,
+          keycloakSubject: ctx.user.id,
+          activeOrganizationId: ctx.activeOrganizationId,
+        });
+      const data = writing
+        ? await withExternalContentMutationLock({
+            instanceId,
+            referenceId: 'app-configuration',
+            execute: executeInContext,
+          })
+        : await executeInContext();
       return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
     } catch {
       const { createSdkLogger } = await import('@sva/server-runtime');
       createSdkLogger({ component: 'app-configuration' }).warn(
         'App configuration operation failed',
-        { action }
+        { operation }
       );
       return new Response(null, { status: 502 });
     }
@@ -79,7 +97,7 @@ const run = async <T>(
 export const readAppConfiguration = (request: Request, command: ReadCommand) =>
   run<AppConfigurationDocument | AppConfigurationRecord[] | null>(
     request,
-    'application-workspace.settings.read',
+    'read',
     async (input) => {
       const { getSvaMainserverAppConfiguration, listSvaMainserverAppConfiguration } =
         await import('@sva/sva-mainserver/server');
@@ -90,11 +108,17 @@ export const readAppConfiguration = (request: Request, command: ReadCommand) =>
   );
 
 export const saveAppConfiguration = (request: Request, command: AppConfigurationSave) =>
-  run<AppConfigurationSyncResult>(
-    request,
-    'application-workspace.settings.update',
-    async (input) => {
-      const { saveSvaMainserverAppConfiguration } = await import('@sva/sva-mainserver/server');
-      return saveSvaMainserverAppConfiguration(input, command);
-    }
-  );
+  run<AppConfigurationSyncResult>(request, 'update', async (input) => {
+    const { saveSvaMainserverAppConfiguration } = await import('@sva/sva-mainserver/server');
+    return saveSvaMainserverAppConfiguration(input, command);
+  });
+
+export const changeAppConfigurationVariant = (
+  request: Request,
+  command: AppConfigurationVariantCommand
+) =>
+  run<AppConfigurationVariantResult>(request, 'variants', async (input) => {
+    const { changeSvaMainserverAppConfigurationVariant } =
+      await import('@sva/sva-mainserver/server');
+    return changeSvaMainserverAppConfigurationVariant(input, command);
+  });

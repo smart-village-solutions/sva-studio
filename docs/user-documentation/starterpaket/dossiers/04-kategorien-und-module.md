@@ -62,7 +62,8 @@ Vor einem Sammelauftrag werden die tatsächlich fehlenden oder veralteten Standa
 - **Instructions (English):** Once enabled for your municipality, use the Applications grid icon in the header. Studio always appears first and opens in the current tab. Other applications open in a new tab and retain their own login and access rules.
 - **Berechtigung:** Alle angemeldeten Benutzer einer aktivierten Instanz, auch ohne Fachrolle. Keine öffentliche Anwendungsliste.
 - **App-Konfiguration:** Berechtigte können „App-Konfiguration öffnen“, eine JSON-Datei und die gewünschte Variante auswählen. Das erste Formular für `globalSettings` bearbeitet alternative Standortwahl und Zeilen für Service-Kacheltitel. „Im Mainserver speichern“ gleicht die Änderung direkt ab. Wenn sich der Stand geändert hat, zeigt Studio Ausgangswert, eigene Änderung und aktuellen Mainserver-Wert. Bei einem Konflikt ist pro Feld eine Auswahl notwendig. Die Dateiliste lässt sich ausdrücklich aktualisieren.
-- **Rechte für App-Konfiguration:** `application-workspace.settings.read` zum Lesen und zusätzlich `application-workspace.settings.update` zum Speichern.
+- **Varianten verwalten:** Die gewählte Variante dient als Vorlage für eine vollständige Kopie. Eine leere Zielversion erzeugt eine unversionierte Variante. Studio prüft, ob die Zielversion bereits vorhanden ist. Dateien, deren Name sich beim Anlegen im Mainserver ändern würde, lassen sich derzeit nicht kopieren. Beim Löschen nennt der Dialog Datei, Version und ID. Die App kann danach eine andere Variante verwenden.
+- **Rechte für App-Konfiguration:** `application-workspace.settings.read` zum Lesen, zusätzlich `application-workspace.settings.update` zum Speichern und zusätzlich `integration.manage` zum Anlegen oder Löschen von Varianten.
 
 ## `application-workspace.settings` – Plugin-Einstellungen
 

@@ -6,7 +6,7 @@ Die App-Konfigurationseditoren benötigen einen gemeinsamen, verlustfreien Mains
 
 ## Freigabe und Status
 
-Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutzt den App-Arbeitsbereich für die JSON-Dateiliste, die exakte Versionswahl und den feldbezogenen Abgleich der zwei Felder aus „Allgemein“ und „Design“. Weitere Fachformulare sowie Variantenanlage und Löschung folgen getrennt.
+Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutzt den App-Arbeitsbereich für die JSON-Dateiliste, die exakte Versionswahl und den feldbezogenen Abgleich der zwei Felder aus „Allgemein“ und „Design“. Die Variantenaktionen nutzen denselben Abgleich. Die Neuanlage ist auf Namen begrenzt, die der Mainserver unverändert übernimmt. Weitere Fachformulare folgen getrennt.
 
 ## What Changes
 

@@ -4,6 +4,9 @@ export { isSvaMainserverGenericItemProjectionContentType } from './types.js';
 export {
   appConfigurationIdSchema,
   appConfigurationSaveSchema,
+  appConfigurationVariantCommandSchema,
+  type AppConfigurationVariantCommand,
+  type AppConfigurationVariantResult,
   type AppConfigurationRecord,
   type AppConfigurationFields,
   type AppConfigurationSave,

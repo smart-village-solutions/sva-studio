@@ -11,3 +11,11 @@ export const appConfigurationWriteAccess = {
     values: ['application-workspace.settings.read', 'application-workspace.settings.update'],
   },
 } as const;
+
+export const appConfigurationVariantAccess = {
+  ...appConfigurationWriteAccess,
+  actions: {
+    ...appConfigurationWriteAccess.actions,
+    values: [...appConfigurationWriteAccess.actions.values, 'integration.manage'],
+  },
+} as const;

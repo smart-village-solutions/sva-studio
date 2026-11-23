@@ -1,5 +1,33 @@
 export const interfacesDEResources = {
   appConfiguration: {
+    createVariant: 'Neue Variante anlegen',
+    deleteVariant: 'Variante löschen',
+    confirmCreateVariant: 'Kopie anlegen',
+    confirmDeleteVariant: 'Endgültig löschen',
+    cancelVariant: 'Abbrechen',
+    targetVersion: 'Version der neuen Variante',
+    targetVersionHelp:
+      'Positive Versionsnummer, z. B. 2.1.0. Für eine unversionierte Kopie leer lassen.',
+    variantVersionError:
+      'Gib eine positive Versionsnummer mit Punkten ein oder lass das Feld leer.',
+    variantNameUnsupported:
+      'Der Mainserver würde den Dateinamen beim Anlegen verändern. Diese Datei kann im Studio derzeit nicht kopiert werden.',
+    copyDescription:
+      'Vorlage: {{name}} · {{version}} (ID {{id}}). Die neue Variante übernimmt das vollständige JSON der Vorlage.',
+    deleteDescription:
+      '{{name}} · {{version}} (ID {{id}}) wird vollständig gelöscht. Die App kann danach eine andere Variante verwenden.',
+    variantDenied: 'Für diese Aktion fehlt das zusätzliche Recht zur Integrationsverwaltung.',
+    variant: {
+      created: 'Die Kopie wurde im Mainserver bestätigt.',
+      deleted: 'Die Variante wurde im Mainserver gelöscht.',
+      exists: 'Diese Zielversion ist bereits vorhanden.',
+      stale:
+        'Die ausgewählte Variante hat sich geändert. Lade die Dateiliste neu und prüfe die aktuelle Variante.',
+      missing: 'Die ausgewählte Variante ist nicht mehr vorhanden. Aktualisiere die Dateiliste.',
+      unsupported: 'Der Mainserver kann diese Datei nicht unverändert kopieren.',
+      unconfirmed:
+        'Das Ergebnis im Mainserver konnte nicht bestätigt werden. Aktualisiere die Dateiliste vor einem neuen Versuch.',
+    },
     save: 'Im Mainserver speichern',
     saved: 'Stand im Mainserver geprüft.',
     variantMissing: 'Die gewählte Variante ist nicht mehr vorhanden.',

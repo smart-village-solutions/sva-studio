@@ -1,5 +1,32 @@
 export const interfacesENResources = {
   appConfiguration: {
+    createVariant: 'Create variant',
+    deleteVariant: 'Delete variant',
+    confirmCreateVariant: 'Create copy',
+    confirmDeleteVariant: 'Delete permanently',
+    cancelVariant: 'Cancel',
+    targetVersion: 'New variant version',
+    targetVersionHelp:
+      'Enter a positive version number, e.g. 2.1.0. Leave blank for an unversioned copy.',
+    variantVersionError: 'Enter a positive dotted version number or leave the field blank.',
+    variantNameUnsupported:
+      'The Mainserver would change the file name during creation. This file cannot currently be copied in Studio.',
+    copyDescription:
+      'Template: {{name}} · {{version}} (ID {{id}}). The new variant copies the full JSON from this template.',
+    deleteDescription:
+      '{{name}} · {{version}} (ID {{id}}) will be deleted in full. The app may fall back to another variant.',
+    variantDenied: 'This action requires the additional permission to manage integrations.',
+    variant: {
+      created: 'The copy was verified on the Mainserver.',
+      deleted: 'The variant was deleted on the Mainserver.',
+      exists: 'The target version already exists.',
+      stale:
+        'The selected variant has changed. Refresh the file list and check the current variant.',
+      missing: 'The selected variant no longer exists. Refresh the file list.',
+      unsupported: 'The Mainserver cannot copy this file unchanged.',
+      unconfirmed:
+        'The Mainserver result could not be confirmed. Refresh the file list before trying again.',
+    },
     save: 'Save to Mainserver',
     saved: 'Mainserver state verified.',
     variantMissing: 'The selected variant no longer exists.',

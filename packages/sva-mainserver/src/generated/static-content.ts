@@ -81,3 +81,15 @@ mutation SvaMainserverUpdateStaticJson($id: ID!, $content: String!, $revision: S
   createOrUpdateStaticContent(id: $id, content: $content, dataType: "json", expectedRevision: $revision) { id }
 }
 `;
+
+export const svaMainserverCopyStaticJsonDocument = `
+mutation SvaMainserverCopyStaticJson($name: String!, $content: String!, $version: String) {
+  createOrUpdateStaticContent(name: $name, content: $content, dataType: "json", version: $version) { id }
+}
+`;
+
+export const svaMainserverDeleteStaticJsonDocument = `
+mutation SvaMainserverDeleteStaticJson($id: ID!) {
+  destroyRecord(id: $id, recordType: "StaticContent") { id statusCode }
+}
+`;

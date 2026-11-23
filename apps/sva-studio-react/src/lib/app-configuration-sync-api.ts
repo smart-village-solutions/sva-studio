@@ -24,3 +24,15 @@ export const saveAppConfiguration = createServerFn({ method: 'POST' })
     const { saveAppConfiguration } = await import('./app-configuration-sync.server');
     return saveAppConfiguration(getRequest(), data);
   });
+
+export const changeAppConfigurationVariant = createServerFn({ method: 'POST' })
+  .validator(async (value: unknown) => {
+    const { appConfigurationVariantCommandSchema } = await import('@sva/sva-mainserver');
+    return appConfigurationVariantCommandSchema.parse(value);
+  })
+  .handler(async ({ data }) => {
+    const { getRequest, setResponseHeader } = await import('@tanstack/react-start/server');
+    setResponseHeader('Cache-Control', 'no-store');
+    const { changeAppConfigurationVariant } = await import('./app-configuration-sync.server');
+    return changeAppConfigurationVariant(getRequest(), data);
+  });

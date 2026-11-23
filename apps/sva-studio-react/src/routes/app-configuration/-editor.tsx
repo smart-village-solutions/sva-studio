@@ -6,10 +6,15 @@ import { readAppConfiguration } from '../../lib/app-configuration-sync-api';
 import { ContentEditorLeaveBoundary } from '../../routing/content-editor-leave-boundary';
 import { useAuth } from '../../providers/auth-provider';
 import { useEffectiveAccess } from '../../providers/effective-access-provider';
-import { appConfigurationReadAccess, appConfigurationWriteAccess } from '../../lib/app-configuration-access';
+import {
+  appConfigurationReadAccess,
+  appConfigurationWriteAccess,
+  appConfigurationVariantAccess,
+} from '../../lib/app-configuration-access';
 import { useOrganizationContext } from '../../hooks/use-organization-context';
 import { t } from '../../i18n';
 import { ConfigurationForm } from './-form';
+import { VariantActions } from './-variants';
 
 const DAY = 24 * 60 * 60 * 1000;
 const text = (key: string) => t(`interfaces.appConfiguration.${key}`);
@@ -48,6 +53,7 @@ function ContextEditor() {
       ready={!!identity && identity === bound && !suspended}
       reportDirty={setDirty}
       canWrite={access.decide(appConfigurationWriteAccess).status === 'allowed'}
+      canManageVariants={access.decide(appConfigurationVariantAccess).status === 'allowed'}
     />
   );
 }
@@ -56,10 +62,12 @@ function ConfigurationPicker({
   ready,
   reportDirty,
   canWrite,
+  canManageVariants,
 }: {
   ready: boolean;
   reportDirty: (dirty: boolean) => void;
   canWrite: boolean;
+  canManageVariants: boolean;
 }) {
   const read = useServerFn(readAppConfiguration);
   const [rows, setRows] = React.useState<AppConfigurationRecord[]>([]);
@@ -120,6 +128,21 @@ function ConfigurationPicker({
       setBusy(false);
     }
   };
+  const selectCreated = (document: AppConfigurationDocument) => {
+    cache.current.set(document.id, { at: Date.now(), entry: document });
+    setRows((previous) => [...previous.filter((row) => row.id !== document.id), document]);
+    setId(document.id);
+    setEntry(document);
+  };
+
+  const removeDeleted = (deletedId: string) => {
+    cache.current.delete(deletedId);
+    setRows((previous) => previous.filter((row) => row.id !== deletedId));
+    setId('');
+    setEntry(null);
+  };
+
+  const selectionLocked = dirty || busy;
   const names = [...new Set(rows.map((row) => row.name))].sort((a, b) => a.localeCompare(b));
   return (
     <section
@@ -135,7 +158,7 @@ function ConfigurationPicker({
             <span>{text('file')}</span>
             <Select
               value={name}
-              disabled={dirty || busy}
+              disabled={selectionLocked}
               onChange={(event) => {
                 setName(event.target.value);
                 setId('');
@@ -154,7 +177,7 @@ function ConfigurationPicker({
             <span>{text('version')}</span>
             <Select
               value={id}
-              disabled={!name || dirty || busy}
+              disabled={!name || selectionLocked}
               onChange={(event) => void open(event.target.value)}
             >
               <option value="">{text('selectVersion')}</option>
@@ -170,7 +193,7 @@ function ConfigurationPicker({
           <Button
             type="button"
             variant="secondary"
-            disabled={dirty || busy}
+            disabled={selectionLocked}
             onClick={() => void refresh()}
           >
             {text('refresh')}
@@ -178,6 +201,14 @@ function ConfigurationPicker({
         </div>
         {busy && <p role="status">{text('loading')}</p>}
         {message && <p role="alert">{text(message)}</p>}
+        {ready && (
+          <VariantActions
+            entry={entry}
+            enabled={canManageVariants && !selectionLocked}
+            onCreated={selectCreated}
+            onDeleted={removeDeleted}
+          />
+        )}
         {entry &&
           (entry.fields ? (
             <ConfigurationForm
@@ -186,6 +217,7 @@ function ConfigurationPicker({
               reportDirty={report}
               canWrite={canWrite}
               onSaved={(saved) => {
+                setEntry(saved);
                 cache.current.set(saved.id, { at: Date.now(), entry: saved });
                 setRows((previous) => previous.map((row) => (row.id === saved.id ? saved : row)));
               }}

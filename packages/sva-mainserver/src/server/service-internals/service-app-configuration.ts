@@ -3,6 +3,9 @@ import {
   appConfigurationIdSchema,
   appConfigurationRecordSchema,
   appConfigurationSaveSchema,
+  appConfigurationVariantCommandSchema,
+  type AppConfigurationVariantCommand,
+  canCopyAppConfigurationName,
   type AppConfigurationDocument,
   type AppConfigurationSave,
   type AppConfigurationSyncResult,
@@ -21,6 +24,7 @@ import {
   reconcileAppConfiguration,
 } from '../app-configuration-reconciliation.js';
 import { SvaMainserverError } from '../errors.js';
+import { changeAppConfigurationVariant } from './app-configuration-variant-operations.js';
 import type { createServiceContext } from './service-context.js';
 
 const storedDocument = appConfigurationRecordSchema.extend({
@@ -38,6 +42,7 @@ const project = ({
   ...record
 }: z.infer<typeof storedDocument>): AppConfigurationDocument => ({
   ...record,
+  canCopy: canCopyAppConfigurationName(record.name),
   fields:
     /^globalsettings$/i.test(record.name) && content !== null
       ? readAppConfigurationFields(content)
@@ -62,6 +67,22 @@ const compareAfterRevisionConflict = (
     document,
     conflicts: comparison.status === 'review' ? comparison.conflicts : [],
   };
+};
+
+const listConfigurations = async (
+  execute: ReturnType<typeof createServiceContext>['executeGraphqlWithConfig'],
+  input: Connection,
+  config: Config
+) => {
+  const response = await execute<unknown>(
+    {
+      ...input,
+      document: svaMainserverStaticJsonOverviewDocument,
+      operationName: 'SvaMainserverStaticJsonOverview',
+    },
+    config
+  );
+  return listResponse.parse(response).staticContents;
 };
 
 export const createAppConfigurationService = (
@@ -147,18 +168,31 @@ export const createAppConfigurationService = (
     return { status: 'unconfirmed' };
   };
 
+  const list = (input: Connection, config: Config) =>
+    listConfigurations(context.executeGraphqlWithConfig, input, config);
+
   return {
-    listAppConfiguration: async (input: Connection) => {
+    listAppConfiguration: async (input: Connection) =>
+      list(input, await context.loadValidatedInstanceConfig(input, 'load_instance_config')),
+    changeAppConfigurationVariant: async (
+      input: Connection,
+      command: AppConfigurationVariantCommand
+    ) => {
+      const validated = appConfigurationVariantCommandSchema.parse(command);
       const config = await context.loadValidatedInstanceConfig(input, 'load_instance_config');
-      const response = await context.executeGraphqlWithConfig<unknown>(
+      return changeAppConfigurationVariant(
         {
-          ...input,
-          document: svaMainserverStaticJsonOverviewDocument,
-          operationName: 'SvaMainserverStaticJsonOverview',
+          read: (id) => read(input, config, id),
+          list: () => list(input, config),
+          mutate: (operationName, document, variables) =>
+            context.executeGraphqlWithConfig<unknown>(
+              { ...input, allowRetry: false, operationName, document, variables },
+              config
+            ),
+          project,
         },
-        config
+        validated
       );
-      return listResponse.parse(response).staticContents;
     },
     getAppConfiguration: async (input: Connection, id: string) => {
       const config = await context.loadValidatedInstanceConfig(input, 'load_instance_config');

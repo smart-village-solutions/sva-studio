@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfigurationSave } from '@sva/sva-mainserver';
-import { saveAppConfiguration } from './app-configuration-sync.server';
+import {
+  changeAppConfigurationVariant,
+  saveAppConfiguration,
+} from './app-configuration-sync.server';
 
 const state = vi.hoisted(() => ({
   authenticated: true,
   plugin: vi.fn(),
   permissions: vi.fn(),
   save: vi.fn(),
+  changeVariant: vi.fn(),
+  lock: vi.fn(),
 }));
 vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   evaluateTenantPluginAccess: (await importOriginal<typeof import('@sva/auth-runtime/server')>())
@@ -17,12 +22,14 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
       : Promise.resolve(new Response(null, { status: 401 })),
   readConfiguredPluginTenantAccess: state.plugin,
   resolveEffectivePermissions: state.permissions,
+  withExternalContentMutationLock: state.lock,
   validateCsrf: (await importOriginal<typeof import('@sva/auth-runtime/server')>()).validateCsrf,
 }));
 vi.mock('@sva/sva-mainserver/server', () => ({
   listSvaMainserverAppConfiguration: vi.fn(),
   getSvaMainserverAppConfiguration: vi.fn(),
   saveSvaMainserverAppConfiguration: state.save,
+  changeSvaMainserverAppConfigurationVariant: state.changeVariant,
 }));
 const command: AppConfigurationSave = {
   id: '42',
@@ -47,6 +54,7 @@ beforeEach(() => {
     ok: true,
     permissions: [permission('read'), permission('update')],
   });
+  state.lock.mockImplementation(({ execute }) => execute());
   state.save.mockResolvedValue({ status: 'unsupported' });
 });
 describe('App configuration host write authorization', () => {
@@ -89,6 +97,46 @@ describe('App configuration host write authorization', () => {
         activeOrganizationId: 'org',
       },
       command
+    );
+  });
+});
+
+describe('App configuration variant authorization', () => {
+  const selection = { id: '42', revision: 'r1' };
+  const deletion = { ...selection, operation: 'delete' } as const;
+
+  it('requires broader permissions than editing settings', async () => {
+    expect(await changeAppConfigurationVariant(request, deletion)).toEqual({
+      ok: false,
+      error: 'denied',
+    });
+    expect(state.lock).not.toHaveBeenCalled();
+    expect(state.changeVariant).not.toHaveBeenCalled();
+  });
+
+  it('runs under the same tenant lock as a settings update', async () => {
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        permission('read'),
+        permission('update'),
+        { action: 'integration.manage', resourceType: 'integration', accessScope: 'all' },
+      ],
+    });
+    state.changeVariant.mockResolvedValue({ status: 'deleted' });
+    expect(await changeAppConfigurationVariant(request, deletion)).toEqual({
+      ok: true,
+      data: { status: 'deleted' },
+    });
+    expect(state.lock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'sandbox',
+        referenceId: 'app-configuration',
+      })
+    );
+    expect(state.changeVariant).toHaveBeenCalledWith(
+      { instanceId: 'sandbox', keycloakSubject: 'editor', activeOrganizationId: 'org' },
+      deletion
     );
   });
 });

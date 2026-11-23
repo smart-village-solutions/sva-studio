@@ -29,14 +29,8 @@ type WasteSettingsFormProps = {
   readonly onSubmit: () => void;
 };
 
-export const WasteSettingsForm = ({
-  form,
-  settings,
-  saving,
-  saveStatus,
-  onChange,
-  onSubmit,
-}: Readonly<WasteSettingsFormProps>) => {
+export const WasteSettingsForm = (props: Readonly<WasteSettingsFormProps>) => {
+  const { form, settings, saving, saveStatus, onChange, onSubmit } = props;
   const pt = usePluginTranslation('wasteManagement');
   const [holidayOverwriteDialogOpen, setHolidayOverwriteDialogOpen] = useState(false);
   const lastSuccessfulHolidaySyncAt = formatUpdatedAt(settings?.lastSuccessfulHolidaySyncAt);

@@ -6,9 +6,9 @@ Der gemeinsame Ablauf liegt im bestehenden `@sva/sva-mainserver`. Fachplugins ve
 
 Redakteure wählen die Versionsvariante selbst. Neue Versionen kopieren eine ausdrücklich gewählte bestehende Variante vollständig. Bearbeiten erfordert das jeweilige Plugin-Konfigurationsrecht; Anlegen und Löschen ganzer Dokumentvarianten erfordert zusätzlich ein übergreifendes Konfigurationsrecht. Inhaltsrechte reichen nicht aus. Speichern schreibt nach einer Änderungsvorschau direkt in den Mainserver. Ungespeicherte Formularänderungen bleiben lokal, werden bei Konflikten erhalten und begründen keinen dauerhaften Entwurfsbestand.
 
-Mainserver und App bleiben unverändert. Es gibt keine atomare Vorbedingung im vorhandenen Schreibvertrag. Externe Änderungen zwischen Lesen und Schreiben können daher überschrieben werden; dieses Risiko ist akzeptiert. Auch ein erfolgreicher Readback belegt nur den gelesenen Zustand und verhindert keine spätere Änderung.
+Die Studio-Anbindung verwendet den aktuell ausgerollten Mainserver-Vertrag. Für Updates prüft der Mainserver die erwartete Revision atomar. Der unabhängige Readback bestätigt den gelesenen Zustand zum Zeitpunkt der Abfrage.
 
-## Technischer Zugriff mit unverändertem Mainserver
+## Historische Vertragsprüfung vor SVA-1787, SVA-1788, SVA-1789 und SVA-1792
 
 Quellenprüfung vom 15. November 2026, keine Live-Prüfung: Mainserver-Worktree `.worktrees/saas`, Commit `b01aead122485848cd03ea774c12eb9fc3efdd28`. Alle folgenden Mainserver-Pfade sind relativ zu diesem Worktree.
 
@@ -44,21 +44,19 @@ Dies sind begrenzte erste Feldgruppen, keine vollständigen Allgemein-/Designfor
 
 ## Gemeinsamer Ablauf
 
-### Aktueller Lieferumfang
+### Bestehender Schreibpfad für andere statische Inhalte
 
 Im bestehenden `service-internals/static-content-operations.ts` gilt `allowRetry: false` für die Create-/Update-Mutation. Der vorausgehende Lookup behält seine Retry-Regel. Fehler ab Beginn der Mutation einschließlich fehlender Mutation-ID werden mit dem bereits vorhandenen `cause.retry.kind: terminal` markiert; der bestehende Job-Lifecycle behandelt sie dadurch bereits vor dem letzten Versuch als permanent und führt den Handler nicht automatisch erneut aus. Acht Mutationstests prüfen Create/Update bei HTTP 503, Verbindungsabbruch, Timeout und fehlender Antwort-ID. Zwei Lookup-Fälle prüfen erhaltenen Lese-Retry und unveränderte Fehler vor Beginn einer Mutation. Es entsteht kein neuer Fehler- oder Retry-Vertrag. Payload, Namen und Versionsbehandlung bleiben unverändert. Ein Transportfehler bedeutet weiterhin einen unklaren Ausgang, keinen Nachweis eines fehlgeschlagenen Writes.
 
-Leseadapter, feldbezogener Abgleich, vollständige Versionskopie und Readback-Vergleich werden erst mit dem tatsächlichen Host-Verbraucher als ein zusammenhängender Pfad eingeführt. So entstehen keine ungenutzten öffentlichen Verträge. Für den späteren Abgleich sind gezielte JSON-Textänderungen statt Neuserialisierung fremder Rohwerte vorgesehen. Die bekannten GraphQL-Grenzen sind dabei zu berücksichtigen: `publicJsonFile` besitzt Fallback-Semantik; versionierte Antworten laufen durch `JSON.parse`, auch JSON-Strings sind deshalb kein belegter Rohtext. Nur die unversionierte Antwort hat den untersuchten Rohtextvertrag. Ein nicht aufgelöstes Ergebnis beweist keine Abwesenheit und erlaubt keine automatische Anlage.
-
-### Noch anzuschließender Gesamtablauf
+### Gemeinsamer Ablauf für App-Konfigurationsupdates
 
 1. **Lesen:** Host autorisiert das Plugin, bindet den aktuellen Zielkontext und liest die explizit gewählte Variante. ID, gespeicherter Name, Datentyp und gespeicherte Version werden geprüft. Angefragte App-Version und aufgelöste Variante werden getrennt behandelt. Rohinhalt bleibt ausschließlich im berechtigten Serverpfad; der Browser erhält die erlaubten Feldprojektionen und benötigte Identitäts-/Vergleichsmetadaten.
 2. **Bearbeiten und Vorschau:** Das Plugin führt ausdrücklich geänderte eigene Pfade mit ihrer gelesenen Ausgangsbasis. Setzen, Entfernen und `null` sind verschieden. Der Host akzeptiert keine vom Browser selbst erklärte Pfadberechtigung. Vollständige fremde Konfiguration und sensible Werte gehören nicht in Vorschau, Fehler oder Logs.
-3. **Speichern:** Für dasselbe Dokument und dieselbe Variante werden Studio-Operationen über eine geeignete bestehende instanzgebundene Mutation-Lock-Primitive serialisiert; `withExternalContentMutationLock` ist ein geprüfter Ausgangspunkt, seine Ressourcenbindung und Eignung sind vor Nutzung zu bestätigen. Kein Prozess-lokaler Mutex als Mehrinstanzgarantie. Der Scope darf nicht pro Plugin oder Benutzer aufgeteilt sein. Innerhalb der Ausführung wird erneut exakt gelesen und die Autorisierung/Kontextbindung erneut berücksichtigt.
+3. **Speichern:** Der Host prüft Rechte und Kontext erneut. Innerhalb der Ausführung wird die gewählte ID frisch gelesen und die zugehörige Revision als atomare Vorbedingung für das Update verwendet.
 4. **Abgleichen:** Auf jedem geänderten Pfad werden gelesene Basis, aktueller Bestand und eigener Zielwert verglichen. Fremde disjunkte Änderungen bleiben erhalten. Hat sich ein eigener Pfad widersprüchlich verändert, erfolgt kein Write; der Formularentwurf bleibt erhalten und der Nutzer entscheidet feldbezogen. Identische Zielwerte sind kein widersprüchlicher Konflikt. Container- und Typwechsel werden mitgeprüft; kein Ersatz fremder Geschwister und kein Deep-Merge nach Array-Index.
 5. **Write und Readback:** Änderungen werden auf den frischen vollständigen Bestand angewendet und ausschließlich an die ausgewählte Identität/Variante geschrieben. Ein separater nicht gecachter Read liest den tatsächlich geschriebenen Datensatz erneut. Inhalt und Identitätsmetadaten müssen passen. Die Mutationsantwort allein bestätigt den Erfolg nicht. Fremde Änderungen im Readback werden nicht automatisch zurückgeschrieben.
 
-Eine Studio-Lock schützt ausschließlich beteiligte Studio-Operationen. Altsystem- und sonstige Mainserver-Writes beachten sie nicht. Der Nachweis zweier Plugins ist daher auf den gemeinsamen Studio-Pfad zu begrenzen; gegen externe Zwischenwrites wird keine Verlustfreiheit behauptet.
+Die Revisionsprüfung erfolgt am gespeicherten Datensatz und schützt gleichermaßen vor Änderungen aus Studio und anderen Mainserver-Schreibpfaden, wenn diese die Revision geändert haben.
 
 ## Varianten und unklarer Ausgang
 
@@ -81,7 +79,7 @@ Die folgenden Nachweise werden in bestehenden Vitest-/Integrationstestpfaden erg
 | --- | --- |
 | Ein gemeinsamer Writer | Beide echten Plugin-Verbraucher laufen durch denselben Host-/Adapterpfad; bestehender Waste-Writer wird nicht dupliziert. |
 | Fremde Felder bleiben erhalten | Zwei Plugin-Edits derselben Variante, auch überlappend gestartete Studio-Requests; unbekannte verschachtelte Felder, Arrays und fehlend/null/false bleiben unverändert. |
-| Sichtbare Konflikte | Widersprüchlicher eigener Pfad oder Containerwechsel zwischen Basis und Fresh Read: kein Write, Entwurf bleibt; externe Änderung nach Fresh Read demonstriert bewusst die Grenze statt vermeintlichen CAS-Erfolg. |
+| Sichtbare Konflikte | Widersprüchlicher eigener Pfad oder Containerwechsel zwischen Basis und Fresh Read: kein Write, Entwurf bleibt; externe Änderung nach dem Fresh Read führt beim Schreiben zu einem Revisionskonflikt. |
 | Variantenidentität | Versioniert/unversioniert, gleiche Namen in verschiedenen Kommunen, Fallback und leere Fehlerantwort, Namensgroßschreibung, Vorlage kopieren, bestehendes Ziel und gezieltes Delete. |
 | Rechte und Principal | Direkter Host-Aufruf mit deaktiviertem Plugin, nur Inhaltsrechten, falschem Feldpfad, fehlendem Variantenrecht, fremdem Tenant oder gewechseltem Kontext wird vor Write abgewiesen. |
 | Wahrheitsgemäßer Ausgang | Timeout vor/nach Provider-Write, Create/Delete ohne eindeutige Zuordnung, unabhängiger Readback mit anderem Inhalt/Name/Version sowie fehlender Readback-Zugriff. |
@@ -89,12 +87,9 @@ Die folgenden Nachweise werden in bestehenden Vitest-/Integrationstestpfaden erg
 
 Für geänderte Runtime-Bereiche gelten die bestehenden Pflicht-Gates: früh `pnpm check:server-runtime`, kleinstes echtes Unit-/Type-Gate pro Änderung, Auth-/Datenintegritätsprüfungen nach `DEVELOPMENT_RULES.md` 5.2. Nx-Dateifilter als `--testFiles=...`; breite affected-Läufe nur nach Scope-Messung. UI: bestehende Design-System-Komponenten, deutsche/englische Übersetzungen, Tastatur-/Fokusnachweis und konkrete Clientwirkungsprüfung getrennt vom Provider-Readback. Keine Aussage über Live-Erfolg aus Fixtures.
 
-Vor einem Runtime-Writepfad muss der GraphQL-Vertrag Variantenbestand, gewählte Identität, unveränderten Namen, Write und unabhängigen Readback ausreichend abdecken. Der gelesene Quellcode und Studio-Schema-Snapshot belegen diese Kombination derzeit nicht. Es wird weder auf REST ausgewichen noch eine Mainserver-Änderung eingeplant. Der volle freigegebene Lieferabschnitt ist unter dem belegten Vertrag noch nicht implementierbar; keine heimliche Beschränkung auf unversionierte oder bereits lokal bekannte Varianten. Die akzeptierte externe Read-/Write-Race ist hiervon getrennt und wird nicht erneut zur Freigabe gestellt.
 
-## Bestätigter Vorschau-Editor ohne Speichern
+## Mainserver-Vertrag und erster Studio-Schreibpfad
 
-Der Host erweitert die bestehende Schnittstellen-Seite um einen bei Bedarf geöffneten Editor mit Allgemein, Design und Änderungsvorschau. Der bestehende `integration.manage`-Guard wird client- und serverseitig verwendet. Der Leseadapter im bestehenden Static-Content-/Service-Pfad erhält Instanz, Benutzer und aktive Organisation ausschließlich aus der authentifizierten Session; der Browser liefert nur die gewünschte App-Version. Er fragt `publicJsonFile` über den vorhandenen OAuth-/GraphQL-Executor ab und gibt ausschließlich ID, Name, tatsächliche Version und die zwei freigegebenen Feldprojektionen zurück. Fremde Konfiguration, Rohtext und Credentials bleiben auf dem Server.
+SVA-1788, SVA-1789 und SVA-1792 liefern den Variantenbestand und den exakten Detailabruf mit Rohtext und Revision. SVA-1787 sichert Inhaltsupdates nach ID ohne Namens- oder Versionsänderung mit `expectedRevision` ab. Der erste Editor wird im vorhandenen App-Arbeitsbereich mit seinen Lese- und Änderungsrechten eingebunden. Die vollständige Dateiliste ist sichtbar, das erste Formular bearbeitet die beiden vereinbarten Felder aus `globalSettings`. Anlegen, Löschen und weitere Fachformulare folgen getrennt.
 
-Eine leere Versionswahl fordert den unversionierten Bestand an. Der vom bestehenden Writer verwendete leere Versionsstring wird als unversioniert normalisiert. Eine eingegebene Version ist eine Anfrage, kein Variantenindex: die tatsächlich aufgelöste Version wird sichtbar, ein Fallback ausdrücklich gekennzeichnet. Versionierte Objektantworten können für die Feldvorschau verwendet werden; sie werden nicht als Rohtext ausgegeben. Versionierte String-Antworten sind mehrdeutig und werden nicht erneut als JSON interpretiert. Fehlend, falsch und inkompatibel sind getrennte Feldzustände. Ungültige Dokumente und unaufgelöste Antworten werden nicht als leere Konfiguration dargestellt.
-
-Änderungen leben ausschließlich im React-Zustand des geöffneten Panels. Es gibt keine Mutation, Autosave, Local-/Session-Storage-Persistenz und keinen Speichern-Button. Verwerfen stellt geladene Feldwerte wieder her; erneutes Laden bei vorhandenen Änderungen erfordert eine ausdrückliche Bestätigung. Die Vorschau vergleicht ausschließlich die zwei Formularfelder. Tests belegen Rechte-/Tenant-/Principal-Bindung, Query-only-Transport, datensparsame Projektion, Fallback-Anzeige, lokale Änderungen, Validierung und Verwerfen. Der vollständige Abgleich bleibt offen.
+Studio hält die Liste und geladene Feldprojektionen im geöffneten Arbeitsbereich kontextgebunden bis zu 24 Stunden vor. Neue Änderungen werden beim Speichern direkt abgeglichen. Eine geänderte Revision zeigt Ausgangswerte, eigene Änderungen und aktuelle Werte. Überschneidungen erfordern eine Feldentscheidung. Der Server liest nach dieser Entscheidung erneut, wendet ausschließlich gewählte Änderungen am Rohtext an und bestätigt das Ergebnis separat per ID. Die Mainserver-Revisionsprüfung verhindert zwischenzeitlich veraltete Studio-Writes. Unklare Ergebnisse werden ausdrücklich angezeigt und nicht automatisch wiederholt. Die bestehende Vorschau unter „Schnittstellen“ entfällt.

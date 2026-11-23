@@ -1,32 +1,32 @@
 export const interfacesDEResources = {
   appConfiguration: {
+    save: 'Im Mainserver speichern',
+    saved: 'Stand im Mainserver geprüft.',
+    variantMissing: 'Die gewählte Variante ist nicht mehr vorhanden.',
+    file: 'JSON-Datei',
+    selectFile: 'Datei auswählen',
+    selectVersion: 'Version auswählen',
+    refresh: 'Dateiliste aktualisieren',
+    noEditor: 'Für diese Datei gibt es noch kein Studio-Formular oder das Dokument ist ungültig.',
+    confirmSync: 'Auswahl bestätigen und speichern',
+    unconfirmed:
+      'Der gespeicherte Stand konnte nicht bestätigt werden. Prüfe die aktuelle Fassung vor einem erneuten Speichern.',
+    reviewTitle: 'Mainserver-Stand hat sich geändert',
+    reviewHelp:
+      'Prüfe die Werte der bearbeitbaren Felder. Bei widersprüchlichen Änderungen wählst du für jedes Feld den Wert, der erhalten bleiben soll. Andere Änderungen des Mainservers bleiben erhalten.',
+    mainserverValue: 'Aktuell im Mainserver',
+    choice: 'Wert beibehalten',
+    chooseValue: 'Wert auswählen',
+    keepStudio: 'Meine Änderung',
+    keepMainserver: 'Mainserver-Wert',
     title: 'App-Konfiguration',
     open: 'App-Konfiguration öffnen',
-    intro: 'Vorhandene Einstellungen laden, lokal bearbeiten und Änderungen vergleichen.',
-    notice:
-      'Änderungen werden noch nicht gespeichert. Sie gelten nur in diesem geöffneten Formular und verändern weder Mainserver noch App.',
-    version: 'Gewünschte App-Version',
-    versionHelp:
-      'Leer lassen für den unversionierten Bestand. Eine vollständige Variantenliste steht noch nicht zur Verfügung.',
-    load: 'Konfiguration laden',
+    version: 'App-Version',
     loading: 'Konfiguration wird geladen …',
-    reload: 'Neu laden',
     discard: 'Änderungen verwerfen',
-    confirmReload: 'Lokale Änderungen verwerfen und die Konfiguration neu laden?',
     loadError:
       'Die Konfiguration konnte nicht geladen werden. Prüfe Berechtigung und Mainserver-Anbindung. Vorhandene Formularänderungen bleiben erhalten.',
-    notResolved:
-      'Die Anfrage hat keinen eindeutig aufgelösten Datensatz geliefert. Es wird keine leere Konfiguration erzeugt.',
-    invalidDocument:
-      'Der zurückgegebene Inhalt kann für diese Vorschau nicht als JSON-Objekt gelesen werden.',
-    versionError: 'Gib eine gültige App-Version ein, zum Beispiel 4.0.0, oder lasse das Feld leer.',
-    loaded: 'Geladener Stand',
-    record: 'Datensatz',
-    actualVersion: 'Tatsächliche Version',
-    requestedVersion: 'Angefragte Version',
     unversioned: 'Unversioniert',
-    fallback:
-      'Der Mainserver hat eine andere Variante als angefragt geliefert. Die angezeigten Felder gehören zur tatsächlichen Version unten.',
     general: 'Allgemein',
     design: 'Design',
     alternativeLocation: 'Alternative Standortwahl anzeigen',
@@ -37,12 +37,9 @@ export const interfacesDEResources = {
     unsupported: 'Vorhandener Wert nicht unterstützt',
     yes: 'Ja',
     no: 'Nein',
-    preview: 'Lokale Änderungsvorschau',
     field: 'Einstellung',
     before: 'Geladen',
     after: 'Lokal geändert',
-    noChanges: 'Noch keine lokalen Änderungen.',
-    invalidPreview: 'Korrigiere den ungültigen Wert, um die Änderungsvorschau zu sehen.',
     unsupportedHelp:
       'Ein vorhandener Wert oder sein übergeordnetes Objekt hat einen anderen Typ. Die Vorschau verändert diesen Bestand nicht.',
   },

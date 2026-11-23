@@ -1,5 +1,4 @@
-import type { AppConfigurationSelection } from '../../app-configuration-preview.js';
-import type { SvaMainserverConnectionInput } from '../../types.js';
+import { createAppConfigurationService } from './service-app-configuration.js';
 import { createServiceContext } from './service-context.js';
 import { createCategoryService } from './service-categories.js';
 import { createCategoryMutationService } from './service-category-mutations.js';
@@ -77,12 +76,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   } = context;
 
   return {
-    readAppConfigurationPreview: async (
-      input: SvaMainserverConnectionInput & { readonly selection: AppConfigurationSelection }
-    ) => {
-      const config = await context.loadValidatedInstanceConfig(input, 'load_instance_config');
-      return context.staticContentOperations.readAppConfigurationPreviewWithConfig(input, config);
-    },
+    ...createAppConfigurationService(context),
     ...createJobService(context),
     ...createConstructionSiteService(context),
     ...createVoucherService(context),

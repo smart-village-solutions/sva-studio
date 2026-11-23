@@ -61,6 +61,8 @@ Vor einem Sammelauftrag werden die tatsächlich fehlenden oder veralteten Standa
 - **Bedienung (Deutsch):** Nach Aktivierung für die Kommune erscheint oben das 3×3-Symbol „Anwendungen“. Die Seite zeigt Kacheln ohne Seitenleiste. SVA Studio steht immer zuerst; „Studio öffnen“ führt zurück. Andere Anwendungen öffnen in einem neuen Tab und können eine eigene Anmeldung oder weitere Rechte verlangen.
 - **Instructions (English):** Once enabled for your municipality, use the Applications grid icon in the header. Studio always appears first and opens in the current tab. Other applications open in a new tab and retain their own login and access rules.
 - **Berechtigung:** Alle angemeldeten Benutzer einer aktivierten Instanz, auch ohne Fachrolle. Keine öffentliche Anwendungsliste.
+- **App-Konfiguration:** Berechtigte können „App-Konfiguration öffnen“, eine JSON-Datei und die gewünschte Variante auswählen. Das erste Formular für `globalSettings` bearbeitet alternative Standortwahl und Zeilen für Service-Kacheltitel. „Im Mainserver speichern“ gleicht die Änderung direkt ab. Wenn sich der Stand geändert hat, zeigt Studio Ausgangswert, eigene Änderung und aktuellen Mainserver-Wert. Bei einem Konflikt ist pro Feld eine Auswahl notwendig. Die Dateiliste lässt sich ausdrücklich aktualisieren.
+- **Rechte für App-Konfiguration:** `application-workspace.settings.read` zum Lesen und zusätzlich `application-workspace.settings.update` zum Speichern.
 
 ## `application-workspace.settings` – Plugin-Einstellungen
 

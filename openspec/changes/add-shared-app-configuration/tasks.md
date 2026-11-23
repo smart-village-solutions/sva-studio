@@ -38,9 +38,17 @@
 - [ ] 4.4 Autorisierten Test-Roundtrip und tatsächliche App-Wirkung getrennt dokumentieren, offene Umgebungsevidenz offen lassen.
 - [ ] 4.5 arc42-Abschnitte 05/08, Static-JSON-Referenz und tatsächlich betroffene Sicherheits-/Laufzeitdokumentation vom Zielbild auf belegten Implementierungsstand fortschreiben; `pnpm check:file-placement` und OpenSpec-Validierung ausführen.
 
-## 5. Bestätigter Vorschau-Editor ohne Mainserver-Write
+## 5. Abgelöster Vorschau-Editor ohne Mainserver-Write
 
 - [x] 5.1 Begrenzten Lese-/Projektionsvertrag im bestehenden Mainserver-Pfad samt Unit-/Transportnachweis anbinden.
 - [x] 5.2 Authentifizierten Host-Aufruf mit bestehendem `integration.manage` und Session-/Instanz-/Principal-Bindung anschließen.
 - [x] 5.3 Editor auf „Schnittstellen“ mit Versionsanfrage, tatsächlicher Variante, Allgemein/Design, lokaler Validierung, Vorschau, Verwerfen und sicherem Neu-Laden umsetzen.
 - [x] 5.4 Deutsche/englische Texte, gezielte UI-/Auth-/Runtime-Nachweise und aktuelle Dokumentation abschließen.
+
+
+## 6. Erster Schreibpfad im App-Arbeitsbereich
+
+- [x] 6.1 Live geprüften GraphQL-Vertrag aus SVA-1787, SVA-1788, SVA-1789 und SVA-1792 anbinden. Dateiliste und exakte Version im App-Arbeitsbereich anbieten.
+- [x] 6.2 Hostrechte, Sessionbindung und CSRF prüfen. Die zwei vereinbarten Felder revisionsgesichert aktualisieren und ein unabhängiges Readback durchführen.
+- [x] 6.3 Geänderte Mainserver-Werte anzeigen, Konflikte je Feld entscheiden und nach Bestätigung erneut lesen.
+- [ ] 6.4 Browser- und Runtime-Abnahme über die Studio-Sandbox mit einem ausdrücklich freigegebenen Testdatensatz.

@@ -27,7 +27,7 @@ const getFractionSortValue = (
 ): string | null => {
   switch (field) {
     case 'name':
-      return `${fraction.name}|${fraction.containerSize ?? ''}`;
+      return fraction.name;
     case 'pdfShortLabel':
       return fraction.pdfShortLabel ?? null;
     case 'containerSize':
@@ -41,6 +41,8 @@ const getFractionSortValue = (
   }
 };
 
+const fractionCollator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+
 const sortFractions = (
   fractions: readonly WasteFractionRecord[],
   sortField: Parameters<typeof createFractionSorting>[0],
@@ -52,10 +54,12 @@ const sortFractions = (
     if (leftValue === null && rightValue !== null) return 1;
     if (leftValue !== null && rightValue === null) return -1;
 
-    const comparison = (leftValue ?? '').localeCompare(rightValue ?? '', 'de', {
-      numeric: true,
-      sensitivity: 'base',
-    });
+    const nameOrFieldComparison = fractionCollator.compare(leftValue ?? '', rightValue ?? '');
+    const comparison =
+      nameOrFieldComparison ||
+      (sortField === 'name'
+        ? fractionCollator.compare(left.containerSize ?? '', right.containerSize ?? '')
+        : 0);
     if (comparison !== 0) {
       return sortDirection === 'asc' ? comparison : comparison * -1;
     }

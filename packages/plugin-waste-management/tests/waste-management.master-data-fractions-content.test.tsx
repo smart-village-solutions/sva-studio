@@ -524,6 +524,45 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(onToggleFractionStatus).not.toHaveBeenCalled();
   });
 
+  it('sorts fractions by name first and uses numeric container size only for equal names', () => {
+    const props = {
+      fractions: [
+        { id: 'bio-tonne', name: 'Bio Tonne', containerSize: '80 l' },
+        { id: 'bio-small', name: 'Bio', containerSize: '80 l' },
+        { id: 'bio-large', name: 'Bio', containerSize: '120 l' },
+      ].map((fraction) => ({
+        ...fraction,
+        color: '#16A34A',
+        active: true,
+        createdAt: '2026-06-01T12:00:00Z',
+        updatedAt: '2026-06-01T12:00:00Z',
+      })),
+      fractionsSortBy: 'name' as const,
+      fractionsStatus: 'all' as const,
+      onOpenCreateFraction: vi.fn(),
+      onOpenEditFraction: vi.fn(),
+      onOpenDeleteFraction: vi.fn(),
+      onDeleteFractions: vi.fn(),
+      onToggleFractionStatus: vi.fn(),
+      onFractionsSortChange: vi.fn(),
+      onFractionsStatusChange: vi.fn(),
+      page: 1,
+      pageSize: 25,
+      onPageChange: vi.fn(),
+      onPageSizeChange: vi.fn(),
+    };
+    const getRowIds = () =>
+      (dataTableMock.mock.calls.at(-1)?.[0].data as Array<{ id: string }>).map(({ id }) => id);
+
+    const { rerender } = render(
+      <WasteMasterDataFractionsContent {...props} fractionsSortDirection="asc" />
+    );
+    expect(getRowIds()).toEqual(['bio-small', 'bio-large', 'bio-tonne']);
+
+    rerender(<WasteMasterDataFractionsContent {...props} fractionsSortDirection="desc" />);
+    expect(getRowIds()).toEqual(['bio-tonne', 'bio-large', 'bio-small']);
+  });
+
   it('sorts the complete fraction set before paging with stable ties and missing values last', () => {
     const fractions = [
       { id: 'missing-2', name: 'M2', color: '#000002', active: true },

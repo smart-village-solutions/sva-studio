@@ -1,178 +1,102 @@
+import { useLocationFilterDraft } from './waste-management.master-data-locations-table.filter-draft.js';
+import { WasteLocationFilterFields } from './waste-management.master-data-locations-table.filter-fields.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Checkbox, Select } from '@sva/studio-ui-react';
+import { Button, Checkbox } from '@sva/studio-ui-react';
+import { IconFilter, IconPlus } from '@tabler/icons-react';
+import {
+  WasteListFilterChips,
+  WasteListFilterDialog,
+  WasteListSearch,
+} from './waste-management.list-filter-dialog.js';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
-import {
-  WasteLocationsFiltersToggle,
-  WasteLocationsQueryControl,
-  WasteLocationsResetControl,
-  WasteLocationsSortControl,
-  WasteLocationsStatusControl,
-  WasteLocationsYearControl,
-} from './waste-management.master-data-locations-table.views.toolbar.controls.js';
-import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
-import {
-  LocationTableActions,
-  WasteMasterDataActiveTourBanner,
-} from './waste-management.master-data-locations-table.views.js';
+import { LocationTableActions } from './waste-management.master-data-locations-table.views.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 
-const WasteLocationsFilters = ({
-  visibleTours,
-  selectedTourId,
-  allFilteredLocationsSelected,
-  onTourFilterChange,
-  onToggleSelectAll,
-}: Pick<
-  WasteMasterDataLocationsTableProps,
-  'selectedTourId' | 'allFilteredLocationsSelected' | 'onTourFilterChange' | 'onToggleSelectAll'
-> & { readonly visibleTours: WasteMasterDataLocationsTableProps['availableTours'] }) => {
-  const pt = usePluginTranslation('wasteManagement');
-  return (
-    <div
-      id="waste-locations-filters"
-      className="rounded-lg border border-border-subtle bg-muted/[0.08] px-3 py-3"
-    >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <label className="flex min-w-56 flex-1 flex-col gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {pt('masterData.locationsWorkspace.filters.tour')}
-          </span>
-          <Select
-            aria-label={pt('masterData.locationsWorkspace.filters.tour')}
-            className="h-10 rounded-lg"
-            value={selectedTourId ?? ''}
-            onChange={(event) => onTourFilterChange(event.target.value)}
-          >
-            <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
-            {visibleTours.map((tour) => (
-              <option key={tour.id} value={tour.id}>
-                {formatTourSelectionLabel(pt, tour)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Checkbox
-            checked={allFilteredLocationsSelected}
-            onChange={(event) => onToggleSelectAll(event.currentTarget.checked)}
-          />
-          <span>{pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}</span>
-        </label>
-      </div>
-    </div>
-  );
-};
-
-type WasteLocationsToolbarProps = Pick<
-  WasteMasterDataLocationsTableProps,
-  | 'search'
-  | 'onQueryChange'
-  | 'onResetFilters'
-  | 'onOpenCreateRegion'
-  | 'onOpenCreateCity'
-  | 'onOpenCreateStreet'
-  | 'onOpenCreateHouseNumber'
-  | 'onOpenCreateLocation'
-  | 'selectedCollectionLocationsCount'
-  | 'availableTours'
-  | 'locationYear'
-  | 'onLocationYearChange'
-  | 'locationTourStatus'
-  | 'onLocationTourStatusChange'
-  | 'selectedTourId'
-  | 'allFilteredLocationsSelected'
-  | 'onOpenBulkAssignments'
-  | 'onTourFilterChange'
-  | 'onToggleSelectAll'
-  | 'sortMode'
-  | 'sortDirection'
-  | 'onSortModeChange'
-  | 'onSortDirectionChange'
-> & {
-  readonly visibleTours?: WasteMasterDataLocationsTableProps['availableTours'];
+const triggerId = 'waste-location-filter-trigger';
+type LocationToolbarProps = WasteMasterDataLocationsTableProps & {
   readonly onRequestDeleteSelected: () => void;
-  readonly filtersOpen: boolean;
-  readonly onToggleFiltersOpen: () => void;
-  readonly regionName?: string;
-  readonly cityName?: string;
 };
 
-const LocationFilterSummary = ({
-  search,
-  regionName,
-  cityName,
-  locationYear,
-  locationTourStatus,
-  selectedTour,
-  onTourFilterChange,
-}: Pick<
-  WasteLocationsToolbarProps,
-  | 'search'
-  | 'regionName'
-  | 'cityName'
-  | 'locationYear'
-  | 'locationTourStatus'
-  | 'onTourFilterChange'
-> & {
-  selectedTour: WasteMasterDataLocationsTableProps['availableTours'][number] | undefined;
-}) => {
+const LocationSelectionActions = (props: LocationToolbarProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <>
-      {search?.q ? (
-        <span>
-          {pt('filters.searchLabel')} · {search.q}
+      <label className="mr-auto flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={props.allFilteredLocationsSelected}
+          indeterminate={
+            !props.allFilteredLocationsSelected && Boolean(props.matchingSelectedLocationsCount)
+          }
+          onChange={(event) => props.onToggleSelectAll(event.currentTarget.checked)}
+        />
+        {pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}
+      </label>
+      {(props.hiddenSelectedLocationsCount ?? 0) > 0 ? (
+        <span className="text-sm text-muted-foreground" role="status">
+          {pt('tours.selection.hiddenSelectedCount', {
+            value: props.hiddenSelectedLocationsCount ?? 0,
+          })}
         </span>
       ) : null}
-      {search && search.status !== 'all' ? (
-        <span>{pt(`filters.status.${search.status}`)}</span>
-      ) : null}
-      {regionName ? (
-        <span>
-          {pt('masterData.collectionLocations.fields.regionId')} · {regionName}
-        </span>
-      ) : null}
-      {cityName ? (
-        <span>
-          {pt('masterData.collectionLocations.fields.cityId')} · {cityName}
-        </span>
-      ) : null}
-      {locationYear ? (
-        <span>
-          {pt('masterData.locationsWorkspace.filters.tourYear')} · {locationYear}
-        </span>
-      ) : null}
-      {locationTourStatus ? (
-        <span>{pt(`masterData.locationsWorkspace.filters.${locationTourStatus}`)}</span>
-      ) : null}
-      <WasteMasterDataActiveTourBanner
-        selectedTour={selectedTour}
-        onTourFilterChange={onTourFilterChange}
-      />
+      {props.selectedCollectionLocationsCount > 0 ? <LocationTableActions {...props} /> : null}
     </>
   );
 };
 
-export const WasteMasterDataLocationsTableToolbar = (props: WasteLocationsToolbarProps) => {
-  const { availableTours, visibleTours, selectedTourId, filtersOpen } = props;
-  const tours = visibleTours ?? availableTours;
-  const selectedTour = tours.find((tour) => tour.id === selectedTourId);
+export const WasteMasterDataLocationsTableToolbar = (props: LocationToolbarProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const state = useLocationFilterDraft(props);
+  const { applied, draft, setDraft, open, reset, apply, chips, invalidYear } = state;
   return (
     <WastePanelTableTopBar
-      actions={<LocationTableActions {...props} />}
-      activeFilters={<LocationFilterSummary {...props} selectedTour={selectedTour} />}
+      actions={
+        <>
+          {props.tools}
+          <Button type="button" onClick={props.onOpenCreateLocation}>
+            <IconPlus aria-hidden="true" className="h-4 w-4" />
+            {pt('masterData.locationsWorkspace.actions.createLocation')}
+          </Button>
+        </>
+      }
+      activeFilters={
+        <WasteListFilterChips chips={chips} onReset={() => props.onResetFilters?.()} />
+      }
+      selection={<LocationSelectionActions {...props} />}
     >
-      <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <WasteLocationsQueryControl {...props} />
-          <WasteLocationsResetControl {...props} />
-          <WasteLocationsFiltersToggle {...props} />
-          <WasteLocationsYearControl {...props} />
-          <WasteLocationsStatusControl {...props} />
-          <WasteLocationsSortControl {...props} />
-        </div>
-        {filtersOpen ? <WasteLocationsFilters {...props} visibleTours={tours} /> : null}
-      </div>
+      <WasteListSearch
+        value={applied.q}
+        label={pt('masterData.locationsWorkspace.filters.locationSearch')}
+        onCommit={(value) => props.onQueryChange?.(value)}
+      />
+      <Button
+        type="button"
+        id={triggerId}
+        variant="secondary"
+        aria-haspopup="dialog"
+        aria-expanded={draft !== null}
+        onClick={open}
+      >
+        <IconFilter aria-hidden="true" className="h-4 w-4" /> {pt('filters.open')}
+      </Button>
+      <WasteListFilterDialog
+        id={triggerId}
+        title={pt('filters.open')}
+        open={draft !== null}
+        onOpenChange={(open) => {
+          if (!open) setDraft(null);
+        }}
+        onReset={reset}
+        disabled={invalidYear}
+        onApply={apply}
+      >
+        {draft ? (
+          <WasteLocationFilterFields
+            draft={draft}
+            state={state}
+            availableTours={props.availableTours}
+          />
+        ) : null}
+      </WasteListFilterDialog>
     </WastePanelTableTopBar>
   );
 };

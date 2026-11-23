@@ -85,34 +85,37 @@ export const WasteToolsExportSection = ({
     profileIds.length > 0 && (targetFormat === 'application/zip' || profileIds.length === 1);
 
   return (
-    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{pt('tools.exports.title')}</h3>
+    <details className="rounded-lg border border-border-subtle bg-card p-4">
+      <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {pt('tools.exports.title')}
+      </summary>
+      <div className="mt-4 space-y-4">
         <p className="text-sm text-muted-foreground">{pt('tools.exports.description')}</p>
-      </div>
-      <WasteExportProfileSelector profileIds={profileIds} onToggle={toggleProfile} />
-      <label className="block space-y-1 text-sm font-medium">
-        <span>{pt('tools.exports.formatLabel')}</span>
-        <Select
-          value={targetFormat}
-          onChange={(event) =>
-            setTargetFormat(event.target.value as StartWasteManagementExportInput['targetFormat'])
-          }
+
+        <WasteExportProfileSelector profileIds={profileIds} onToggle={toggleProfile} />
+        <label className="block space-y-1 text-sm font-medium">
+          <span>{pt('tools.exports.formatLabel')}</span>
+          <Select
+            value={targetFormat}
+            onChange={(event) =>
+              setTargetFormat(event.target.value as StartWasteManagementExportInput['targetFormat'])
+            }
+          >
+            <option value="application/json" disabled={profileIds.length > 1}>
+              {pt('tools.exports.formats.json')}
+            </option>
+            <option value="application/zip">{pt('tools.exports.formats.zip')}</option>
+          </Select>
+        </label>
+        <p className="text-sm text-muted-foreground">{pt('tools.exports.privacyNotice')}</p>
+        <Button
+          type="button"
+          disabled={running || !canStart}
+          onClick={() => void onStartExport({ profileIds, targetFormat })}
         >
-          <option value="application/json" disabled={profileIds.length > 1}>
-            {pt('tools.exports.formats.json')}
-          </option>
-          <option value="application/zip">{pt('tools.exports.formats.zip')}</option>
-        </Select>
-      </label>
-      <p className="text-sm text-muted-foreground">{pt('tools.exports.privacyNotice')}</p>
-      <Button
-        type="button"
-        disabled={running || !canStart}
-        onClick={() => void onStartExport({ profileIds, targetFormat })}
-      >
-        {running ? pt('tools.actions.starting') : pt('tools.actions.startExport')}
-      </Button>
-    </section>
+          {running ? pt('tools.actions.starting') : pt('tools.actions.startExport')}
+        </Button>
+      </div>
+    </details>
   );
 };

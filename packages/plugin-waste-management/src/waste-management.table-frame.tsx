@@ -1,3 +1,4 @@
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useEffect, type ReactNode } from 'react';
 import { Button, Select } from '@sva/studio-ui-react';
 
@@ -46,12 +47,14 @@ export type WastePanelTableTopBarProps = {
   readonly children?: ReactNode;
   readonly actions?: ReactNode;
   readonly activeFilters?: ReactNode;
+  readonly selection?: ReactNode;
 };
 
 export const WastePanelTableTopBar = ({
   children,
   actions,
   activeFilters,
+  selection,
 }: WastePanelTableTopBarProps) => (
   <div className="space-y-3 border-b border-border bg-card px-4 py-4">
     <div className="flex flex-wrap items-end justify-between gap-3">
@@ -59,7 +62,9 @@ export const WastePanelTableTopBar = ({
         <div className="flex min-w-0 grow basis-64 flex-wrap items-end gap-2">{children}</div>
       ) : null}
       {actions ? (
-        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+          {actions}
+        </div>
       ) : null}
     </div>
     {activeFilters ? (
@@ -67,8 +72,68 @@ export const WastePanelTableTopBar = ({
         {activeFilters}
       </div>
     ) : null}
+    {selection ? (
+      <div className="flex flex-wrap items-center gap-2 border-t border-border-subtle pt-3">
+        {selection}
+      </div>
+    ) : null}
   </div>
 );
+
+export const WasteCompactListSort = <TField extends string>({
+  fields,
+  field,
+  direction,
+  labelForField,
+  onChange,
+}: {
+  readonly fields: readonly TField[];
+  readonly field: TField | null;
+  readonly direction: 'asc' | 'desc';
+  readonly labelForField: (field: TField) => string;
+  readonly onChange: (field: TField, direction: 'asc' | 'desc') => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-3 text-sm lg:hidden">
+      <label className="grid min-w-0 gap-1">
+        {pt('filters.sortField')}
+        <Select
+          value={field ?? ''}
+          onChange={(event) => {
+            const selected = fields.find((item) => item === event.currentTarget.value);
+            if (selected) onChange(selected, direction);
+          }}
+        >
+          {field === null ? (
+            <option value="" disabled>
+              {pt('filters.defaultSort')}
+            </option>
+          ) : null}
+          {fields.map((item) => (
+            <option key={item} value={item}>
+              {labelForField(item)}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className="grid min-w-0 gap-1">
+        {pt('filters.sortDirection')}
+        <Select
+          value={direction}
+          disabled={field === null}
+          onChange={(event) => {
+            if (field !== null)
+              onChange(field, event.currentTarget.value === 'desc' ? 'desc' : 'asc');
+          }}
+        >
+          <option value="asc">{pt('masterData.locationsWorkspace.sorting.ascending')}</option>
+          <option value="desc">{pt('masterData.locationsWorkspace.sorting.descending')}</option>
+        </Select>
+      </label>
+    </div>
+  );
+};
 
 export const WastePanelTableBottomBar = ({
   pt,

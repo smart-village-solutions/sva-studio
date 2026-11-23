@@ -7,26 +7,12 @@ import {
   createLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
-import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-table.section.js';
 import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
-type WasteMasterDataLocationsTableContentProps = WasteMasterDataLocationsTableProps & {
-  readonly filtersOpen: boolean;
-  readonly onToggleFiltersOpen: () => void;
-};
-
-const WasteMasterDataLocationsTableContent = ({
-  filtersOpen,
-  onToggleFiltersOpen,
-  ...props
-}: WasteMasterDataLocationsTableContentProps) => {
+export const WasteMasterDataLocationsTable = (props: WasteMasterDataLocationsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const maps = createLocationsTableMaps(props);
-  const regionName = props.search?.regionId
-    ? maps.regionsById.get(props.search.regionId)?.name
-    : undefined;
-  const cityName = props.search?.cityId ? maps.citiesById.get(props.search.cityId)?.name : undefined;
   const [pendingDeleteLocation, setPendingDeleteLocation] =
     useState<WasteCollectionLocationRecord | null>(null);
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
@@ -43,44 +29,22 @@ const WasteMasterDataLocationsTableContent = ({
         className="rounded-none border border-border-subtle bg-card"
       >
         <WasteMasterDataLocationsTableToolbar
-          search={props.search}
-          regionName={regionName}
-          cityName={cityName}
-          onQueryChange={props.onQueryChange}
-          onResetFilters={props.onResetFilters}
-          selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
-          availableTours={props.availableTours}
-          visibleTours={Array.from(maps.toursById.values())}
-          locationYear={props.locationYear}
-          onLocationYearChange={props.onLocationYearChange}
-          locationTourStatus={props.locationTourStatus}
-          onLocationTourStatusChange={props.onLocationTourStatusChange}
-          filtersOpen={filtersOpen}
-          selectedTourId={props.selectedTourId}
-          allFilteredLocationsSelected={props.allFilteredLocationsSelected}
-          onOpenCreateRegion={props.onOpenCreateRegion}
-          onOpenCreateCity={props.onOpenCreateCity}
-          onOpenCreateStreet={props.onOpenCreateStreet}
-          onOpenCreateHouseNumber={props.onOpenCreateHouseNumber}
-          onOpenCreateLocation={props.onOpenCreateLocation}
-          onOpenBulkAssignments={props.onOpenBulkAssignments}
-          onTourFilterChange={props.onTourFilterChange}
-          onToggleSelectAll={props.onToggleSelectAll}
-          sortMode={props.sortMode}
-          sortDirection={props.sortDirection}
-          onSortModeChange={props.onSortModeChange}
-          onSortDirectionChange={props.onSortDirectionChange}
+          {...props}
           onRequestDeleteSelected={() => {
             setDeleteError(null);
             setBulkDeleteRequested(true);
           }}
-          onToggleFiltersOpen={onToggleFiltersOpen}
         />
+        {props.toolContent}
         <WasteMasterDataLocationsTableSection
           search={props.search}
           collectionLocations={props.collectionLocations}
           allFilteredLocationsSelected={props.allFilteredLocationsSelected}
+          sortMode={props.sortMode}
+          sortDirection={props.sortDirection}
+          onSort={props.onApplyFilters}
           maps={maps}
+          matchingSelectedLocationsCount={props.matchingSelectedLocationsCount}
           selectedLocationIds={props.selectedLocationIds}
           onToggleSelectAll={props.onToggleSelectAll}
           onToggleLocation={props.onToggleLocation}
@@ -170,17 +134,5 @@ const WasteMasterDataLocationsTableContent = ({
         }}
       />
     </>
-  );
-};
-
-export const WasteMasterDataLocationsTable = (props: WasteMasterDataLocationsTableProps) => {
-  const { filtersOpen, setFiltersOpen } = useLocationsFiltersOpen(props.selectedTourId);
-
-  return (
-    <WasteMasterDataLocationsTableContent
-      {...props}
-      filtersOpen={filtersOpen}
-      onToggleFiltersOpen={() => setFiltersOpen((current) => !current)}
-    />
   );
 };

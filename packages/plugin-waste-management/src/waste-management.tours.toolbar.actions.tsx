@@ -137,31 +137,22 @@ const WasteToursBulkActions = ({
 
 export const WasteToursFilterActions = ({
   filterDialogOpen,
-  hasActiveFilters,
   onOpenFilterDialog,
-  onResetFilters,
 }: WasteToursToolbarActionsProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <>
       <Button
         type="button"
-        variant="tertiary"
-        className="h-11 rounded-md px-3"
-        disabled={!hasActiveFilters}
-        onClick={onResetFilters}
-      >
-        {pt('tours.filters.reset')}
-      </Button>
-      <Button
-        type="button"
         variant="secondary"
         className="h-11 rounded-md border-border/70 px-3"
+        id="waste-tour-filters"
+        aria-haspopup="dialog"
         aria-expanded={filterDialogOpen}
         onClick={onOpenFilterDialog}
       >
         <IconFilter aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.filters.open')}
+        {pt('filters.open')}
       </Button>
     </>
   );
@@ -170,6 +161,6 @@ export const WasteToursFilterActions = ({
 export const WasteToursToolbarActions = (props: WasteToursToolbarActionsProps) => (
   <div className="flex flex-wrap items-center gap-2">
     <WasteToursSelectionActions {...props} />
-    <WasteToursBulkActions {...props} />
+    {props.selectedCount ? <WasteToursBulkActions {...props} /> : null}
   </div>
 );

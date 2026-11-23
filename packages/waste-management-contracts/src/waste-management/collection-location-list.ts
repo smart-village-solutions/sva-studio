@@ -1,7 +1,17 @@
 import type { WasteCollectionLocationRecord } from './master-data-addresses.js';
 
 export type WasteCollectionLocationListStatus = 'all' | 'active' | 'inactive';
-export type WasteCollectionLocationSortMode = 'address' | 'addressWithRegion';
+export const wasteCollectionLocationSortModes = [
+  'address',
+  'addressWithRegion',
+  'region',
+  'city',
+  'street',
+  'houseNumber',
+  'tourCount',
+  'status',
+] as const;
+export type WasteCollectionLocationSortMode = (typeof wasteCollectionLocationSortModes)[number];
 export type WasteCollectionLocationSortDirection = 'asc' | 'desc';
 export type WasteCollectionLocationPageSize = 10 | 25 | 50 | 100;
 
@@ -10,7 +20,11 @@ export type WasteCollectionLocationQuery = {
   readonly status: WasteCollectionLocationListStatus;
   readonly regionId?: string;
   readonly cityId?: string;
+  readonly streetId?: string;
+  readonly houseNumberId?: string;
   readonly tourId?: string;
+  readonly tourYear?: number;
+  readonly tourStatus?: 'draft' | 'published' | 'archived';
   readonly sortMode: WasteCollectionLocationSortMode;
   readonly sortDirection: WasteCollectionLocationSortDirection;
   readonly page: number;
@@ -19,7 +33,7 @@ export type WasteCollectionLocationQuery = {
 
 export type WasteCollectionLocationSelectionFilter = Pick<
   WasteCollectionLocationQuery,
-  'q' | 'status' | 'regionId' | 'cityId' | 'tourId'
+  'q' | 'status' | 'regionId' | 'cityId' | 'streetId' | 'houseNumberId' | 'tourId'
 >;
 
 export type WasteCollectionLocationTourSummary = {

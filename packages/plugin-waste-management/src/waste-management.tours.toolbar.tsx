@@ -2,9 +2,16 @@ import { formatCalendarDate, toDatetimeLocalValue, usePluginTranslation } from '
 import { type WasteTourStatus } from '@sva/waste-management-contracts';
 import { Button } from '@sva/studio-ui-react';
 
-import { WasteToursFilterActions, WasteToursToolbarActions } from './waste-management.tours.toolbar.actions.js';
+import {
+  WasteToursFilterActions,
+  WasteToursToolbarActions,
+} from './waste-management.tours.toolbar.actions.js';
 import { WasteToursToolbarFilters } from './waste-management.tours.toolbar.parts.js';
-import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import { WasteListSearch, WasteListFilterChips } from './waste-management.list-filter-dialog.js';
+import type {
+  WasteManagementSearchParams,
+  WasteManagementTourValidityPeriod,
+} from './search-params.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 import { resolveWasteTourValidityYear } from './waste-management.tours.validity-filter.js';
 
@@ -53,6 +60,21 @@ type WasteToursToolbarProps = {
   readonly onDraftEndDateToChange: (value: string | undefined) => void;
   readonly onApplyFilters: () => void;
   readonly onResetFilters: () => void;
+  readonly onSetCriterion: (
+    patch: Partial<
+      Pick<
+        WasteManagementSearchParams,
+        | 'q'
+        | 'tourStatus'
+        | 'tourValidityPeriod'
+        | 'tourWasteFractionId'
+        | 'firstDateFrom'
+        | 'firstDateTo'
+        | 'endDateFrom'
+        | 'endDateTo'
+      >
+    >
+  ) => void;
 };
 
 const toWasteToursToolbarActionsProps = ({
@@ -152,42 +174,58 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
   const actionsProps = toWasteToursToolbarActionsProps(props);
   const filtersProps = toWasteToursToolbarFiltersProps(props);
   const pt = usePluginTranslation('wasteManagement');
-  const selectedFraction = props.fractions.find((fraction) => fraction.id === props.tourWasteFractionId);
+  const selectedFraction = props.fractions.find(
+    (fraction) => fraction.id === props.tourWasteFractionId
+  );
   const referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
   const activeFilters = [
-    props.query ? `${pt('tours.filters.nameLabel')} · ${props.query}` : null,
-    props.status !== 'all' ? pt(`tours.status.${props.status}`) : null,
-    props.tourValidityPeriod !== 'all'
-      ? pt(`tours.filters.validityPeriod.${props.tourValidityPeriod}`, {
-          year: resolveWasteTourValidityYear(props.tourValidityPeriod, referenceYear),
-        })
-      : null,
-    selectedFraction ? `${pt('tours.filters.fractionLabel')} · ${selectedFraction.name}` : null,
-    ...([
-      ['firstDateFromLabel', props.firstDateFrom],
-      ['firstDateToLabel', props.firstDateTo],
-      ['endDateFromLabel', props.endDateFrom],
-      ['endDateToLabel', props.endDateTo],
-    ] as const).map(([label, date]) =>
-      date ? `${pt(`tours.filters.${label}`)} · ${formatCalendarDate(date)}` : null
-    ),
-  ].filter((value): value is string => value !== null);
+    { id: 'q', label: props.query, clear: () => props.onSetCriterion({ q: '' }) },
+    {
+      id: 'status',
+      label: props.status !== 'all' ? pt(`tours.status.${props.status}`) : '',
+      clear: () => props.onSetCriterion({ tourStatus: 'all' }),
+    },
+    {
+      id: 'validity',
+      label:
+        props.tourValidityPeriod !== 'all'
+          ? pt(`tours.filters.validityPeriod.${props.tourValidityPeriod}`, {
+              year: resolveWasteTourValidityYear(props.tourValidityPeriod, referenceYear),
+            })
+          : '',
+      clear: () => props.onSetCriterion({ tourValidityPeriod: 'all' }),
+    },
+    {
+      id: 'fraction',
+      label: props.tourWasteFractionId
+        ? `${pt('tours.filters.fractionLabel')} · ${selectedFraction?.name ?? props.tourWasteFractionId}`
+        : '',
+      clear: () => props.onSetCriterion({ tourWasteFractionId: undefined }),
+    },
+    ...(['firstDateFrom', 'firstDateTo', 'endDateFrom', 'endDateTo'] as const).map((id) => ({
+      id,
+      label: props[id]
+        ? `${pt(`tours.filters.${id}Label`)} · ${formatCalendarDate(props[id])}`
+        : '',
+      clear: () => props.onSetCriterion({ [id]: undefined }),
+    })),
+  ].filter(({ label }) => Boolean(label));
 
   return (
     <WastePanelTableTopBar
-      activeFilters={activeFilters.map((label) => <span key={label}>{label}</span>)}
+      activeFilters={<WasteListFilterChips chips={activeFilters} onReset={props.onResetFilters} />}
+      selection={<WasteToursToolbarActions {...actionsProps} />}
       actions={
         <>
-          <WasteToursToolbarActions {...actionsProps} />
           {canTransferAnnualTours ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onOpenAnnualTransfer}
-            className="rounded-md"
-          >
-            {pt('tours.annualTransfer.open')}
-          </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onOpenAnnualTransfer}
+              className="rounded-md"
+            >
+              {pt('tours.annualTransfer.open')}
+            </Button>
           ) : null}
           <Button type="button" onClick={onOpenCreateDialog} className="rounded-md">
             {pt('tours.actions.openCreate')}
@@ -195,6 +233,11 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
         </>
       }
     >
+      <WasteListSearch
+        label={pt('filters.searchLabel')}
+        value={props.query}
+        onCommit={(q) => props.onSetCriterion({ q })}
+      />
       <WasteToursFilterActions {...actionsProps} />
       <WasteToursToolbarFilters {...filtersProps} />
     </WastePanelTableTopBar>

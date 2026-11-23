@@ -31,42 +31,47 @@ export const WasteOutputConfigurationSection = ({
   readonly translate: WasteOutputTranslate;
 }) => (
   <form className="space-y-4" onSubmit={onSubmit}>
-    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{translate('output.pdf.title')}</h3>
+    <details className="rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
+      <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {translate('output.pdf.title')}
+      </summary>
+      <div className="mt-4 space-y-4">
         <p className="text-sm text-muted-foreground">{translate('output.pdf.description')}</p>
-      </div>
-      <WasteOutputBrandingMediaField
-        error={brandingAssetUrlError}
-        onChange={setBrandingAssetUrl}
-        translate={translate}
-        value={brandingAssetUrl}
-      />
-      <StudioField
-        id="waste-output-contact-block"
-        label={translate('output.pdf.fields.contactBlock')}
-        description={translate('output.pdf.fieldHints.contactBlock')}
-      >
-        <Textarea
+
+        <WasteOutputBrandingMediaField
+          error={brandingAssetUrlError}
+          onChange={setBrandingAssetUrl}
+          translate={translate}
+          value={brandingAssetUrl}
+        />
+        <StudioField
           id="waste-output-contact-block"
-          rows={5}
-          maxLength={2_000}
-          value={contactBlock}
-          onChange={(event) => setContactBlock(event.target.value)}
-        />
-      </StudioField>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{translate('output.pdf.meta.runtimeHint')}</p>
-        <StudioSaveButton
-          type="submit"
-          status={saveStatus}
-          labels={{
-            idle: translate('output.pdf.actions.save'),
-            saving: translate('output.pdf.actions.saving'),
-            saved: translate('output.pdf.actions.saved'),
-          }}
-        />
+          label={translate('output.pdf.fields.contactBlock')}
+          description={translate('output.pdf.fieldHints.contactBlock')}
+        >
+          <Textarea
+            id="waste-output-contact-block"
+            rows={5}
+            maxLength={2_000}
+            value={contactBlock}
+            onChange={(event) => setContactBlock(event.target.value)}
+          />
+        </StudioField>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {translate('output.pdf.meta.runtimeHint')}
+          </p>
+          <StudioSaveButton
+            type="submit"
+            status={saveStatus}
+            labels={{
+              idle: translate('output.pdf.actions.save'),
+              saving: translate('output.pdf.actions.saving'),
+              saved: translate('output.pdf.actions.saved'),
+            }}
+          />
+        </div>
       </div>
-    </section>
+    </details>
   </form>
 );

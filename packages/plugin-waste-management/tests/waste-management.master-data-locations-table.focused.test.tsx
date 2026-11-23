@@ -73,13 +73,6 @@ vi.mock('@sva/studio-ui-react', () => ({
     ) : null,
 }));
 
-vi.mock('../src/waste-management.master-data-locations-table.filters-state.js', () => ({
-  useLocationsFiltersOpen: () => {
-    const [filtersOpen, setFiltersOpen] = React.useState(false);
-    return { filtersOpen, setFiltersOpen };
-  },
-}));
-
 vi.mock('../src/waste-management.master-data-locations-table.parts.js', () => ({
   createLocationsTableMaps: () => ({
     regionsById: new Map([
@@ -109,23 +102,23 @@ vi.mock('../src/waste-management.master-data-locations-table.parts.js', () => ({
   }),
   WasteMasterDataLocationsTableToolbar: ({
     onRequestDeleteSelected,
-    onToggleFiltersOpen,
-    onSortModeChange,
-    onSortDirectionChange,
-    onTourFilterChange,
+    onApplyFilters,
   }: {
     readonly onRequestDeleteSelected: () => void;
-    readonly onToggleFiltersOpen: () => void;
-    readonly onSortModeChange: (mode: 'addressWithRegion') => void;
-    readonly onSortDirectionChange: (direction: 'desc') => void;
-    readonly onTourFilterChange: (tourId: string) => void;
+    readonly onApplyFilters: (patch: {
+      locationSortMode: 'addressWithRegion';
+      locationSortDirection: 'desc';
+    }) => void;
   }) => (
     <div>
-      <button onClick={onToggleFiltersOpen}>toggle-filters</button>
-      <button onClick={() => onSortModeChange('addressWithRegion')}>include-region</button>
-      <button onClick={() => onSortDirectionChange('desc')}>descending</button>
+      <button
+        onClick={() =>
+          onApplyFilters({ locationSortMode: 'addressWithRegion', locationSortDirection: 'desc' })
+        }
+      >
+        apply-global-sort
+      </button>
       <button onClick={onRequestDeleteSelected}>bulk-delete</button>
-      <button onClick={() => onTourFilterChange('')}>clear-tour-filter</button>
     </div>
   ),
 }));
@@ -162,9 +155,7 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
   it('keeps server order, forwards global sorting, and confirms single plus bulk deletions', async () => {
     const onDeleteLocation = vi.fn(async () => undefined);
     const onDeleteLocations = vi.fn(async () => undefined);
-    const onTourFilterChange = vi.fn();
-    const onSortModeChange = vi.fn();
-    const onSortDirectionChange = vi.fn();
+    const onApplyFilters = vi.fn();
 
     render(
       <WasteMasterDataLocationsTable
@@ -201,12 +192,9 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
         totalItems={2}
         sortMode="address"
         sortDirection="asc"
-        selectedTourId="tour-1"
+        onApplyFilters={onApplyFilters}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
-        onSortModeChange={onSortModeChange}
-        onSortDirectionChange={onSortDirectionChange}
-        onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
         onOpenCreateRegion={vi.fn()}
@@ -229,10 +217,11 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
         name: 'masterData.locationsWorkspace.table.caption',
       })
     ).toHaveProperty('tabIndex', -1);
-    fireEvent.click(screen.getByRole('button', { name: 'include-region' }));
-    fireEvent.click(screen.getByRole('button', { name: 'descending' }));
-    expect(onSortModeChange).toHaveBeenCalledWith('addressWithRegion');
-    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
+    fireEvent.click(screen.getByRole('button', { name: 'apply-global-sort' }));
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      locationSortMode: 'addressWithRegion',
+      locationSortDirection: 'desc',
+    });
     expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
 
     fireEvent.click(screen.getByRole('button', { name: 'single-delete' }));
@@ -275,8 +264,5 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
       })
     );
     expect(onDeleteLocations).toHaveBeenCalledWith(['location-1', 'location-2']);
-
-    fireEvent.click(screen.getByRole('button', { name: 'clear-tour-filter' }));
-    expect(onTourFilterChange).toHaveBeenCalledWith('');
   });
 });

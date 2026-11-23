@@ -2,7 +2,11 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import type { usePluginTranslation } from '@sva/plugin-sdk';
 
-import { formatTourRecurrence } from './waste-management.tours.presentation.js';
+import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
+import {
+  formatTourRecurrence,
+  resolveTourShiftDetails,
+} from './waste-management.tours.presentation.js';
 import type { WasteToursContentProps } from './waste-management.tours.content.parts.js';
 import type {
   WasteToursSortDirection,
@@ -10,29 +14,57 @@ import type {
 } from './waste-management.tours.table.parts.js';
 
 export const createLocationCountByTourId = (
-  locationTourLinks: readonly { readonly tourId: string }[] | undefined
+  data: {
+    readonly collectionLocations: readonly { id: string }[];
+    readonly locationTourLinks: readonly { locationId: string; tourId: string }[];
+  } | null
 ) => {
   const counts = new Map<string, number>();
-  for (const link of locationTourLinks ?? []) {
-    counts.set(link.tourId, (counts.get(link.tourId) ?? 0) + 1);
+  const knownLocations = new Set(data?.collectionLocations?.map(({ id }) => id));
+  for (const link of data?.locationTourLinks ?? []) {
+    if (knownLocations.has(link.locationId)) {
+      counts.set(link.tourId, (counts.get(link.tourId) ?? 0) + 1);
+    }
   }
   return counts;
 };
+
+type TourSortData = {
+  readonly fractionsById?: ReadonlyMap<string, string>;
+  readonly schedulingOverview?: WasteManagementSchedulingOverview | null;
+  readonly locationCountByTourId: ReadonlyMap<string, number>;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+};
+
+export const getTourFractionNames = (
+  tour: WasteTourRecord,
+  fractionsById: ReadonlyMap<string, string>
+) =>
+  tour.wasteFractionIds
+    .flatMap((id) => {
+      const name = fractionsById.get(id);
+      return name ? [{ id, name }] : [];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'de') || a.id.localeCompare(b.id));
 
 const resolveTourSortValue = ({
   tour,
   sortField,
   locationCountByTourId,
+  fractionsById,
+  schedulingOverview,
   pt,
-}: {
+}: TourSortData & {
   readonly tour: WasteTourRecord;
   readonly sortField: WasteToursSortField;
-  readonly locationCountByTourId: ReadonlyMap<string, number>;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
   switch (sortField) {
     case 'name':
       return tour.name;
+    case 'fractions':
+      return fractionsById ? (getTourFractionNames(tour, fractionsById)[0]?.name ?? '') : '';
+    case 'shifts':
+      return String(resolveTourShiftDetails(tour, schedulingOverview ?? null).length);
     case 'recurrence': {
       const recurrenceValue = formatTourRecurrence(
         pt,
@@ -47,7 +79,7 @@ const resolveTourSortValue = ({
     case 'locations':
       return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
     case 'status':
-      return tour.status;
+      return pt(`tours.status.${tour.status}`);
   }
 };
 
@@ -55,35 +87,27 @@ export const sortWasteTours = ({
   tours,
   sortField,
   sortDirection,
-  locationCountByTourId,
-  pt,
-}: {
+  ...sortData
+}: TourSortData & {
   readonly tours: readonly WasteTourRecord[];
   readonly sortField: WasteToursSortField | null;
   readonly sortDirection: WasteToursSortDirection;
-  readonly locationCountByTourId: ReadonlyMap<string, number>;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
-  if (!sortField) {
-    return tours;
-  }
-
-  return [...tours].sort((left, right) => {
-    const comparison = resolveTourSortValue({
-      tour: left,
-      sortField,
-      locationCountByTourId,
-      pt,
-    }).localeCompare(
-      resolveTourSortValue({ tour: right, sortField, locationCountByTourId, pt }),
-      'de',
-      {
+  if (!sortField) return tours;
+  return tours
+    .map((tour) => ({ tour, value: resolveTourSortValue({ tour, sortField, ...sortData }) }))
+    .sort((left, right) => {
+      if (Boolean(left.value) !== Boolean(right.value)) return left.value ? -1 : 1;
+      const comparison = left.value.localeCompare(right.value, 'de', {
         numeric: true,
         sensitivity: 'base',
-      }
-    );
-    return sortDirection === 'asc' ? comparison : comparison * -1;
-  });
+      });
+      return (
+        (sortDirection === 'asc' ? comparison : -comparison) ||
+        left.tour.id.localeCompare(right.tour.id)
+      );
+    })
+    .map(({ tour }) => tour);
 };
 
 export const applyWasteToursFilters = ({
@@ -169,4 +193,41 @@ export const updateWasteToursSorting = ({
 
   setSortField(field);
   setSortDirection('asc');
+};
+
+export const setWasteTourFilterCriterion = (
+  current: Pick<
+    import('./search-params.js').WasteManagementSearchParams,
+    | 'q'
+    | 'tourStatus'
+    | 'tourValidityPeriod'
+    | 'tourWasteFractionId'
+    | 'firstDateFrom'
+    | 'firstDateTo'
+    | 'endDateFrom'
+    | 'endDateTo'
+  >,
+  patch: Partial<typeof current>,
+  {
+    onFiltersChange,
+    onQueryChange,
+    onStatusChange,
+  }: Pick<WasteToursContentProps, 'onFiltersChange' | 'onQueryChange' | 'onStatusChange'>
+) => {
+  if (!onFiltersChange) {
+    if (patch.q !== undefined) onQueryChange(patch.q);
+    if (patch.tourStatus !== undefined) onStatusChange(patch.tourStatus);
+    return;
+  }
+  const next = { ...current, ...patch };
+  onFiltersChange(
+    next.q,
+    next.tourStatus,
+    next.tourValidityPeriod,
+    next.tourWasteFractionId,
+    next.firstDateFrom,
+    next.firstDateTo,
+    next.endDateFrom,
+    next.endDateTo
+  );
 };

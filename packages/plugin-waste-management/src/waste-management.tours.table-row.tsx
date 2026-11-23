@@ -1,3 +1,4 @@
+import { getTourFractionNames } from './waste-management.tours.content.helpers.js';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioTableValueAction } from '@sva/studio-ui-react';
@@ -115,12 +116,8 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
   );
   const recurrenceLabel =
     recurrenceValue === '—' ? pt('tours.table.noRecurrence') : recurrenceValue;
-  const fractions = tour.wasteFractionIds.flatMap((fractionId) => {
-    const name = props.fractionsById.get(fractionId);
-    return name ? [{ id: fractionId, name }] : [];
-  });
+  const fractions = getTourFractionNames(tour, props.fractionsById);
   const shiftDetails = resolveTourShiftDetails(tour, props.schedulingOverview);
-  const firstAssignmentId = assignmentItems[0]?.id;
 
   return (
     <tr className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset last:border-b-0">

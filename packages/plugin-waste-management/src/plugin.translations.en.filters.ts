@@ -1,20 +1,40 @@
 export const wasteManagementPluginTranslationsENFilters = {
-  "filters": {
-    "searchLabel": "Search",
-    "reset": "Reset filters",
-    "searchPlaceholder": "Search by city, street, tour or waste fraction",
-    "statusLabel": "Status",
-    "shiftContextLabel": "Deviation context",
-    "status": {
-      "all": "All statuses",
-      "active": "Active",
-      "inactive": "Inactive"
+  filters: {
+    any: 'All',
+    sortByTourCount: 'Sort by number of routes',
+    sortDirection: 'Sort direction',
+    sortField: 'Sort by',
+    sortByFirstLocation: 'Sort by the first displayed pickup point',
+    tourSort: {
+      fractions: 'Sort by first displayed waste type',
+      shifts: 'Sort by number of shifts',
+      locations: 'Sort by number of pickup points',
     },
-    "shiftContext": {
-      "all": "All contexts",
-      "holiday": "Holiday rules",
-      "global": "Global shifts",
-      "tour": "Tour shifts"
-    }
-  }
+    defaultSort: 'Default order',
+    apply: 'Apply filters',
+    resetDraft: 'Reset',
+    applyDescription: 'The table updates after you apply the filters.',
+    removeCriterion: 'Remove filter: {{value}}',
+    invalidRange: 'The end date cannot precede the start date.',
+    open: 'Filter',
+    dateFrom: 'From',
+    dateTo: 'To',
+    coverage: 'Check fraction coverage',
+    searchLabel: 'Search',
+    reset: 'Reset filters',
+    searchPlaceholder: 'Search by city, street, tour or waste fraction',
+    statusLabel: 'Status',
+    shiftContextLabel: 'Deviation context',
+    status: {
+      all: 'All statuses',
+      active: 'Active',
+      inactive: 'Inactive',
+    },
+    shiftContext: {
+      all: 'All contexts',
+      holiday: 'Holiday rules',
+      global: 'Global shifts',
+      tour: 'Tour shifts',
+    },
+  },
 } as const;

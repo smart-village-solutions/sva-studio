@@ -27,8 +27,9 @@ export const createWasteMasterDataDerivedState = (
 ) => {
   const overview = state.overview ?? emptyOverview;
   const filteredCollectionLocations = state.collectionLocationPage?.items ?? [];
+  const selectedIds = new Set(state.selectedLocationIds);
   const selectedCollectionLocations = overview.collectionLocations.filter((location) =>
-    state.selectedLocationIds.includes(location.id)
+    selectedIds.has(location.id)
   );
   const knownFilteredLocationIds =
     state.filteredLocationIds.length > 0
@@ -39,7 +40,17 @@ export const createWasteMasterDataDerivedState = (
         ? state.collectionLocationPage.items.map((location) => location.id)
         : [];
 
+  const filteredIdsKnown =
+    knownFilteredLocationIds.length > 0 || state.collectionLocationPage?.total === 0;
+  const matchingSelectedCount = filteredIdsKnown
+    ? knownFilteredLocationIds.filter((id) => selectedIds.has(id)).length
+    : filteredCollectionLocations.filter(({ id }) => selectedIds.has(id)).length;
+
   return {
+    hiddenSelectedLocationsCount: filteredIdsKnown
+      ? selectedIds.size - matchingSelectedCount
+      : undefined,
+    matchingSelectedLocationsCount: matchingSelectedCount,
     filteredFractions: wasteMasterDataPresentation.filterFractions(overview.fractions, search),
     filteredRegions: wasteMasterDataPresentation.filterRegions(overview.regions, search),
     filteredCities: wasteMasterDataPresentation.filterCities(overview.cities, search),
@@ -57,7 +68,7 @@ export const createWasteMasterDataDerivedState = (
     ),
     allFilteredLocationsSelected:
       knownFilteredLocationIds.length > 0 &&
-      knownFilteredLocationIds.every((id) => state.selectedLocationIds.includes(id)),
+      matchingSelectedCount === knownFilteredLocationIds.length,
     getLocationLabel: (location: WasteCollectionLocationRecord) =>
       wasteMasterDataPresentation.formatCollectionLocationLabel(pt, overview, location),
   };

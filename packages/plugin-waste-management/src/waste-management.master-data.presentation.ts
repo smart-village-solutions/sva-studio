@@ -50,7 +50,7 @@ export const wasteMasterDataPresentation = {
       }
       return !search.q
         ? true
-        : [fraction.name, fraction.description, fraction.containerSize]
+        : [fraction.name, fraction.pdfShortLabel, fraction.description, fraction.containerSize]
             .filter((value): value is string => typeof value === 'string' && value.length > 0)
             .some((value) => matchesSearch(value, search.q));
     }),

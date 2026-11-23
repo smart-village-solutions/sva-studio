@@ -20,15 +20,16 @@ const WasteSettingsSection = ({
   description,
   children,
 }: Readonly<WasteSettingsSectionProps>) => (
-  <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-    <div className="space-y-1">
-      <h3 className="text-sm font-semibold">{title}</h3>
+  <details className="rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
+    <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {title}
+    </summary>
+    <div className="mt-4 space-y-4">
       <p className="text-sm text-muted-foreground">{description}</p>
+      {children}
     </div>
-    {children}
-  </section>
+  </details>
 );
-
 const createVisuallyHiddenLabel = (label: string) => <span className="sr-only">{label}</span>;
 
 const interfaceOptionLabel = (

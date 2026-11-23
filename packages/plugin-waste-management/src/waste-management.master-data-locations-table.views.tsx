@@ -1,40 +1,27 @@
-import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconPlus as Plus, IconRoute, IconTrash } from '@tabler/icons-react';
+import { IconRoute, IconTrash } from '@tabler/icons-react';
 import { Button, Checkbox, StudioEmptyState, cn } from '@sva/studio-ui-react';
-import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
-export const WasteMasterDataActiveTourBanner = ({
-  selectedTour,
-  onTourFilterChange,
-}: {
-  readonly selectedTour?: WasteTourRecord;
-  readonly onTourFilterChange: (tourId: string) => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
+import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 
-  if (!selectedTour) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-muted-foreground">
-        {pt('masterData.locationsWorkspace.filters.activeTour')}
-      </span>
-      <span className="text-sm font-medium">{formatTourSelectionLabel(pt, selectedTour)}</span>
-      <Button type="button" size="sm" variant="tertiary" onClick={() => onTourFilterChange('')}>
-        {pt('masterData.locationsWorkspace.filters.clearTour')}
-      </Button>
-    </div>
-  );
-};
+export const locationSortColumns = [
+  ['region', 'region'],
+  ['city', 'city'],
+  ['street', 'street'],
+  ['houseNumber', 'houseNumbers'],
+  ['tourCount', 'tours'],
+  ['status', 'status'],
+] as const;
 
 export const WasteMasterDataLocationsHeader = ({
   allFilteredLocationsSelected,
   someFilteredLocationsSelected,
   onToggleSelectAll,
-}: {
+  sortMode,
+  sortDirection,
+  onSort,
+}: Pick<WasteMasterDataLocationsTableProps, 'sortMode' | 'sortDirection'> & {
+  readonly onSort: WasteMasterDataLocationsTableProps['onApplyFilters'];
   readonly allFilteredLocationsSelected: boolean;
   readonly someFilteredLocationsSelected: boolean;
   readonly onToggleSelectAll: (checked: boolean) => void;
@@ -54,24 +41,42 @@ export const WasteMasterDataLocationsHeader = ({
             onChange={(event) => onToggleSelectAll(event.currentTarget.checked)}
           />
         </th>
-        <th scope="col" className="w-[150px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.region')}
-        </th>
-        <th scope="col" className="w-[150px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.city')}
-        </th>
-        <th scope="col" className="w-[220px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.street')}
-        </th>
-        <th scope="col" className="w-[128px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.houseNumbers')}
-        </th>
-        <th scope="col" className="w-[220px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.tours')}
-        </th>
-        <th scope="col" className="w-[92px] px-3 py-3">
-          {pt('masterData.locationsWorkspace.table.status')}
-        </th>
+        {locationSortColumns.map(([mode, column]) => {
+          const active = sortMode === mode;
+          const label = pt(`masterData.locationsWorkspace.table.${column}`);
+          return (
+            <th
+              key={mode}
+              scope="col"
+              className="px-3 py-3"
+              aria-sort={
+                active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined
+              }
+            >
+              {onSort ? (
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  size="sm"
+                  title={mode === 'tourCount' ? pt('filters.sortByTourCount') : undefined}
+                  onClick={() =>
+                    onSort({
+                      locationSortMode: mode,
+                      locationSortDirection: active && sortDirection === 'asc' ? 'desc' : 'asc',
+                    })
+                  }
+                >
+                  {label}{' '}
+                  <span aria-hidden="true">
+                    {active ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                  </span>
+                </Button>
+              ) : (
+                label
+              )}
+            </th>
+          );
+        })}
         <th scope="col" className="w-[144px] px-3 py-3 text-right">
           {pt('masterData.locationsWorkspace.table.actions')}
         </th>
@@ -100,12 +105,10 @@ export const LocationTableActions = ({
   selectedCollectionLocationsCount,
   onOpenBulkAssignments,
   onRequestDeleteSelected,
-  onOpenCreateLocation,
 }: {
   readonly selectedCollectionLocationsCount: number;
   readonly onOpenBulkAssignments: () => void;
   readonly onRequestDeleteSelected: () => void;
-  readonly onOpenCreateLocation: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
@@ -134,10 +137,6 @@ export const LocationTableActions = ({
       >
         <IconTrash aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.collectionLocations.bulk.actions.deleteSelected')}
-      </Button>
-      <Button type="button" onClick={onOpenCreateLocation}>
-        <Plus aria-hidden="true" className="h-4 w-4" />
-        {pt('masterData.locationsWorkspace.actions.createLocation')}
       </Button>
     </>
   );

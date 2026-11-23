@@ -209,7 +209,11 @@ export const filterSchedulingTableEntries = (
   search: WasteManagementSearchParams
 ): readonly WasteSchedulingTableEntry[] =>
   entries.filter((entry) => {
-    if (!matchesShiftContext(search.shiftContext, entry.kind)) {
+    if (
+      !matchesShiftContext(search.shiftContext, entry.kind) ||
+      (search.shiftDateFrom && entry.originalDate < search.shiftDateFrom) ||
+      (search.shiftDateTo && entry.originalDate > search.shiftDateTo)
+    ) {
       return false;
     }
 

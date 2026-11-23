@@ -25,6 +25,7 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -324,15 +325,17 @@ describe('waste-management scheduling low coverage views', () => {
     render(
       <WasteTourExplicitAssignmentsList
         canManage={false}
-        entries={[
-          {
-            id: 'pickup',
-            tourId: 'tour-1',
-            pickupDate: '2027-02-04',
-            locationIds: ['location-1'],
-            note: 'Standort im Norden',
-          },
-        ] as never}
+        entries={
+          [
+            {
+              id: 'pickup',
+              tourId: 'tour-1',
+              pickupDate: '2027-02-04',
+              locationIds: ['location-1'],
+              note: 'Standort im Norden',
+            },
+          ] as never
+        }
         tourLabels={new Map([['tour-1', 'Tour A']])}
         locationLabels={new Map([['location-1', 'Albertplatz']])}
         onCreate={vi.fn()}
@@ -343,7 +346,11 @@ describe('waste-management scheduling low coverage views', () => {
 
     expect(screen.getByText('04.02.2027')).toBeTruthy();
     expect(screen.getByText('Albertplatz')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    for (const action of ['openCreate', 'edit', 'delete']) {
+      expect(
+        screen.queryByRole('button', { name: `scheduling.assignments.actions.${action}` })
+      ).toBeNull();
+    }
   });
 
   it('sorts schadstoffmobil rows by pickup date first and closes the delete dialog through cancel', () => {

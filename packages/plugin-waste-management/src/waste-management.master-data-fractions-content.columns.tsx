@@ -25,6 +25,9 @@ const createFractionShortLabelColumn = (
   id: 'pdfShortLabel',
   header: pt('masterData.fractions.table.shortLabel'),
   mobileLabel: pt('masterData.fractions.table.shortLabel'),
+  sortable: true,
+  sortLabel: pt('masterData.fractions.table.shortLabel'),
+  sortValue: (fraction) => fraction.pdfShortLabel ?? '',
   cell: (fraction) =>
     fraction.pdfShortLabel ? (
       <span className="font-mono text-sm uppercase">{fraction.pdfShortLabel}</span>

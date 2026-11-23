@@ -28,6 +28,8 @@ const getFractionSortValue = (
   switch (field) {
     case 'name':
       return fraction.name;
+    case 'pdfShortLabel':
+      return fraction.pdfShortLabel ?? null;
     case 'containerSize':
       return fraction.containerSize ?? null;
     case 'color':
@@ -38,6 +40,8 @@ const getFractionSortValue = (
       return fraction.active ? 'active' : 'inactive';
   }
 };
+
+const fractionCollator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
 
 const sortFractions = (
   fractions: readonly WasteFractionRecord[],
@@ -50,10 +54,12 @@ const sortFractions = (
     if (leftValue === null && rightValue !== null) return 1;
     if (leftValue !== null && rightValue === null) return -1;
 
-    const comparison = (leftValue ?? '').localeCompare(rightValue ?? '', 'de', {
-      numeric: true,
-      sensitivity: 'base',
-    });
+    const nameOrFieldComparison = fractionCollator.compare(leftValue ?? '', rightValue ?? '');
+    const comparison =
+      nameOrFieldComparison ||
+      (sortField === 'name'
+        ? fractionCollator.compare(left.containerSize ?? '', right.containerSize ?? '')
+        : 0);
     if (comparison !== 0) {
       return sortDirection === 'asc' ? comparison : comparison * -1;
     }
@@ -73,6 +79,7 @@ export const WasteMasterDataFractionsContent = ({
   onToggleFractionStatus,
   onFractionsSortChange,
   onFractionsStatusChange,
+  onQueryChange,
   page,
   pageSize,
   onPageChange,
@@ -92,19 +99,13 @@ export const WasteMasterDataFractionsContent = ({
     readonly fraction: WasteFractionRecord;
     readonly nextActive: boolean;
   } | null>(null);
-  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const [draftFractionsStatus, setDraftFractionsStatus] = useState(fractionsStatus);
   const [sortField, setSortField] = useState(fractionsSortBy);
   const [sortDirection, setSortDirection] = useState(fractionsSortDirection);
   useEffect(() => {
     setSortField(fractionsSortBy);
     setSortDirection(fractionsSortDirection);
   }, [fractionsSortBy, fractionsSortDirection]);
-  useEffect(() => {
-    if (!filterDialogOpen) {
-      setDraftFractionsStatus(fractionsStatus);
-    }
-  }, [filterDialogOpen, fractionsStatus]);
+
   const sortedFractions = useMemo(
     () => sortFractions(fractions, sortField, sortDirection),
     [fractions, sortDirection, sortField]
@@ -167,21 +168,8 @@ export const WasteMasterDataFractionsContent = ({
           onFractionsSortChange(nextSortBy, nextSortDirection);
         }}
         fractionsStatus={fractionsStatus}
-        filterDialogOpen={filterDialogOpen}
-        draftFractionsStatus={draftFractionsStatus}
-        onOpenFilterDialog={() => {
-          setDraftFractionsStatus(fractionsStatus);
-          setFilterDialogOpen(true);
-        }}
-        onFilterDialogOpenChange={setFilterDialogOpen}
-        onDraftFractionsStatusChange={setDraftFractionsStatus}
-        onApplyFractionsStatus={() => {
-          onFractionsStatusChange(draftFractionsStatus);
-          setFilterDialogOpen(false);
-        }}
-        onResetFractionsStatus={() => {
-          onFractionsStatusChange('all', { resetQuery: true });
-        }}
+        onQueryChange={onQueryChange}
+        onFractionsStatusChange={onFractionsStatusChange}
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}
       />

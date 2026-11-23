@@ -34,46 +34,51 @@ export const WasteSettingsCustomRecurrenceSection = ({
   });
 
   return (
-    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{pt('settings.messages.customRecurrencesTitle')}</h3>
+    <details className="rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
+      <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {pt('settings.messages.customRecurrencesTitle')}
+      </summary>
+      <div className="mt-4 space-y-4">
         <p className="text-sm text-muted-foreground">
           {pt('settings.messages.customRecurrencesDescription')}
         </p>
-      </div>
 
-      <WasteSettingsCustomRecurrenceDraftRow saving={saving} onAdd={controller.openCreateDialog} />
-      <WasteSettingsCustomRecurrenceTable
-        items={controller.sortedItems}
-        saving={saving}
-        onEdit={controller.openEditItem}
-        onDelete={controller.setDeletingItem}
-      />
+        <WasteSettingsCustomRecurrenceDraftRow
+          saving={saving}
+          onAdd={controller.openCreateDialog}
+        />
+        <WasteSettingsCustomRecurrenceTable
+          items={controller.sortedItems}
+          saving={saving}
+          onEdit={controller.openEditItem}
+          onDelete={controller.setDeletingItem}
+        />
 
-      <WasteSettingsCustomRecurrenceDialog
-        open={controller.dialogOpen}
-        mode={controller.dialogMode}
-        value={controller.editingItem}
-        onOpenChange={controller.setDialogOpen}
-        onSave={controller.saveItem}
-      />
+        <WasteSettingsCustomRecurrenceDialog
+          open={controller.dialogOpen}
+          mode={controller.dialogMode}
+          value={controller.editingItem}
+          onOpenChange={controller.setDialogOpen}
+          onSave={controller.saveItem}
+        />
 
-      <WasteSettingsCustomRecurrenceDeleteDialog
-        open={Boolean(controller.deletingItem)}
-        preset={controller.deletingItem}
-        availableFallbacks={controller.sortedItems.filter(
-          (item) => item.id !== controller.deletingItem?.id
-        )}
-        initialFallback={
-          controller.deletingItem ? deletedPresetFallbacks[controller.deletingItem.id] : undefined
-        }
-        onOpenChange={(open) => {
-          if (!open) {
-            controller.setDeletingItem(null);
+        <WasteSettingsCustomRecurrenceDeleteDialog
+          open={Boolean(controller.deletingItem)}
+          preset={controller.deletingItem}
+          availableFallbacks={controller.sortedItems.filter(
+            (item) => item.id !== controller.deletingItem?.id
+          )}
+          initialFallback={
+            controller.deletingItem ? deletedPresetFallbacks[controller.deletingItem.id] : undefined
           }
-        }}
-        onConfirm={controller.confirmDelete}
-      />
-    </section>
+          onOpenChange={(open) => {
+            if (!open) {
+              controller.setDeletingItem(null);
+            }
+          }}
+          onConfirm={controller.confirmDelete}
+        />
+      </div>
+    </details>
   );
 };

@@ -81,10 +81,12 @@ describe('useWasteLocationsTabNavigation', () => {
     });
     const search = { ...createSearch(), locationYear: 2026 };
     const { result } = renderHook(() => useWasteLocationsTabNavigation(controller, search));
-    act(() => result.current.setLocationYear(2027));
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: { ...search, locationYear: 2027, page: 1, tourId: undefined },
+    act(() => result.current.applyFilters({ locationYear: 2027 }));
+    expect(navigateMock.mock.lastCall?.[0].search(search)).toEqual({
+      ...search,
+      locationYear: 2027,
+      page: 1,
+      tourId: undefined,
     });
     const nextSearch = {
       ...search,
@@ -108,10 +110,12 @@ describe('useWasteLocationsTabNavigation', () => {
     });
     const search = { ...createSearch(), locationYear: 2027 };
     const { result } = renderHook(() => useWasteLocationsTabNavigation(controller, search));
-    act(() => result.current.setLocationTourStatus('draft'));
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: { ...search, locationTourStatus: 'draft', page: 1, tourId: undefined },
+    act(() => result.current.applyFilters({ locationTourStatus: 'draft' }));
+    expect(navigateMock.mock.lastCall?.[0].search(search)).toEqual({
+      ...search,
+      locationTourStatus: 'draft',
+      page: 1,
+      tourId: undefined,
     });
   });
 
@@ -217,17 +221,18 @@ describe('useWasteLocationsTabNavigation', () => {
     });
 
     act(() => {
-      result.current.setTourFilter('');
+      result.current.applyFilters({ tourId: undefined });
       result.current.setPage(9);
       result.current.syncPage(2);
       result.current.setPageSize(100);
-      result.current.setSortMode('addressWithRegion');
-      result.current.setSortDirection('desc');
+      result.current.applyFilters({ locationSortMode: 'addressWithRegion' });
+      result.current.applyFilters({ locationSortDirection: 'desc' });
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: { ...search, page: 1, tourId: undefined },
+    expect(navigateMock.mock.calls[1]?.[0].search(search)).toEqual({
+      ...search,
+      page: 1,
+      tourId: undefined,
     });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
@@ -242,13 +247,15 @@ describe('useWasteLocationsTabNavigation', () => {
       to: '/plugins/waste-management',
       search: { ...search, page: 1, pageSize: 100 },
     });
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: { ...search, page: 1, locationSortMode: 'addressWithRegion' },
+    expect(navigateMock.mock.calls[5]?.[0].search(search)).toEqual({
+      ...search,
+      page: 1,
+      locationSortMode: 'addressWithRegion',
     });
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: { ...search, page: 1, locationSortDirection: 'desc' },
+    expect(navigateMock.mock.calls[6]?.[0].search(search)).toEqual({
+      ...search,
+      page: 1,
+      locationSortDirection: 'desc',
     });
   });
 });

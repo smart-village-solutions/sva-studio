@@ -2,7 +2,7 @@
 
 ### Requirement: Gemeinsamer App-Konfigurationsabgleich mit unverändertem Mainserver
 
-Das System SHALL den JSON-Abgleich aller App-Konfigurationsplugins im bestehenden serverseitigen Package `@sva/sva-mainserver` bündeln. Der Mainserver MUST für diesen Lieferumfang unverändert bleiben. Der Integrationsweg MUST GraphQL bleiben; zusätzliche Admin-REST-/Session-Pfade und DB-Direktzugriffe sind ausgeschlossen. Das System MUST vor dem Schreiben frisch lesen, erkannte Konflikte feldbezogen behandeln, ausschließlich autorisierte eigene Änderungen auf den aktuellen Bestand anwenden und das Ergebnis unabhängig zurücklesen. Es MUST das akzeptierte Risiko externer Änderungen zwischen Lesen und Schreiben von einer atomaren Konfliktgarantie unterscheiden.
+Das System SHALL den JSON-Abgleich aller App-Konfigurationsplugins im bestehenden serverseitigen Package `@sva/sva-mainserver` bündeln. Der Mainserver MUST für diesen Lieferumfang unverändert bleiben. Der Integrationsweg MUST GraphQL bleiben; zusätzliche Admin-REST-/Session-Pfade und DB-Direktzugriffe sind ausgeschlossen. Das System MUST vor dem Schreiben frisch lesen, erkannte Konflikte feldbezogen behandeln, ausschließlich autorisierte eigene Änderungen auf den aktuellen Bestand anwenden und das Ergebnis unabhängig zurücklesen. Updates bestehender Varianten MUST die erwartete Mainserver-Revision als atomare Schreibvorbedingung mitgeben.
 
 #### Scenario: Zwei Plugins ändern getrennte Felder
 
@@ -20,8 +20,8 @@ Das System SHALL den JSON-Abgleich aller App-Konfigurationsplugins im bestehende
 #### Scenario: Externe Änderung nach dem Fresh Read
 
 - **WHEN** ein externer Schreiber nach dem Fresh Read denselben Mainserver-Datensatz ändert
-- **THEN** behauptet Studio keinen atomaren Schutz vor Überschreiben
-- **AND** ersetzt weder eine Studio-Sperre noch ein Readback diese fehlende Garantie
+- **THEN** weist der Mainserver das Studio-Update mit veralteter Revision ab
+- **AND** liest Studio die aktuelle Fassung und zeigt sie zur erneuten Prüfung an
 
 ### Requirement: Explizite und vollständige Variantenverwaltung
 
@@ -95,32 +95,27 @@ Das System SHALL nach einer Änderungsvorschau direkt im Mainserver speichern, o
 - **THEN** bleibt die Speicherung bestätigt
 - **AND** wird keine sofortige Aktualisierung aller Clients behauptet
 
-### Requirement: Nicht persistierender Host-Vorschau-Editor
+### Requirement: Erster App-Konfigurationseditor mit Revision
 
-Das System SHALL als bestätigten ersten Editor einen durch `integration.manage` geschützten Host-Verbraucher auf „Schnittstellen“ anbieten. Es MUST vorhandene Konfigurationen ausschließlich lesend über die bestehende GraphQL-Anbindung laden und nur die beiden freigegebenen Feldprojektionen samt Identitäts-/Versionsmetadaten an den Browser geben. Formularänderungen MUST lokal bleiben; dieser Lieferabschnitt MUST NOT Konfigurationsmutationen, persistierte Entwürfe, Versionsanlage oder Löschung anbieten.
+Das System SHALL die Dateiliste des authentifizierten Mainserver-Mandanten im App-Arbeitsbereich anzeigen und die Variante exakt per ID laden. Der Host MUST die Session, den Modulzugang und die Konfigurationsrechte prüfen. Das erste Formular SHALL ausschließlich die zwei freigegebenen Feldpfade für Standortwahl und Kacheltitel von `globalSettings` ändern.
 
-#### Scenario: Gewünschte Version wird per Fallback aufgelöst
+#### Scenario: Geänderten Mainserver-Stand prüfen
 
-- **WHEN** eine bekannte App-Version angefragt wird und der Mainserver eine andere Variante liefert
-- **THEN** zeigt der Editor angefragte und tatsächliche Version sowie einen ausdrücklichen Fallback-Hinweis
-- **AND** wird dies weder als vollständiger Variantenbestand noch als exakter Read nach ID ausgegeben
+- **WHEN** sich die Revision seit dem Laden geändert hat
+- **THEN** zeigt der Editor Ausgangswert, geänderten Wert und aktuellen Mainserver-Wert
+- **AND** verlangt er bei einem Feldkonflikt die ausdrückliche Wahl des zu behaltenden Werts
+- **AND** liest der Server nach der Bestätigung erneut exakt nach ID
 
-#### Scenario: Nutzer bearbeitet und verwirft die beiden Feldgruppen
+#### Scenario: Revisionsgesichertes Schreiben und verifizierter Readback
 
-- **WHEN** der Nutzer geladene Allgemein-/Design-Felder lokal ändert
-- **THEN** zeigt der Editor validierte Unterschiede zu den geladenen Feldwerten
-- **AND** erzeugen Bearbeiten, Vorschau und Verwerfen keine Mainserver-Aufrufe oder Konfigurationswrites
-- **AND** werden ein fehlender Wert und ein ausdrücklich gesetztes `false` unterschieden
+- **WHEN** die geprüften Änderungen geschrieben werden
+- **THEN** sendet Studio ID, bearbeiteten Rohtext und erwartete Revision
+- **AND** bleiben Name, Version und fremde Inhalte erhalten
+- **AND** bestätigt erst ein unabhängiger Readback das Ergebnis
 
-#### Scenario: Lesezugriff bleibt an den authentifizierten Kontext gebunden
+#### Scenario: Rechte und sensible Daten
 
-- **WHEN** der Browser eine Konfiguration anfragt
-- **THEN** prüft der Host `integration.manage` und bindet Instanz, Benutzer und aktive Organisation aus der Session
-- **AND** akzeptiert er weder fremde Instanzen noch frei gewählte Endpunkte oder Principals aus dem Request
-- **AND** werden fremde JSON-Felder, Rohkonfiguration und Zugangsdaten nicht an den Browser weitergereicht
-
-#### Scenario: Neu-Laden schlägt nach lokalen Änderungen fehl
-
-- **WHEN** bestätigtes Neu-Laden fehlschlägt
-- **THEN** bleiben die lokalen Formularänderungen erhalten
-- **AND** stellt eine unaufgelöste Antwort keine leere neue Konfiguration dar
+- **WHEN** eine Anfrage für Liste, Detail oder Speichern eintrifft
+- **THEN** werden Instanz, Benutzer und aktive Organisation der Session verwendet
+- **AND** wird die Anfrage ohne die jeweils benötigten Rechte abgewiesen
+- **AND** bleiben Rohkonfiguration und Zugangsdaten serverseitig

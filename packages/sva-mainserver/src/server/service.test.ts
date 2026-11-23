@@ -1,9 +1,6 @@
 // fallow-ignore-file code-duplication
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jobFixture } from './jobs-test-fixture.js';
-import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
-import { readFileSync } from 'node:fs';
-import { svaMainserverAppConfigurationPreviewDocument } from '../generated/static-content.js';
 
 const state = vi.hoisted(() => ({
   loadSvaMainserverInstanceConfig: vi.fn(),
@@ -4729,76 +4726,5 @@ describe('createSvaMainserverService', () => {
       )
     ).toHaveLength(3);
     expect(operationNames).not.toContain('SvaMainserverChangeGenericItemVisibility');
-  });
-});
-
-describe('App configuration preview uses the existing query transport', () => {
-  it('validates its query against the checked-in Mainserver schema', () => {
-    const snapshot = JSON.parse(
-      readFileSync(new URL('../generated/schema.snapshot.json', import.meta.url), 'utf8')
-    ) as { data: IntrospectionQuery };
-    expect(
-      validate(
-        buildClientSchema(snapshot.data),
-        parse(svaMainserverAppConfigurationPreviewDocument)
-      )
-    ).toEqual([]);
-  });
-  it('forwards the session principal and only returns the field projection', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(
-        createJsonResponse(200, { access_token: 'preview-token', expires_in: 120 })
-      )
-      .mockImplementation(async () =>
-        createJsonResponse(200, {
-          data: {
-            publicJsonFile: {
-              id: '17',
-              name: 'globalSettings',
-              dataType: 'json',
-              version: null,
-              content:
-                '{"settings":{"locationService":{"showAlternativeLocationButton":false}},"secret":"not-for-the-browser"}',
-            },
-          },
-        })
-      );
-    const readCredentials = vi.fn(async () => ({
-      apiKey: 'preview-key',
-      apiSecret: 'preview-secret',
-    }));
-    const service = createSvaMainserverService({
-      loadInstanceConfig: async () => baseConfig,
-      readCredentials,
-      fetchImpl,
-    });
-    const input = {
-      instanceId: baseConfig.instanceId,
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: 'org-1',
-      selection: { version: null },
-    };
-    const result = await service.readAppConfigurationPreview(input);
-    await service.readAppConfigurationPreview(input);
-    expect(result).toMatchObject({
-      status: 'loaded',
-      fields: { alternativeLocation: { state: 'value', value: false } },
-    });
-    expect(JSON.stringify(result)).not.toContain('not-for-the-browser');
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(readCredentials).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: baseConfig.instanceId,
-        keycloakSubject: 'subject-1',
-        activeOrganizationId: 'org-1',
-      })
-    );
-    for (const call of fetchImpl.mock.calls.slice(1)) {
-      const body = JSON.parse(String(call[1]?.body));
-      expect(body.operationName).toBe('SvaMainserverAppConfigurationPreview');
-      expect(body.query.trim()).toMatch(/^query /);
-      expect(body.variables).toEqual({ name: 'globalSettings', version: null });
-    }
   });
 });

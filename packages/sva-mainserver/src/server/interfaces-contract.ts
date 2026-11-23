@@ -1,10 +1,3 @@
-import {
-  appConfigurationSelectionSchema,
-  appConfigurationPreviewSchema,
-  type AppConfigurationPreview,
-} from '../app-configuration-preview.js';
-import { readSvaMainserverAppConfigurationPreview } from './service.js';
-import { SvaMainserverError } from './errors.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '../types.js';
@@ -156,60 +149,4 @@ export const saveSvaMainserverInterfaceSettings = async (
     wrappedError.cause = error;
     throw wrappedError;
   }
-};
-
-/** Host-owned, session-bound read endpoint for the non-persistent configuration editor. */
-export const loadSvaMainserverAppConfigurationPreview = async (
-  request: Request,
-  selection: unknown
-): Promise<AppConfigurationPreview> => {
-  const input = appConfigurationSelectionSchema.safeParse(selection);
-  if (!input.success)
-    throw new SvaMainserverError({
-      code: 'invalid_config',
-      message: 'app_configuration_selection_invalid',
-      statusCode: 400,
-    });
-  const logger = createSdkLogger({ component: COMPONENT });
-  const response = await withAuthenticatedUser(request, async (ctx) => {
-    const authorized = await authorizeInterfacesOverviewRequest({ ctx, logger });
-    if (!authorized.ok) return authorized.response;
-    try {
-      return jsonResponse(
-        200,
-        await readSvaMainserverAppConfigurationPreview({
-          instanceId: authorized.instanceId,
-          keycloakSubject: ctx.user.id,
-          activeOrganizationId: ctx.activeOrganizationId,
-          selection: input.data,
-        })
-      );
-    } catch (error) {
-      const code = error instanceof SvaMainserverError ? error.code : 'network_error';
-      logger.warn('App configuration preview unavailable', {
-        operation: 'read_app_configuration_preview',
-        error_code: code,
-      });
-      return jsonResponse(502, { error: 'app_configuration_unavailable' });
-    }
-  });
-  if (!response.ok)
-    throw new SvaMainserverError({
-      code:
-        response.status === 403
-          ? 'forbidden'
-          : response.status === 401
-            ? 'unauthorized'
-            : 'invalid_response',
-      message: 'app_configuration_unavailable',
-      statusCode: response.status,
-    });
-  const result = appConfigurationPreviewSchema.safeParse(await parseJson<unknown>(response));
-  if (!result.success)
-    throw new SvaMainserverError({
-      code: 'invalid_response',
-      message: 'app_configuration_unavailable',
-      statusCode: 502,
-    });
-  return result.data;
 };

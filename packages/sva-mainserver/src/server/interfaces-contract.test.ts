@@ -4,7 +4,6 @@ const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeInstancePermissionForUser: vi.fn(),
   getSvaMainserverConnectionStatus: vi.fn(),
-  readSvaMainserverAppConfigurationPreview: vi.fn(),
   loadSvaMainserverSettings: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
 }));
@@ -16,7 +15,6 @@ vi.mock('@sva/auth-runtime/server', () => ({
 
 vi.mock('./service.js', () => ({
   getSvaMainserverConnectionStatus: state.getSvaMainserverConnectionStatus,
-  readSvaMainserverAppConfigurationPreview: state.readSvaMainserverAppConfigurationPreview,
 }));
 
 vi.mock('./settings.js', () => ({
@@ -589,77 +587,5 @@ describe('interfaces.server', () => {
         },
       })
     ).rejects.toThrow('network_error');
-  });
-});
-
-describe('App configuration preview host access', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    state.authorizeInstancePermissionForUser.mockResolvedValue({
-      ok: true,
-      actor: { instanceId: defaultUser.instanceId, keycloakSubject: defaultUser.id },
-      permissions: [],
-    });
-    state.readSvaMainserverAppConfigurationPreview.mockResolvedValue({
-      status: 'unavailable',
-      reason: 'not_resolved',
-    });
-  });
-  it('binds instance, user and active organization to the authenticated session', async () => {
-    mockAuthenticatedUser({ activeOrganizationId: 'org-1' });
-    const { loadSvaMainserverAppConfigurationPreview } = await import('./interfaces-contract.js');
-    await expect(
-      loadSvaMainserverAppConfigurationPreview(createRequest(), { version: '5.0.0' })
-    ).resolves.toEqual({ status: 'unavailable', reason: 'not_resolved' });
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'integration.manage' })
-    );
-    expect(state.readSvaMainserverAppConfigurationPreview).toHaveBeenCalledWith({
-      instanceId: defaultUser.instanceId,
-      keycloakSubject: defaultUser.id,
-      activeOrganizationId: 'org-1',
-      selection: { version: '5.0.0' },
-    });
-  });
-  it('denies requests without integration.manage before the Mainserver call', async () => {
-    mockAuthenticatedUser();
-    state.authorizeInstancePermissionForUser.mockResolvedValue({
-      ok: false,
-      error: 'forbidden',
-      status: 403,
-    });
-    const { loadSvaMainserverAppConfigurationPreview } = await import('./interfaces-contract.js');
-    await expect(
-      loadSvaMainserverAppConfigurationPreview(createRequest(), { version: null })
-    ).rejects.toMatchObject({ statusCode: 403 });
-    expect(state.readSvaMainserverAppConfigurationPreview).not.toHaveBeenCalled();
-  });
-  it('rejects foreign instance parameters instead of accepting a client-selected target', async () => {
-    const { loadSvaMainserverAppConfigurationPreview } = await import('./interfaces-contract.js');
-    await expect(
-      loadSvaMainserverAppConfigurationPreview(createRequest(), {
-        version: null,
-        instanceId: 'foreign',
-      })
-    ).rejects.toMatchObject({ statusCode: 400 });
-    expect(state.readSvaMainserverAppConfigurationPreview).not.toHaveBeenCalled();
-  });
-  it('does not call the Mainserver without authentication', async () => {
-    state.withAuthenticatedUser.mockResolvedValue(new Response(null, { status: 401 }));
-    const { loadSvaMainserverAppConfigurationPreview } = await import('./interfaces-contract.js');
-    await expect(
-      loadSvaMainserverAppConfigurationPreview(createRequest(), { version: null })
-    ).rejects.toMatchObject({ statusCode: 401 });
-    expect(state.readSvaMainserverAppConfigurationPreview).not.toHaveBeenCalled();
-  });
-  it('does not expose provider content in error messages', async () => {
-    mockAuthenticatedUser();
-    state.readSvaMainserverAppConfigurationPreview.mockRejectedValue(
-      new Error('sensitive provider response')
-    );
-    const { loadSvaMainserverAppConfigurationPreview } = await import('./interfaces-contract.js');
-    await expect(
-      loadSvaMainserverAppConfigurationPreview(createRequest(), { version: null })
-    ).rejects.toThrow('app_configuration_unavailable');
   });
 });

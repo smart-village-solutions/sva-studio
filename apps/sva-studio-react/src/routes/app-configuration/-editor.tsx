@@ -1,6 +1,6 @@
 import React from 'react';
 import { useServerFn } from '@tanstack/react-start';
-import { Button, Select, useStudioEditorSuspended } from '@sva/studio-ui-react';
+import { Button, Select, StudioPageTitle, useStudioEditorSuspended } from '@sva/studio-ui-react';
 import type { AppConfigurationDocument, AppConfigurationRecord } from '@sva/sva-mainserver';
 import { readAppConfiguration } from '../../lib/app-configuration-sync-api';
 import { ContentEditorLeaveBoundary } from '../../routing/content-editor-leave-boundary';
@@ -149,9 +149,7 @@ function ConfigurationPicker({
       aria-labelledby="app-configuration-heading"
       className="space-y-4 rounded-lg border p-5"
     >
-      <h2 id="app-configuration-heading" className="text-lg font-semibold">
-        {text('title')}
-      </h2>
+      <StudioPageTitle id="app-configuration-heading">{text('title')}</StudioPageTitle>
       <fieldset hidden={!ready} disabled={!ready} className="space-y-4">
         <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <label className="space-y-1">

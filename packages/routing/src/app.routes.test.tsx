@@ -223,6 +223,7 @@ const bindingKeys = [
   'media',
   'categories',
   'appTexts',
+  'appConfiguration',
   'adminAppTranslations',
   'interfaces',
   'help',
@@ -1332,7 +1333,11 @@ describe('app.routes', () => {
     const routes = [...createUiRouteFactories(bindings, { adminResources }), ...pluginRoutes].map(
       (factory) => readRouteOptions(factory({ id: 'root' } as never))
     );
-    const checkAccess = (path: string, assignedModules: string[]) => {
+    const checkAccess = (
+      path: string,
+      assignedModules: string[],
+      withConfigurationAccess = false
+    ) => {
       const route = routes.find((route) => route.path === path)!;
       return route.beforeLoad?.({
         context: {
@@ -1340,7 +1345,11 @@ describe('app.routes', () => {
             getUser: async () => ({
               instanceId: 'tenant',
               roles: ['editor'],
-              permissionActions: ['app-texts.catalog.read', 'app-translations.catalog.read'],
+              permissionActions: [
+                'app-texts.catalog.read',
+                'app-translations.catalog.read',
+                ...(withConfigurationAccess ? ['application-workspace.settings.read'] : []),
+              ],
               assignedModules,
             }),
           },
@@ -1353,6 +1362,15 @@ describe('app.routes', () => {
       href: '/?error=auth.insufficientRole',
     });
     await expect(checkAccess('/app-texts', ['app'])).resolves.toBeUndefined();
+    await expect(
+      checkAccess('/app-configuration', ['application-workspace'], true)
+    ).rejects.toBeDefined();
+    await expect(
+      checkAccess('/app-configuration', ['app', 'application-workspace'])
+    ).rejects.toBeDefined();
+    await expect(
+      checkAccess('/app-configuration', ['app', 'application-workspace'], true)
+    ).resolves.toBeUndefined();
     await expect(
       checkAccess('/plugins/app-translations', ['app-translations'])
     ).rejects.toMatchObject({

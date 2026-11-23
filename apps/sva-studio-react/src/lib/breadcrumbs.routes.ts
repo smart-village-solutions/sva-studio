@@ -6,6 +6,12 @@ const overviewBreadcrumb = (): BreadcrumbItem => ({
   label: t('shell.sidebar.overview'),
 });
 
+const mobileAppBreadcrumbs = (label: string): readonly BreadcrumbItem[] => [
+  overviewBreadcrumb(),
+  { label: t('shell.sidebar.mobileApp') },
+  { label },
+];
+
 export const breadcrumbRoutes: ReadonlyArray<
   Readonly<{
     build: () => ReadonlyArray<BreadcrumbItem>;
@@ -215,19 +221,15 @@ export const breadcrumbRoutes: ReadonlyArray<
   },
   {
     pattern: /^\/admin\/app-translations$/,
-    build: () => [
-      overviewBreadcrumb(),
-      { label: t('shell.sidebar.mobileApp') },
-      { label: t('appTranslations.ui.standardsTitle') },
-    ],
+    build: () => mobileAppBreadcrumbs(t('appTranslations.ui.standardsTitle')),
   },
   {
     pattern: /^\/app-texts$/,
-    build: () => [
-      overviewBreadcrumb(),
-      { label: t('shell.sidebar.mobileApp') },
-      { label: t('appTranslations.ui.sourceTitle') },
-    ],
+    build: () => mobileAppBreadcrumbs(t('appTranslations.ui.sourceTitle')),
+  },
+  {
+    pattern: /^\/app-configuration$/,
+    build: () => mobileAppBreadcrumbs(t('interfaces.appConfiguration.title')),
   },
   {
     pattern: /^\/admin\/languages$/,

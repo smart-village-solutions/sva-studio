@@ -10,7 +10,9 @@ import {
   IconPhoto,
   IconPlugConnected,
   IconPlus,
+  IconSettings,
 } from '@tabler/icons-react';
+import { appConfigurationReadAccess } from '../lib/app-configuration-access';
 import { t } from '../i18n';
 import {
   resolveContentRoutePrefix,
@@ -124,6 +126,25 @@ const groupPluginApplications = (
     }
   }
   return result;
+};
+
+const buildAppConfigurationItems = ({ user, decideAccess }: SidebarAccess): SidebarLeafItem[] => {
+  if (
+    !user?.instanceId ||
+    !isModuleAssignedToUser('app', user) ||
+    decideAccess(appConfigurationReadAccess).status !== 'allowed'
+  ) {
+    return [];
+  }
+  return [
+    {
+      kind: 'link',
+      id: 'app-configuration',
+      to: '/app-configuration',
+      label: t('interfaces.appConfiguration.title'),
+      icon: IconSettings,
+    },
+  ];
 };
 
 export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
@@ -265,6 +286,7 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
           },
         ]
       : []),
+    ...buildAppConfigurationItems(access),
     ...pluginApplicationItems.filter(
       (item) => item.moduleId === 'app-translations' && isModuleAssignedToUser('app', user)
     ),

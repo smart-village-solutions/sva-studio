@@ -105,6 +105,7 @@ const bindings: AppRouteBindings = {
   adminInstanceDetail: () => 'adminInstanceDetail',
   adminTemplates: () => 'adminTemplates',
   appTexts: () => 'appTexts',
+  appConfiguration: () => 'appConfiguration',
   adminAppTranslations: () => 'adminAppTranslations',
   adminRoles: () => 'adminRoles',
   adminRoleCreate: () => 'adminRoleCreate',

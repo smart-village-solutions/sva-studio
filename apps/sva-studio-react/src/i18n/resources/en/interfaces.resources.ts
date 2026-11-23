@@ -47,7 +47,6 @@ export const interfacesENResources = {
     keepStudio: 'My change',
     keepMainserver: 'Mainserver value',
     title: 'App configuration',
-    open: 'Open app configuration',
     version: 'App version',
     loading: 'Loading configuration …',
     discard: 'Discard changes',

@@ -48,7 +48,6 @@ export const interfacesDEResources = {
     keepStudio: 'Meine Änderung',
     keepMainserver: 'Mainserver-Wert',
     title: 'App-Konfiguration',
-    open: 'App-Konfiguration öffnen',
     version: 'App-Version',
     loading: 'Konfiguration wird geladen …',
     discard: 'Änderungen verwerfen',

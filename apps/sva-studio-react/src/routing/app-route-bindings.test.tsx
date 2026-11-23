@@ -98,6 +98,10 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
   ),
 }));
 
+vi.mock('../routes/app-configuration/-editor', () => ({
+  AppConfigurationEditor: () => <h1>App-Konfiguration</h1>,
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   useBlocker: () => ({ status: 'idle', proceed: undefined, reset: undefined }),
   useParams: () => routeState.params,
@@ -807,6 +811,7 @@ describe('appRouteBindings', () => {
     for (const [url, binding] of urlsAndBindings) {
       expect(binding, url).toBe(NotFound);
     }
+    expect(ssfBindings).not.toHaveProperty('appConfiguration');
     expect(routeState.getContent).not.toHaveBeenCalled();
     expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
   });
@@ -817,6 +822,13 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('instance');
     view.rerender(<appRouteBindings.adminAppTranslations />);
     expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('platform');
+  });
+
+  it('opens the App-Konfiguration editor directly on its own Studio route', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.appConfiguration />);
+
+    expect(await screen.findByRole('heading', { name: 'App-Konfiguration' })).toBeTruthy();
   });
 
   it('wraps plugin editor contributions with host principal context in the SSF profile', async () => {

@@ -6,7 +6,7 @@ Die App-Konfigurationseditoren benötigen einen gemeinsamen, verlustfreien Mains
 
 ## Freigabe und Status
 
-Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutzt den App-Arbeitsbereich für die JSON-Dateiliste, die exakte Versionswahl und den feldbezogenen Abgleich der zwei Felder aus „Allgemein“ und „Design“. Die Variantenaktionen nutzen denselben Abgleich. Die Neuanlage ist auf Namen begrenzt, die der Mainserver unverändert übernimmt. Weitere Fachformulare folgen getrennt.
+Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutzt die Seite **Anwendungen → App → App-Konfiguration** für die JSON-Dateiliste, die exakte Versionswahl und den feldbezogenen Abgleich der zwei Felder aus „Allgemein“ und „Design“. Die Variantenaktionen nutzen denselben Abgleich. Die Neuanlage ist auf Namen begrenzt, die der Mainserver unverändert übernimmt. Weitere Fachformulare folgen getrennt.
 
 ## What Changes
 
@@ -24,7 +24,7 @@ Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutz
 - Für Updates bestehender Varianten prüft der Mainserver die erwartete Revision atomar.
 - Keine automatische Neuanlage aufgrund einer leeren Fallback-Antwort, keine stillen Namensänderungen, kein DB-Direktzugriff und keine automatische Rechteerhöhung.
 - Keine weiteren Modulformulare, automatische Altlastenbereinigung, zweite Konfigurationspersistenz oder neuer Sync-Dienst. Parser-/Duplikatfälle werden nicht als eigener Bereinigungsauftrag aufgenommen.
-- Der erste schreibende Lieferabschnitt integriert die Dateiliste und exakte Versionswahl, den Feldabgleich für `globalSettings` und den abgesicherten Mainserver-Write mit Readback im App-Arbeitsbereich. Die vollständige Variantenverwaltung bleibt offen.
+- Der erste schreibende Lieferabschnitt integriert die Dateiliste und exakte Versionswahl, den Feldabgleich für `globalSettings` und den abgesicherten Mainserver-Write mit Readback auf der Seite **Anwendungen → App → App-Konfiguration**. Die vollständige Variantenverwaltung bleibt offen.
 
 ## Impact
 

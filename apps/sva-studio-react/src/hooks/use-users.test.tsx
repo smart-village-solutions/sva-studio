@@ -503,6 +503,94 @@ describe('useUsers', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  describe('overlapping list requests', () => {
+    type ListUsersResponse = {
+      data: Array<{
+        id: string;
+        keycloakSubject: string;
+        displayName: string;
+        email: string;
+        status: 'active';
+        roles: [];
+      }>;
+      pagination: { page: number; pageSize: number; total: number };
+    };
+
+    const listResponse = (...ids: string[]): ListUsersResponse => ({
+      data: ids.map((id) => ({
+        id,
+        keycloakSubject: `subject-${id}`,
+        displayName: id,
+        email: `${id}@example.com`,
+        status: 'active',
+        roles: [],
+      })),
+      pagination: { page: 1, pageSize: 25, total: ids.length },
+    });
+
+    const startOverlappingRequests = async () => {
+      const olderRequest = createDeferred<ListUsersResponse>();
+      const newerRequest = createDeferred<ListUsersResponse>();
+      listUsersMock
+        .mockReturnValueOnce(olderRequest.promise)
+        .mockReturnValueOnce(newerRequest.promise);
+
+      const hook = renderHook(() => useUsers());
+      await waitFor(() => expect(listUsersMock).toHaveBeenCalledTimes(1));
+
+      act(() => hook.result.current.setStatus('active'));
+      await waitFor(() => expect(listUsersMock).toHaveBeenCalledTimes(2));
+      expect(listUsersMock).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'active' }));
+
+      return { ...hook, olderRequest, newerRequest };
+    };
+
+    it('keeps the newest results when an older success resolves last', async () => {
+      const { result, olderRequest, newerRequest } = await startOverlappingRequests();
+
+      await act(async () => newerRequest.resolve(listResponse('newest-1', 'newest-2')));
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.users.map((user) => user.id)).toEqual(['newest-1', 'newest-2']);
+
+      await act(async () => olderRequest.resolve(listResponse('stale')));
+
+      expect(result.current.users.map((user) => user.id)).toEqual(['newest-1', 'newest-2']);
+      expect(result.current.total).toBe(2);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('ignores an older failure and keeps loading until the newest request settles', async () => {
+      const { result, olderRequest, newerRequest } = await startOverlappingRequests();
+
+      await act(async () =>
+        olderRequest.reject({ status: 503, code: 'database_unavailable', message: 'stale' })
+      );
+
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.error).toBeNull();
+
+      await act(async () => newerRequest.resolve(listResponse('newest')));
+
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.users.map((user) => user.id)).toEqual(['newest']);
+    });
+
+    it('still reports a failure of the newest request', async () => {
+      const { result, olderRequest, newerRequest } = await startOverlappingRequests();
+
+      await act(async () =>
+        newerRequest.reject({ status: 503, code: 'database_unavailable', message: 'newest' })
+      );
+      await act(async () => olderRequest.resolve(listResponse('stale')));
+
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toMatchObject({ code: 'database_unavailable' });
+      expect(result.current.users).toEqual([]);
+    });
+  });
+
   it('returns null and sets error when update fails with forbidden', async () => {
     listUsersMock.mockResolvedValue({
       data: [],

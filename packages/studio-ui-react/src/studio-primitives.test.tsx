@@ -1188,6 +1188,58 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
+  it('keeps toolbar controls, focus and selection while rows reload', () => {
+    const rows = [{ id: 'a' }, { id: 'b' }];
+    const renderTable = (isLoading: boolean) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={rows}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        bulkActions={[{ id: 'archive', label: 'Archivieren', onClick: vi.fn() }]}
+        toolbarStart={<Input aria-label="Suche" />}
+        footer={<p>Seite 1</p>}
+        isLoading={isLoading}
+      />
+    );
+    const { container, rerender } = render(renderTable(false));
+    const status = container.querySelector('[aria-live="polite"]');
+    const search = screen.getByRole<HTMLInputElement>('textbox', { name: 'Suche' });
+    fireEvent.click(screen.getByLabelText('News a auswählen'));
+    search.focus();
+    fireEvent.change(search, { target: { value: 'Ma' } });
+
+    expect(status?.textContent).toBe('');
+    expect(screen.queryByRole('status')).toBeNull();
+
+    rerender(renderTable(true));
+
+    expect(screen.getByRole('textbox', { name: 'Suche' })).toBe(search);
+    expect(document.activeElement).toBe(search);
+    expect(search.value).toBe('Ma');
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status?.textContent).toBe('Lädt.');
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
+      true
+    );
+    expect(screen.getByText('Seite 1')).toBeTruthy();
+
+    rerender(renderTable(false));
+
+    expect(document.activeElement).toBe(search);
+    expect(status?.textContent).toBe('');
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('table', { name: 'News' })).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>('News a auswählen').checked).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
+      false
+    );
+  });
+
   it('sorts strings with a fixed locale and a deterministic tie-breaker', () => {
     const localeCompareSpy = vi
       .spyOn(String.prototype, 'localeCompare')

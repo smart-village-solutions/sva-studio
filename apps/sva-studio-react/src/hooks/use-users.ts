@@ -86,6 +86,9 @@ const usersLogger = createOperationLogger('users-hook', 'debug');
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const { refreshSession } = useAuth();
   const isMountedRef = React.useRef(false);
+  // Only the most recently started list request may update list state, so a slower
+  // response for an outdated query cannot overwrite the current results.
+  const latestListRequestIdRef = React.useRef(0);
 
   const [filters, setFilters] = React.useState<UserFilters>({
     ...DEFAULT_FILTERS,
@@ -126,6 +129,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   }, [filters.search]);
 
   const loadUsers = React.useCallback(async () => {
+    const requestId = ++latestListRequestIdRef.current;
+    const isCurrentRequest = () =>
+      isMountedRef.current && requestId === latestListRequestIdRef.current;
     logBrowserOperationStart(usersLogger, 'user_list_refetch_started', {
       operation: 'list_users',
       page: filters.page,
@@ -149,7 +155,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         includeTechnicalAccounts: filters.includeTechnicalAccounts,
       });
 
-      if (isMountedRef.current) {
+      if (isCurrentRequest()) {
         setUsers(response.data);
         setTotal(response.pagination.total);
       }
@@ -173,7 +179,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
           error_code: resolvedError.code,
         });
       }
-      if (isMountedRef.current) {
+      if (isCurrentRequest()) {
         setUsers([]);
         setTotal(0);
         setError(resolvedError);
@@ -182,7 +188,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         operation: 'list_users',
       });
     } finally {
-      if (isMountedRef.current) {
+      if (isCurrentRequest()) {
         setIsLoading(false);
       }
     }

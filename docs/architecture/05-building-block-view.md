@@ -928,6 +928,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - Die Projektion verbindet Filter, Gesamtzahl und Seite in einer SQL-Anweisung, aggregiert Touren erst für die Seite und sortiert mit der migrierten ICU-Collation `public.sva_de_numeric`. Beide fachlichen Sortiermodi enden unabhängig von der Richtung mit `ID asc` und behandeln fehlende Werte zuletzt.
 - Ein separater, nur lesender Resolver liefert alle IDs desselben Filtervertrags ohne Pagination oder Sortierparameter. Dadurch bleibt „Alle gefilterten auswählen“ global korrekt, ohne den vollständigen Listendatensatz in den Browser zu laden.
 - Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.
+- Während `isLoading` ersetzt `StudioDataTable` nur den Ergebnisbereich durch den Ladezustand. Toolbar (Suche, Filter, Aktionen) und Footer bleiben gemountet, sodass Eingabewert und Fokus über Anfragen hinweg erhalten bleiben; Bulk-Aktionen sind während des Ladens deaktiviert, die Zeilenauswahl bleibt bestehen. Lade- und Leerzustand werden über eine dauerhaft gemountete `aria-live`-Region angekündigt, ohne den Fokus zu verschieben.
 
 ### Ergänzung 2026-08: Permission-Denial-Vertrag
 

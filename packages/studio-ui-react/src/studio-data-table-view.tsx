@@ -12,6 +12,8 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   table: LegacyTable<TData>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hasRows: boolean;
+  isLoading: boolean;
+  loadingState: React.ReactNode;
   emptyState: React.ReactNode;
   ariaLabel: string;
   caption?: string;
@@ -147,6 +149,8 @@ export function StudioDataTableView<TData extends RowData>({
   table,
   containerRef,
   hasRows,
+  isLoading,
+  loadingState,
   emptyState,
   ariaLabel,
   caption,
@@ -158,19 +162,41 @@ export function StudioDataTableView<TData extends RowData>({
   mobileSortingControls,
   footerContent,
 }: StudioDataTableViewProps<TData>) {
+  const showRows = hasRows && !isLoading;
+  let statusContent: React.ReactNode = null;
+  if (isLoading) {
+    statusContent = loadingState;
+  } else if (!hasRows) {
+    statusContent = emptyState;
+  }
+
+  // The toolbar and footer stay mounted while loading so that search fields and filters
+  // keep their value and focus. Only the result area switches to the loading state.
   return (
     <div
-      ref={hasRows ? containerRef : undefined}
+      ref={showRows ? containerRef : undefined}
       className={cn(
         'rounded-xl border border-border bg-card shadow-shell',
-        hasRows && 'overflow-hidden'
+        showRows && 'overflow-hidden'
       )}
-      aria-busy={hasRows ? 'false' : undefined}
-      data-selected-rows={hasRows ? selectedRowCount : undefined}
-      data-layout={hasRows ? (isCompact ? 'compact' : 'wide') : undefined}
+      aria-busy={showRows ? 'false' : undefined}
+      data-selected-rows={showRows ? selectedRowCount : undefined}
+      data-layout={showRows ? (isCompact ? 'compact' : 'wide') : undefined}
     >
       {toolbarContent}
-      {hasRows ? (
+      {/* The live region stays mounted so that screen readers reliably announce loading and
+          empty states; it only exposes the status role while it has something to report. */}
+      <div
+        className={cn(
+          statusContent ? 'p-6' : 'sr-only',
+          isLoading && 'text-sm text-muted-foreground'
+        )}
+        role={statusContent ? 'status' : undefined}
+        aria-live="polite"
+      >
+        {statusContent}
+      </div>
+      {showRows ? (
         <>
           <StudioDataTableWide
             table={table}
@@ -187,11 +213,7 @@ export function StudioDataTableView<TData extends RowData>({
             mobileSortingControls={mobileSortingControls}
           />
         </>
-      ) : (
-        <div className="p-6" role="status" aria-live="polite">
-          {emptyState}
-        </div>
-      )}
+      ) : null}
       {footerContent}
     </div>
   );

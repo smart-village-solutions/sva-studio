@@ -14,15 +14,25 @@ type StudioDataTableToolbarProps<TData> = Readonly<{
   bulkActions: readonly StudioBulkAction<TData>[];
   selectedRows: TData[];
   clearSelection: () => void;
+  isLoading: boolean;
   toolbarStart?: React.ReactNode;
   toolbarCenter?: React.ReactNode;
   toolbarEnd?: React.ReactNode;
 }>;
 
+const isBulkActionDisabled = <TData,>(
+  action: StudioBulkAction<TData>,
+  selectedRows: readonly TData[]
+) =>
+  typeof action.disabled === 'function'
+    ? selectedRows.length === 0 || action.disabled(selectedRows)
+    : (action.disabled ?? selectedRows.length === 0);
+
 export function StudioDataTableToolbar<TData>({
   bulkActions,
   selectedRows,
   clearSelection,
+  isLoading,
   toolbarStart,
   toolbarCenter,
   toolbarEnd,
@@ -37,11 +47,7 @@ export function StudioDataTableToolbar<TData>({
         type="button"
         variant={action.variant ?? 'secondary'}
         className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
-        disabled={
-          typeof action.disabled === 'function'
-            ? selectedRows.length === 0 || action.disabled(selectedRows)
-            : (action.disabled ?? selectedRows.length === 0)
-        }
+        disabled={isLoading || isBulkActionDisabled(action, selectedRows)}
         onClick={() => void action.onClick({ selectedRows, clearSelection })}
       >
         {action.label}

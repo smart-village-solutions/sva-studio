@@ -62,7 +62,7 @@ export const UserListPage = () => {
   );
 
   return (
-    <section className="space-y-5" aria-busy={usersApi.isLoading}>
+    <section className="space-y-5">
       <StudioListPageTemplate
         title={t(isPlatformScope ? 'admin.users.page.platformTitle' : 'admin.users.page.title')}
         description={t(

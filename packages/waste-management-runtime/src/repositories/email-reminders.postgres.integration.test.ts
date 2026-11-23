@@ -78,6 +78,42 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
     }
   });
 
+  it('keeps a prefixed transport failure from the previous worker retryable', async () => {
+    const subscriptionId = await createSubscription();
+    const id = randomUUID();
+    const pickupDate = '2026-09-03';
+    const retryAt = '2026-09-02T06:20:00.000Z';
+    const dedupeKey = `reminder:${subscriptionId}:paper:paper:first:${pickupDate}`;
+    const repository = createRepository();
+    await repository.enqueueOutboxEntry({
+      id,
+      subscriptionId,
+      messageKind: 'reminder',
+      transportId: 'old-smtp',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt: retryAt,
+      dedupeKey,
+      payload: makePayload(subscriptionId),
+    });
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET attempt_count = 1, last_error = 'mail_transport_not_available:old-smtp' WHERE id = $1",
+      [id]
+    );
+    expect(await repository.markUnresolvedReminderDeliveries({ now: retryAt })).toBe(0);
+    expect(await repository.hasDueReminderOutboxEntries({ now: retryAt })).toBe(true);
+    expect(await inTransaction(client, () => repository.loadLockedReminderPlanningOrders({
+      subscriptionId,
+      pickupDates: [pickupDate],
+      dedupeKeys: [dedupeKey],
+    }))).toEqual([expect.objectContaining({ dedupeKey, status: 'pending', attemptCount: 1, retryAt })]);
+    expect(await repository.leaseDueOutboxEntries({ now: '2026-09-02T06:19:59.000Z', limit: 1 })).toEqual([]);
+    expect(await repository.leaseDueOutboxEntries({ now: retryAt, limit: 1 })).toEqual([
+      expect.objectContaining({ id, attemptCount: 2 }),
+    ]);
+    expect(await repository.claimOutboxEntryForDispatch({ outboxId: id, leasedAt: retryAt })).toBe(true);
+    expect(await repository.markOutboxEntrySent({ outboxId: id, leasedAt: retryAt, now: retryAt })).toBe(true);
+  });
+
   it.each([undefined, 'provider-message-1'])(
     'marks a delivered message sent with provider ID %s',
     async (providerMessageId) => {
@@ -211,7 +247,10 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
       {
         email: null,
         email_hash: null,
-        payload: {},
+        payload: {
+          templatePayload: { fractionName: 'Biotonne, Papiertonne' },
+          metadata: { pickupDate: '2027-01-04' },
+        },
         last_error: 'mail_dispatch_outcome_unknown',
         status: 'failed',
       },
@@ -371,6 +410,9 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
           [outboxId]
         )
       ).rows
-    ).toEqual([{ status: 'cancelled', payload: {} }]);
+    ).toEqual([{
+      status: 'cancelled',
+      payload: { templatePayload: { fractionName: 'Fixture' }, metadata: { pickupDate } },
+    }]);
   });
 });

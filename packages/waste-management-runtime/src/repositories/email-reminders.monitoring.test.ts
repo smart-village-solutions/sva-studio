@@ -59,6 +59,12 @@ describe('email monitoring privacy projection', () => {
           pickupDate: null,
           lastError: 'smtp private@example.test token=secret',
         },
+        {
+          id: 'cancelled-reminder',
+          kind: 'reminder',
+          status: 'cancelled',
+          lastError: 'mail_transport_not_available:old-transport',
+        },
       ],
     ];
     const execute = vi.fn(async () => ({ rowCount: 1, rows: results.shift() ?? [] }));
@@ -74,6 +80,7 @@ describe('email monitoring privacy projection', () => {
     expect(data.subscriptions[0]?.lastSentEmail?.kind).toBe('reminder');
     expect(data).toMatchObject({ total: 1, activeTotal: 2 });
     expect(data.deliveries[0]?.error).toBe('dispatch_failed');
+    expect(data.deliveries[1]?.error).toBe('cancelled');
     expect(JSON.stringify(data)).not.toMatch(/philipp|private|secret|lastError/);
     const calls = execute.mock.calls as unknown as [{ text: string; values: unknown[] }][];
     expect(calls[1]?.[0].values).toEqual(['active', null, 25, 25]);

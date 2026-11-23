@@ -122,20 +122,23 @@ const planSubscriptionPickupDates = (
   return { planned, skippedPickupCount };
 };
 
+type WaitingReminderOrder = Readonly<{ retryAt: string; attemptCount: number }>;
+
+const mergeWaitingReminderOrders = (left: WaitingReminderOrder, right: WaitingReminderOrder) => ({
+  retryAt: left.retryAt > right.retryAt ? left.retryAt : right.retryAt,
+  attemptCount: Math.max(left.attemptCount, right.attemptCount),
+});
+
 const collectReplaceableReminderKeys = (
-  existing: readonly WasteEmailReminderPlanningOrder[],
-  memberKeys: ReadonlySet<string>,
-  validDedupeKeys: Set<string>
+  existing: readonly WasteEmailReminderPlanningOrder[]
 ) => {
-  const replaceable = new Set<string>();
+  const replaceable = new Map<string, WaitingReminderOrder>();
   for (const order of existing) {
-    if (order.status !== 'pending') continue;
-    const members = order.memberKeys ?? [order.dedupeKey];
-    if (order.attemptCount === 0 || order.requiresReplan) {
-      replaceable.add(order.dedupeKey);
-      for (const member of members) replaceable.add(member);
-    } else if (members.some((member) => memberKeys.has(member))) {
-      validDedupeKeys.add(order.dedupeKey);
+    if (order.status !== 'pending' || (order.attemptCount > 0 && !order.retryAt)) continue;
+    const retry = { retryAt: order.retryAt ?? '', attemptCount: order.attemptCount };
+    for (const key of [order.dedupeKey, ...(order.memberKeys ?? [])]) {
+      const previous = replaceable.get(key);
+      replaceable.set(key, previous ? mergeWaitingReminderOrders(previous, retry) : retry);
     }
   }
   return replaceable;
@@ -243,7 +246,7 @@ export const createMaterializeEmailRemindersOperation = (
         dedupeKeys: [...memberKeys, ...groups.map((group) => group.dedupeKey)],
       });
       if (!existing) continue;
-      const replaceable = collectReplaceableReminderKeys(existing, memberKeys, validDedupeKeys);
+      const replaceable = collectReplaceableReminderKeys(existing);
 
       const sendableGroups = selectUnreservedReminderGroups(groups, existing);
       duplicateOutboxCount += groups.length - sendableGroups.length;
@@ -267,16 +270,21 @@ export const createMaterializeEmailRemindersOperation = (
             unsubscribeTokenSecret: unsubscribeSigningSecret,
           }),
         };
-        const replacesWaitingOrder = replaceable.has(group.dedupeKey) || group.members.some(
-          (member) => replaceable.has(reminderMemberDedupeKey(subscription.id, group.pickupDate, member))
-        );
-        const result = replacesWaitingOrder
+        const waitingOrder = [group.dedupeKey, ...group.members.map((member) =>
+          reminderMemberDedupeKey(subscription.id, group.pickupDate, member)
+        )].reduce<WaitingReminderOrder | undefined>((latest, key) => {
+          const candidate = replaceable.get(key);
+          return latest && candidate ? mergeWaitingReminderOrders(latest, candidate) : latest ?? candidate;
+        }, undefined);
+        const result = waitingOrder
           ? await reminderRepository.enqueueOutboxEntry({
               id: randomUUID(),
               ...outboxEntry,
-              sendAt: outboxEntry.sendAt < referenceTime.toISOString()
-                ? referenceTime.toISOString()
-                : outboxEntry.sendAt,
+              ...(waitingOrder.attemptCount > 0 && { retryAttemptCount: waitingOrder.attemptCount }),
+              sendAt: [referenceTime.toISOString(), waitingOrder.retryAt].reduce(
+                (latest, candidate) => candidate > latest ? candidate : latest,
+                outboxEntry.sendAt
+              ),
             })
           : await scheduleReminder(
               reminderRepository,

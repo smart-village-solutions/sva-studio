@@ -100,10 +100,12 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
   sendAt: string;
   dedupeKey: string;
   payload: MailDispatchPayload;
+  /** Carry the retry limit when a waiting pickup moves to another group key. */
+  retryAttemptCount?: number;
 }>;
 
 export type WasteEmailReminderPlanningOrder = Readonly<{
-  requiresReplan?: boolean;
+  retryAt?: string;
   dedupeKey: string;
   status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
   attemptCount: number;

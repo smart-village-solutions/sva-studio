@@ -85,9 +85,19 @@ WITH revoked AS (
   WHERE id = $1::uuid
     AND status IN ('pending', 'active', 'unsubscribed')
   RETURNING id
+), history AS (
+  SELECT outbox.id,
+    CASE WHEN outbox.message_kind = 'reminder' THEN jsonb_strip_nulls(jsonb_build_object(
+      'templatePayload', CASE WHEN jsonb_typeof(outbox.payload #> '{templatePayload,fractionName}') = 'string'
+        THEN jsonb_build_object('fractionName', outbox.payload #> '{templatePayload,fractionName}') END,
+      'metadata', CASE WHEN jsonb_typeof(outbox.payload #> '{metadata,pickupDate}') = 'string'
+        THEN jsonb_build_object('pickupDate', outbox.payload #> '{metadata,pickupDate}') END
+    )) ELSE '{}'::jsonb END AS payload
+  FROM waste_email_reminder_outbox AS outbox
+  JOIN revoked ON revoked.id = outbox.subscription_id
 )
 UPDATE waste_email_reminder_outbox AS outbox
-SET payload = '{}'::jsonb,
+SET payload = history.payload,
     status = CASE WHEN outbox.status IN ('pending', 'processing') THEN 'cancelled' ELSE outbox.status END,
     leased_at = NULL,
     last_error = CASE
@@ -98,9 +108,9 @@ SET payload = '{}'::jsonb,
       ELSE NULL
     END,
     updated_at = $2::timestamptz
-FROM revoked
-WHERE outbox.subscription_id = revoked.id
-  AND (outbox.payload <> '{}'::jsonb OR outbox.leased_at IS NOT NULL
+FROM history
+WHERE outbox.id = history.id
+  AND (outbox.payload IS DISTINCT FROM history.payload OR outbox.leased_at IS NOT NULL
     OR outbox.status IN ('pending', 'processing')
     OR (outbox.last_error IS NOT NULL AND outbox.last_error NOT IN (
       'subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable', 'dispatch_failed',

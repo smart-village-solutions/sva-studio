@@ -403,7 +403,7 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending' AND send_at <= $1::timestamptz");
     expect(statements[0]?.text).toContain(
-      "attempt_count = 0 OR last_error IN ('mail_transport_not_available', 'reminder_replan_required')"
+      "last_error = 'mail_transport_not_available:' || transport_id"
     );
     expect(statements[0]?.text).not.toContain("status = 'processing'");
   });
@@ -423,7 +423,7 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status = 'pending'");
     expect(statements[0]?.text).toContain(
-      "attempt_count = 0 OR last_error IN ('mail_transport_not_available', 'reminder_replan_required')"
+      "last_error = 'mail_transport_not_available:' || transport_id"
     );
     expect(statements[0]?.text).not.toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
@@ -591,7 +591,7 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('FOR UPDATE');
     expect(statements[1]?.text).toContain('email = NULL');
     expect(statements[1]?.text).toContain('email_hash = NULL');
-    expect(statements[1]?.text).toContain("payload = '{}'::jsonb");
+    expect(statements[1]?.text).toContain('SET payload = history.payload');
   });
 
   it('returns invalid or already_unsubscribed for non-unsubscribable token hashes', async () => {

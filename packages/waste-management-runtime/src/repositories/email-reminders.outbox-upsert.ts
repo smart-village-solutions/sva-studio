@@ -3,7 +3,7 @@ import type {
   WasteEmailReminderOutboxEntryInput,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
-import { MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
+import { isSafeReminderRetrySql, MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 
 type EnqueuedOutboxRow = Readonly<{ id: string }>;
 
@@ -30,18 +30,24 @@ INSERT INTO waste_email_reminder_outbox (
   send_at,
   dedupe_key,
   status,
-  payload
+  payload,
+  attempt_count,
+  last_error
 )
-SELECT $1::uuid, id, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb
+SELECT $1::uuid, id, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb, $9::int,
+  CASE WHEN $9::int > 0 THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}' END
 FROM dispatchable_subscription
 ON CONFLICT (dedupe_key) DO UPDATE
 SET transport_id = EXCLUDED.transport_id,
     template_key = EXCLUDED.template_key,
     status = 'pending',
+    attempt_count = GREATEST(waste_email_reminder_outbox.attempt_count, EXCLUDED.attempt_count),
     last_error = CASE
-      WHEN waste_email_reminder_outbox.status = 'cancelled' THEN NULL
-      WHEN waste_email_reminder_outbox.last_error = '${REMINDER_REPLAN_REQUIRED}'
-        THEN CASE WHEN waste_email_reminder_outbox.attempt_count > 0 THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}' ELSE NULL END
+      WHEN EXCLUDED.attempt_count > 0 OR (waste_email_reminder_outbox.attempt_count > 0
+        AND ${isSafeReminderRetrySql('waste_email_reminder_outbox')})
+        THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
+      WHEN waste_email_reminder_outbox.status = 'cancelled'
+        OR waste_email_reminder_outbox.last_error = '${REMINDER_REPLAN_REQUIRED}' THEN NULL
       ELSE waste_email_reminder_outbox.last_error
     END,
     send_at = CASE
@@ -54,8 +60,9 @@ SET transport_id = EXCLUDED.transport_id,
 WHERE waste_email_reminder_outbox.status = 'pending'
   OR (
     waste_email_reminder_outbox.status = 'cancelled'
-    AND waste_email_reminder_outbox.attempt_count = 0
-    AND waste_email_reminder_outbox.last_error = 'reminder_no_longer_applicable'
+    AND ((waste_email_reminder_outbox.attempt_count = 0
+      AND waste_email_reminder_outbox.last_error = 'reminder_no_longer_applicable')
+      OR ${isSafeReminderRetrySql('waste_email_reminder_outbox')})
     AND EXCLUDED.dedupe_key LIKE 'reminder-group:%'
   )
 RETURNING id;
@@ -69,6 +76,7 @@ RETURNING id;
     input.sendAt,
     input.dedupeKey,
     JSON.stringify(input.payload),
+    input.retryAttemptCount ?? 0,
   ],
 });
 

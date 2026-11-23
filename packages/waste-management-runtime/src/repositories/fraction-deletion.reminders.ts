@@ -9,9 +9,8 @@ import { buildMaterializedLocationTourPickupDates } from '../operations/waste-ma
 import { matchSelectionLocations } from '../operations/waste-management-email-reminder-planning.js';
 import { queryRows, type QueryClient } from './address-mutation-shared.js';
 import {
-  MAIL_TRANSPORT_NOT_AVAILABLE,
+  isSafeReminderRetrySql,
   REMINDER_OUTCOME_UNKNOWN,
-  REMINDER_REPLAN_REQUIRED,
 } from './email-reminders.outbox-dispatch.js';
 type OutboxRow = Readonly<{
   id: string;
@@ -19,6 +18,7 @@ type OutboxRow = Readonly<{
   status: string;
   attempt_count: number;
   last_error: string | null;
+  safe_retry: boolean;
   member_keys: readonly string[];
   region_id: string | null;
   city_id: string;
@@ -40,7 +40,8 @@ const loadOutbox = async (
   const outbox = await queryRows<OutboxRow>(
     client,
     `
-    SELECT o.id::text, o.dedupe_key, o.status, o.attempt_count, o.last_error, members.member_keys,
+    SELECT o.id::text, o.dedupe_key, o.status, o.attempt_count, o.last_error,
+      ${isSafeReminderRetrySql('o')} AS safe_retry, members.member_keys,
       s.region_id::text, s.city_id::text, s.street_id, s.house_number_id::text
     FROM waste_email_reminder_outbox o JOIN waste_email_reminder_subscriptions s ON s.id = o.subscription_id
     CROSS JOIN LATERAL (
@@ -121,10 +122,7 @@ const reconcileOutboxMembers = (
   const replanOutboxIds = new Set<string>();
   for (const row of outbox) {
     const groupWaiting = row.status === 'pending' && row.dedupe_key.startsWith('reminder-group:');
-    const safelyWaiting =
-      row.attempt_count === 0 ||
-      row.last_error === MAIL_TRANSPORT_NOT_AVAILABLE ||
-      row.last_error === REMINDER_REPLAN_REQUIRED;
+    const safelyWaiting = row.attempt_count === 0 || row.safe_retry;
     if (groupWaiting && !safelyWaiting) continue;
 
     const invalidMemberCount = row.member_keys.filter((key) =>

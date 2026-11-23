@@ -8,7 +8,7 @@ import type {
 import { createWasteMasterDataRepository } from './master-data.js';
 import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
 import { queryRows, type QueryClient } from './address-mutation-shared.js';
-import { REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
+import { isSafeReminderRetrySql, MAIL_TRANSPORT_NOT_AVAILABLE, REMINDER_REPLAN_REQUIRED } from './email-reminders.outbox-dispatch.js';
 import {
   findFractionReplacementConflicts,
   replaceFractionIds,
@@ -224,7 +224,11 @@ export const processWasteFractionDeletion = async (
         await client.query(
           `UPDATE waste_email_reminder_outbox
         SET status = CASE WHEN id = ANY($1::uuid[]) THEN 'cancelled' ELSE status END,
-          last_error = CASE WHEN id = ANY($1::uuid[]) THEN 'reminder_no_longer_applicable' ELSE $3 END,
+          last_error = CASE
+            WHEN id = ANY($2::uuid[]) THEN $3
+            WHEN attempt_count > 0 AND ${isSafeReminderRetrySql()} THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
+            ELSE 'reminder_no_longer_applicable'
+          END,
           leased_at = NULL, updated_at = NOW()
         WHERE id = ANY($1::uuid[]) OR id = ANY($2::uuid[])`,
           [[...current.cancelledOutboxIds], [...current.replanOutboxIds], REMINDER_REPLAN_REQUIRED]

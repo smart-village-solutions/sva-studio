@@ -22,7 +22,8 @@ export const maskWasteEmail = (email: string | null): string => {
 };
 
 export const classifyWasteEmailError = (
-  value: string | null
+  value: string | null,
+  status?: WasteEmailDeliverySummary['status']
 ): WasteEmailDeliverySummary['error'] => {
   if (
     !value || value.startsWith('provider_message_id:') ||
@@ -30,7 +31,7 @@ export const classifyWasteEmailError = (
   )
     return null;
   if (value === 'mail_transport_not_available' || value.startsWith('mail_transport_not_available:'))
-    return 'transport_unavailable';
+    return status === 'cancelled' ? 'cancelled' : 'transport_unavailable';
   if (value === REMINDER_OUTCOME_UNKNOWN) return 'outcome_unknown';
   if (
     ['subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable'].includes(
@@ -72,7 +73,7 @@ const loadWasteEmailDeliveryHistory = async (
   return {
     deliveries: rows.rows.map(({ lastError, ...row }) => ({
       ...row,
-      error: classifyWasteEmailError(lastError),
+      error: classifyWasteEmailError(lastError, row.status),
     })),
     deliveryTotal: deliveryCount.rows[0]?.total ?? 0,
   };

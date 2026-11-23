@@ -76,16 +76,22 @@ Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 ## Normaler Releasepfad
 
 1. Änderungen für `public-waste-calendar-web` auf `main` bringen.
-2. SemVer-Tag erzeugen, zum Beispiel `waste-web-v1.2.3`.
-3. Tag pushen.
-4. GitHub baut und publiziert das Image `ghcr.io/smart-village-solutions/public-waste-calendar-web:v1.2.3` genau einmal.
-5. Getrennte, an `web-waste-calendar` beziehungsweise `web-waste-calendar-frankfurt-oder` gebundene Deploy-Jobs aktualisieren in Portainer jeweils nur `PUBLIC_WASTE_IMAGE_TAG=v1.2.3` ihres Zielstacks.
-6. Die Stacks `web-waste-calendar` und `web-waste-calendar-frankfurt-oder` werden unabhängig neu ausgerollt.
-7. Jeder Zieljob prüft seine eigene Basis-URL mit `/health/live`, `/` und `/api/public-waste/selection`.
+2. Vor dem Web-Tag die Tenant-Migration `20261123_01_allow_waste_subscription_address_redaction` über den [Studio-Rollout](../guides/studio-rollout-process.md) bereitstellen. Für jeden Zielstack `PUBLIC_WASTE_INSTANCE_ID` der zugehörigen Mandantendatenbank zuordnen und dort lesend den [Migrationsstand und die Schema-Voraussetzungen](#migrationsnachweis-für-die-abmeldung) prüfen. Fehlt ein Nachweis, den Web-Release anhalten.
+3. SemVer-Tag erzeugen, zum Beispiel `waste-web-v1.2.3`.
+4. Tag pushen.
+5. GitHub baut und publiziert das Image `ghcr.io/smart-village-solutions/public-waste-calendar-web:v1.2.3` genau einmal.
+6. Getrennte, an `web-waste-calendar` beziehungsweise `web-waste-calendar-frankfurt-oder` gebundene Deploy-Jobs aktualisieren in Portainer jeweils nur `PUBLIC_WASTE_IMAGE_TAG=v1.2.3` ihres Zielstacks.
+7. Die Stacks `web-waste-calendar` und `web-waste-calendar-frankfurt-oder` werden unabhängig neu ausgerollt.
+8. Jeder Zieljob prüft seine eigene Basis-URL mit `/health/live`, `/` und `/api/public-waste/selection`.
+9. Pro Zielstack an der jeweiligen öffentlichen Basis-URL bei aktivem Erinnerungsdienst mit einem dafür vorgesehenen Test-Abo den Abmeldelink öffnen. Die Bestätigungsseite muss beim ersten und beim wiederholten Aufruf erscheinen. Das Abo muss anschließend den Status `unsubscribed` haben, und `email` sowie `email_hash` müssen beide `NULL` sein. Den fachlichen Nachweis getrennt von den HTTP-Smokes dokumentieren. Wenn der Erinnerungsdienst deaktiviert ist, den fachlichen Smoke vor seiner nächsten Freigabe durchführen.
 
 Der Releasehelfer liest vor der Stack-Auswahl die Swarm-ID über den konfigurierten Docker-Endpoint und fragt ausschließlich dessen Swarm-Stacks ab. Ohne lesbare Swarm-ID bricht er vor jedem Update ab. Zielstack und Endpoint-Zuordnung werden weiterhin getrennt geprüft; der Release ändert ausschließlich den Image-Tag des gewählten Stacks.
 
 Ein Fehlschlag eines Zieljobs macht den Release rot. Ein bereits erfolgreich aktualisierter anderer Zielstack bleibt unverändert auf dem neuen Tag; ein Rollback oder Retry erfolgt anschließend nur nach der Ursacheanalyse gezielt für den betroffenen Stack.
+
+### Migrationsnachweis für die Abmeldung
+
+Pro Zieldatenbank mit der berechtigten Betriebsrolle den Eintrag `20261123_01_allow_waste_subscription_address_redaction` in `public.sva_waste_schema_migrations` zurücklesen. Zusätzlich in `information_schema.columns` prüfen, dass `email` und `email_hash` in `public.waste_email_reminder_subscriptions` `NULL` zulassen. Der validierte Constraint `waste_email_reminder_subscriptions_live_address_check` muss in `pg_constraint` vorliegen und beide Felder für `pending` und `active` weiterhin verlangen. Den Nachweis mit Zielstack und Instanz-ID festhalten. Datenbankverbindungen, Adressen und Abmeldelinks aus der Evidenz heraushalten.
 
 ## Kanonische Domain umstellen
 

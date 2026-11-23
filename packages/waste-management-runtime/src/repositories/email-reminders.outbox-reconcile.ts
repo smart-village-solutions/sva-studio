@@ -2,9 +2,9 @@ import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import { z } from 'zod';
 import type { WasteEmailReminderPlanningOrder, WasteEmailReminderRepository } from './email-reminders.js';
 import {
+  isSafeReminderRetrySql,
   MAIL_TRANSPORT_NOT_AVAILABLE,
   REMINDER_OUTCOME_UNKNOWN,
-  REMINDER_REPLAN_REQUIRED,
   STALE_OUTBOX_LEASE_INTERVAL,
 } from './email-reminders.outbox-dispatch.js';
 
@@ -17,12 +17,13 @@ SELECT EXISTS (
   FROM waste_email_reminder_outbox
   WHERE message_kind = 'reminder'
     AND status = 'pending' AND send_at <= $1::timestamptz
-    AND (attempt_count = 0 OR last_error IN ('${MAIL_TRANSPORT_NOT_AVAILABLE}', '${REMINDER_REPLAN_REQUIRED}'))
+    AND (attempt_count = 0 OR ${isSafeReminderRetrySql()})
 ) AS due;
 `,
   values: [input.now],
 });
 
+// A cancelled safe retry must not reserve its members in a later plan.
 const buildCancelInvalidReminderOutboxEntriesStatement = (input: {
   readonly validDedupeKeys: readonly string[];
   readonly now: string;
@@ -32,10 +33,11 @@ UPDATE waste_email_reminder_outbox
 SET status = 'cancelled',
     leased_at = NULL,
     updated_at = $2::timestamptz,
-    last_error = 'reminder_no_longer_applicable'
+    last_error = CASE WHEN attempt_count > 0 THEN '${MAIL_TRANSPORT_NOT_AVAILABLE}'
+      ELSE 'reminder_no_longer_applicable' END
 WHERE message_kind = 'reminder'
   AND status = 'pending'
-  AND (attempt_count = 0 OR last_error IN ('${MAIL_TRANSPORT_NOT_AVAILABLE}', '${REMINDER_REPLAN_REQUIRED}'))
+  AND (attempt_count = 0 OR ${isSafeReminderRetrySql()})
   AND NOT (dedupe_key = ANY($1::text[]));
 `,
   values: [input.validDedupeKeys, input.now],
@@ -49,9 +51,7 @@ WITH unresolved AS (
   WHERE message_kind = 'reminder'
     AND (
       (status = 'processing' AND leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL})
-      OR (status = 'pending' AND attempt_count > 0
-          AND last_error IS DISTINCT FROM '${MAIL_TRANSPORT_NOT_AVAILABLE}'
-          AND last_error IS DISTINCT FROM '${REMINDER_REPLAN_REQUIRED}')
+      OR (status = 'pending' AND attempt_count > 0 AND NOT ${isSafeReminderRetrySql()})
     )
   ORDER BY id
   FOR UPDATE SKIP LOCKED
@@ -66,8 +66,9 @@ WHERE outbox.id = unresolved.id;`,
   values: [input.now],
 });
 
-type LockedPlanningOrder = Omit<WasteEmailReminderPlanningOrder, 'memberKeys'> & Readonly<{
+type LockedPlanningOrder = Omit<WasteEmailReminderPlanningOrder, 'memberKeys' | 'retryAt'> & Readonly<{
   serializedMemberKeys: string | null;
+  retryAt: Date | null;
 }>;
 
 const memberKeysSchema = z.array(z.string().startsWith('reminder:')).nonempty();
@@ -109,7 +110,8 @@ export const createOutboxReconcileMethods = (
     if (subscription.rows.length === 0) return null;
     const orders = await executor.execute<LockedPlanningOrder>({
       text: `SELECT dedupe_key AS "dedupeKey", status, attempt_count AS "attemptCount",
-          last_error = '${REMINDER_REPLAN_REQUIRED}' AS "requiresReplan",
+          CASE WHEN status IN ('pending', 'cancelled') AND attempt_count > 0
+            AND ${isSafeReminderRetrySql()} THEN send_at END AS "retryAt",
           payload->'metadata'->>'reminderMemberKeys' AS "serializedMemberKeys"
         FROM waste_email_reminder_outbox
         WHERE subscription_id = $1::uuid AND message_kind = 'reminder'
@@ -123,7 +125,7 @@ export const createOutboxReconcileMethods = (
       status: order.status,
       attemptCount: order.attemptCount,
       memberKeys: readReminderMemberKeys(order),
-      ...(order.requiresReplan ? { requiresReplan: true } : {}),
+      ...(order.retryAt ? { retryAt: order.retryAt.toISOString() } : {}),
     }));
   },
   async markUnresolvedReminderDeliveries(input) {

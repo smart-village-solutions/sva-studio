@@ -23,6 +23,14 @@ export const REMINDER_OUTCOME_UNKNOWN = 'mail_dispatch_outcome_unknown';
 export const MAIL_TRANSPORT_NOT_AVAILABLE = 'mail_transport_not_available';
 export const REMINDER_REPLAN_REQUIRED = 'reminder_replan_required';
 
+export const isSafeReminderRetrySql = (table?: string): string => {
+  const prefix = table ? `${table}.` : '';
+  return `COALESCE((
+  ${prefix}last_error IN ('${MAIL_TRANSPORT_NOT_AVAILABLE}', '${REMINDER_REPLAN_REQUIRED}')
+  OR ${prefix}last_error = '${MAIL_TRANSPORT_NOT_AVAILABLE}:' || ${prefix}transport_id
+), false)`;
+};
+
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
   readonly leasedAt?: string;
@@ -38,7 +46,7 @@ WITH due AS (
     (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz
       AND outbox.last_error IS DISTINCT FROM '${REMINDER_REPLAN_REQUIRED}'
       AND (outbox.message_kind = 'doi' OR outbox.attempt_count = 0
-        OR outbox.last_error = '${MAIL_TRANSPORT_NOT_AVAILABLE}'))
+        OR ${isSafeReminderRetrySql('outbox')}))
     OR (
       outbox.message_kind = 'doi'
       AND

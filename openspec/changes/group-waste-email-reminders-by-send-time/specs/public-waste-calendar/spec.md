@@ -36,7 +36,8 @@ Das System SHALL E-Mail-Erinnerungen pro Abo, wirksamem Abholdatum und ursprüng
 
 #### Scenario: Ein Versandversuch wird wiederholt
 
-- **WHEN** ein sicher nicht angenommener Auftrag erneut versucht wird
-- **THEN** behält der Retry die fachliche Gruppenidentität und prüft den aktuellen Abozustand
+- **WHEN** ein Auftrag wegen eines vor der Übergabe erkannten Transportausfalls erneut versucht wird
+- **THEN** berücksichtigt die Neuplanung zwischenzeitliche Kalender- und Transportänderungen und erhält Retry-Frist sowie Versuchszähler
+- **AND** prüft der Dispatcher vor der Übergabe den aktuellen Abozustand
 - **AND** verhindert ein inzwischen widerrufenes Abo einen neuen Übergabeversuch
 - **AND** ist ein ungeklärter Ausgang im Monitoring erkennbar und führt nicht allein wegen eines abgelaufenen Claims zu einer erneuten Übergabe

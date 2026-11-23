@@ -3,6 +3,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
 import { createSqlExecutor } from '../operations/waste-management-operations.shared.js';
+import { loadWasteEmailMonitoring } from './email-reminders.monitoring.js';
 import { createWasteEmailReminderRepository } from './email-reminders.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -109,8 +110,21 @@ describe.skipIf(!databaseUrl)('Waste email address retention against PostgreSQL'
   it.each(['active', 'unsubscribed'] as const)('scrubs historical PII and keeps unsubscribe stable for %s subscriptions', async (status) => {
     const now = testTimestamp();
     const id = await createSubscription(status, tomorrow());
+    const history = {
+      templatePayload: { fractionName: 'Bio, Papier' },
+      metadata: { pickupDate: '2027-02-04' },
+    };
     for (const state of ['pending', 'processing', 'sent', 'failed', 'cancelled'] as const) {
-      await createOutbox(id, state === 'pending' ? 'doi' : 'reminder', state, now);
+      const orderId = await createOutbox(id, state === 'pending' ? 'doi' : 'reminder', state, now);
+      if (state === 'sent') {
+        await client.query(
+          'UPDATE waste_email_reminder_outbox SET payload = payload || $2::jsonb WHERE id = $1',
+          [orderId, {
+            templatePayload: { ...history.templatePayload, confirmUrl: 'synthetic-token' },
+            metadata: { ...history.metadata, reminderMemberKeys: 'synthetic-member-keys' },
+          }]
+        );
+      }
     }
     const repo = repositoryFor(client);
     const subscription = () => client.query(
@@ -131,8 +145,20 @@ describe.skipIf(!databaseUrl)('Waste email address retention against PostgreSQL'
     const firstOutbox = (await outbox()).rows;
     expect(firstSubscription[0]).toMatchObject({ email: null, email_hash: null, location_label: '', status: 'unsubscribed' });
     expect(firstOutbox.map((row) => row.status).sort()).toEqual(['cancelled', 'cancelled', 'cancelled', 'failed', 'sent']);
-    expect(firstOutbox.every((row) => row.leased_at === null && JSON.stringify(row.payload) === '{}')).toBe(true);
-    expect(JSON.stringify([firstSubscription, firstOutbox])).not.toMatch(/example\.invalid|synthetic-token|synthetic-hash/);
+    for (const row of firstOutbox) {
+      expect(row.leased_at).toBeNull();
+      expect(row.payload).toEqual(row.status === 'sent' ? history : {});
+    }
+    expect(JSON.stringify([firstSubscription, firstOutbox])).not.toMatch(
+      /example\.invalid|synthetic-token|synthetic-hash|synthetic-member-keys/
+    );
+    expect(
+      (await loadWasteEmailMonitoring(createSqlExecutor(client), {
+        subscriptionId: id, page: 1, pageSize: 10, deliveryPage: 1,
+      })).deliveries
+    ).toContainEqual(expect.objectContaining({
+      status: 'sent', fraction: 'Bio, Papier', pickupDate: '2027-02-04',
+    }));
     expect(await unsubscribe(tomorrow())).toMatchObject({ status: 'already_unsubscribed' });
     expect((await subscription()).rows).toEqual(firstSubscription);
     expect((await outbox()).rows).toEqual(firstOutbox);

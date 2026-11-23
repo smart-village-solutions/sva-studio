@@ -216,8 +216,11 @@ const listPackageFiles = (packageRoot: string): string[] => {
   return files.sort();
 };
 
-const hashFile = (path: string): string =>
-  createHash('sha256').update(readFileSync(path)).digest('hex');
+// Includes the real location, as Vite resolves relative imports from a symlink's target.
+const hashFile = (packageRoot: string, path: string): string => {
+  const location = relative(packageRoot, realpathSync(path));
+  return `${location}\0${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+};
 
 /**
  * Content fingerprint of the resolved installed and linked plugin packages. Nx hashes only
@@ -231,10 +234,10 @@ export const fingerprintInstalledPluginSources = (sources: readonly InstalledSou
   for (const source of sources) {
     hash.update(`${source.catalog.sourceRef}\n`);
     for (const file of listPackageFiles(source.packageRoot)) {
-      hash.update(`${file}\0${hashFile(join(source.packageRoot, file))}\n`);
+      hash.update(`${file}\0${hashFile(source.packageRoot, join(source.packageRoot, file))}\n`);
     }
     for (const [kind, file] of Object.entries(source.files)) {
-      hash.update(`entry:${kind}\0${hashFile(file)}\n`);
+      hash.update(`entry:${kind}\0${hashFile(source.packageRoot, file)}\n`);
     }
   }
   return hash.digest('hex');

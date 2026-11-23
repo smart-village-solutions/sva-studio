@@ -375,6 +375,15 @@ describe('installed plugin build inputs', () => {
 
     writeFileSync(target, 'export const marker = "v2";');
     expect(fingerprint()).not.toBe(initial);
+
+    // Same bytes at another location: Vite resolves the entry's relative imports from there.
+    const copy = join(packageRoot, 'build-copy', 'calendar-view.js');
+    mkdirSync(dirname(copy), { recursive: true });
+    writeFileSync(copy, 'export const marker = "v2";');
+    const withCopy = fingerprint();
+    rmSync(browserEntry);
+    symlinkSync(copy, browserEntry);
+    expect(fingerprint()).not.toBe(withCopy);
   });
 
   it('fingerprints entry files the manifest places in excluded directories', () => {

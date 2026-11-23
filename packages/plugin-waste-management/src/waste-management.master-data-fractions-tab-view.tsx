@@ -95,6 +95,12 @@ const WasteMasterDataFractionsListView = ({
         },
       });
     }}
+    onQueryChange={(q) =>
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, q, page: 1 },
+      })
+    }
     onFractionsStatusChange={(fractionsStatus, options) => {
       void navigate({
         to: '/plugins/waste-management',

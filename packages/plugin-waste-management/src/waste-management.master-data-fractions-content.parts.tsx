@@ -1,3 +1,6 @@
+import { WasteListFilterChips } from './waste-management.list-filter-dialog.js';
+import { useState } from 'react';
+import { WasteListFilterDialog, WasteListSearch } from './waste-management.list-filter-dialog.js';
 import type {
   WasteFractionRecord,
   WasteFractionDeleteConfirmation,
@@ -6,12 +9,6 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconFilter } from '@tabler/icons-react';
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Select,
   type StudioBulkAction,
   type StudioDataTableLabels,
@@ -51,9 +48,10 @@ export type WasteFractionsContentProps = {
     sortBy: WasteManagementFractionSortField,
     sortDirection: WasteManagementFractionSortDirection
   ) => void;
+  readonly onQueryChange?: (q: string) => void;
   readonly onFractionsStatusChange: (
     status: WasteManagementStatusFilter,
-    options?: { readonly resetQuery: true }
+    options?: { readonly resetQuery: boolean }
   ) => void;
   readonly page: number;
   readonly pageSize: number;
@@ -72,6 +70,7 @@ const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
   name: 'nameWithContainerSize',
   containerSize: 'nameWithContainerSize',
   color: 'color',
+  pdfShortLabel: 'pdfShortLabel',
   description: 'description',
   status: 'status',
 };
@@ -79,6 +78,7 @@ const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
 export const sortFieldByColumnId: Record<string, WasteManagementFractionSortField> = {
   nameWithContainerSize: 'name',
   color: 'color',
+  pdfShortLabel: 'pdfShortLabel',
   description: 'description',
   status: 'status',
 };
@@ -139,112 +139,107 @@ export const useFractionBulkActions = ({
   return actions;
 };
 
+const triggerId = 'waste-fraction-filters';
+
 export const WasteFractionsFilterAction = ({
   fractionsStatus,
   query,
-  filterDialogOpen,
-  draftFractionsStatus,
-  onOpenFilterDialog,
-  onFilterDialogOpenChange,
-  onDraftFractionsStatusChange,
-  onApplyFractionsStatus,
-  onResetFractionsStatus,
-}: {
-  readonly fractionsStatus: WasteManagementStatusFilter;
+  onFractionsStatusChange,
+  onQueryChange,
+}: Pick<
+  WasteFractionsContentProps,
+  'fractionsStatus' | 'onFractionsStatusChange' | 'onQueryChange'
+> & {
   readonly query: string;
-  readonly filterDialogOpen: boolean;
-  readonly draftFractionsStatus: WasteManagementStatusFilter;
-  readonly onOpenFilterDialog: () => void;
-  readonly onFilterDialogOpenChange: (open: boolean) => void;
-  readonly onDraftFractionsStatusChange: (status: WasteManagementStatusFilter) => void;
-  readonly onApplyFractionsStatus: () => void;
-  readonly onResetFractionsStatus: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-
+  const [draft, setDraft] = useState<{
+    status: WasteManagementStatusFilter;
+    resetQuery: boolean;
+  } | null>(null);
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="tertiary"
-          className="h-11 rounded-md px-3"
-          disabled={fractionsStatus === 'all' && !query}
-          onClick={onResetFractionsStatus}
-        >
-          {pt('masterData.fractions.filters.reset')}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-11 rounded-md border-border/70 px-3"
-          onClick={onOpenFilterDialog}
-        >
-          <IconFilter aria-hidden="true" className="h-4 w-4" />
-          {pt('masterData.fractions.filters.open')}
-        </Button>
-      </div>
-      <FractionsFilterDialog
-        open={filterDialogOpen}
-        status={fractionsStatus}
-        draftStatus={draftFractionsStatus}
-        onOpenChange={onFilterDialogOpenChange}
-        onDraftStatusChange={onDraftFractionsStatusChange}
-        onApply={onApplyFractionsStatus}
+      <WasteListSearch
+        label={pt('filters.searchLabel')}
+        value={query}
+        onCommit={(q) => onQueryChange?.(q)}
       />
+      <Button
+        type="button"
+        variant="secondary"
+        id={triggerId}
+        aria-haspopup="dialog"
+        aria-expanded={draft !== null}
+        onClick={() => setDraft({ status: fractionsStatus, resetQuery: false })}
+      >
+        <IconFilter aria-hidden="true" className="h-4 w-4" />
+        {pt('filters.open')}
+      </Button>
+      <WasteListFilterDialog
+        id={triggerId}
+        title={pt('filters.open')}
+        open={draft !== null}
+        onOpenChange={(open) => {
+          if (!open) setDraft(null);
+        }}
+        onReset={() => setDraft({ status: 'all', resetQuery: true })}
+        onApply={() => {
+          if (!draft) return;
+          if (draft.resetQuery) onFractionsStatusChange(draft.status, { resetQuery: true });
+          else onFractionsStatusChange(draft.status);
+          setDraft(null);
+        }}
+      >
+        {draft ? (
+          <label className="grid gap-1 text-sm">
+            {pt('filters.statusLabel')}
+            <Select
+              value={draft.status}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  status: event.currentTarget.value as WasteManagementStatusFilter,
+                })
+              }
+            >
+              {(['all', 'active', 'inactive'] as const).map((status) => (
+                <option key={status} value={status}>
+                  {pt(`filters.status.${status}`)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : null}
+      </WasteListFilterDialog>
     </>
   );
 };
 
-const FractionsFilterDialog = ({
-  open,
-  status,
-  draftStatus,
-  onOpenChange,
-  onDraftStatusChange,
-  onApply,
-}: {
-  readonly open: boolean;
-  readonly status: WasteManagementStatusFilter;
-  readonly draftStatus: WasteManagementStatusFilter;
-  readonly onOpenChange: (open: boolean) => void;
-  readonly onDraftStatusChange: (status: WasteManagementStatusFilter) => void;
-  readonly onApply: () => void;
-}) => {
+export const WasteFractionFilterSummary = ({
+  query,
+  fractionsStatus,
+  onQueryChange,
+  onFractionsStatusChange,
+}: Pick<
+  WasteFractionsContentProps,
+  'fractionsStatus' | 'onQueryChange' | 'onFractionsStatusChange'
+> & { readonly query: string }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{pt('masterData.fractions.filters.title')}</DialogTitle>
-          <DialogDescription>{pt('masterData.fractions.filters.description')}</DialogDescription>
-        </DialogHeader>
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {pt('masterData.fractions.filters.statusLabel')}
-          </span>
-          <Select
-            aria-label={pt('masterData.fractions.filters.statusLabel')}
-            className="h-10 rounded-lg"
-            value={draftStatus}
-            onChange={(event) =>
-              onDraftStatusChange(event.target.value as WasteManagementStatusFilter)
-            }
-          >
-            <option value="all">{pt('masterData.fractions.filters.status.all')}</option>
-            <option value="active">{pt('masterData.fractions.filters.status.active')}</option>
-            <option value="inactive">{pt('masterData.fractions.filters.status.inactive')}</option>
-          </Select>
-        </label>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            {pt('masterData.fractions.filters.cancel')}
-          </Button>
-          <Button type="button" onClick={onApply} disabled={draftStatus === status}>
-            {pt('masterData.fractions.filters.apply')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <WasteListFilterChips
+      chips={[
+        ...(query ? [{ id: 'q', label: query, clear: () => onQueryChange?.('') }] : []),
+        ...(fractionsStatus !== 'all'
+          ? [
+              {
+                id: 'status',
+                label: pt(`filters.status.${fractionsStatus}`),
+                clear: () => onFractionsStatusChange('all'),
+              },
+            ]
+          : []),
+      ]}
+      onReset={() => onFractionsStatusChange('all', { resetQuery: true })}
+    />
   );
 };

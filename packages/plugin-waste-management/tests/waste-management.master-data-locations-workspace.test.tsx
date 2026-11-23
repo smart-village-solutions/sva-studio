@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataLocationsWorkspace } from '../src/waste-management.master-data-locations-workspace.js';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { readonly children: React.ReactNode }) => <a href="#tour">{children}</a>,
+}));
+
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
@@ -15,7 +19,7 @@ afterEach(() => {
 
 describe('WasteMasterDataLocationsWorkspace', () => {
   it('shows the active tour filter summary and clears it explicitly', () => {
-    const onTourFilterChange = vi.fn();
+    const onApplyFilters = vi.fn();
 
     render(
       <WasteMasterDataLocationsWorkspace
@@ -94,12 +98,10 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         totalItems={1}
         sortMode="address"
         sortDirection="asc"
-        selectedTourId="tour-1"
+        search={{ tourId: 'tour-1', status: 'all', q: '' } as never}
+        onApplyFilters={onApplyFilters}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
-        onSortModeChange={vi.fn()}
-        onSortDirectionChange={vi.fn()}
-        onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
         onReplaceLocationSelection={vi.fn()}
@@ -120,11 +122,9 @@ describe('WasteMasterDataLocationsWorkspace', () => {
 
     expect(screen.getAllByText('Tour Nord').length).toBeGreaterThan(0);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.filters.clearTour' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: /filters.removeCriterion:.*Tour Nord/ }));
 
-    expect(onTourFilterChange).toHaveBeenCalledWith('');
+    expect(onApplyFilters).toHaveBeenCalledWith({ tourId: undefined });
   });
 
   it('renders address context and linked-tour counts directly in the dense location table', () => {
@@ -220,12 +220,8 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         totalItems={1}
         sortMode="address"
         sortDirection="asc"
-        selectedTourId={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
-        onSortModeChange={vi.fn()}
-        onSortDirectionChange={vi.fn()}
-        onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
         onReplaceLocationSelection={vi.fn()}
@@ -314,12 +310,8 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         totalItems={2}
         sortMode="address"
         sortDirection="asc"
-        selectedTourId={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
-        onSortModeChange={vi.fn()}
-        onSortDirectionChange={vi.fn()}
-        onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
         onReplaceLocationSelection={vi.fn()}
@@ -420,13 +412,9 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         totalItems={2}
         sortMode="address"
         sortDirection="asc"
-        selectedTourId={undefined}
         onPageChange={vi.fn()}
         onSyncPageChange={onSyncPageChange}
         onPageSizeChange={vi.fn()}
-        onSortModeChange={vi.fn()}
-        onSortDirectionChange={vi.fn()}
-        onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
         onReplaceLocationSelection={vi.fn()}

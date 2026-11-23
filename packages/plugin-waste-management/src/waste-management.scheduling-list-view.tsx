@@ -1,6 +1,7 @@
+import { WasteListFilterChips } from './waste-management.list-filter-dialog.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, buttonVariants } from '@sva/studio-ui-react';
+import { formatCalendarDate, usePluginTranslation } from '@sva/plugin-sdk';
+import { buttonVariants } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import {
   WasteSchedulingContent,
@@ -10,30 +11,89 @@ import {
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingListNavigation } from './waste-management.scheduling-list-view.navigation.js';
 import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
-import { WastePanelTableTopBar, type WastePanelTableTopBarProps } from './waste-management.table-frame.js';
+import {
+  WastePanelTableTopBar,
+  type WastePanelTableTopBarProps,
+} from './waste-management.table-frame.js';
+
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
-const createSchedulingToolbar = (
+import {
+  SchedulingFiltersToolbar,
+  schedulingFilterDefaults,
+  type SchedulingFilters,
+} from './waste-management.scheduling-filter-dialog.js';
+
+const getSchedulingFilterLabels = (
   search: WasteManagementSearchParams,
-  tours: WasteViewModel['availableTours'],
-  resetFilters: () => void,
+  selectedTour: WasteViewModel['availableTours'][number] | undefined,
   pt: ReturnType<typeof usePluginTranslation>
-): WastePanelTableTopBarProps => {
-  const selectedTour = search.tourId
-    ? tours.find((tour) => tour.id === search.tourId)
-    : undefined;
+) => {
   const assignmentsTab = search.tab === 'tourAssignments';
   return {
+    q: assignmentsTab ? undefined : search.q,
+    shiftContext:
+      assignmentsTab || search.shiftContext === 'all'
+        ? undefined
+        : pt(`filters.shiftContext.${search.shiftContext}`),
+    shiftDateFrom:
+      assignmentsTab || !search.shiftDateFrom
+        ? undefined
+        : `${pt('filters.dateFrom')} · ${formatCalendarDate(search.shiftDateFrom)}`,
+    shiftDateTo:
+      assignmentsTab || !search.shiftDateTo
+        ? undefined
+        : `${pt('filters.dateTo')} · ${formatCalendarDate(search.shiftDateTo)}`,
+    tourId:
+      search.tourId &&
+      pt('scheduling.tourContext.active', {
+        name: selectedTour ? formatTourSelectionLabel(pt, selectedTour) : search.tourId,
+      }),
+  };
+};
+
+const useSchedulingToolbar = (
+  search: WasteManagementSearchParams,
+  tours: WasteViewModel['availableTours'],
+  navigation: ReturnType<typeof useWasteSchedulingListNavigation>
+): WastePanelTableTopBarProps => {
+  const pt = usePluginTranslation('wasteManagement');
+  const assignmentsTab = search.tab === 'tourAssignments';
+  const selectedTour = tours.find((tour) => tour.id === search.tourId);
+  const labels = getSchedulingFilterLabels(search, selectedTour, pt);
+  return {
+    activeFilters: (
+      <WasteListFilterChips
+        chips={Object.entries(labels).flatMap(([id, label]) =>
+          label
+            ? [
+                {
+                  id,
+                  label,
+                  clear: () =>
+                    navigation.applyFilters({
+                      [id]: schedulingFilterDefaults[id as keyof SchedulingFilters],
+                    }),
+                },
+              ]
+            : []
+        )}
+        onReset={() =>
+          assignmentsTab
+            ? navigation.applyFilters({ tourId: undefined })
+            : navigation.resetFilters()
+        }
+      />
+    ),
     children: (
-      <Button
-        type="button"
-        variant="tertiary"
-        disabled={!search.tourId && (assignmentsTab || (!search.q && search.shiftContext === 'all'))}
-        onClick={resetFilters}
-      >
-        {pt('filters.reset')}
-      </Button>
+      <SchedulingFiltersToolbar
+        key={search.tab}
+        search={search}
+        tours={tours}
+        navigation={navigation}
+      />
     ),
     actions: selectedTour ? (
       <Link
@@ -44,17 +104,6 @@ const createSchedulingToolbar = (
         {pt('scheduling.tourContext.back')}
       </Link>
     ) : null,
-    activeFilters: (
-      <>
-        {!assignmentsTab && search.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
-        {!assignmentsTab && search.shiftContext !== 'all' ? (
-          <span>{pt(`filters.shiftContext.${search.shiftContext}`)}</span>
-        ) : null}
-        {search.tourId ? (
-          <span>{pt('scheduling.tourContext.active', { name: selectedTour?.name ?? search.tourId })}</span>
-        ) : null}
-      </>
-    ),
   };
 };
 
@@ -68,9 +117,8 @@ export const WasteSchedulingListView = ({
   readonly canManageAssignments?: boolean;
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);
-  const pt = usePluginTranslation('wasteManagement');
   const assignmentsTab = search.tab === 'tourAssignments';
-  const toolbar = createSchedulingToolbar(search, controller.availableTours, navigation.resetFilters, pt);
+  const toolbar = useSchedulingToolbar(search, controller.availableTours, navigation);
   const content = assignmentsTab ? (
     <WasteTourAssignmentsContent
       message={controller.message}

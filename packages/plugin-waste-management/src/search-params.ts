@@ -1,3 +1,4 @@
+import { normalizeOptionalIsoDate } from './search-params.calendar-date.js';
 import {
   normalizeAddressEntityType,
   normalizeAddressSortField,
@@ -36,6 +37,7 @@ const wasteManagementSchedulingEntryTypes = ['holiday-rule', 'global-shift', 'to
 const wasteManagementFractionSortFields = [
   'name',
   'containerSize',
+  'pdfShortLabel',
   'color',
   'description',
   'status',
@@ -70,6 +72,8 @@ export type WasteManagementSearchParams = Readonly<{
   tourStatus: WasteManagementTourStatusFilter;
   tourValidityPeriod: WasteManagementTourValidityPeriod;
   shiftContext: WasteManagementShiftContext;
+  shiftDateFrom?: string;
+  shiftDateTo?: string;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
   regionId?: string;
@@ -98,16 +102,6 @@ const compactOptionalString = (value: unknown): string | undefined => {
   }
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
-};
-const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
-  const normalized = compactOptionalString(value);
-  if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    return undefined;
-  }
-  const date = new Date(`${normalized}T00:00:00Z`);
-  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized
-    ? undefined
-    : normalized;
 };
 const normalizeTab = (value: unknown): WasteManagementTabId =>
   typeof value === 'string' && wasteManagementTabs.includes(value as WasteManagementTabId)
@@ -200,11 +194,15 @@ export const normalizeWasteManagementSearchParams = (
   const schedulingView =
     tab === 'tourAssignments' ? 'list' : normalizeSchedulingView(search.schedulingView);
   const schedulingEntryType =
-    tab === 'tourAssignments' ? undefined : normalizeSchedulingEntryType(search.schedulingEntryType);
+    tab === 'tourAssignments'
+      ? undefined
+      : normalizeSchedulingEntryType(search.schedulingEntryType);
   const keepsTourShiftCreateContext =
     tab === 'scheduling' && schedulingView === 'create' && schedulingEntryType === 'tour-shift';
   const normalizedSchedulingOriginalDate = normalizeOptionalIsoDate(search.schedulingOriginalDate);
   const schedulingTourId = compactOptionalString(search.schedulingTourId);
+  const shiftDateFrom = normalizeOptionalIsoDate(search.shiftDateFrom);
+  const shiftDateTo = normalizeOptionalIsoDate(search.shiftDateTo);
 
   return {
     tab,
@@ -230,6 +228,8 @@ export const normalizeWasteManagementSearchParams = (
     tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
     shiftContext: normalizeShiftContext(search.shiftContext),
+    ...(shiftDateFrom ? { shiftDateFrom } : {}),
+    ...(shiftDateTo ? { shiftDateTo } : {}),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
     ...normalizeCollectionLocationSearchParams(search),

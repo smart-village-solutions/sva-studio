@@ -2,11 +2,17 @@ import type {
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
 } from '@sva/waste-management-contracts';
-import { normalizeTourStatus, type WasteManagementTourStatusFilter } from './search-params.tour-status.js';
+import { wasteCollectionLocationSortModes } from '@sva/waste-management-contracts';
+import {
+  normalizeTourStatus,
+  type WasteManagementTourStatusFilter,
+} from './search-params.tour-status.js';
 
 export type WasteCollectionLocationSearchParams = Readonly<{
   locationSortMode: WasteCollectionLocationSortMode;
   locationSortDirection: WasteCollectionLocationSortDirection;
+  locationStreetId?: string;
+  locationHouseNumberId?: string;
   locationYear?: number;
   locationTourStatus?: Exclude<WasteManagementTourStatusFilter, 'all'>;
 }>;
@@ -20,20 +26,28 @@ export const normalizeCollectionLocationSearchParams = (
       : NaN;
   const status = normalizeTourStatus(search.locationTourStatus, undefined);
   return {
+    ...(typeof search.locationStreetId === 'string' && search.locationStreetId.trim()
+      ? { locationStreetId: search.locationStreetId.trim() }
+      : {}),
+    ...(typeof search.locationHouseNumberId === 'string' && search.locationHouseNumberId.trim()
+      ? { locationHouseNumberId: search.locationHouseNumberId.trim() }
+      : {}),
     locationSortMode: normalizeWasteCollectionLocationSortMode(search.locationSortMode),
-    locationSortDirection: normalizeWasteCollectionLocationSortDirection(search.locationSortDirection),
+    locationSortDirection: normalizeWasteCollectionLocationSortDirection(
+      search.locationSortDirection
+    ),
     ...(Number.isInteger(year) && year >= 2000 && year <= 2100 ? { locationYear: year } : {}),
     ...(status !== 'all' ? { locationTourStatus: status } : {}),
   };
 };
 
-const sortModes = ['address', 'addressWithRegion'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 
 export const normalizeWasteCollectionLocationSortMode = (
   value: unknown
 ): WasteCollectionLocationSortMode =>
-  typeof value === 'string' && sortModes.includes(value as WasteCollectionLocationSortMode)
+  typeof value === 'string' &&
+  wasteCollectionLocationSortModes.includes(value as WasteCollectionLocationSortMode)
     ? (value as WasteCollectionLocationSortMode)
     : 'address';
 

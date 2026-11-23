@@ -57,6 +57,8 @@ describe('waste master data derived selection state', () => {
     );
 
     expect(derived.allFilteredLocationsSelected).toBe(false);
+    expect(derived.matchingSelectedLocationsCount).toBe(2);
+    expect(derived.hiddenSelectedLocationsCount).toBeUndefined();
   });
 
   it('clears a manually selected complete page without loading filtered ids first', async () => {

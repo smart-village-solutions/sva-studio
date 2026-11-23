@@ -29,6 +29,12 @@ type WasteSettingsFormProps = {
   readonly onSubmit: () => void;
 };
 
+const openInvalidSettingsSection = (event: React.FormEvent<HTMLFormElement>) => {
+  if (!(event.target instanceof HTMLElement)) return;
+  const section = event.target.closest('details');
+  if (section) section.open = true;
+};
+
 export const WasteSettingsForm = (props: Readonly<WasteSettingsFormProps>) => {
   const { form, settings, saving, saveStatus, onChange, onSubmit } = props;
   const pt = usePluginTranslation('wasteManagement');
@@ -53,7 +59,11 @@ export const WasteSettingsForm = (props: Readonly<WasteSettingsFormProps>) => {
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form
+      className="space-y-4"
+      onSubmit={handleSubmit}
+      onInvalidCapture={openInvalidSettingsSection}
+    >
       <WasteTechnicalConfigurationSection form={form} onChange={onChange} />
       <WasteSettingsCustomRecurrenceSection
         items={form.customRecurrencePresets}
@@ -84,17 +94,15 @@ export const WasteSettingsForm = (props: Readonly<WasteSettingsFormProps>) => {
           onChange={onChange}
         />
       </div>
-      <div>
-        <StudioSaveButton
-          type="submit"
-          status={saveStatus}
-          labels={{
-            idle: pt('settings.actions.save'),
-            saving: pt('settings.actions.saving'),
-            saved: pt('settings.actions.saved'),
-          }}
-        />
-      </div>
+      <StudioSaveButton
+        type="submit"
+        status={saveStatus}
+        labels={{
+          idle: pt('settings.actions.save'),
+          saving: pt('settings.actions.saving'),
+          saved: pt('settings.actions.saved'),
+        }}
+      />
       <StudioConfirmDialog
         open={holidayOverwriteDialogOpen}
         title={pt('settings.messages.holidayStateOverwriteWarningTitle')}

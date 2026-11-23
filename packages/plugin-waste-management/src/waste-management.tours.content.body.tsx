@@ -1,3 +1,6 @@
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { WasteCompactListSort } from './waste-management.table-frame.js';
+import { tourSortFields } from './waste-management.tours.table.parts.js';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 
@@ -47,6 +50,21 @@ export type WasteToursFilterViewModel = {
   readonly onDraftEndDateToChange: (value: string | undefined) => void;
   readonly onApplyFilters: () => void;
   readonly onResetFilters: () => void;
+  readonly onSetCriterion: (
+    patch: Partial<
+      Pick<
+        WasteManagementSearchParams,
+        | 'q'
+        | 'tourStatus'
+        | 'tourValidityPeriod'
+        | 'tourWasteFractionId'
+        | 'firstDateFrom'
+        | 'firstDateTo'
+        | 'endDateFrom'
+        | 'endDateTo'
+      >
+    >
+  ) => void;
 };
 
 export type WasteToursTableViewModel = {
@@ -68,6 +86,10 @@ export type WasteToursTableViewModel = {
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onCompactSortChange: (
+    field: WasteToursSortField,
+    direction: WasteToursSortDirection
+  ) => void;
   readonly onSortChange: (field: WasteToursSortField) => void;
   readonly toggleSelectAllVisible: (checked: boolean) => void;
   readonly toggleSelectAllFiltered: (checked: boolean) => void;
@@ -109,65 +131,52 @@ export const WasteToursContentBody = ({
   table,
   focusFallbackRef,
   focusFallbackLabel,
-}: WasteToursContentBodyProps) => (
-  <section
-    ref={focusFallbackRef}
-    tabIndex={-1}
-    aria-label={focusFallbackLabel}
-    className="overflow-hidden rounded-none border border-border-subtle bg-card"
-  >
-    <WasteToursToolbar
-      filterDialogOpen={filters.filterDialogOpen}
-      selectedCount={table.selectedTourIds.length}
-      hiddenSelectedCount={table.hiddenSelectedCount}
-      filteredCount={table.tours.length}
-      allFilteredSelected={table.allFilteredSelected}
-      someFilteredSelected={table.someFilteredSelected}
-      query={filters.query}
-      status={filters.status}
-      tourValidityPeriod={filters.tourValidityPeriod}
-      fractions={fractions}
-      tourWasteFractionId={filters.tourWasteFractionId}
-      firstDateFrom={filters.firstDateFrom}
-      firstDateTo={filters.firstDateTo}
-      endDateFrom={filters.endDateFrom}
-      endDateTo={filters.endDateTo}
-      draftQuery={filters.draftQuery}
-      draftStatus={filters.draftStatus}
-      draftTourValidityPeriod={filters.draftTourValidityPeriod}
-      draftTourWasteFractionId={filters.draftTourWasteFractionId}
-      draftFirstDateFrom={filters.draftFirstDateFrom}
-      draftFirstDateTo={filters.draftFirstDateTo}
-      draftEndDateFrom={filters.draftEndDateFrom}
-      draftEndDateTo={filters.draftEndDateTo}
-      hasActiveFilters={filters.hasActiveFilters}
-      onOpenCreateDialog={onOpenCreateDialog}
-      onOpenAnnualTransfer={onOpenAnnualTransfer}
-      canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
-      onOpenFilterDialog={filters.onOpenFilterDialog}
-      onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
-      onOpenBulkDelete={() => setBulkDeleteOpen(true)}
-      onOpenBulkValidity={() => setBulkValidityOpen(true)}
-      onOpenBulkStatus={() => setBulkStatusOpen(true)}
-      onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
-      onClearSelection={table.clearSelection}
-      onDraftQueryChange={filters.onDraftQueryChange}
-      onDraftStatusChange={filters.onDraftStatusChange}
-      onDraftTourValidityPeriodChange={filters.onDraftTourValidityPeriodChange}
-      onDraftTourWasteFractionIdChange={filters.onDraftTourWasteFractionIdChange}
-      onDraftFirstDateFromChange={filters.onDraftFirstDateFromChange}
-      onDraftFirstDateToChange={filters.onDraftFirstDateToChange}
-      onDraftEndDateFromChange={filters.onDraftEndDateFromChange}
-      onDraftEndDateToChange={filters.onDraftEndDateToChange}
-      onApplyFilters={filters.onApplyFilters}
-      onResetFilters={filters.onResetFilters}
-    />
-    <WasteToursTable
-      {...table}
-      fractions={fractions}
-      onToggleSelectAllVisible={table.toggleSelectAllVisible}
-      onToggleSelectedTour={table.toggleSelectedTour}
-      onRequestDeleteTour={table.setTourPendingDelete}
-    />
-  </section>
-);
+}: WasteToursContentBodyProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <section
+      ref={focusFallbackRef}
+      tabIndex={-1}
+      aria-label={focusFallbackLabel}
+      className="overflow-hidden rounded-none border border-border-subtle bg-card"
+    >
+      <WasteToursToolbar
+        {...filters}
+        selectedCount={table.selectedTourIds.length}
+        hiddenSelectedCount={table.hiddenSelectedCount}
+        filteredCount={table.tours.length}
+        allFilteredSelected={table.allFilteredSelected}
+        someFilteredSelected={table.someFilteredSelected}
+        fractions={fractions}
+        onOpenCreateDialog={onOpenCreateDialog}
+        onOpenAnnualTransfer={onOpenAnnualTransfer}
+        canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
+        onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+        onOpenBulkValidity={() => setBulkValidityOpen(true)}
+        onOpenBulkStatus={() => setBulkStatusOpen(true)}
+        onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
+        onClearSelection={table.clearSelection}
+      />
+      <WasteCompactListSort
+        fields={tourSortFields}
+        field={table.sortField}
+        direction={table.sortDirection}
+        labelForField={(field) =>
+          pt(
+            field === 'fractions' || field === 'shifts' || field === 'locations'
+              ? `filters.tourSort.${field}`
+              : `tours.table.${field}`
+          )
+        }
+        onChange={table.onCompactSortChange}
+      />
+      <WasteToursTable
+        {...table}
+        fractions={fractions}
+        onToggleSelectAllVisible={table.toggleSelectAllVisible}
+        onToggleSelectedTour={table.toggleSelectedTour}
+        onRequestDeleteTour={table.setTourPendingDelete}
+      />
+    </section>
+  );
+};

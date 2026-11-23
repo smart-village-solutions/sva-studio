@@ -170,7 +170,11 @@ describe('WasteManagementPageTabs', () => {
     );
     const showTours = (nextAccess: TabNavigation[2]) =>
       view.rerender(
-        <TabNavigationHarness navigate={navigate} rawSearch={explicitTourLink} access={nextAccess} />
+        <TabNavigationHarness
+          navigate={navigate}
+          rawSearch={explicitTourLink}
+          access={nextAccess}
+        />
       );
     const selectTab = (tab: string) =>
       fireEvent.click(screen.getByRole('tab', { name: `tabs.${tab}.title` }));
@@ -211,11 +215,17 @@ describe('WasteManagementPageTabs', () => {
 
     const nextAccess = { ...access, contextKey: 'subject-1:tenant-2' };
     const nextLink = { ...explicitTourLink, q: 'Frisch geöffneter Link' };
-    view.rerender(<TabNavigationHarness navigate={navigate} rawSearch={nextLink} access={nextAccess} />);
+    view.rerender(
+      <TabNavigationHarness navigate={navigate} rawSearch={nextLink} access={nextAccess} />
+    );
     selectTab('locations');
     checkLocationsQuery('');
     view.rerender(
-      <TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'locations' }} access={nextAccess} />
+      <TabNavigationHarness
+        navigate={navigate}
+        rawSearch={{ tab: 'locations' }}
+        access={nextAccess}
+      />
     );
     selectTab('tours');
     expect(navigate).toHaveBeenLastCalledWith({
@@ -247,11 +257,7 @@ describe('WasteManagementPageTabs', () => {
       collectionLocationId: 'remounted-location',
     };
     const firstTab = render(
-      <TabNavigationHarness
-        navigate={navigate}
-        rawSearch={locations}
-        access={access}
-      />
+      <TabNavigationHarness navigate={navigate} rawSearch={locations} access={access} />
     );
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.tours.title' }));
     firstTab.unmount();
@@ -273,7 +279,9 @@ describe('WasteManagementPageTabs', () => {
         roles: [],
       })
     );
-    render(<TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'tours' }} access={access} />);
+    render(
+      <TabNavigationHarness navigate={navigate} rawSearch={{ tab: 'tours' }} access={access} />
+    );
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.locations.title' }));
     expect(navigate).toHaveBeenLastCalledWith({
       to: '/plugins/waste-management',
@@ -338,7 +346,7 @@ describe('WasteManagementPageTabs', () => {
     );
   });
 
-  it('renders tab-specific info content inside each panel and no global badges', () => {
+  it('names the tab panel from its tab and starts with the working content', () => {
     render(
       <WasteManagementPageTabs
         pt={(key) => key}
@@ -360,8 +368,10 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    expect(screen.getAllByText('tabs.fractions.title').length).toBeGreaterThan(1);
-    expect(screen.getAllByText('tabs.fractions.body').length).toBeGreaterThan(0);
+    const panel = screen.getByRole('tabpanel', { name: 'tabs.fractions.title' });
+    expect(panel.textContent).toContain('master-data:fractions');
+    expect(screen.getAllByText('tabs.fractions.title')).toHaveLength(1);
+    expect(screen.queryByText('tabs.fractions.body')).toBeNull();
     expect(screen.queryByText('meta.page')).toBeNull();
     expect(screen.queryByText('meta.pageSize')).toBeNull();
 
@@ -446,8 +456,9 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    const [tabDescription] = screen.getAllByText('tabs.fractions.body');
-    const tabPanelSurface = tabDescription.closest('[role=tabpanel]')?.firstElementChild;
+    const tabPanelSurface = screen.getByRole('tabpanel', {
+      name: 'tabs.fractions.title',
+    }).firstElementChild;
     expect(tabPanelSurface?.className).toContain('bg-surface-inset');
     expect(tabPanelSurface?.className).toContain('border');
     expect(tabPanelSurface?.className).toContain('rounded-lg');

@@ -2,6 +2,7 @@ import type { BrowserContext, Page, Route } from '@playwright/test';
 import {
   getHistory,
   getMasterData,
+  getLocationList,
   createFraction,
   createLocationTourLink,
   createLocationTourLinksBulk,
@@ -55,6 +56,7 @@ export type WasteFractionState = {
   name: string;
   color: string;
   containerSize?: string;
+  pdfShortLabel?: string;
   description?: string;
   active: boolean;
   createdAt: string;
@@ -205,6 +207,11 @@ export const mockWasteFacade = async (
   };
   const handlers: Record<string, (route: Route) => Promise<void>> = {
     'GET /api/v1/waste-management/history': (route) => getHistory(route),
+    'GET /api/v1/waste-management/mainserver-sync-status': (route) =>
+      route.fulfill({ json: { data: { sourceState: 'clean', expectedYearWindow: [2026, 2027] } } }),
+    'GET /api/v1/waste-management/collection-locations': (route) => getLocationList(route, state),
+    'GET /api/v1/waste-management/collection-locations/selection': (route) =>
+      getLocationList(route, state, true),
     'GET /api/v1/waste-management/master-data': (route) => getMasterData(route, state),
     'POST /api/v1/waste-management/location-tour-links': (route) =>
       createLocationTourLink(route, state),

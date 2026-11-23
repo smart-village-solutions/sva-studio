@@ -1,20 +1,40 @@
 export const wasteManagementPluginTranslationsDEFilters = {
-  "filters": {
-    "searchLabel": "Suche",
-    "reset": "Filter zurücksetzen",
-    "searchPlaceholder": "Nach Ort, Straße, Tour oder Abfallart suchen",
-    "statusLabel": "Status",
-    "shiftContextLabel": "Abweichungskontext",
-    "status": {
-      "all": "Alle Status",
-      "active": "Aktiv",
-      "inactive": "Inaktiv"
+  filters: {
+    any: 'Alle',
+    sortByTourCount: 'Nach Anzahl der Touren sortieren',
+    sortDirection: 'Sortierrichtung',
+    sortField: 'Sortieren nach',
+    sortByFirstLocation: 'Nach dem ersten angezeigten Abholpunkt sortieren',
+    tourSort: {
+      fractions: 'Nach erster angezeigter Abfallart sortieren',
+      shifts: 'Nach Anzahl der Verschiebungen sortieren',
+      locations: 'Nach Anzahl der Abholpunkte sortieren',
     },
-    "shiftContext": {
-      "all": "Alle Kontexte",
-      "holiday": "Feiertagsregeln",
-      "global": "Globale Ausweichtermine",
-      "tour": "Tourbezogene Ausweichtermine"
-    }
-  }
+    defaultSort: 'Standardreihenfolge',
+    apply: 'Filter anwenden',
+    resetDraft: 'Zurücksetzen',
+    applyDescription: 'Die Tabelle wird nach dem Anwenden aktualisiert.',
+    removeCriterion: 'Filter entfernen: {{value}}',
+    invalidRange: 'Datumsende darf nicht vor dem Beginn liegen.',
+    open: 'Filter',
+    dateFrom: 'Von',
+    dateTo: 'Bis',
+    coverage: 'Fraktionszuordnung prüfen',
+    searchLabel: 'Suche',
+    reset: 'Filter zurücksetzen',
+    searchPlaceholder: 'Nach Ort, Straße, Tour oder Abfallart suchen',
+    statusLabel: 'Status',
+    shiftContextLabel: 'Abweichungskontext',
+    status: {
+      all: 'Alle Status',
+      active: 'Aktiv',
+      inactive: 'Inaktiv',
+    },
+    shiftContext: {
+      all: 'Alle Kontexte',
+      holiday: 'Feiertagsregeln',
+      global: 'Globale Ausweichtermine',
+      tour: 'Tourbezogene Ausweichtermine',
+    },
+  },
 } as const;

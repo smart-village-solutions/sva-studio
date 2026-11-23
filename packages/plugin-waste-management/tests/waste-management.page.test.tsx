@@ -832,7 +832,7 @@ describe('WasteManagementPage', () => {
     ).toBeNull();
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' })
+      screen.getByText('wasteManagement.tools.meta.advancedTitle', { selector: 'summary' })
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'wasteManagement.tools.actions.startSeed' })
@@ -940,7 +940,7 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' })
+      screen.getByText('wasteManagement.tools.meta.advancedTitle', { selector: 'summary' })
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'wasteManagement.audit.dataSourceInitialized' })
@@ -957,7 +957,7 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' })
+      screen.getByText('wasteManagement.tools.meta.advancedTitle', { selector: 'summary' })
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'wasteManagement.tools.actions.startReset' })
@@ -2090,7 +2090,9 @@ describe('WasteManagementPage', () => {
           'wasteManagement.masterData.collectionLocations.fields.streetId'
         );
         const sortCity = () =>
-          dialog.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.table.city' });
+          dialog.getByRole('button', {
+            name: 'wasteManagement.masterData.locationsWorkspace.table.city',
+          });
         const location = () =>
           dialog.getByRole<HTMLInputElement>('checkbox', {
             name: /wasteManagement.tours.assignments.workspace.selectLocation/,

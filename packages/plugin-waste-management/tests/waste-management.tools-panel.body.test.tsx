@@ -92,20 +92,23 @@ describe('WasteToolsPanelBody', () => {
 
     expect(screen.getByText('import-section')).toBeTruthy();
     expect(screen.getByText('history-section')).toBeTruthy();
-    expect(screen.queryByText('actions-section')).toBeNull();
-    expect(screen.queryByText('initialize-section')).toBeNull();
-    expect(screen.queryByText('overview-section')).toBeNull();
+    const advanced = screen.getByText('tools.meta.advancedTitle', { selector: 'summary' });
+    const advancedDisclosure = advanced.closest('details');
+    expect(advancedDisclosure?.open).toBe(false);
+    expect(screen.getByText('actions-section').closest('details')).toBe(advancedDisclosure);
+    expect(screen.getByText('overview-section').closest('details')?.open).toBe(false);
     expect(importSectionPropsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         onImportDryRunChange: expect.any(Function),
       })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.advancedTitle' }));
+    fireEvent.click(advanced);
+    expect(advancedDisclosure?.open).toBe(true);
 
     expect(screen.getByText('actions-section')).toBeTruthy();
     expect(screen.getByText('initialize-section')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.technicalDetailsToggle' }));
-    expect(screen.getByText('overview-section')).toBeTruthy();
+    fireEvent.click(screen.getByText('tools.meta.technicalDetailsToggle', { selector: 'summary' }));
+    expect(screen.getByText('overview-section').closest('details')?.open).toBe(true);
   });
 });

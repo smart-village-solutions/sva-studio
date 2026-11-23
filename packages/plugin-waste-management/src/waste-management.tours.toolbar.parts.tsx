@@ -1,14 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import type { WasteTourStatus } from '@sva/waste-management-contracts';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@sva/studio-ui-react';
+import { WasteListFilterDialog } from './waste-management.list-filter-dialog.js';
 
 import { WasteToursToolbarFilterFields } from './waste-management.tours.toolbar.filter-fields.js';
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
@@ -131,27 +123,37 @@ export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) =
   const hasDraftChanges = hasWasteToursDraftFilterChanges(props);
   const filterFieldProps = toWasteToursToolbarFilterFieldProps(props);
 
+  const invalidRange = [
+    [props.draftFirstDateFrom, props.draftFirstDateTo],
+    [props.draftEndDateFrom, props.draftEndDateTo],
+  ].some(([from, to]) => from && to && from > to);
+
   return (
-    <Dialog open={props.filterDialogOpen} onOpenChange={props.onFilterDialogOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{pt('tours.filters.title')}</DialogTitle>
-          <DialogDescription>{pt('tours.filters.description')}</DialogDescription>
-        </DialogHeader>
-        <WasteToursToolbarFilterFields {...filterFieldProps} />
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => props.onFilterDialogOpenChange(false)}
-          >
-            {pt('tours.filters.cancel')}
-          </Button>
-          <Button type="button" onClick={props.onApplyFilters} disabled={!hasDraftChanges}>
-            {pt('tours.filters.apply')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <WasteListFilterDialog
+      id="waste-tour-filters"
+      title={pt('tours.filters.title')}
+      description={pt('tours.filters.description')}
+      open={props.filterDialogOpen}
+      onOpenChange={props.onFilterDialogOpenChange}
+      onApply={props.onApplyFilters}
+      disabled={!hasDraftChanges || invalidRange}
+      onReset={() => {
+        props.onDraftQueryChange('');
+        props.onDraftStatusChange('all');
+        props.onDraftTourValidityPeriodChange('all');
+        props.onDraftTourWasteFractionIdChange(undefined);
+        props.onDraftFirstDateFromChange(undefined);
+        props.onDraftFirstDateToChange(undefined);
+        props.onDraftEndDateFromChange(undefined);
+        props.onDraftEndDateToChange(undefined);
+      }}
+    >
+      <WasteToursToolbarFilterFields {...filterFieldProps} />
+      {invalidRange ? (
+        <p role="alert" className="text-sm text-destructive">
+          {pt('filters.invalidRange')}
+        </p>
+      ) : null}
+    </WasteListFilterDialog>
   );
 };

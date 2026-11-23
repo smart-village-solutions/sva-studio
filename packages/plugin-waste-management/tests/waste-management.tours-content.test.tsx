@@ -490,7 +490,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('tour message')).toBeTruthy();
     expect(screen.getByRole('table', { name: 'tours.table.caption' })).toBeTruthy();
     const filterButtonCard = screen
-      .getByRole('button', { name: 'tours.filters.open' })
+      .getByRole('button', { name: 'filters.open' })
       .closest('section.bg-card');
     const toursTableCard = screen
       .getByRole('table', { name: 'tours.table.caption' })
@@ -788,7 +788,7 @@ describe('WasteToursContent', () => {
     expect(screen.queryByText('tours.filters.title')).toBeNull();
     expect(screen.queryByRole('button', { name: 'tours.table.filtersTitle' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.open' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
     expect(screen.getByText('tours.filters.title')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('tours.filters.nameLabel'), {
@@ -813,7 +813,7 @@ describe('WasteToursContent', () => {
 
     expect(onFiltersChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.open' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
     fireEvent.change(screen.getByLabelText('tours.filters.nameLabel'), {
       target: { value: 'Papier' },
     });
@@ -832,7 +832,7 @@ describe('WasteToursContent', () => {
     fireEvent.change(screen.getByLabelText('tours.filters.endDateToLabel'), {
       target: { value: '2026-10-31' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
 
     expect(onFiltersChange).toHaveBeenCalledWith(
       'Papier',
@@ -899,7 +899,7 @@ describe('WasteToursContent', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.reset' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
     expect(onFiltersChange).toHaveBeenCalledWith(
       '',
       'all',

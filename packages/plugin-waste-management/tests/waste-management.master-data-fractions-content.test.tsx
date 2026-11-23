@@ -335,8 +335,10 @@ describe('WasteMasterDataFractionsContent', () => {
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(tableProps.ariaLabel).toBe('masterData.fractions.table.ariaLabel');
     expect(tableProps.selectionMode).toBe('multiple');
-    expect(screen.getByRole('button', { name: 'masterData.fractions.filters.open' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'filters.open' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' })
+    ).toBeTruthy();
     expect(tableProps.sorting).toMatchObject({
       mode: 'external',
       state: [{ id: 'nameWithContainerSize', desc: false }],
@@ -348,7 +350,7 @@ describe('WasteMasterDataFractionsContent', () => {
       (tableProps.columns as Array<{ id: string; sortable?: boolean }>).map(
         (column) => column.sortable ?? false
       )
-    ).toEqual([true, false, true, true, true]);
+    ).toEqual([true, true, true, true, true]);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-color' }));
     const updatedTableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
@@ -382,7 +384,7 @@ describe('WasteMasterDataFractionsContent', () => {
 
     expect(onOpenCreateFraction).toHaveBeenCalledTimes(0);
     expect(onOpenEditFraction).toHaveBeenCalledWith(fraction);
-    expect(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'filters.reset' })).toBeTruthy();
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
     fireEvent.click(
       await screen.findByRole('button', {
@@ -396,7 +398,7 @@ describe('WasteMasterDataFractionsContent', () => {
       })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
     expect(onFractionsStatusChange).toHaveBeenCalledWith('all', { resetQuery: true });
 
     fireEvent.click(
@@ -410,11 +412,11 @@ describe('WasteMasterDataFractionsContent', () => {
     );
     expect(onToggleFractionStatus).toHaveBeenCalledWith(fraction, false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.open' }));
-    fireEvent.change(screen.getByLabelText('masterData.fractions.filters.statusLabel'), {
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
+    fireEvent.change(screen.getByLabelText('filters.statusLabel'), {
       target: { value: 'inactive' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
     expect(onFractionsStatusChange).toHaveBeenCalledWith('inactive');
 
     fireEvent.click(
@@ -485,10 +487,7 @@ describe('WasteMasterDataFractionsContent', () => {
       'fraction-2',
       'fraction-1',
     ]);
-    expect(
-      screen.getByRole<HTMLButtonElement>('button', { name: 'masterData.fractions.filters.reset' })
-        .disabled
-    ).toBe(true);
+    expect(screen.queryByRole('button', { name: 'filters.reset' })).toBeNull();
 
     const [, pdfShortLabelColumn, , , statusColumn] = tableProps.columns as Array<{
       id: string;

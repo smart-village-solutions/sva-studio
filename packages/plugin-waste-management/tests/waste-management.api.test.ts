@@ -779,8 +779,12 @@ describe('waste-management api client', () => {
         status: 'active',
         regionId: 'region-1',
         cityId: 'city-1',
+        streetId: 'street-1',
+        houseNumberId: 'house-1',
         tourId: 'tour-1',
-        sortMode: 'addressWithRegion',
+        sortMode: 'tourCount',
+        tourYear: 2027,
+        tourStatus: 'published',
         sortDirection: 'desc',
         page: 2,
         pageSize: 50,
@@ -792,18 +796,20 @@ describe('waste-management api client', () => {
         status: 'inactive',
         regionId: undefined,
         cityId: 'city-1',
+        streetId: 'street-1',
+        houseNumberId: 'house-1',
         tourId: undefined,
       })
     ).resolves.toEqual(['location-1', 'location-2']);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=region-1&cityId=city-1&tourId=tour-1&sortMode=addressWithRegion&sortDirection=desc&page=2&pageSize=50',
+      '/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=region-1&cityId=city-1&streetId=street-1&houseNumberId=house-1&tourId=tour-1&sortMode=tourCount&sortDirection=desc&tourYear=2027&tourStatus=published&page=2&pageSize=50',
       expect.anything()
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=city-1',
+      '/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=city-1&streetId=street-1&houseNumberId=house-1',
       expect.anything()
     );
   });
@@ -1417,10 +1423,17 @@ describe('waste-management api client', () => {
   });
 
   it('reads fresh scheduling data independently of a still-running overview request', async () => {
-    const { promise: firstResponse, resolve: resolveFirstResponse } = Promise.withResolvers<Response>();
-    const scheduling = (tourId: string) => Response.json({
-      data: { tourDateShifts: [{ tourId }], globalDateShifts: [], holidayRules: [], locationTourPickupDates: [] },
-    });
+    const { promise: firstResponse, resolve: resolveFirstResponse } =
+      Promise.withResolvers<Response>();
+    const scheduling = (tourId: string) =>
+      Response.json({
+        data: {
+          tourDateShifts: [{ tourId }],
+          globalDateShifts: [],
+          holidayRules: [],
+          locationTourPickupDates: [],
+        },
+      });
     fetchMock.mockReturnValueOnce(firstResponse).mockResolvedValueOnce(scheduling('current-tour'));
     const previousRequest = getWasteManagementSchedulingOverview();
 
@@ -1428,12 +1441,18 @@ describe('waste-management api client', () => {
       const freshRequest = getWasteManagementSchedulingOverview({ fresh: true });
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(fetchMock).toHaveBeenNthCalledWith(
-        2, '/api/v1/waste-management/scheduling', expect.objectContaining({ cache: 'no-store' })
+        2,
+        '/api/v1/waste-management/scheduling',
+        expect.objectContaining({ cache: 'no-store' })
       );
-      await expect(freshRequest).resolves.toMatchObject({ tourDateShifts: [{ tourId: 'current-tour' }] });
+      await expect(freshRequest).resolves.toMatchObject({
+        tourDateShifts: [{ tourId: 'current-tour' }],
+      });
     } finally {
       resolveFirstResponse(scheduling('previous-tour'));
-      await expect(previousRequest).resolves.toMatchObject({ tourDateShifts: [{ tourId: 'previous-tour' }] });
+      await expect(previousRequest).resolves.toMatchObject({
+        tourDateShifts: [{ tourId: 'previous-tour' }],
+      });
     }
   });
 

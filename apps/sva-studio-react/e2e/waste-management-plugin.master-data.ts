@@ -49,6 +49,56 @@ export async function getMasterData(route: Route, state: WasteFacadeState): Prom
   return;
 }
 
+export async function getLocationList(
+  route: Route,
+  state: WasteFacadeState,
+  selection = false
+): Promise<void> {
+  const query = new URL(route.request().url()).searchParams;
+  const items = state.collectionLocationsState
+    .map((item) => ({
+      ...item,
+      regionName: state.regionsState.find(({ id }) => id === item.regionId)?.name,
+      cityName: state.citiesState.find(({ id }) => id === item.cityId)?.name ?? item.cityId,
+      streetName: state.streetsState.find(({ id }) => id === item.streetId)?.name,
+      houseNumber: state.houseNumbersState.find(({ id }) => id === item.houseNumberId)?.number,
+      tours: state.toursState.filter((tour) =>
+        state.locationTourLinksState.some(
+          (link) => link.locationId === item.id && link.tourId === tour.id
+        )
+      ),
+    }))
+    .filter((item) => {
+      const addressKeys = ['regionId', 'cityId', 'streetId', 'houseNumberId'] as const;
+      const status = query.get('status');
+      const tourId = query.get('tourId');
+      return (
+        addressKeys.every((key) => !query.has(key) || query.get(key) === item[key]) &&
+        (status !== 'active' || item.active) &&
+        (status !== 'inactive' || !item.active) &&
+        (!tourId || item.tours.some(({ id }) => id === tourId))
+      );
+    });
+  if (selection) {
+    await route.fulfill({ json: { data: { ids: items.map(({ id }) => id) } } });
+    return;
+  }
+  const page = Number(query.get('page') ?? '1');
+  const pageSize = Number(query.get('pageSize') ?? '100');
+  const start = (page - 1) * pageSize;
+  await route.fulfill({
+    json: {
+      data: {
+        items: items.slice(start, start + pageSize),
+        page,
+        pageSize,
+        total: items.length,
+        pageCount: Math.ceil(items.length / pageSize),
+      },
+    },
+  });
+}
+
 export async function createFraction(route: Route, state: WasteFacadeState): Promise<void> {
   const { input, fractionsState, requests } = state;
   const request = route.request();

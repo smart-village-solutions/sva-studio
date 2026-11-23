@@ -226,20 +226,23 @@ export const WasteToolsImportSection = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold">{pt('tools.imports.title')}</h3>
+    <details className="rounded-lg border border-border-subtle bg-card p-4">
+      <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {pt('tools.imports.title')}
+      </summary>
+      <div className="mt-4 space-y-4">
         <p className="text-sm text-muted-foreground">{pt('tools.imports.description')}</p>
+
+        <WasteToolsWizardLayout
+          activeStep={wizardStep}
+          reachableStep={reachableStep}
+          onStepChange={goTo}
+          title={pt(getStepTitleKey(wizardStep))}
+          description={pt(getStepDescriptionKey(wizardStep))}
+        >
+          {renderStep()}
+        </WasteToolsWizardLayout>
       </div>
-      <WasteToolsWizardLayout
-        activeStep={wizardStep}
-        reachableStep={reachableStep}
-        onStepChange={goTo}
-        title={pt(getStepTitleKey(wizardStep))}
-        description={pt(getStepDescriptionKey(wizardStep))}
-      >
-        {renderStep()}
-      </WasteToolsWizardLayout>
-    </div>
+    </details>
   );
 };

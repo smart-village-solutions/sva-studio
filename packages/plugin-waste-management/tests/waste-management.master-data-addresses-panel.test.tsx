@@ -50,9 +50,22 @@ vi.mock('../src/waste-management.table-frame.js', async (importOriginal) => ({
   WastePanelTableBottomBar: () => null,
 }));
 vi.mock('@sva/studio-ui-react', async (importOriginal) => {
-  const { StudioDataTable: RealStudioDataTable } =
-    await importOriginal<typeof import('@sva/studio-ui-react')>();
+  const {
+    StudioDataTable: RealStudioDataTable,
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogTitle,
+    DialogDescription,
+    DialogHeader,
+  } = await importOriginal<typeof import('@sva/studio-ui-react')>();
   return {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogTitle,
+    DialogDescription,
+    DialogHeader,
     Button: ({
       children,
       variant: _variant,
@@ -398,9 +411,7 @@ describe('Waste master-data addresses panel', () => {
     );
 
     expect(screen.getByText('masterData.locationsWorkspace.addresses.emptySearch')).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.resetFilters' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
     expect(onSearchChange).toHaveBeenCalledWith({ addressParentId: undefined, q: '', page: 1 });
 
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.addresses.typeLabel'), {
@@ -424,12 +435,15 @@ describe('Waste master-data addresses panel', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
     fireEvent.change(
       screen.getByLabelText('masterData.locationsWorkspace.addresses.parentFilter.region'),
       {
         target: { value: 'region-1' },
       }
     );
+    expect(onSearchChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
     expect(onSearchChange).toHaveBeenCalledWith({ addressParentId: 'region-1', page: 1 });
   });
 
@@ -486,14 +500,15 @@ describe('Waste master-data addresses panel', () => {
       />
     );
 
-    expect(screen.getAllByText('Hauptstraße · 12345 · Musterstadt · Nord')).toHaveLength(2);
-    expect(
-      screen.getByRole('option', { name: 'Hauptstraße · 12345 · Musterstadt · Nord' })
-    ).toBeTruthy();
+    expect(screen.getByText('Hauptstraße · 12345 · Musterstadt · Nord')).toBeTruthy();
     expect(
       screen.getByRole('button', {
         name: 'masterData.locationsWorkspace.addresses.delete: 12 · Hauptstraße · 12345 · Musterstadt · Nord',
       })
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
+    expect(
+      screen.getByRole('option', { name: 'Hauptstraße · 12345 · Musterstadt · Nord' })
     ).toBeTruthy();
   });
 

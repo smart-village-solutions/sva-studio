@@ -98,6 +98,8 @@ const appendCollectionLocationFilters = (
   params.set('status', filter.status);
   if (filter.regionId) params.set('regionId', filter.regionId);
   if (filter.cityId) params.set('cityId', filter.cityId);
+  if (filter.streetId) params.set('streetId', filter.streetId);
+  if (filter.houseNumberId) params.set('houseNumberId', filter.houseNumberId);
   if (filter.tourId) params.set('tourId', filter.tourId);
 };
 
@@ -108,6 +110,8 @@ export const getWasteCollectionLocationPage = async (
   appendCollectionLocationFilters(url.searchParams, query);
   url.searchParams.set('sortMode', query.sortMode);
   url.searchParams.set('sortDirection', query.sortDirection);
+  if (query.tourYear !== undefined) url.searchParams.set('tourYear', String(query.tourYear));
+  if (query.tourStatus) url.searchParams.set('tourStatus', query.tourStatus);
   url.searchParams.set('page', String(query.page));
   url.searchParams.set('pageSize', String(query.pageSize));
   return requestWasteManagementRead(`collection-locations:${url.search}`, async () =>

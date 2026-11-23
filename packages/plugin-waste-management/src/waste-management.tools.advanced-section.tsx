@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
-import { useId, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
 
 export const WasteToolsAdvancedSection = ({
   canRunInitialize,
@@ -23,10 +21,6 @@ export const WasteToolsAdvancedSection = ({
   readonly technicalDetails: ReactNode;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [open, setOpen] = useState(false);
-  const [technicalOpen, setTechnicalOpen] = useState(false);
-  const contentId = useId();
-  const technicalId = useId();
   const hasSystemActions =
     canRunInitialize || canRunMigrations || canEnrichPostalCodes || canRunSeed || canRunReset;
 
@@ -35,42 +29,23 @@ export const WasteToolsAdvancedSection = ({
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border/70 bg-surface-inset p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{pt('tools.meta.advancedTitle')}</h3>
-          <p className="text-sm text-muted-foreground">{pt('tools.meta.advancedDescription')}</p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          aria-expanded={open}
-          aria-controls={contentId}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {pt('tools.meta.advancedTitle')}
-        </Button>
+    <details className="rounded-lg border border-border-subtle bg-card p-4">
+      <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {pt('tools.meta.advancedTitle')}
+      </summary>
+      <div className="mt-4 space-y-5">
+        <p className="text-sm text-muted-foreground">{pt('tools.meta.advancedDescription')}</p>
+        {initializeSection}
+        {actionsSection}
+        {technicalDetails ? (
+          <details className="space-y-3 border-t border-border/70 pt-4">
+            <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              {pt('tools.meta.technicalDetailsToggle')}
+            </summary>
+            {technicalDetails}
+          </details>
+        ) : null}
       </div>
-      {open ? (
-        <div id={contentId} className="space-y-5">
-          {initializeSection}
-          {actionsSection}
-          {technicalDetails ? (
-            <div className="space-y-3 border-t border-border/70 pt-4">
-              <Button
-                type="button"
-                variant="tertiary"
-                aria-expanded={technicalOpen}
-                aria-controls={technicalId}
-                onClick={() => setTechnicalOpen((value) => !value)}
-              >
-                {pt('tools.meta.technicalDetailsToggle')}
-              </Button>
-              {technicalOpen ? <div id={technicalId}>{technicalDetails}</div> : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
+    </details>
   );
 };

@@ -6,7 +6,16 @@ import {
 } from '@tabler/icons-react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 
-export type WasteToursSortField = 'name' | 'recurrence' | 'dateRange' | 'locations' | 'status';
+export const tourSortFields = [
+  'name',
+  'fractions',
+  'recurrence',
+  'dateRange',
+  'shifts',
+  'locations',
+  'status',
+] as const;
+export type WasteToursSortField = (typeof tourSortFields)[number];
 export type WasteToursSortDirection = 'asc' | 'desc';
 
 const SortIcon = ({ direction }: { readonly direction: false | WasteToursSortDirection }) => {
@@ -43,7 +52,14 @@ export const WasteTableSortButton = ({
   </Button>
 );
 
-const TourSortColumn = ({ field, width, sortField, sortDirection, onSortChange, pt }: Readonly<{
+const TourSortColumn = ({
+  field,
+  width,
+  sortField,
+  sortDirection,
+  onSortChange,
+  pt,
+}: Readonly<{
   field: WasteToursSortField;
   width: string;
   sortField: WasteToursSortField | null;
@@ -51,12 +67,36 @@ const TourSortColumn = ({ field, width, sortField, sortDirection, onSortChange, 
   onSortChange: (field: WasteToursSortField) => void;
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
-  <th scope="col" className={`${width} px-3 py-3 font-semibold`}
-    aria-sort={sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-    <WasteTableSortButton label={pt(`tours.table.${field}`)} active={sortField === field}
-      direction={sortDirection} onClick={() => onSortChange(field)} />
+  <th
+    scope="col"
+    className={`${width} px-3 py-3 font-semibold`}
+    title={
+      field === 'fractions' || field === 'shifts' || field === 'locations'
+        ? pt(`filters.tourSort.${field}`)
+        : undefined
+    }
+    aria-sort={
+      sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'
+    }
+  >
+    <WasteTableSortButton
+      label={pt(`tours.table.${field}`)}
+      active={sortField === field}
+      direction={sortDirection}
+      onClick={() => onSortChange(field)}
+    />
   </th>
 );
+
+const tourColumnWidths: Record<WasteToursSortField, string> = {
+  name: 'w-[150px]',
+  fractions: 'w-[176px]',
+  recurrence: 'w-[132px]',
+  dateRange: 'w-[156px]',
+  shifts: 'w-[168px]',
+  locations: 'w-[94px]',
+  status: 'w-[92px]',
+};
 
 export const WasteToursTableHeader = ({
   allVisibleSelected,
@@ -86,22 +126,17 @@ export const WasteToursTableHeader = ({
             onChange={(event) => onToggleSelectAllVisible(event.currentTarget.checked)}
           />
         </th>
-        <TourSortColumn field="name" width="w-[150px]" pt={pt}
-          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
-        <th scope="col" className="w-[176px] px-3 py-3">
-          {pt('tours.table.fractions')}
-        </th>
-        <TourSortColumn field="recurrence" width="w-[132px]" pt={pt}
-          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
-        <TourSortColumn field="dateRange" width="w-[156px]" pt={pt}
-          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
-        <th scope="col" className="w-[168px] px-3 py-3">
-          {pt('tours.table.shifts')}
-        </th>
-        <TourSortColumn field="locations" width="w-[94px]" pt={pt}
-          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
-        <TourSortColumn field="status" width="w-[92px]" pt={pt}
-          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
+        {tourSortFields.map((field) => (
+          <TourSortColumn
+            key={field}
+            field={field}
+            width={tourColumnWidths[field]}
+            pt={pt}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={onSortChange}
+          />
+        ))}
         <th scope="col" className="w-[150px] px-3 py-3 text-right">
           {pt('tours.table.actions')}
         </th>

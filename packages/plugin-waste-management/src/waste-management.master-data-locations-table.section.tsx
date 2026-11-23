@@ -12,17 +12,23 @@ export const WasteMasterDataLocationsTableSection = ({
   search,
   allFilteredLocationsSelected,
   selectedLocationIds,
+  matchingSelectedLocationsCount,
   maps,
+  sortMode,
+  sortDirection,
+  onSort,
   onToggleSelectAll,
   onToggleLocation,
   onCopyLocation,
   onDeleteLocation,
   onOpenEditLocation,
   onOpenEditTour,
-}: {
+}: Pick<WasteMasterDataLocationsTableProps, 'sortMode' | 'sortDirection'> & {
+  readonly onSort: WasteMasterDataLocationsTableProps['onApplyFilters'];
   readonly collectionLocations: WasteMasterDataLocationsTableProps['collectionLocations'];
   readonly search: WasteMasterDataLocationsTableProps['search'];
   readonly allFilteredLocationsSelected: WasteMasterDataLocationsTableProps['allFilteredLocationsSelected'];
+  readonly matchingSelectedLocationsCount?: number;
   readonly selectedLocationIds: readonly string[];
   readonly maps: Parameters<typeof WasteMasterDataLocationsRow>[0]['maps'];
   readonly onToggleSelectAll: WasteMasterDataLocationsTableProps['onToggleSelectAll'];
@@ -34,7 +40,8 @@ export const WasteMasterDataLocationsTableSection = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const someFilteredLocationsSelected =
-    selectedLocationIds.length > 0 && !allFilteredLocationsSelected;
+    (matchingSelectedLocationsCount ?? selectedLocationIds.length) > 0 &&
+    !allFilteredLocationsSelected;
 
   if (!collectionLocations.length) {
     return <WasteMasterDataLocationsEmptyState />;
@@ -48,6 +55,9 @@ export const WasteMasterDataLocationsTableSection = ({
       >
         <caption className="sr-only">{pt('masterData.locationsWorkspace.table.caption')}</caption>
         <WasteMasterDataLocationsHeader
+          sortMode={sortMode}
+          sortDirection={sortDirection}
+          onSort={onSort}
           allFilteredLocationsSelected={allFilteredLocationsSelected}
           someFilteredLocationsSelected={someFilteredLocationsSelected}
           onToggleSelectAll={onToggleSelectAll}

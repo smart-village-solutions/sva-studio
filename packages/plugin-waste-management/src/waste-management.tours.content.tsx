@@ -11,6 +11,7 @@ import { useWasteToursSelectionState } from './waste-management.tours.content.pa
 import {
   applyWasteToursFilters,
   resetWasteToursFilters,
+  setWasteTourFilterCriterion,
   updateWasteToursSorting,
 } from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
@@ -65,30 +66,20 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
   >(null);
   const deleteFocusFallbackRef = useRef<HTMLElement | null>(null);
   const { sortedTours, sortField, setSortField, sortDirection, setSortDirection } =
-    useWasteToursContentSorting(tours, masterDataOverview?.locationTourLinks);
+    useWasteToursContentSorting(tours, masterDataOverview, schedulingOverview, fractions);
   const availableTourIds = useMemo(() => allTours.map((tour) => tour.id), [allTours]);
   const {
     selectedTourIds,
     setSelectedTourIds,
-    filterDialogOpen,
     setFilterDialogOpen,
-    draftQuery,
     setDraftQuery,
-    draftStatus,
     setDraftStatus,
-    draftTourValidityPeriod,
     setDraftTourValidityPeriod,
-    draftTourWasteFractionId,
     setDraftTourWasteFractionId,
-    draftFirstDateFrom,
     setDraftFirstDateFrom,
-    draftFirstDateTo,
     setDraftFirstDateTo,
-    draftEndDateFrom,
     setDraftEndDateFrom,
-    draftEndDateTo,
     setDraftEndDateTo,
-    hasActiveFilters,
     syncDraftFilters,
     tourPendingDelete,
     setTourPendingDelete,
@@ -107,6 +98,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     toggleSelectAllFiltered,
     clearSelection,
     toggleSelectedTour,
+    ...filterDraft
   } = useWasteToursSelectionState({
     tours: sortedTours,
     availableTourIds,
@@ -123,7 +115,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
   });
   useWasteTabPanelActions(null);
   const filters: WasteToursFilterViewModel = {
-    filterDialogOpen,
     query,
     status,
     tourValidityPeriod,
@@ -132,15 +123,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     firstDateTo,
     endDateFrom,
     endDateTo,
-    draftQuery,
-    draftStatus,
-    draftTourValidityPeriod,
-    draftTourWasteFractionId,
-    draftFirstDateFrom,
-    draftFirstDateTo,
-    draftEndDateFrom,
-    draftEndDateTo,
-    hasActiveFilters,
+    ...filterDraft,
     onOpenFilterDialog: () => {
       syncDraftFilters();
       setFilterDialogOpen(true);
@@ -160,15 +143,23 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         onQueryChange,
         onStatusChange,
         setFilterDialogOpen,
-        draftQuery,
-        draftStatus,
-        draftTourValidityPeriod,
-        draftTourWasteFractionId,
-        draftFirstDateFrom,
-        draftFirstDateTo,
-        draftEndDateFrom,
-        draftEndDateTo,
+        ...filterDraft,
       }),
+    onSetCriterion: (patch) =>
+      setWasteTourFilterCriterion(
+        {
+          q: query,
+          tourStatus: status,
+          tourValidityPeriod,
+          tourWasteFractionId,
+          firstDateFrom,
+          firstDateTo,
+          endDateFrom,
+          endDateTo,
+        },
+        patch,
+        { onFiltersChange, onQueryChange, onStatusChange }
+      ),
     onResetFilters: () =>
       resetWasteToursFilters({ onFiltersChange, onQueryChange, onStatusChange }),
   };
@@ -191,8 +182,15 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onPageChange,
     onSyncPageChange,
     onPageSizeChange,
-    onSortChange: (field) =>
-      updateWasteToursSorting({ field, sortField, setSortField, setSortDirection }),
+    onCompactSortChange: (field, direction) => {
+      setSortField(field);
+      setSortDirection(direction);
+      if (page !== 1) onPageChange(1);
+    },
+    onSortChange: (field) => {
+      updateWasteToursSorting({ field, sortField, setSortField, setSortDirection });
+      if (page !== 1) onPageChange(1);
+    },
     toggleSelectAllVisible,
     toggleSelectAllFiltered,
     clearSelection,

@@ -277,6 +277,9 @@ Lokal verlinktes Plugin außerhalb des Monorepos:
    als Nx-Runtime-Input in den Cache-Hash auf. Eine Änderung an Manifest oder gebündelten
    Modulen eines verlinkten Packages erzwingt daher einen neuen Build, obwohl Lockfile und
    Katalog unverändert bleiben. Builds ohne verlinkte Packages bleiben cachebar.
+   Änderungen an Abhängigkeiten des verlinkten Packages (dessen eigenes `node_modules`,
+   etwa verlinkte Geschwisterpakete aus einem anderen Monorepo) gehen nicht in den Hash ein;
+   nach solchen Änderungen den Build mit `--skip-nx-cache` ausführen.
 
 ## Publish- und Installationsworkflow
 

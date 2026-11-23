@@ -184,6 +184,15 @@ export const resolveInstalledPluginSources = (
   );
 };
 
+const statOrSkip = (path: string): ReturnType<typeof statSync> | undefined => {
+  try {
+    return statSync(path);
+  } catch {
+    // Dangling, looping or unreadable links cannot be bundled either.
+    return undefined;
+  }
+};
+
 const listPackageFiles = (packageRoot: string): string[] => {
   const files: string[] = [];
   const visitedDirectories = new Set<string>();
@@ -191,10 +200,11 @@ const listPackageFiles = (packageRoot: string): string[] => {
     const realDirectory = realpathSync(directory);
     if (visitedDirectories.has(realDirectory)) return;
     visitedDirectories.add(realDirectory);
-    for (const name of readdirSync(directory)) {
+    // Sorted so the first path to a directory reached through several links is deterministic.
+    for (const name of readdirSync(directory).sort()) {
       const path = join(directory, name);
-      // Follows symlinks like the entry resolution does; dangling links are skipped.
-      const stats = statSync(path, { throwIfNoEntry: false });
+      // Follows symlinks like the entry resolution does.
+      const stats = statOrSkip(path);
       if (stats?.isDirectory()) {
         if (name !== 'node_modules' && !name.startsWith('.')) walk(path);
       } else if (stats?.isFile()) {
@@ -206,19 +216,25 @@ const listPackageFiles = (packageRoot: string): string[] => {
   return files.sort();
 };
 
+const hashFile = (path: string): string =>
+  createHash('sha256').update(readFileSync(path)).digest('hex');
+
 /**
  * Content fingerprint of the resolved installed and linked plugin packages. Nx hashes only
  * workspace files and lockfile versions, and a linked package keeps its lockfile entry when its
  * files change, so the build target hashes this value as a runtime input. Dependencies of the
- * package (`node_modules`) and dot-directories are not part of the package content.
+ * package (`node_modules`) and dot-directories are not part of the package content; resolved
+ * entry files are always hashed, even when the manifest points into such a directory.
  */
 export const fingerprintInstalledPluginSources = (sources: readonly InstalledSource[]): string => {
   const hash = createHash('sha256');
   for (const source of sources) {
     hash.update(`${source.catalog.sourceRef}\n`);
     for (const file of listPackageFiles(source.packageRoot)) {
-      const content = createHash('sha256').update(readFileSync(join(source.packageRoot, file)));
-      hash.update(`${file}\0${content.digest('hex')}\n`);
+      hash.update(`${file}\0${hashFile(join(source.packageRoot, file))}\n`);
+    }
+    for (const [kind, file] of Object.entries(source.files)) {
+      hash.update(`entry:${kind}\0${hashFile(file)}\n`);
     }
   }
   return hash.digest('hex');

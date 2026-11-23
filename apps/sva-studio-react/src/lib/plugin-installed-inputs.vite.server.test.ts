@@ -355,7 +355,7 @@ describe('installed plugin build inputs', () => {
     expect(fingerprint()).not.toBe(initial);
   });
 
-  it('fingerprints symlinked entry contents and tolerates symlink cycles', () => {
+  it('fingerprints symlinked entry contents and tolerates directory and file symlink loops', () => {
     const { appRoot, packageRoot } = createFixture({
       jobsPath: null,
       sourceType: 'linked-package',
@@ -367,11 +367,27 @@ describe('installed plugin build inputs', () => {
     rmSync(browserEntry);
     symlinkSync(target, browserEntry);
     symlinkSync(packageRoot, join(packageRoot, 'build', 'loop'));
+    symlinkSync(join(packageRoot, 'build', 'loop-b.js'), join(packageRoot, 'build', 'loop-a.js'));
+    symlinkSync(join(packageRoot, 'build', 'loop-a.js'), join(packageRoot, 'build', 'loop-b.js'));
     const fingerprint = () =>
       fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
     const initial = fingerprint();
 
     writeFileSync(target, 'export const marker = "v2";');
+    expect(fingerprint()).not.toBe(initial);
+  });
+
+  it('fingerprints entry files the manifest places in excluded directories', () => {
+    const { appRoot, packageRoot } = createFixture({
+      browserPath: './.build/calendar-view.js',
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+
+    writeFileSync(join(packageRoot, '.build', 'calendar-view.js'), 'export const marker = 2;');
     expect(fingerprint()).not.toBe(initial);
   });
 

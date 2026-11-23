@@ -1,5 +1,13 @@
+import { useMemo, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
+
+import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
+import {
+  filterTourAssignmentLocations,
+  getTourAssignmentFilterOptions,
+  resolveValidTourAssignmentScope,
+} from './waste-management.tours-assignments-page.options.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 type Option = readonly [string, string];
@@ -120,4 +128,73 @@ export const TourAssignmentsPageFilters = ({
       </div>
     </WastePanelTableTopBar>
   );
+};
+
+export const useTourAssignmentLocationFilters = (
+  locations: readonly TourAssignmentLocationOption[],
+  resetPage: () => void
+) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+  const [streetFilter, setStreetFilter] = useState('');
+
+  const { regionOptions, cityOptions, streetOptions } = useMemo(
+    () => getTourAssignmentFilterOptions(locations, regionFilter, cityFilter),
+    [locations, regionFilter, cityFilter]
+  );
+
+  const filteredLocations = useMemo(
+    () => filterTourAssignmentLocations(locations, searchQuery, regionFilter, cityFilter, streetFilter),
+    [locations, searchQuery, regionFilter, cityFilter, streetFilter]
+  );
+
+  const changeSearchQuery = (query: string) => {
+    setSearchQuery(query);
+    resetPage();
+  };
+
+  const changeStreetFilter = (street: string) => {
+    setStreetFilter(street);
+    resetPage();
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setRegionFilter('');
+    setCityFilter('');
+    setStreetFilter('');
+    resetPage();
+  };
+
+  const changeScope = (region: string, city: string) => {
+    const { nextCity, nextStreet } = resolveValidTourAssignmentScope(
+      locations,
+      region,
+      city,
+      streetFilter
+    );
+    setRegionFilter(region);
+    setCityFilter(nextCity);
+    setStreetFilter(nextStreet);
+    resetPage();
+  };
+
+  return {
+    filteredLocations,
+    filterProps: {
+      searchQuery,
+      regionFilter,
+      cityFilter,
+      streetFilter,
+      regionOptions,
+      cityOptions,
+      streetOptions,
+      onSearchQueryChange: changeSearchQuery,
+      onRegionFilterChange: (value: string) => changeScope(value, cityFilter),
+      onCityFilterChange: (value: string) => changeScope(regionFilter, value),
+      onStreetFilterChange: changeStreetFilter,
+      onResetFilters: resetFilters,
+    } satisfies FilterProps,
+  };
 };

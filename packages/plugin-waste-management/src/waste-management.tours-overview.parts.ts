@@ -58,31 +58,30 @@ export const loadWasteToursSchedulingOverview = async ({
   }
 };
 
+type WasteToursOverviewState = Pick<
+  WasteToursState,
+  | 'setAssignmentContextLoading'
+  | 'setAvailableFractions'
+  | 'setCustomRecurrencePresets'
+  | 'setError'
+  | 'setLoading'
+  | 'setMasterDataOverview'
+  | 'setOverview'
+  | 'setSchedulingOverview'
+  | 'setSchedulingLoadState'
+  | 'schedulingRequestRef'
+>;
+
+type WasteToursOverviewRequest = Readonly<{
+  ptRef: RefObject<(key: string) => string>;
+  isMounted: RefObject<boolean>;
+  loadGeneration: RefObject<number>;
+  propagateError: boolean;
+}>;
+
 export const loadWasteToursOverview = async (
-  state: Pick<
-    WasteToursState,
-    | 'setAssignmentContextLoading'
-    | 'setAvailableFractions'
-    | 'setCustomRecurrencePresets'
-    | 'setError'
-    | 'setLoading'
-    | 'setMasterDataOverview'
-    | 'setOverview'
-    | 'setSchedulingOverview'
-    | 'setSchedulingLoadState'
-    | 'schedulingRequestRef'
-  >,
-  {
-    ptRef,
-    isMounted,
-    loadGeneration,
-    propagateError,
-  }: Readonly<{
-    ptRef: RefObject<(key: string) => string>;
-    isMounted: RefObject<boolean>;
-    loadGeneration: RefObject<number>;
-    propagateError: boolean;
-  }>
+  state: WasteToursOverviewState,
+  { ptRef, isMounted, loadGeneration, propagateError }: WasteToursOverviewRequest
 ) => {
   const {
     setAssignmentContextLoading,

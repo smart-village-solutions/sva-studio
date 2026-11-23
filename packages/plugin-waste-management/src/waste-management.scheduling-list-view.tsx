@@ -14,28 +14,23 @@ import { WastePanelTableTopBar, type WastePanelTableTopBarProps } from './waste-
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
-export const WasteSchedulingListView = ({
-  controller,
-  search,
-  canManageAssignments = false,
-}: {
-  readonly controller: WasteViewModel;
-  readonly search: WasteManagementSearchParams;
-  readonly canManageAssignments?: boolean;
-}) => {
-  const navigation = useWasteSchedulingListNavigation(controller, search);
-  const pt = usePluginTranslation('wasteManagement');
+const createSchedulingToolbar = (
+  search: WasteManagementSearchParams,
+  tours: WasteViewModel['availableTours'],
+  resetFilters: () => void,
+  pt: ReturnType<typeof usePluginTranslation>
+): WastePanelTableTopBarProps => {
   const selectedTour = search.tourId
-    ? controller.availableTours.find((tour) => tour.id === search.tourId)
+    ? tours.find((tour) => tour.id === search.tourId)
     : undefined;
   const assignmentsTab = search.tab === 'tourAssignments';
-  const toolbar: WastePanelTableTopBarProps = {
+  return {
     children: (
       <Button
         type="button"
         variant="tertiary"
         disabled={!search.tourId && (assignmentsTab || (!search.q && search.shiftContext === 'all'))}
-        onClick={navigation.resetFilters}
+        onClick={resetFilters}
       >
         {pt('filters.reset')}
       </Button>
@@ -61,6 +56,21 @@ export const WasteSchedulingListView = ({
       </>
     ),
   };
+};
+
+export const WasteSchedulingListView = ({
+  controller,
+  search,
+  canManageAssignments = false,
+}: {
+  readonly controller: WasteViewModel;
+  readonly search: WasteManagementSearchParams;
+  readonly canManageAssignments?: boolean;
+}) => {
+  const navigation = useWasteSchedulingListNavigation(controller, search);
+  const pt = usePluginTranslation('wasteManagement');
+  const assignmentsTab = search.tab === 'tourAssignments';
+  const toolbar = createSchedulingToolbar(search, controller.availableTours, navigation.resetFilters, pt);
   const content = assignmentsTab ? (
     <WasteTourAssignmentsContent
       message={controller.message}

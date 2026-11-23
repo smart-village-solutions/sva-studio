@@ -148,11 +148,7 @@ const WasteTourAssignmentsTable = ({
       <thead className="bg-surface-inset text-left text-[13px]">
         <tr className="border-b border-border/70">
           {(['pickupDate', 'tour', 'locations', 'note'] as const).map((column) => (
-            <th
-              key={column}
-              scope="col"
-              className="px-3 py-3"
-            >
+            <th key={column} scope="col" className="px-3 py-3">
               {pt(`scheduling.assignments.table.${column}`)}
             </th>
           ))}

@@ -7,7 +7,7 @@ const sortOptions = (options: readonly (readonly [string, string])[]) =>
       leftId.localeCompare(rightId)
   );
 
-export const matchesTourAssignmentScope = (
+const matchesTourAssignmentScope = (
   location: TourAssignmentLocationOption,
   region: string,
   city: string,
@@ -34,3 +34,39 @@ export const getTourAssignmentFilterOptions = (
       .map(({ streetId, streetName }) => [streetId, streetName])
   ),
 });
+
+const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query);
+
+export const filterTourAssignmentLocations = (
+  locations: readonly TourAssignmentLocationOption[],
+  searchQuery: string,
+  region: string,
+  city: string,
+  street: string
+) => {
+  const query = searchQuery.trim().toLocaleLowerCase();
+  return locations.filter(
+    (location) =>
+      matchesTourAssignmentScope(location, region, city, street) &&
+      (!query ||
+        matchesSearch(location.cityName, query) ||
+        (location.streetId && matchesSearch(location.streetName, query)))
+  );
+};
+
+export const resolveValidTourAssignmentScope = (
+  locations: readonly TourAssignmentLocationOption[],
+  region: string,
+  city: string,
+  street: string
+) => {
+  const nextCity = locations.some((location) => matchesTourAssignmentScope(location, region, city))
+    ? city
+    : '';
+  const nextStreet = locations.some((location) =>
+    matchesTourAssignmentScope(location, region, nextCity, street)
+  )
+    ? street
+    : '';
+  return { nextCity, nextStreet };
+};

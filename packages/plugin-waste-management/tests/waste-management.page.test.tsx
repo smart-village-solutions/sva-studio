@@ -2075,7 +2075,7 @@ describe('WasteManagementPage', () => {
 
         searchMock.mockReturnValue({ ...searchMock(), toursView: 'assignments', tourId: 'tour-1' });
         const view = render(<WasteManagementPage />);
-        await act(async () => {});
+        await act(async () => undefined);
         const dialog = screen;
         const search = dialog.getByLabelText<HTMLInputElement>(
           'wasteManagement.filters.searchLabel'

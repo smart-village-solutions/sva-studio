@@ -139,19 +139,6 @@ export const useFractionBulkActions = ({
   return actions;
 };
 
-export const FractionPrimaryAction = ({
-  onOpenCreateFraction,
-}: {
-  readonly onOpenCreateFraction: () => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-  return (
-    <Button type="button" onClick={onOpenCreateFraction}>
-      {pt('masterData.fractions.actions.openCreate')}
-    </Button>
-  );
-};
-
 export const WasteFractionsFilterAction = ({
   fractionsStatus,
   query,

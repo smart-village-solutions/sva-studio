@@ -153,12 +153,6 @@ const normalizeTourValidityPeriod = (value: unknown): WasteManagementTourValidit
     ? (value as WasteManagementTourValidityPeriod)
     : 'all';
 
-const normalizeFractionsStatus = (value: unknown): WasteManagementStatusFilter =>
-  typeof value === 'string' &&
-  wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
-    ? (value as WasteManagementStatusFilter)
-    : 'all';
-
 const normalizeShiftContext = (value: unknown): WasteManagementShiftContext =>
   typeof value === 'string' &&
   wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
@@ -231,7 +225,7 @@ export const normalizeWasteManagementSearchParams = (
     q: compactOptionalString(search.q) ?? '',
     page: normalizePositiveInteger(search.page, 1),
     pageSize,
-    fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
+    fractionsStatus: normalizeStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
     tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
@@ -263,54 +257,3 @@ export const normalizeWasteManagementSearchParams = (
 };
 
 export const wasteManagementTabIds = wasteManagementTabs;
-
-const tabListStateKeys = {
-  fractions: ['q', 'fractionsStatus', 'fractionsSortBy', 'fractionsSortDirection'],
-  tours: [
-    'q',
-    'tourStatus',
-    'tourValidityPeriod',
-    'tourWasteFractionId',
-    'firstDateFrom',
-    'firstDateTo',
-    'endDateFrom',
-    'endDateTo',
-  ],
-  locations: [
-    'q',
-    'status',
-    'regionId',
-    'cityId',
-    'tourId',
-    'locationYear',
-    'locationTourStatus',
-    'locationSortMode',
-    'locationSortDirection',
-  ],
-  masterData: ['q', 'addressEntityType', 'addressParentId', 'addressSortBy', 'addressSortDirection'],
-  scheduling: ['q', 'shiftContext', 'tourId'],
-  tourAssignments: ['tourId'],
-  tools: ['q'],
-  output: [],
-  settings: [],
-} as const satisfies Record<WasteManagementTabId, readonly (keyof WasteManagementSearchParams)[]>;
-
-export const captureWasteManagementTabListState = (
-  search: WasteManagementSearchParams
-): Partial<WasteManagementSearchParams> => ({
-  pageSize: search.pageSize,
-  ...Object.fromEntries(tabListStateKeys[search.tab].map((key) => [key, search[key]])),
-});
-
-export const toWasteManagementTabSearch = (
-  tab: WasteManagementTabId,
-  listState?: Partial<WasteManagementSearchParams>
-): WasteManagementSearchParams => normalizeWasteManagementSearchParams({ ...listState, tab });
-
-export const resetWasteManagementTabListState = (
-  search: WasteManagementSearchParams
-): WasteManagementSearchParams => ({
-  ...search,
-  ...captureWasteManagementTabListState(toWasteManagementTabSearch(search.tab)),
-  page: 1,
-});

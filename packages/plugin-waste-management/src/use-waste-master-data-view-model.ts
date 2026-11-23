@@ -18,6 +18,42 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 const noopRefreshTechnicalHistory = async () => undefined;
 
+const useWasteTypesRetry = (state: ReturnType<typeof useWasteMasterDataState>, pt: Translate) => {
+  useWasteTrackedJob({
+    lastJob: state.trackedSyncWasteTypesJob,
+    refreshTechnicalHistory: noopRefreshTechnicalHistory,
+    setLastJob: state.setTrackedSyncWasteTypesJob,
+    onTerminalJob: async (job) => {
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        state.setMessage({
+          kind: 'warning',
+          text: pt('masterData.fractions.messages.syncWarning'),
+          retryAction: 'sync-waste-types',
+        });
+      }
+    },
+  });
+
+  return async () => {
+    state.setMessage(null);
+    try {
+      const job = await startWasteManagementSyncWasteTypes();
+      state.setTrackedSyncWasteTypesJob(job ?? null);
+      state.setMessage({
+        kind: 'success',
+        text: pt('masterData.fractions.messages.syncRetryStarted'),
+      });
+    } catch {
+      state.setTrackedSyncWasteTypesJob(null);
+      state.setMessage({
+        kind: 'warning',
+        text: pt('masterData.fractions.messages.syncWarning'),
+        retryAction: 'sync-waste-types',
+      });
+    }
+  };
+};
+
 export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
   const { loadOverview, overviewRefreshing, readLocationAssignmentOverview } =
@@ -47,39 +83,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
   });
   const resetActions = createWasteMasterDataResetActions(state);
 
-  useWasteTrackedJob({
-    lastJob: state.trackedSyncWasteTypesJob,
-    refreshTechnicalHistory: noopRefreshTechnicalHistory,
-    setLastJob: state.setTrackedSyncWasteTypesJob,
-    onTerminalJob: async (job) => {
-      if (job.status === 'failed' || job.status === 'cancelled') {
-        state.setMessage({
-          kind: 'warning',
-          text: pt('masterData.fractions.messages.syncWarning'),
-          retryAction: 'sync-waste-types',
-        });
-      }
-    },
-  });
-
-  const retrySyncWasteTypes = async () => {
-    state.setMessage(null);
-    try {
-      const job = await startWasteManagementSyncWasteTypes();
-      state.setTrackedSyncWasteTypesJob(job ?? null);
-      state.setMessage({
-        kind: 'success',
-        text: pt('masterData.fractions.messages.syncRetryStarted'),
-      });
-    } catch {
-      state.setTrackedSyncWasteTypesJob(null);
-      state.setMessage({
-        kind: 'warning',
-        text: pt('masterData.fractions.messages.syncWarning'),
-        retryAction: 'sync-waste-types',
-      });
-    }
-  };
+  const retrySyncWasteTypes = useWasteTypesRetry(state, pt);
 
   return {
     ...state,

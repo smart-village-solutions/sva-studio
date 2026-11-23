@@ -31,8 +31,8 @@ const resolveLocationRowProjection = (
       streetName: location.streetName,
       houseNumberName: location.houseNumber,
       linkedTours: location.tours
-        .filter((tour) =>
-          (!maps.locationYear && !maps.locationTourStatus) || maps.toursById.has(tour.id)
+        .filter(
+          (tour) => (!maps.locationYear && !maps.locationTourStatus) || maps.toursById.has(tour.id)
         )
         .map((tour) => maps.toursById.get(tour.id) ?? tour),
     };
@@ -137,9 +137,10 @@ const WasteLocationsRowActions = ({
   readonly onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const editLabel = pt('masterData.collectionLocations.actions.edit');
-  const copyLabel = pt('masterData.collectionLocations.actions.copy');
-  const deleteLabel = pt('masterData.collectionLocations.actions.delete');
+  const actionLabel = (action: 'edit' | 'copy' | 'delete') => {
+    const label = pt(`masterData.collectionLocations.actions.${action}`);
+    return { 'aria-label': label, tooltip: label };
+  };
   return (
     <td className="px-3 py-3 align-top text-right">
       <div className="flex justify-end gap-1.5">
@@ -148,8 +149,7 @@ const WasteLocationsRowActions = ({
           variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={editLabel}
-          tooltip={editLabel}
+          {...actionLabel('edit')}
           {...(!search ? { onClick: () => onOpenEditLocation(location) } : {})}
         >
           {search ? (
@@ -168,8 +168,7 @@ const WasteLocationsRowActions = ({
           variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={copyLabel}
-          tooltip={copyLabel}
+          {...actionLabel('copy')}
           onClick={() => onCopyLocation(location)}
         >
           <IconCopy aria-hidden="true" className="h-4 w-4" />
@@ -179,11 +178,8 @@ const WasteLocationsRowActions = ({
           variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-          aria-label={deleteLabel}
-          tooltip={deleteLabel}
-          onClick={() => {
-            void onDeleteLocation(location);
-          }}
+          {...actionLabel('delete')}
+          onClick={() => void onDeleteLocation(location)}
         >
           <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
         </Button>
@@ -217,6 +213,12 @@ export const WasteMasterDataLocationsRow = ({
   const { regionName, cityName, streetName, houseNumberName, linkedTours } =
     resolveLocationRowProjection(location, maps);
 
+  const addressColumns = {
+    regionUnavailable: regionName,
+    cityUnavailable: cityName,
+    streetUnavailable: streetName,
+    houseNumbersUnavailable: houseNumberName,
+  };
   return (
     <tr className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset">
       <td className="px-3 py-3 align-top">
@@ -226,26 +228,13 @@ export const WasteMasterDataLocationsRow = ({
           onChange={(event) => onToggleLocation(location.id, event.currentTarget.checked)}
         />
       </td>
-      <td className="px-3 py-3 align-top">
-        <p className="font-medium">
-          {regionName ?? pt('masterData.locationsWorkspace.table.regionUnavailable')}
-        </p>
-      </td>
-      <td className="px-3 py-3 align-top">
-        <p className="font-medium">
-          {cityName ?? pt('masterData.locationsWorkspace.table.cityUnavailable')}
-        </p>
-      </td>
-      <td className="px-3 py-3 align-top">
-        <p className="font-medium">
-          {streetName ?? pt('masterData.locationsWorkspace.table.streetUnavailable')}
-        </p>
-      </td>
-      <td className="px-3 py-3 align-top">
-        <span className="text-sm">
-          {houseNumberName ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}
-        </span>
-      </td>
+      {Object.entries(addressColumns).map(([fallback, name]) => (
+        <td key={fallback} className="px-3 py-3 align-top">
+          <span className={fallback === 'houseNumbersUnavailable' ? 'text-sm' : 'font-medium'}>
+            {name ?? pt(`masterData.locationsWorkspace.table.${fallback}`)}
+          </span>
+        </td>
+      ))}
       <WasteLocationsRowTours
         linkedTours={linkedTours}
         locationYear={maps.locationYear}

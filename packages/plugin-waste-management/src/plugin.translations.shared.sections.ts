@@ -14,9 +14,7 @@ type WasteManagementTabsCopy = Readonly<{
 }>;
 
 type WasteManagementSettingsCopy = Readonly<{
-  common: Readonly<{
-    actions: string;
-  }>;
+  common: Readonly<{ actions: string }>;
   technical: Readonly<{
     title: string;
     description: string;

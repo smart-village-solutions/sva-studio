@@ -22,6 +22,16 @@ const resolveMasterDataOverviewScope = (tab: WasteManagementSearchParams['master
   return undefined;
 };
 
+const requestMasterDataOverview = (
+  tab: WasteManagementSearchParams['masterDataTab'],
+  readAssignments: boolean
+) =>
+  getWasteManagementMasterDataOverview(
+    readAssignments || tab === 'locations'
+      ? { scope: 'locations', fresh: true }
+      : resolveMasterDataOverviewScope(tab)
+  );
+
 const resolveMasterDataLoadError = (translate: Translate, loadError: unknown) => {
   const code = resolveApiErrorCode(loadError);
   return code === 'forbidden'
@@ -88,6 +98,49 @@ const loadLocationCoverageSupport = async (
   await Promise.all([loadFractions(), loadTours()]);
 };
 
+const startCoverageSupport = ({
+  tab,
+  coverageState,
+  coverageRequestIdRef,
+  isMountedRef,
+  setOverviewRefreshing,
+}: {
+  tab: WasteManagementSearchParams['masterDataTab'];
+  coverageState: LocationCoverageSupportLoader;
+  coverageRequestIdRef: MutableRefObject<number>;
+  isMountedRef: MutableRefObject<boolean>;
+  setOverviewRefreshing: (refreshing: boolean) => void;
+}) => {
+  setOverviewRefreshing(true);
+  const requestId = ++coverageRequestIdRef.current;
+  prepareLocationCoverageLoad(tab, coverageState);
+  return tab === 'locations'
+    ? loadLocationCoverageSupport(coverageState, requestId, coverageRequestIdRef, isMountedRef)
+    : undefined;
+};
+
+const useOverviewRefresh = ({
+  loadOverview,
+  isMountedRef,
+  overviewRequestIdRef,
+  coverageRequestIdRef,
+}: {
+  loadOverview: () => Promise<unknown>;
+  isMountedRef: MutableRefObject<boolean>;
+  overviewRequestIdRef: MutableRefObject<number>;
+  coverageRequestIdRef: MutableRefObject<number>;
+}) => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadOverview();
+    return () => {
+      isMountedRef.current = false;
+      overviewRequestIdRef.current += 1;
+      coverageRequestIdRef.current += 1;
+    };
+  }, [coverageRequestIdRef, isMountedRef, loadOverview, overviewRequestIdRef]);
+};
+
 export const useWasteMasterDataOverview = (
   state: WasteMasterDataState,
   pt: Translate,
@@ -116,25 +169,16 @@ export const useWasteMasterDataOverview = (
         setLocationCoverageFractionsStatus,
         setLocationCoverageToursStatus,
       };
-      const scope = resolveMasterDataOverviewScope(tab);
-      const readLocationLinks = readAssignments || tab === 'locations';
-      const overviewPromise = getWasteManagementMasterDataOverview(
-        readLocationLinks ? { scope: 'locations', fresh: true } : scope
-      );
-      let coverageSupportPromise: Promise<void> | undefined;
-      if (!readAssignments) {
-        setOverviewRefreshing(true);
-        const coverageRequestId = ++coverageRequestIdRef.current;
-        prepareLocationCoverageLoad(tab, coverageState);
-        if (tab === 'locations') {
-          coverageSupportPromise = loadLocationCoverageSupport(
+      const overviewPromise = requestMasterDataOverview(tab, readAssignments);
+      const coverageSupportPromise = readAssignments
+        ? undefined
+        : startCoverageSupport({
+            tab,
             coverageState,
-            coverageRequestId,
             coverageRequestIdRef,
-            isMountedRef
-          );
-        }
-      }
+            isMountedRef,
+            setOverviewRefreshing,
+          });
 
       try {
         const overviewResponse = await overviewPromise;
@@ -169,15 +213,7 @@ export const useWasteMasterDataOverview = (
     ]
   );
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    void loadOverview();
-    return () => {
-      isMountedRef.current = false;
-      overviewRequestIdRef.current += 1;
-      coverageRequestIdRef.current += 1;
-    };
-  }, [loadOverview]);
+  useOverviewRefresh({ loadOverview, isMountedRef, overviewRequestIdRef, coverageRequestIdRef });
 
   return {
     loadOverview,

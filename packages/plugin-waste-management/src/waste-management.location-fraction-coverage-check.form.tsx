@@ -64,6 +64,29 @@ const CoverageDateFields = ({
   );
 };
 
+const IncludeDraftsField = ({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <label
+      className="flex items-center gap-2 text-sm lg:col-span-full"
+      htmlFor="waste-location-coverage-include-drafts"
+    >
+      <Checkbox
+        id="waste-location-coverage-include-drafts"
+        checked={checked}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      {pt('masterData.locationsWorkspace.coverage.includeDrafts')}
+    </label>
+  );
+};
+
 export const CoverageCheckForm = ({
   fractions,
   disabled,
@@ -130,21 +153,13 @@ export const CoverageCheckForm = ({
       />
       <Button type="submit" disabled={disabled || checking} aria-busy={checking}>
         <IconChecklist aria-hidden="true" className="h-4 w-4" />
-        {pt(checking
-          ? 'masterData.locationsWorkspace.coverage.checking'
-          : 'masterData.locationsWorkspace.coverage.check')}
+        {pt(
+          checking
+            ? 'masterData.locationsWorkspace.coverage.checking'
+            : 'masterData.locationsWorkspace.coverage.check'
+        )}
       </Button>
-      <label
-        className="flex items-center gap-2 text-sm lg:col-span-full"
-        htmlFor="waste-location-coverage-include-drafts"
-      >
-        <Checkbox
-          id="waste-location-coverage-include-drafts"
-          checked={includeDrafts}
-          onChange={(event) => onIncludeDraftsChange(event.currentTarget.checked)}
-        />
-        {pt('masterData.locationsWorkspace.coverage.includeDrafts')}
-      </label>
+      <IncludeDraftsField checked={includeDrafts} onChange={onIncludeDraftsChange} />
     </form>
   );
 };

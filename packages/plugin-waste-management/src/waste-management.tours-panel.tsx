@@ -17,6 +17,71 @@ import {
 import { WasteToursFormView, WasteToursListView } from './waste-management.tours-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
+const WasteToursAssignmentRoute = ({
+  assignmentContextKey,
+  controller,
+  navigate,
+  search,
+}: {
+  readonly assignmentContextKey: string | null;
+  readonly controller: ReturnType<typeof useWasteToursViewModel>;
+  readonly navigate: ReturnType<typeof useNavigate>;
+  readonly search: WasteManagementSearchParams;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const assignmentTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
+  const assignmentLocations = useMemo(
+    () =>
+      resolveTourAssignmentLocationOptions(pt, controller.masterDataOverview, assignmentTour?.id),
+    [pt, controller.masterDataOverview, assignmentTour?.id]
+  );
+
+  const goToList = (saved = false) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: toToursListSearch(search),
+      replace: true,
+      ignoreBlocker: saved,
+    });
+  if (!assignmentContextKey || !assignmentTour) {
+    return (
+      <>
+        <Button type="button" variant="secondary" onClick={() => goToList()}>
+          {pt('tours.assignments.actions.backToList')}
+        </Button>
+        <StudioErrorState>
+          {pt(
+            assignmentContextKey
+              ? 'tours.messages.loadError'
+              : 'tours.assignments.messages.saveForbidden'
+          )}
+        </StudioErrorState>
+      </>
+    );
+  }
+  return (
+    <TourAssignmentsPage
+      key={assignmentTour.id}
+      tour={assignmentTour}
+      locations={assignmentLocations}
+      saving={controller.saving}
+      loading={controller.assignmentContextLoading}
+      unavailable={!controller.masterDataOverview}
+      message={controller.message}
+      onBack={() => goToList()}
+      onSubmit={async (changes) => {
+        const canContinue = captureWasteTourAssignmentWriteAccess(assignmentContextKey);
+        if (
+          canContinue &&
+          (await controller.onSubmitAssignments(assignmentTour.id, changes, canContinue))
+        ) {
+          goToList(true);
+        }
+      }}
+    />
+  );
+};
+
 export const WasteToursPanel = ({
   search,
   assignmentContextKey = null,
@@ -32,16 +97,6 @@ export const WasteToursPanel = ({
   const navigate = useNavigate();
   const controller = useWasteToursViewModel(pt, search);
 
-  const assignmentTour =
-    search.toursView === 'assignments'
-      ? controller.overview?.tours.find((tour) => tour.id === search.tourId)
-      : undefined;
-  const assignmentLocations = useMemo(
-    () =>
-      resolveTourAssignmentLocationOptions(pt, controller.masterDataOverview, assignmentTour?.id),
-    [pt, controller.masterDataOverview, assignmentTour?.id]
-  );
-
   useWasteToursSuccessRedirect({ controller, navigate, search });
   useWasteToursEditRouteHydration({ controller, navigate, search });
   useWasteToursDuplicateRouteHydration({ controller, search });
@@ -55,48 +110,12 @@ export const WasteToursPanel = ({
   }
 
   if (search.toursView === 'assignments') {
-    const goToList = (saved = false) =>
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toToursListSearch(search),
-        replace: true,
-        ignoreBlocker: saved,
-      });
-    if (!assignmentContextKey || !assignmentTour) {
-      return (
-        <>
-          <Button type="button" variant="secondary" onClick={() => goToList()}>
-            {pt('tours.assignments.actions.backToList')}
-          </Button>
-          <StudioErrorState>
-            {pt(
-              assignmentContextKey
-                ? 'tours.messages.loadError'
-                : 'tours.assignments.messages.saveForbidden'
-            )}
-          </StudioErrorState>
-        </>
-      );
-    }
     return (
-      <TourAssignmentsPage
-        key={assignmentTour.id}
-        tour={assignmentTour}
-        locations={assignmentLocations}
-        saving={controller.saving}
-        loading={controller.assignmentContextLoading}
-        unavailable={!controller.masterDataOverview}
-        message={controller.message}
-        onBack={() => goToList()}
-        onSubmit={async (changes) => {
-          const canContinue = captureWasteTourAssignmentWriteAccess(assignmentContextKey);
-          if (
-            canContinue &&
-            (await controller.onSubmitAssignments(assignmentTour.id, changes, canContinue))
-          ) {
-            goToList(true);
-          }
-        }}
+      <WasteToursAssignmentRoute
+        assignmentContextKey={assignmentContextKey}
+        controller={controller}
+        navigate={navigate}
+        search={search}
       />
     );
   }

@@ -1,12 +1,18 @@
+import { useMemo, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge } from '@sva/studio-ui-react';
+
+import { defaultWastePageSize } from './pagination-search-params.js';
 import { TourAssignmentsTable } from './waste-management.tours-assignments-table.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
-import type {
-  TourAssignmentSortDirection,
-  TourAssignmentSortField,
+import {
+  createTourAssignmentSelectionSummary,
+  orderTourAssignmentLocations,
+  type TourAssignmentSortDirection,
+  type TourAssignmentSortField,
+  type TourAssignmentSortOptions,
 } from './waste-management.tours.view-model.js';
-import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
+import { createPagedItems, WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
 const TourAssignmentSelectionCounts = ({
   selectedCount,
@@ -44,6 +50,26 @@ const TourAssignmentSelectionCounts = ({
   );
 };
 
+type TourAssignmentsPageSelectionProps = {
+  readonly loading: boolean;
+  readonly selectedLocationIds: readonly string[];
+  readonly filteredLocationsCount: number;
+  readonly hiddenSelectedCount: number;
+  readonly locations: readonly TourAssignmentLocationOption[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly pageCount: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
+  readonly allVisibleSelected: boolean;
+  readonly someVisibleSelected: boolean;
+  readonly sortField: TourAssignmentSortField;
+  readonly sortDirection: TourAssignmentSortDirection;
+  readonly onSortChange: (field: TourAssignmentSortField) => void;
+  readonly onToggleSelectAll: (value: boolean) => void;
+  readonly onToggleLocation: (locationId: string, checked: boolean) => void;
+};
+
 export const TourAssignmentsPageSelection = ({
   loading,
   selectedLocationIds,
@@ -62,25 +88,7 @@ export const TourAssignmentsPageSelection = ({
   onSortChange,
   onToggleSelectAll,
   onToggleLocation,
-}: {
-  readonly loading: boolean;
-  readonly selectedLocationIds: readonly string[];
-  readonly filteredLocationsCount: number;
-  readonly hiddenSelectedCount: number;
-  readonly locations: readonly TourAssignmentLocationOption[];
-  readonly page: number;
-  readonly pageSize: number;
-  readonly pageCount: number;
-  readonly onPageChange: (page: number) => void;
-  readonly onPageSizeChange: (pageSize: number) => void;
-  readonly allVisibleSelected: boolean;
-  readonly someVisibleSelected: boolean;
-  readonly sortField: TourAssignmentSortField;
-  readonly sortDirection: TourAssignmentSortDirection;
-  readonly onSortChange: (field: TourAssignmentSortField) => void;
-  readonly onToggleSelectAll: (value: boolean) => void;
-  readonly onToggleLocation: (locationId: string, checked: boolean) => void;
-}) => {
+}: TourAssignmentsPageSelectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-background/70 p-4">
@@ -126,4 +134,119 @@ export const TourAssignmentsPageSelection = ({
       </div>
     </div>
   );
+};
+
+const useDraftTourAssignments = (locations: readonly TourAssignmentLocationOption[]) => {
+  const [selectionChanges, setSelectionChanges] = useState<ReadonlyMap<string, boolean>>(
+    () => new Map()
+  );
+  const assignedLocationIds = useMemo(
+    () =>
+      new Set(
+        locations.filter((location) => location.assignedLinkId).map((location) => location.id)
+      ),
+    [locations]
+  );
+  const selectedLocationIds = useMemo(
+    () =>
+      locations
+        .map((location) => location.id)
+        .filter((id) => selectionChanges.get(id) ?? assignedLocationIds.has(id)),
+    [assignedLocationIds, locations, selectionChanges]
+  );
+
+  const changeSelection = (locationIds: readonly string[], checked: boolean) => {
+    setSelectionChanges((current) => {
+      const changes = new Map(current);
+      for (const id of locationIds) {
+        if (checked === assignedLocationIds.has(id)) {
+          changes.delete(id);
+        } else {
+          changes.set(id, checked);
+        }
+      }
+      return changes;
+    });
+  };
+
+  return { assignedLocationIds, selectedLocationIds, selectionChanges, changeSelection };
+};
+
+type TourAssignmentSelectionInput = Readonly<{
+  locations: readonly TourAssignmentLocationOption[];
+  filteredLocations: readonly TourAssignmentLocationOption[];
+  loading: boolean;
+  unavailable: boolean;
+  page: number;
+  setPage: (page: number) => void;
+}>;
+
+export const useTourAssignmentSelection = ({
+  locations,
+  filteredLocations,
+  loading,
+  unavailable,
+  page,
+  setPage,
+}: TourAssignmentSelectionInput) => {
+  const { assignedLocationIds, selectedLocationIds, selectionChanges, changeSelection } =
+    useDraftTourAssignments(locations);
+  const [sort, setSort] = useState<Required<TourAssignmentSortOptions>>({
+    field: 'cityName',
+    direction: 'asc',
+  });
+  const [pageSize, setPageSize] = useState<number>(defaultWastePageSize);
+
+  const orderedFilteredLocations = useMemo(
+    () => orderTourAssignmentLocations(filteredLocations, selectedLocationIds, sort),
+    [filteredLocations, selectedLocationIds, sort]
+  );
+  const pagedLocations = createPagedItems({ items: orderedFilteredLocations, page, pageSize });
+
+  const filteredLocationIds = filteredLocations.map((location) => location.id);
+  const { allVisibleSelected, someVisibleSelected, hiddenSelectedCount } =
+    createTourAssignmentSelectionSummary({
+      filteredLocationIds,
+      selectedLocationIds,
+    });
+
+  const changeSort = (field: TourAssignmentSortField) => {
+    setSort((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPage(1);
+  };
+
+  const hasChanges =
+    loading || unavailable
+      ? selectionChanges.size > 0
+      : [...selectionChanges].some(([id, checked]) => checked !== assignedLocationIds.has(id));
+
+  return {
+    hasChanges,
+    selectionChanges,
+    selectionProps: {
+      loading,
+      selectedLocationIds,
+      filteredLocationsCount: filteredLocations.length,
+      hiddenSelectedCount,
+      locations: pagedLocations.items,
+      page: pagedLocations.safePage,
+      pageSize,
+      pageCount: pagedLocations.pageCount,
+      onPageChange: setPage,
+      onPageSizeChange: (value) => {
+        setPageSize(value);
+        setPage(1);
+      },
+      allVisibleSelected,
+      someVisibleSelected,
+      sortField: sort.field,
+      sortDirection: sort.direction,
+      onSortChange: changeSort,
+      onToggleSelectAll: (checked) => changeSelection(filteredLocationIds, checked),
+      onToggleLocation: (id, checked) => changeSelection([id], checked),
+    } satisfies TourAssignmentsPageSelectionProps,
+  };
 };

@@ -1,24 +1,13 @@
-import { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   readSessionAccessSnapshot,
   subscribeSessionAccessSnapshot,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
+import { StudioListPageTemplate, StudioLoadingState, StudioErrorState } from '@sva/studio-ui-react';
 import {
-  Button,
-  Input,
-  Select,
-  StudioListPageTemplate,
-  StudioLoadingState,
-  StudioErrorState,
-  StudioField,
-} from '@sva/studio-ui-react';
-import {
-  isWasteReminderEmailAddress,
   wasteEmailMonitoringPermission,
   type WasteEmailMonitoringOverview,
-  type WasteEmailSubscriptionStatus,
-  type WasteEmailSubscriptionSummary,
 } from '@sva/waste-management-contracts';
 import {
   getWasteEmailMonitoring,
@@ -29,18 +18,12 @@ import {
   emailMonitoringPageSize,
 } from './waste-management.email-monitoring.tables.js';
 import type { EmailMonitoringTranslate } from './waste-management.email-monitoring.columns.js';
-import { WastePanelTableTopBar } from './waste-management.table-frame.js';
+import {
+  MonitoringControls,
+  type EmailMonitoringSelection,
+} from './waste-management.email-monitoring.controls.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 
-type Selection = {
-  page: number;
-  status: WasteEmailSubscriptionStatus | '';
-  searchEmail: string;
-  searchVersion: number;
-  selected: WasteEmailSubscriptionSummary | null;
-  deliveryPage: number;
-  refresh: number;
-};
 type Result = { data: WasteEmailMonitoringOverview; listKey: string; deliveryKey: string };
 const emptyData: WasteEmailMonitoringOverview = {
   subscriptions: [],
@@ -48,127 +31,8 @@ const emptyData: WasteEmailMonitoringOverview = {
   deliveries: [],
   deliveryTotal: 0,
 };
-const MonitoringControls = ({
-  pt,
-  selection,
-  onChange,
-}: {
-  pt: EmailMonitoringTranslate;
-  selection: Selection;
-  onChange: (selection: Selection) => void;
-}) => {
-  const [draftEmail, setDraftEmail] = useState('');
-  const [invalidDraft, setInvalidDraft] = useState(false);
-  const emailId = useId();
-  const status = selection.searchEmail ? 'active' : selection.status;
-  const changeStatus = (status: Selection['status']) =>
-    onChange({ ...selection, status, page: 1, selected: null, deliveryPage: 1 });
-  const changeSearch = (searchEmail: string) =>
-    onChange({
-      ...selection,
-      searchEmail,
-      searchVersion: selection.searchVersion + 1,
-      status: '',
-      page: 1,
-      selected: null,
-      deliveryPage: 1,
-    });
-  return (
-    <WastePanelTableTopBar
-      activeFilters={
-        <>
-          {status ? <span>{pt(`emailMonitoring.states.${status}`)}</span> : null}
-          {selection.searchEmail ? <span>{pt('emailMonitoring.emailSearch.applied')}</span> : null}
-        </>
-      }
-      actions={
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange({ ...selection, refresh: selection.refresh + 1 })}
-        >
-          {pt('emailMonitoring.refresh')}
-        </Button>
-      }
-    >
-      <form
-        className="flex max-w-full flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const email = draftEmail.trim();
-          if (email.length > 254 || !isWasteReminderEmailAddress(email)) {
-            setInvalidDraft(true);
-            return;
-          }
-          changeSearch(email);
-        }}
-      >
-        <StudioField
-          id={emailId}
-          label={pt('emailMonitoring.emailSearch.label')}
-          error={
-            invalidDraft ? (
-              <span role="status">{pt('emailMonitoring.emailSearch.invalid')}</span>
-            ) : undefined
-          }
-        >
-          <Input
-            id={emailId}
-            type="text"
-            inputMode="email"
-            value={draftEmail}
-            required
-            maxLength={254}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            aria-invalid={invalidDraft || undefined}
-            aria-describedby={invalidDraft ? `${emailId}-error` : undefined}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
-              setDraftEmail(value);
-              setInvalidDraft(false);
-              if (selection.searchEmail) changeSearch('');
-            }}
-          />
-        </StudioField>
-        <Button type="submit" variant="secondary" disabled={!draftEmail.trim()}>
-          {pt('emailMonitoring.emailSearch.submit')}
-        </Button>
-      </form>
-      <label className="space-y-2 text-sm font-medium">
-        {pt('emailMonitoring.statusFilter')}
-        <Select
-          value={status}
-          disabled={Boolean(selection.searchEmail)}
-          onChange={(event) => changeStatus(event.currentTarget.value as Selection['status'])}
-        >
-          <option value="">{pt('emailMonitoring.all')}</option>
-          {(['pending', 'active', 'unsubscribed', 'expired'] as const).map((value) => (
-            <option key={value} value={value}>
-              {pt(`emailMonitoring.states.${value}`)}
-            </option>
-          ))}
-        </Select>
-      </label>
-      <Button
-        type="button"
-        variant="tertiary"
-        disabled={!status && !draftEmail}
-        onClick={() => {
-          setDraftEmail('');
-          setInvalidDraft(false);
-          changeSearch('');
-        }}
-      >
-        {pt('filters.reset')}
-      </Button>
-    </WastePanelTableTopBar>
-  );
-};
-
-const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
-  const [selection, setSelection] = useState<Selection>({
+const useEmailMonitoring = () => {
+  const [selection, setSelection] = useState<EmailMonitoringSelection>({
     page: 1,
     status: '',
     searchEmail: '',
@@ -223,6 +87,12 @@ const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) =
       controller.abort();
     };
   }, [selection, listKey, deliveryKey]);
+  return { selection, setSelection, result, listKey, deliveryKey, error, loading };
+};
+
+const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
+  const { selection, setSelection, result, listKey, deliveryKey, error, loading } =
+    useEmailMonitoring();
   const data = result?.listKey === listKey ? result.data : emptyData;
   const deliveries = result?.deliveryKey === deliveryKey ? result.data.deliveries : [];
   const deliveryTotal = result?.deliveryKey === deliveryKey ? result.data.deliveryTotal : 0;

@@ -1,10 +1,9 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioConfirmDialog, StudioDataTable } from '@sva/studio-ui-react';
+import { Button, StudioConfirmDialog, StudioDataTable } from '@sva/studio-ui-react';
 
 import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 import {
-  FractionPrimaryAction,
   FractionRowActions,
   sortFieldByColumnId,
   type useFractionBulkActions,
@@ -81,13 +80,31 @@ const resolveNextFractionSorting = (
   return [sortFieldByColumnId[current.id] ?? 'name', current.desc ? 'desc' : 'asc'];
 };
 
+const FractionFilterSummary = ({
+  fractionsStatus,
+  query,
+}: {
+  fractionsStatus: WasteMasterDataFractionsTableSectionProps['fractionsStatus'];
+  query?: string;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <>
+      {fractionsStatus !== 'all' ? (
+        <span>{pt(`masterData.fractions.filters.status.${fractionsStatus}`)}</span>
+      ) : null}
+      {query ? (
+        <span>
+          {pt('filters.searchLabel')} · {query}
+        </span>
+      ) : null}
+    </>
+  );
+};
+
 export const WasteMasterDataFractionsTableSection = ({
   fractions,
   search,
-  page,
-  pageSize,
-  pageCount,
-  totalItems,
   sorting,
   sortingLabels,
   labels,
@@ -105,21 +122,19 @@ export const WasteMasterDataFractionsTableSection = ({
   onDraftFractionsStatusChange,
   onApplyFractionsStatus,
   onResetFractionsStatus,
-  onPageChange,
-  onPageSizeChange,
+  ...pagination
 }: WasteMasterDataFractionsTableSectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="[&>div]:rounded-none [&>div]:border-x-0">
       <WastePanelTableTopBar
-        actions={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
+        actions={
+          <Button type="button" onClick={onOpenCreateFraction}>
+            {pt('masterData.fractions.actions.openCreate')}
+          </Button>
+        }
         activeFilters={
-          <>
-            {fractionsStatus !== 'all' ? (
-              <span>{pt(`masterData.fractions.filters.status.${fractionsStatus}`)}</span>
-            ) : null}
-            {search?.q ? <span>{pt('filters.searchLabel')} · {search.q}</span> : null}
-          </>
+          <FractionFilterSummary fractionsStatus={fractionsStatus} query={search?.q} />
         }
       >
         <WasteFractionsFilterAction
@@ -159,15 +174,7 @@ export const WasteMasterDataFractionsTableSection = ({
           renderFractionRowActions(fraction, search, onOpenEditFraction, onRequestDeleteFraction)
         }
       />
-      <WastePanelTableBottomBar
-        pt={pt}
-        page={page}
-        pageSize={pageSize}
-        pageCount={pageCount}
-        totalItems={totalItems}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
-      />
+      <WastePanelTableBottomBar pt={pt} {...pagination} />
     </div>
   );
 };

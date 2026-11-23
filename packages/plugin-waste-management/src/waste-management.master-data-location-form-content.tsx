@@ -160,6 +160,7 @@ export const WasteMasterDataLocationFormContent = ({
     }
   });
 
+  const titleMode = mode === 'create' ? 'create' : 'edit';
   const saveLabel = saving
     ? pt('masterData.collectionLocations.actions.saving')
     : mode === 'create'
@@ -184,16 +185,8 @@ export const WasteMasterDataLocationFormContent = ({
   return (
     <div className="space-y-6">
       <StudioPageHeader
-        title={
-          mode === 'create'
-            ? pt('masterData.collectionLocations.dialog.createTitle')
-            : pt('masterData.collectionLocations.dialog.editTitle')
-        }
-        description={
-          mode === 'create'
-            ? pt('masterData.collectionLocations.dialog.createDescription')
-            : pt('masterData.collectionLocations.dialog.editDescription')
-        }
+        title={pt(`masterData.collectionLocations.dialog.${titleMode}Title`)}
+        description={pt(`masterData.collectionLocations.dialog.${titleMode}Description`)}
         actions={topActions}
       />
 

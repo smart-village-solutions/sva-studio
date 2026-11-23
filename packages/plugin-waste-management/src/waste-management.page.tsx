@@ -2,15 +2,8 @@ import { Activity, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
-import {
-  StudioErrorState,
-  StudioLoadingState,
-  StudioOverviewPageTemplate,
-} from '@sva/studio-ui-react';
-import {
-  normalizeWasteManagementSearchParams,
-  type WasteManagementSearchParams,
-} from './search-params.js';
+import { StudioErrorState, StudioLoadingState, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import { normalizeWasteManagementSearchParams } from './search-params.js';
 import {
   getWasteManagementSettings,
   getWasteMainserverSyncStatus,
@@ -20,31 +13,13 @@ import { WasteManagementMainserverSyncStatus } from './waste-management-sync-sta
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import {
-  toMasterDataTab,
+  updateWasteManagementSearch,
   useWasteManagementTabNavigation,
   useWasteManagementVisibleTabRedirect,
+  useWasteManagementTabsAccess,
 } from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
-const updateSearch = (
-  navigate: ReturnType<typeof useNavigate>,
-  currentSearch: WasteManagementSearchParams,
-  patch: Partial<WasteManagementSearchParams>
-) => {
-  const nextTab = patch.tab ?? currentSearch.tab;
-  const nextSearch = {
-    ...currentSearch,
-    ...patch,
-    masterDataTab: patch.masterDataTab ?? toMasterDataTab(nextTab) ?? currentSearch.masterDataTab,
-    page: patch.page ?? (patch.q !== undefined || patch.tab !== undefined ? 1 : currentSearch.page),
-  };
-
-  void navigate({
-    to: '/plugins/waste-management',
-    search: nextSearch,
-  });
-};
-
 const useWasteManagementCalendarWebUrl = (
   uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
@@ -176,6 +151,22 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
   return { error, loading, refresh, status };
 };
 
+const WasteManagementAccessStatus = ({
+  uiAccess,
+  pt,
+}: {
+  readonly uiAccess: ReturnType<typeof useWasteManagementUiAccess>;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+}) => {
+  if (uiAccess.hasError) {
+    return <StudioErrorState>{pt('page.accessUnavailable')}</StudioErrorState>;
+  }
+  if (!uiAccess.isResolved) {
+    return <StudioLoadingState>{pt('page.accessLoading')}</StudioLoadingState>;
+  }
+  return uiAccess.canRead ? null : <StudioErrorState>{pt('page.accessDenied')}</StudioErrorState>;
+};
+
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
@@ -190,23 +181,7 @@ export const WasteManagementPage = () => {
   const calendarWebUrl = useWasteManagementCalendarWebUrl(uiAccess);
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
   const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead);
-  const activeAccess = uiAccess.canRead ? uiAccess : null;
-  const [confirmedAccess, setConfirmedAccess] = useState(activeAccess);
-  if (
-    activeAccess !== confirmedAccess &&
-    (uiAccess.isResolved || uiAccess.contextKey !== confirmedAccess?.contextKey)
-  ) {
-    setConfirmedAccess(activeAccess);
-  }
-
-  const retainTourEditor =
-    !uiAccess.isResolved &&
-    search.tab === 'tours' &&
-    uiAccess.contextKey !== null &&
-    uiAccess.contextKey === confirmedAccess?.contextKey &&
-    confirmedAccess.canManageTours;
-  const tabsAccess = activeAccess ?? (retainTourEditor ? confirmedAccess : null);
-
+  const { activeAccess, tabsAccess } = useWasteManagementTabsAccess(uiAccess, search.tab);
   useWasteManagementVisibleTabRedirect(navigate, search, uiAccess);
 
   return (
@@ -238,13 +213,7 @@ export const WasteManagementPage = () => {
           {statusMessage ? <StatusNotice message={statusMessage} /> : null}
         </div>
       ) : null}
-      {uiAccess.hasError ? (
-        <StudioErrorState>{pt('page.accessUnavailable')}</StudioErrorState>
-      ) : uiAccess.isResolved && !uiAccess.canRead ? (
-        <StudioErrorState>{pt('page.accessDenied')}</StudioErrorState>
-      ) : !uiAccess.isResolved ? (
-        <StudioLoadingState>{pt('page.accessLoading')}</StudioLoadingState>
-      ) : null}
+      <WasteManagementAccessStatus uiAccess={uiAccess} pt={pt} />
       {tabsAccess ? (
         <div hidden={!activeAccess}>
           <Activity key={tabsAccess.contextKey} mode={activeAccess ? 'visible' : 'hidden'}>
@@ -256,7 +225,7 @@ export const WasteManagementPage = () => {
               visibleTabIds={tabsAccess.visibleTabIds}
               assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
               onTabChange={changeTab}
-              onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
+              onAddressSearchChange={(patch) => updateWasteManagementSearch(navigate, search, patch)}
             />
           </Activity>
         </div>

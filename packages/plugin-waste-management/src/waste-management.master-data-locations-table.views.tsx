@@ -1,6 +1,7 @@
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, StudioEmptyState } from '@sva/studio-ui-react';
+import { IconPlus as Plus, IconRoute, IconTrash } from '@tabler/icons-react';
+import { Button, Checkbox, StudioEmptyState, cn } from '@sva/studio-ui-react';
 import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 
 export const WasteMasterDataActiveTourBanner = ({
@@ -22,12 +23,7 @@ export const WasteMasterDataActiveTourBanner = ({
         {pt('masterData.locationsWorkspace.filters.activeTour')}
       </span>
       <span className="text-sm font-medium">{formatTourSelectionLabel(pt, selectedTour)}</span>
-      <Button
-        type="button"
-        size="sm"
-        variant="tertiary"
-        onClick={() => onTourFilterChange('')}
-      >
+      <Button type="button" size="sm" variant="tertiary" onClick={() => onTourFilterChange('')}>
         {pt('masterData.locationsWorkspace.filters.clearTour')}
       </Button>
     </div>
@@ -99,3 +95,50 @@ export const WasteMasterDataLocationsEmptyState = () => {
 
 export { WasteMasterDataLocationsTableToolbar } from './waste-management.master-data-locations-table.views.toolbar.js';
 export { WasteMasterDataLocationsRow } from './waste-management.master-data-locations-table.views.row.js';
+
+export const LocationTableActions = ({
+  selectedCollectionLocationsCount,
+  onOpenBulkAssignments,
+  onRequestDeleteSelected,
+  onOpenCreateLocation,
+}: {
+  readonly selectedCollectionLocationsCount: number;
+  readonly onOpenBulkAssignments: () => void;
+  readonly onRequestDeleteSelected: () => void;
+  readonly onOpenCreateLocation: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <>
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-11 rounded-md border-border/70 px-3"
+        disabled={selectedCollectionLocationsCount === 0}
+        onClick={onOpenBulkAssignments}
+      >
+        <IconRoute aria-hidden="true" className="h-4 w-4" />
+        {pt('masterData.collectionLocations.bulk.actions.openAssign', {
+          value: selectedCollectionLocationsCount,
+        })}
+      </Button>
+      <Button
+        type="button"
+        variant="tertiary"
+        className={cn(
+          'h-11 rounded-md border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
+          selectedCollectionLocationsCount === 0 && 'text-destructive/50'
+        )}
+        disabled={selectedCollectionLocationsCount === 0}
+        onClick={onRequestDeleteSelected}
+      >
+        <IconTrash aria-hidden="true" className="h-4 w-4" />
+        {pt('masterData.collectionLocations.bulk.actions.deleteSelected')}
+      </Button>
+      <Button type="button" onClick={onOpenCreateLocation}>
+        <Plus aria-hidden="true" className="h-4 w-4" />
+        {pt('masterData.locationsWorkspace.actions.createLocation')}
+      </Button>
+    </>
+  );
+};

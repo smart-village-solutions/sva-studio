@@ -23,7 +23,12 @@ const writeEmptyInstalledCatalog = (appRoot: string): void => {
 };
 
 const runArtifactCommand = (
-  command: 'selection' | 'write-manifest' | 'write-chunk-provenance' | 'prune-deploy',
+  command:
+    | 'selection'
+    | 'installed-plugin-fingerprint'
+    | 'write-manifest'
+    | 'write-chunk-provenance'
+    | 'prune-deploy',
   target: string,
   distribution: string,
   pluginIds?: string
@@ -365,6 +370,16 @@ describe('studio-distribution-artifact', () => {
       provenance.chunks.find((chunk: { path: string }) => chunk.path === 'server/_ssr/router.mjs')
         .pluginPackages
     ).toEqual(['@vendor/calendar', 'plugin-news']);
+
+    const fingerprint = (distribution: 'studio' | 'ssf') =>
+      runArtifactCommand('installed-plugin-fingerprint', appRoot, distribution)
+        .toString('utf8')
+        .trim();
+    const before = { studio: fingerprint('studio'), ssf: fingerprint('ssf') };
+    expect(before.studio).toMatch(/^[a-f0-9]{64}$/u);
+    writeFileSync(path.join(packageRoot, 'dist', 'browser.js'), 'export const changed = true;');
+    expect(fingerprint('studio')).not.toBe(before.studio);
+    expect(fingerprint('ssf')).toBe(before.ssf);
   });
 
   it('writes the attested manifest and removes SSF from a studio deploy tree', () => {

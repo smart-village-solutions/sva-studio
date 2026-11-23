@@ -17,7 +17,10 @@ import {
   getWorkspacePluginDescriptorCandidates,
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.js';
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.js';
-import { resolveInstalledPluginSources } from '../../apps/sva-studio-react/plugin-installed-inputs.vite.js';
+import {
+  fingerprintInstalledPluginSources,
+  resolveInstalledPluginSources,
+} from '../../apps/sva-studio-react/plugin-installed-inputs.sources.js';
 import {
   isInstalledPluginCatalogEntry,
   parsePluginCatalogConfig,
@@ -230,6 +233,11 @@ const targetPath = resolve(target ?? '');
 if (command === 'selection') {
   process.stdout.write(
     `${JSON.stringify({ distribution, pluginIds, pluginSetFingerprint: pluginSetFingerprint(pluginIds) })}\n`
+  );
+} else if (command === 'installed-plugin-fingerprint') {
+  assertDirectory(targetPath);
+  process.stdout.write(
+    `${fingerprintInstalledPluginSources(resolveInstalledPluginSources(targetPath, distribution, pluginIds))}\n`
   );
 } else if (command === 'write-manifest') {
   void writeManifest(targetPath, distribution, pluginIds).catch((error: unknown) => {

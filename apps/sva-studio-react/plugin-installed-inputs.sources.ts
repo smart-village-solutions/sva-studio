@@ -1,4 +1,5 @@
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { resolve } from 'node:path';
 import { definePluginManifest, satisfiesVersionRange, type PluginManifest } from '@sva/plugin-sdk';
@@ -181,4 +182,44 @@ export const resolveInstalledPluginSources = (
   return readCatalog(appRoot, distribution, selectedPluginIds).map((entry) =>
     resolveInstalledPluginSource(appRoot, distribution, dependencies, entry)
   );
+};
+
+const listPackageFiles = (packageRoot: string): string[] => {
+  const files: string[] = [];
+  const visitedDirectories = new Set<string>();
+  const walk = (directory: string): void => {
+    const realDirectory = realpathSync(directory);
+    if (visitedDirectories.has(realDirectory)) return;
+    visitedDirectories.add(realDirectory);
+    for (const name of readdirSync(directory)) {
+      const path = join(directory, name);
+      // Follows symlinks like the entry resolution does; dangling links are skipped.
+      const stats = statSync(path, { throwIfNoEntry: false });
+      if (stats?.isDirectory()) {
+        if (name !== 'node_modules' && !name.startsWith('.')) walk(path);
+      } else if (stats?.isFile()) {
+        files.push(relative(packageRoot, path).split(sep).join('/'));
+      }
+    }
+  };
+  walk(packageRoot);
+  return files.sort();
+};
+
+/**
+ * Content fingerprint of the resolved installed and linked plugin packages. Nx hashes only
+ * workspace files and lockfile versions, and a linked package keeps its lockfile entry when its
+ * files change, so the build target hashes this value as a runtime input. Dependencies of the
+ * package (`node_modules`) and dot-directories are not part of the package content.
+ */
+export const fingerprintInstalledPluginSources = (sources: readonly InstalledSource[]): string => {
+  const hash = createHash('sha256');
+  for (const source of sources) {
+    hash.update(`${source.catalog.sourceRef}\n`);
+    for (const file of listPackageFiles(source.packageRoot)) {
+      const content = createHash('sha256').update(readFileSync(join(source.packageRoot, file)));
+      hash.update(`${file}\0${content.digest('hex')}\n`);
+    }
+  }
+  return hash.digest('hex');
 };

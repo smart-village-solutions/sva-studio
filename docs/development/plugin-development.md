@@ -272,6 +272,11 @@ Lokal verlinktes Plugin außerhalb des Monorepos:
 4. Studio neu starten; der Host lädt Manifest und Descriptor-Entry, im Browser
    zusätzlich den Browser-Entry, aus dem verlinkten Package. Die Auflösung
    den im Manifest deklarierten Dateien des verlinkten Packages.
+5. `sva-studio-react:build` nimmt den Dateiinhalt der für das gewählte Profil aufgelösten
+   installierten und verlinkten Packages (ohne deren `node_modules` und Punktverzeichnisse)
+   als Nx-Runtime-Input in den Cache-Hash auf. Eine Änderung an Manifest oder gebündelten
+   Modulen eines verlinkten Packages erzwingt daher einen neuen Build, obwohl Lockfile und
+   Katalog unverändert bleiben. Builds ohne verlinkte Packages bleiben cachebar.
 
 ## Publish- und Installationsworkflow
 

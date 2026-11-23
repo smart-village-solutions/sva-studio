@@ -14,8 +14,9 @@
 
 ## 3. Nachweise und Dokumentation
 
-- [ ] PostgreSQL-Tests für Ablaufgrenze, gleiche Zeitstempel, Aktivierung gegen Abmeldung, laufenden und abgestürzten Dispatcher sowie wiederholten Widerruf ausführen.
-- [ ] Über alle gespeicherten Versandzustände prüfen, dass Adresskopien nach Ende des Abos entfernt sind. Abmeldelink wiederholen und anschließend denselben Hash vergeblich suchen.
-- [ ] Nachweisen, dass mehrere aktive Treffer möglich sind. Pending vor und nach DOI, abgemeldet, abgelaufen, anderer Mandant, unvollständige Adresse, direkter Request ohne Recht und Abbruch eines UI-Requests abdecken.
-- [ ] URL, Fehler, Logs und Telemetrie mit synthetischer Adresse und Digest prüfen. Den kombinierten Server-, UI-, Schema- und Berechtigungsnachweis auf den exakten Stand beziehen.
-- [ ] [Bausteinsicht](../../../docs/architecture/05-building-block-view.md), [Laufzeitsicht](../../../docs/architecture/06-runtime-view.md) und [Querschnittskonzepte](../../../docs/architecture/08-cross-cutting-concepts.md) beim bestehenden Monitoring- und Dispatchpfad aktualisieren.
+- [x] PostgreSQL-Tests für Ablaufgrenze, gleiche Zeitstempel, Aktivierung gegen Abmeldung, laufenden und abgestürzten Dispatcher sowie wiederholten Widerruf ausführen.
+- [x] Über alle gespeicherten Versandzustände prüfen, dass Adresskopien nach Ende des Abos entfernt sind. Abmeldelink wiederholen und anschließend denselben Hash vergeblich suchen.
+- [x] Nachweisen, dass mehrere aktive Treffer möglich sind. Pending vor und nach DOI, abgemeldet, abgelaufen, anderer Mandant, unvollständige Adresse, direkter Request ohne Recht und Abbruch eines UI-Requests abdecken.
+- [x] URL, API-Fehler und den lokalen Diagnosepuffer mit synthetischer Adresse und Digest prüfen.
+- [ ] In der Zielumgebung Anwendungslogs und Telemetrie mit einer autorisierten Testadresse und deren Digest prüfen. Den Nachweis auf den bereitgestellten Stand beziehen.
+- [x] [Bausteinsicht](../../../docs/architecture/05-building-block-view.md), [Laufzeitsicht](../../../docs/architecture/06-runtime-view.md) und [Querschnittskonzepte](../../../docs/architecture/08-cross-cutting-concepts.md) beim bestehenden Monitoring- und Dispatchpfad aktualisieren.

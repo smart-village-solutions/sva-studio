@@ -142,6 +142,55 @@ describe.skipIf(!databaseUrl)('Waste email address retention against PostgreSQL'
     });
   });
 
+  it.each(['activation', 'revocation'] as const)('keeps the address erased when %s locks the pending subscription first', async (first) => {
+    const now = testTimestamp();
+    const id = await createSubscription('pending', tomorrow());
+    const outboxId = await createOutbox(id, 'doi', 'pending', now);
+    const activate = (connection: PoolClient) =>
+      repositoryFor(connection).activateByDoiTokenHash({ tokenHash: `doi-${id}`, now });
+    const revoke = (connection: PoolClient) =>
+      repositoryFor(connection).unsubscribeByTokenHash({ tokenHash: `unsub-${id}`, now });
+    const activationFirst = first === 'activation';
+    const firstAction = activationFirst ? activate : revoke;
+    const secondAction = activationFirst ? revoke : activate;
+    const concurrentPid = (await concurrent.query('SELECT pg_backend_pid() AS pid')).rows[0]?.pid;
+
+    let secondResult: Promise<Awaited<ReturnType<typeof secondAction>>> | undefined;
+    await client.query('BEGIN');
+    try {
+      expect(await firstAction(client)).toMatchObject({
+        status: activationFirst ? 'activated' : 'unsubscribed',
+      });
+      secondResult = inTransaction(concurrent, () => secondAction(concurrent));
+      await vi.waitFor(async () => {
+        const result = await client.query(
+          'SELECT pg_backend_pid() = ANY(pg_blocking_pids($1)) AS blocked', [concurrentPid]
+        );
+        expect(result.rows[0]?.blocked).toBe(true);
+      });
+      await client.query('COMMIT');
+      expect(await secondResult).toMatchObject({
+        status: activationFirst ? 'unsubscribed' : 'invalid',
+      });
+    } finally {
+      await client.query('ROLLBACK');
+      await secondResult?.catch(() => undefined);
+    }
+
+    expect((await client.query(
+      `SELECT status, email, email_hash, location_label, activated_at IS NOT NULL AS was_activated
+       FROM waste_email_reminder_subscriptions WHERE id = $1`, [id]
+    )).rows).toEqual([{
+      status: 'unsubscribed', email: null, email_hash: null, location_label: '',
+      was_activated: activationFirst,
+    }]);
+    expect((await client.query(
+      'SELECT status, payload, leased_at, last_error FROM waste_email_reminder_outbox WHERE id = $1', [outboxId]
+    )).rows).toEqual([{
+      status: 'cancelled', payload: {}, leased_at: null, last_error: 'subscription_unsubscribed',
+    }]);
+  });
+
   it.each(['completed', 'rolled back'] as const)('serializes revoke and the %s dispatch claim', async (result) => {
     const now = testTimestamp();
     const id = await createSubscription('active', tomorrow());

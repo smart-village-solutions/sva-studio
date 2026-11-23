@@ -19,6 +19,7 @@ export const wasteManagementPluginTranslationsDESettings =
       selectedInterface: 'Schnittstelle',
       selectedInterfacePlaceholder: 'Schnittstelle auswählen',
       calendarWebUrl: 'Link zur Webversion',
+      calendarEmbedCode: 'Einbettungscode',
       holidayStateCode: 'Bundesland für Feiertage',
       holidayStateCodePlaceholder: 'Bundesland auswählen',
       customRecurrenceName: 'Name',
@@ -53,6 +54,7 @@ export const wasteManagementPluginTranslationsDESettings =
     },
     actions: {
       save: 'Einstellungen speichern',
+      copyCalendarEmbedCode: 'Code kopieren',
       saving: 'Speichert…',
       saved: 'Gespeichert',
       cancel: 'Abbrechen',
@@ -84,6 +86,8 @@ export const wasteManagementPluginTranslationsDESettings =
       calendarWebUrlDescription:
         'Tragen Sie hier den Link zur öffentlichen Webversion des Abfallkalenders ein. Er wird im Plugin als Verweis ausgegeben.',
       calendarWebUrlTitle: 'Link zur Webversion',
+      calendarEmbedCodeCopied: 'Einbettungscode kopiert.',
+      calendarEmbedCodeCopyFailed: 'Markieren und kopieren Sie den Einbettungscode im Textfeld.',
       holidayStateDescription:
         'Wählen Sie das Bundesland für die Feiertage aus und speichern Sie die Änderung, um den Feiertagsabgleich für die nächsten zehn Jahre auszulösen.',
       holidayStateOverwriteWarningTitle: 'Bestehende Feiertage überschreiben?',

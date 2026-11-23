@@ -8,6 +8,8 @@ Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonne
 
 ## Direkt in eine externe Website einbetten
 
+Im Studio steht der kopierbare Einbettungscode unter **Abfallkalender → Einstellungen → Link zur Webversion**, sobald dort eine Kalenderadresse gespeichert ist. Das Snippet lädt die Kalenderinstanz von der Domain dieser Adresse und öffnet die normale Adressauswahl.
+
 Die bestehende Kalenderoberfläche lässt sich ohne iframe mit einem div und einem JavaScript-Modul einbetten:
 
 ```html

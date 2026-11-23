@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import type { WasteCollectionLocationRecord, WasteFractionRecord } from '@sva/waste-management-contracts';
 import {
   createWasteEmailReminderRepository,
+  type WasteEmailReminderActiveSubscription,
   type WasteEmailReminderOutboxEntryInput,
   type WasteEmailReminderRepository,
-} from '@sva/waste-management-runtime/repositories';
+} from '../repositories.js';
 
+import type { WasteEmailReminderPlanningOrder } from '../repositories/email-reminders.js';
 import { buildMaterializedLocationTourPickupDates } from './waste-management-mainserver-sync.materialization.js';
 import {
   buildOperationSummary,
@@ -14,29 +17,19 @@ import {
 import {
   loadWasteEmailReminderSettings,
 } from './waste-management-email-reminder-config.server.js';
-import { loadMailTransportConfigs } from './waste-management-email-reminder-transport.server.js';
+import { buildReminderDispatchPayload } from './waste-management-email-reminder-dispatch.server.js';
 import {
   addDaysUtc,
-  buildDispatchMessage,
-  buildReminderDispatchPayload,
   createUtcIsoAtHour,
   groupReminderMembers,
   matchSelectionLocations,
   parseIsoDateUtc,
   reminderMemberDedupeKey,
   selectUnreservedReminderGroups,
-} from './waste-management-email-reminder-dispatch.server.js';
-import {
-  MAIL_TRANSPORT_NOT_AVAILABLE,
-  REMINDER_OUTCOME_UNKNOWN,
-} from '../repositories/email-reminders.outbox-dispatch.js';
+} from './waste-management-email-reminder-planning.js';
 import type { SqlClient, WasteManagementOperationRuntime, WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
 const DEFAULT_REMINDER_SEND_HOUR_UTC = 6;
-const DEFAULT_OUTBOX_RETRY_DELAY_MINUTES = 15;
-const DEFAULT_OUTBOX_MAX_ATTEMPTS = 5;
-const DEFAULT_OUTBOX_BATCH_SIZE = 25;
-const OUTBOX_DISPATCH_TIMEOUT_MS = 30_000;
 
 const scheduleReminder = async (
   repository: WasteEmailReminderRepository,
@@ -74,6 +67,78 @@ const withReminderPlanningLock = async <T>(client: SqlClient, work: () => Promis
     await client.query('ROLLBACK');
     throw error;
   }
+};
+
+type PickupDatesByLocationFraction = ReadonlyMap<
+  string,
+  readonly Readonly<{ pickupDate: string; hints: readonly string[] }>[]
+>;
+
+const planSubscriptionPickupDates = (
+  subscription: WasteEmailReminderActiveSubscription,
+  locations: readonly WasteCollectionLocationRecord[],
+  fractionById: ReadonlyMap<string, WasteFractionRecord>,
+  pickupsByLocationFraction: PickupDatesByLocationFraction
+) => {
+  let skippedPickupCount = 0;
+  const matchingLocations = matchSelectionLocations(locations, subscription);
+  if (matchingLocations.length === 0) {
+    return { planned: [], skippedPickupCount: subscription.items.length };
+  }
+
+  const planned: Array<Parameters<typeof groupReminderMembers>[0][number]> = [];
+  for (const item of subscription.items) {
+    const fraction = fractionById.get(item.fractionId);
+    const slot = fraction?.reminderConfig.email?.slots.find((candidate) => candidate.id === item.slotId);
+    if (!fraction || !slot) {
+      skippedPickupCount += 1;
+      continue;
+    }
+
+    const reminderHintsByDate = new Map<string, Set<string>>();
+    for (const location of matchingLocations) {
+      for (const pickup of pickupsByLocationFraction.get(`${location.id}::${fraction.id}`) ?? []) {
+        const hints = reminderHintsByDate.get(pickup.pickupDate) ?? new Set<string>();
+        for (const hint of pickup.hints) {
+          hints.add(hint.trim());
+        }
+        reminderHintsByDate.set(pickup.pickupDate, hints);
+      }
+    }
+
+    for (const [pickupDate, hints] of reminderHintsByDate) {
+      const pickupDateValue = parseIsoDateUtc(pickupDate);
+      const sendAtDate = addDaysUtc(pickupDateValue, -slot.defaultLeadDays);
+      planned.push({
+        subscriptionId: subscription.id,
+        pickupDate,
+        originalSendAt: createUtcIsoAtHour(sendAtDate, DEFAULT_REMINDER_SEND_HOUR_UTC),
+        fraction,
+        slotId: slot.id,
+        hints: [...hints],
+      });
+    }
+  }
+  return { planned, skippedPickupCount };
+};
+
+const collectReplaceableReminderKeys = (
+  existing: readonly WasteEmailReminderPlanningOrder[],
+  memberKeys: ReadonlySet<string>,
+  validDedupeKeys: Set<string>
+) => {
+  const replaceable = new Set<string>();
+  for (const order of existing) {
+    if (order.status !== 'pending') continue;
+    const members = order.memberKeys ?? [order.dedupeKey];
+    if (order.attemptCount === 0) {
+      replaceable.add(order.dedupeKey);
+      for (const member of members) replaceable.add(member);
+    } else if (members.some((member) => memberKeys.has(member))) {
+      validDedupeKeys.add(order.dedupeKey);
+    }
+  }
+  return replaceable;
 };
 
 export const createMaterializeEmailRemindersOperation = (
@@ -158,45 +223,14 @@ export const createMaterializeEmailRemindersOperation = (
     let skippedPickupCount = 0;
     const validDedupeKeys = new Set<string>();
     for (const subscription of subscriptions) {
-      const matchingLocations = matchSelectionLocations(locations, subscription);
-      if (matchingLocations.length === 0) {
-        skippedPickupCount += subscription.items.length;
-        continue;
-      }
-
-      const planned: Array<Parameters<typeof groupReminderMembers>[0][number]> = [];
-      for (const item of subscription.items) {
-        const fraction = fractionById.get(item.fractionId);
-        const slot = fraction?.reminderConfig.email?.slots.find((candidate) => candidate.id === item.slotId);
-        if (!fraction || !slot) {
-          skippedPickupCount += 1;
-          continue;
-        }
-
-        const reminderHintsByDate = new Map<string, Set<string>>();
-        for (const location of matchingLocations) {
-          for (const pickup of pickupsByLocationFraction.get(`${location.id}::${fraction.id}`) ?? []) {
-            const hints = reminderHintsByDate.get(pickup.pickupDate) ?? new Set<string>();
-            for (const hint of pickup.hints) {
-              hints.add(hint.trim());
-            }
-            reminderHintsByDate.set(pickup.pickupDate, hints);
-          }
-        }
-
-        for (const [pickupDate, hints] of reminderHintsByDate) {
-          const pickupDateValue = parseIsoDateUtc(pickupDate);
-          const sendAtDate = addDaysUtc(pickupDateValue, -slot.defaultLeadDays);
-          planned.push({
-            subscriptionId: subscription.id,
-            pickupDate,
-            originalSendAt: createUtcIsoAtHour(sendAtDate, DEFAULT_REMINDER_SEND_HOUR_UTC),
-            fraction,
-            slotId: slot.id,
-            hints: [...hints],
-          });
-        }
-      }
+      const plan = planSubscriptionPickupDates(
+        subscription,
+        locations,
+        fractionById,
+        pickupsByLocationFraction
+      );
+      skippedPickupCount += plan.skippedPickupCount;
+      const { planned } = plan;
       if (planned.length === 0) continue;
 
       const groups = groupReminderMembers(planned);
@@ -209,17 +243,7 @@ export const createMaterializeEmailRemindersOperation = (
         dedupeKeys: [...memberKeys, ...groups.map((group) => group.dedupeKey)],
       });
       if (!existing) continue;
-      const replaceable = new Set<string>();
-      for (const order of existing) {
-        if (order.status !== 'pending') continue;
-        const members = order.memberKeys ?? [order.dedupeKey];
-        if (order.attemptCount === 0) {
-          replaceable.add(order.dedupeKey);
-          for (const member of members) replaceable.add(member);
-        } else if (members.some((member) => memberKeys.has(member))) {
-          validDedupeKeys.add(order.dedupeKey);
-        }
-      }
+      const replaceable = collectReplaceableReminderKeys(existing, memberKeys, validDedupeKeys);
 
       const sendableGroups = selectUnreservedReminderGroups(groups, existing);
       duplicateOutboxCount += groups.length - sendableGroups.length;
@@ -281,186 +305,6 @@ export const createMaterializeEmailRemindersOperation = (
       cancelledOutboxCount,
     };
   }));
-
-  return buildOperationSummary(startedAt, details);
-};
-
-export const createProcessEmailReminderOutboxOperation = (
-  deps: WasteOperationRuntimeDeps
-): WasteManagementOperationRuntime['processEmailReminderOutbox'] => async (instanceId, input) => {
-  const startedAt = Date.now();
-  const reminderSettings = await loadWasteEmailReminderSettings(deps, instanceId);
-  if (!reminderSettings) {
-    return buildOperationSummary(startedAt, {
-      operation: 'process-email-reminder-outbox',
-      mode: 'skipped',
-      reason: 'email_reminders_disabled',
-      leasedCount: 0,
-      sentCount: 0,
-      retryScheduledCount: 0,
-      failedCount: 0,
-      batchSize: 0,
-    });
-  }
-
-  const referenceTime = input.referenceTime ? new Date(input.referenceTime) : deps.now?.() ?? new Date();
-  if (Number.isNaN(referenceTime.getTime())) {
-    throw new Error(`invalid_reference_time:${input.referenceTime}`);
-  }
-  const reminderConfig = reminderSettings.config;
-  const cleanup = await withWasteClient(deps, instanceId, async ({ client }) => {
-    const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
-    const expired = await reminderRepository.deleteExpiredPendingSubscriptions({
-      now: referenceTime.toISOString(),
-    });
-    const unresolvedReminderCount = await reminderRepository.markUnresolvedReminderDeliveries({
-      now: referenceTime.toISOString(),
-    });
-    return { ...expired, unresolvedReminderCount };
-  });
-  if (!reminderConfig.enabled) {
-    return buildOperationSummary(startedAt, {
-      operation: 'process-email-reminder-outbox',
-      mode: 'skipped',
-      reason: 'email_reminders_disabled',
-      leasedCount: 0,
-      sentCount: 0,
-      retryScheduledCount: 0,
-      failedCount: 0,
-      batchSize: 0,
-      ...cleanup,
-    });
-  }
-  if (!deps.dispatchMail) {
-    throw new Error('mail_dispatch_not_configured');
-  }
-  const shouldMaterialize = input.materialize === 'if-reminder-due'
-    ? await withWasteClient(deps, instanceId, async ({ client }) =>
-        createWasteEmailReminderRepository(createSqlExecutor(client)).hasDueReminderOutboxEntries({
-          now: referenceTime.toISOString(),
-        })
-      )
-    : input.materialize !== false;
-  if (shouldMaterialize) {
-    await createMaterializeEmailRemindersOperation(deps)(instanceId, {
-      operation: 'materialize-email-reminders',
-      referenceTime: referenceTime.toISOString(),
-    });
-  }
-  const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
-  if (transportConfigs.size === 0) {
-    throw new Error(`mail_transport_not_available:${reminderConfig.transportId}`);
-  }
-
-  const requestedBatchSize = input.maxBatchSize ?? DEFAULT_OUTBOX_BATCH_SIZE;
-  const transportBatchLimits = Array.from(transportConfigs.values()).map((transport) =>
-    Math.min(
-      transport.maxBatchSize ?? requestedBatchSize,
-      transport.rateLimitPerMinute ?? requestedBatchSize
-    )
-  );
-  const batchSize = Math.max(
-    1,
-    Math.min(
-      requestedBatchSize,
-      ...(transportBatchLimits.length > 0 ? transportBatchLimits : [requestedBatchSize])
-    )
-  );
-  const retryDelayMinutes = Math.max(1, input.retryDelayMinutes ?? DEFAULT_OUTBOX_RETRY_DELAY_MINUTES);
-  const maxAttempts = Math.max(1, input.maxAttempts ?? DEFAULT_OUTBOX_MAX_ATTEMPTS);
-
-  const details = await withWasteClient(deps, instanceId, async ({ client }) => {
-    const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
-    const leased = await reminderRepository.leaseDueOutboxEntries({
-      now: referenceTime.toISOString(),
-      limit: batchSize,
-    });
-
-    let sentCount = 0;
-    let retryScheduledCount = 0;
-    let failedCount = 0;
-    for (const entry of leased) {
-      const leasedAt = referenceTime.toISOString();
-      await client.query('BEGIN');
-      try {
-        await client.query("SET LOCAL idle_in_transaction_session_timeout = '45s'");
-        const dispatchClaimed = await reminderRepository.claimOutboxEntryForDispatch({
-          outboxId: entry.id,
-          leasedAt,
-        });
-        if (!dispatchClaimed) {
-          await client.query('COMMIT');
-          continue;
-        }
-        const transport = transportConfigs.get(entry.transportId);
-        const signal = AbortSignal.timeout(OUTBOX_DISPATCH_TIMEOUT_MS);
-        let failure: string | undefined;
-        let providerMessageId: string | undefined;
-        if (!transport?.enabled) {
-          failure = MAIL_TRANSPORT_NOT_AVAILABLE;
-        } else {
-          let invokingProvider = false;
-          try {
-            const message = buildDispatchMessage({ config: reminderConfig, transport, payload: entry.payload });
-            invokingProvider = true;
-            const result = await deps.dispatchMail!({
-              instanceId,
-              transport,
-              payload: entry.payload,
-              message,
-              signal,
-            });
-            providerMessageId = result.providerMessageId;
-          } catch {
-            failure = entry.messageKind === 'reminder' && invokingProvider
-              ? REMINDER_OUTCOME_UNKNOWN
-              : signal.aborted ? REMINDER_OUTCOME_UNKNOWN : 'mail_dispatch_failed';
-          }
-        }
-        if (failure) {
-          const retryable = entry.messageKind === 'reminder'
-            ? failure === MAIL_TRANSPORT_NOT_AVAILABLE
-            : failure !== REMINDER_OUTCOME_UNKNOWN;
-          const shouldRetry = retryable && entry.attemptCount < maxAttempts;
-          const recorded = await reminderRepository.markOutboxEntryFailed({
-            outboxId: entry.id,
-            now: leasedAt,
-            leasedAt,
-            errorMessage: failure,
-            ...(shouldRetry ? {
-              retryAt: new Date(referenceTime.getTime() + retryDelayMinutes * 60 * 1000).toISOString(),
-            } : {}),
-          });
-          if (recorded) {
-            if (shouldRetry) retryScheduledCount += 1;
-            else failedCount += 1;
-          }
-        } else if (await reminderRepository.markOutboxEntrySent({
-          outboxId: entry.id,
-          now: leasedAt,
-          leasedAt,
-          providerMessageId,
-        })) {
-          sentCount += 1;
-        }
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    }
-
-    return {
-      operation: 'process-email-reminder-outbox',
-      mode: 'executed',
-      leasedCount: leased.length,
-      sentCount,
-      retryScheduledCount,
-      failedCount,
-      batchSize,
-      ...cleanup,
-    };
-  });
 
   return buildOperationSummary(startedAt, details);
 };

@@ -113,10 +113,13 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
     }
   );
 
-  it('reserves a reminder after provider acceptance if the claim transaction rolls back', async () => {
+  it('reconciles only the accepted reminder after a crash and leaves the next reminder dispatchable', async () => {
     const subscriptionId = await createSubscription();
+    const waitingSubscriptionId = await createSubscription();
     const outboxId = randomUUID();
-    const leasedAt = '2027-01-03T06:00:00.000Z';
+    const waitingOutboxId = randomUUID();
+    const dueAt = '2027-01-03T06:00:00.000Z';
+    const leasedAt = '2027-01-03T06:01:00.000Z';
     const repository = createRepository();
     const payload = makePayload(subscriptionId, [
       `reminder:${subscriptionId}:member:first:2027-01-04`,
@@ -127,17 +130,34 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
       messageKind: 'reminder',
       transportId: 'smtp',
       templateKey: 'waste.email-reminder.reminder',
-      sendAt: leasedAt,
-      dedupeKey: `reminder-group:${subscriptionId}:2027-01-04:${leasedAt}`,
+      sendAt: dueAt,
+      dedupeKey: `reminder-group:${subscriptionId}:2027-01-04:${dueAt}`,
       payload: { ...payload, templatePayload: { fractionName: 'Biotonne, Papiertonne' } },
     });
-    expect((await repository.leaseDueOutboxEntries({ now: leasedAt, limit: 1 }))[0]?.id).toBe(
+    await repository.enqueueOutboxEntry({
+      id: waitingOutboxId,
+      subscriptionId: waitingSubscriptionId,
+      messageKind: 'reminder',
+      transportId: 'smtp',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt: '2027-01-03T06:00:30.000Z',
+      dedupeKey: waitingOutboxId,
+      payload: makePayload(waitingSubscriptionId),
+    });
+    const expired = '2027-01-03T07:00:00.000Z';
+    const nextWorker = createRepository(concurrent);
+    expect((await repository.leaseDueOutboxEntries({ now: leasedAt, leasedAt, limit: 1 }))[0]?.id).toBe(
       outboxId
     );
     let providerHandoffs = 0;
     await expect(
       inTransaction(client, async () => {
         expect(await repository.claimOutboxEntryForDispatch({ outboxId, leasedAt })).toBe(true);
+        expect(await nextWorker.markUnresolvedReminderDeliveries({ now: expired })).toBe(0);
+        expect((await concurrent.query(
+          'SELECT status, attempt_count, leased_at FROM waste_email_reminder_outbox WHERE id = $1',
+          [waitingOutboxId]
+        )).rows).toEqual([{ status: 'pending', attempt_count: 0, leased_at: null }]);
         providerHandoffs += 1;
         await repository.markOutboxEntrySent({
           outboxId,
@@ -148,8 +168,9 @@ describe.skipIf(!databaseUrl)('Email reminder outbox against PostgreSQL', () => 
         throw new Error('crash before commit');
       })
     ).rejects.toThrow('crash before commit');
-    const expired = '2027-01-03T07:00:00.000Z';
-    expect(await repository.markUnresolvedReminderDeliveries({ now: expired })).toBe(1);
+    expect(await nextWorker.markUnresolvedReminderDeliveries({ now: expired })).toBe(1);
+    expect((await nextWorker.leaseDueOutboxEntries({ now: expired, limit: 1 }))[0]?.id).toBe(waitingOutboxId);
+    await nextWorker.unsubscribeByTokenHash({ tokenHash: `unsub-${waitingSubscriptionId}`, now: expired });
     expect(await repository.leaseDueOutboxEntries({ now: expired, limit: 1 })).toEqual([]);
     expect(providerHandoffs).toBe(1);
     expect(

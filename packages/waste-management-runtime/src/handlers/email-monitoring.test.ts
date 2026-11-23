@@ -122,6 +122,10 @@ describe('email monitoring authorization', () => {
     { email: 'example.invalid' },
     { email: '@example.invalid' },
     { email: 'fixture@' },
+    { email: 'fixture@example.' },
+    { email: 'fixture@.invalid' },
+    { email: 'fixture@some where.invalid' },
+    { email: 'fixture@@example.invalid' },
     { email: 'fixture@example.invalid', status: 'pending' },
     { email: 'fixture@example.invalid', instanceId: 'tenant-b' },
   ])('rejects incomplete addresses and additional parameters before reading', async (query) => {

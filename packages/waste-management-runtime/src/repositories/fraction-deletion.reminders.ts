@@ -6,7 +6,7 @@ import type {
 } from '@sva/waste-management-contracts';
 import type { WasteMaterializationContext } from '../operations/waste-management-mainserver-sync.materialization.shared.js';
 import { buildMaterializedLocationTourPickupDates } from '../operations/waste-management-mainserver-sync.materialization.js';
-import { matchSelectionLocations } from '../operations/waste-management-email-reminder-dispatch.server.js';
+import { matchSelectionLocations } from '../operations/waste-management-email-reminder-planning.js';
 import { queryRows, type QueryClient } from './address-mutation-shared.js';
 import { REMINDER_OUTCOME_UNKNOWN } from './email-reminders.outbox-dispatch.js';
 type OutboxRow = Readonly<{

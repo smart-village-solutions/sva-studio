@@ -81,7 +81,7 @@ describe('mail runtime', () => {
   });
 
   it('never opens a transport if cancelled while resolving a password', async () => {
-    let releasePassword: (password: string) => void = () => {};
+    let releasePassword: (password: string) => void = () => undefined;
     const createTransport = vi.fn(() => ({ sendMail: vi.fn(async () => ({})) }));
     const dispatch = createNodemailerMailDispatcher({
       createTransport,

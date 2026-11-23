@@ -8,16 +8,18 @@ import type {
 } from '@sva/waste-management-contracts';
 
 import {
-  addDaysUtc,
   buildDispatchMessage,
   buildReminderDispatchPayload,
+} from './waste-management-email-reminder-dispatch.server';
+import {
+  addDaysUtc,
   createUtcIsoAtHour,
   groupReminderMembers,
   matchSelectionLocations,
   parseIsoDateUtc,
   reminderMemberDedupeKey,
   selectUnreservedReminderGroups,
-} from './waste-management-email-reminder-dispatch.server';
+} from './waste-management-email-reminder-planning';
 
 const createReminderConfig = (
   overrides: Partial<WasteManagementEmailReminderConfig> = {}

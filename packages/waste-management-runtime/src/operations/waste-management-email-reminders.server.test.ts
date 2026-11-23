@@ -50,6 +50,8 @@ const revealPostgresqlSecretConfig = (ciphertext: string | null | undefined): st
     ? JSON.stringify({ databaseUrl: 'postgres://waste:test@localhost:5432/waste' })
     : (ciphertext ?? undefined);
 
+const leaseInOrder = <T>(...entries: T[]) => vi.fn(async () => entries.splice(0, 1));
+
 describe('waste management operations runtime', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -66,10 +68,7 @@ describe('waste management operations runtime', () => {
   });
 
   it('renders reminder outbox entries into dispatchable mails', async () => {
-    const dispatchMail = vi.fn(async () => ({
-      providerMessageId: 'provider-1',
-    }));
-    const leaseDueOutboxEntries = vi.fn(async () => [
+    const leaseDueOutboxEntries = leaseInOrder(
       {
         id: 'outbox-1',
         subscriptionId: 'subscription-1',
@@ -126,7 +125,16 @@ describe('waste management operations runtime', () => {
         createdAt: '2026-06-14T06:00:00.000Z',
         updatedAt: '2026-06-14T06:00:00.000Z',
       },
-    ]);
+    );
+    const dispatchMail = vi.fn(async () => {
+      expect(leaseDueOutboxEntries).toHaveBeenCalledTimes(1);
+      expect(leaseDueOutboxEntries).toHaveBeenLastCalledWith({
+        now: '2026-06-15T06:00:00.000Z',
+        leasedAt: '2026-06-15T06:01:00.000Z',
+        limit: 1,
+      });
+      return { providerMessageId: 'provider-1' };
+    });
     const markOutboxEntrySent = vi.fn(async () => true);
     const listActiveSubscriptions = vi.fn(async () => []);
     const reminderRepository = {
@@ -164,7 +172,7 @@ describe('waste management operations runtime', () => {
         )
       ),
       dispatchMail,
-      now: () => new Date('2026-06-15T06:00:00.000Z'),
+      now: () => new Date('2026-06-15T06:01:00.000Z'),
     });
 
     const result = await runtime.processEmailReminderOutbox('instance-1', {
@@ -206,8 +214,8 @@ describe('waste management operations runtime', () => {
     });
     expect(markOutboxEntrySent).toHaveBeenCalledWith({
       outboxId: 'outbox-1',
-      now: '2026-06-15T06:00:00.000Z',
-      leasedAt: '2026-06-15T06:00:00.000Z',
+      now: '2026-06-15T06:01:00.000Z',
+      leasedAt: '2026-06-15T06:01:00.000Z',
       providerMessageId: 'provider-1',
     });
     expect(listActiveSubscriptions).not.toHaveBeenCalled();
@@ -227,14 +235,14 @@ describe('waste management operations runtime', () => {
     const markOutboxEntrySent = vi.fn();
     const markOutboxEntryFailed = vi.fn();
     const reminderRepository = {
-      leaseDueOutboxEntries: vi.fn(async () => [
+      leaseDueOutboxEntries: leaseInOrder(
         {
           id: 'outbox-cancelled',
           transportId: 'transport-smtp',
           attemptCount: 0,
           payload: {},
         },
-      ]),
+      ),
       claimOutboxEntryForDispatch,
       markOutboxEntrySent,
       markOutboxEntryFailed,
@@ -482,7 +490,7 @@ describe('waste management operations runtime', () => {
       throw new Error('fixture provider response lost');
     });
     const reminderRepository = {
-      leaseDueOutboxEntries: vi.fn(async () => [
+      leaseDueOutboxEntries: leaseInOrder(
         {
           id: 'outbox-retry',
           messageKind: 'reminder',
@@ -541,7 +549,7 @@ describe('waste management operations runtime', () => {
             metadata: {},
           },
         },
-      ]),
+      ),
       markOutboxEntrySent: vi.fn(async () => undefined),
       markOutboxEntryFailed,
     };
@@ -611,9 +619,10 @@ describe('waste management operations runtime', () => {
   });
 
   it('caps outbox leasing by the transport rate limit per minute', async () => {
-    const leaseDueOutboxEntries = vi.fn(async () => []);
+    const leaseDueOutboxEntries = vi.fn(async () => [{ id: 'outbox-fixture' }]);
     const reminderRepository = {
       leaseDueOutboxEntries,
+      claimOutboxEntryForDispatch: vi.fn(async () => false),
       markOutboxEntrySent: vi.fn(async () => undefined),
       markOutboxEntryFailed: vi.fn(async () => undefined),
     };
@@ -662,14 +671,16 @@ describe('waste management operations runtime', () => {
       maxBatchSize: 10,
     });
 
-    expect(leaseDueOutboxEntries).toHaveBeenCalledWith({
+    expect(leaseDueOutboxEntries).toHaveBeenCalledTimes(3);
+    expect(leaseDueOutboxEntries).toHaveBeenLastCalledWith({
       now: '2026-06-15T06:00:00.000Z',
-      limit: 3,
+      leasedAt: '2026-06-15T06:00:00.000Z',
+      limit: 1,
     });
     expect(result.details).toMatchObject({
       operation: 'process-email-reminder-outbox',
       batchSize: 3,
-      leasedCount: 0,
+      leasedCount: 3,
     });
   });
 
@@ -677,7 +688,7 @@ describe('waste management operations runtime', () => {
     const dispatchMail = vi.fn(async () => ({
       providerMessageId: 'provider-2',
     }));
-    const leaseDueOutboxEntries = vi.fn(async () => [
+    const leaseDueOutboxEntries = leaseInOrder(
       {
         id: 'outbox-legacy-transport',
         subscriptionId: 'subscription-1',
@@ -720,7 +731,7 @@ describe('waste management operations runtime', () => {
         createdAt: '2026-06-14T06:00:00.000Z',
         updatedAt: '2026-06-14T06:00:00.000Z',
       },
-    ]);
+    );
     const markOutboxEntrySent = vi.fn(async () => true);
     const reminderRepository = {
       leaseDueOutboxEntries,

@@ -1,7 +1,6 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type {
   WasteEmailReminderOutboxEntryInput,
-  WasteEmailReminderOutboxRefreshInput,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
 
@@ -71,7 +70,7 @@ RETURNING id;
 });
 
 const buildRefreshPendingOutboxStatement = (
-  input: WasteEmailReminderOutboxRefreshInput
+  input: Parameters<WasteEmailReminderRepository['refreshPendingOutboxEntry']>[0]
 ): SqlStatement => ({
   text: `
 WITH dispatchable_subscription AS MATERIALIZED (${dispatchableSubscription('$2', '$3')})

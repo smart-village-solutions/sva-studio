@@ -24,6 +24,7 @@ export const MAIL_TRANSPORT_NOT_AVAILABLE = 'mail_transport_not_available';
 
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
+  readonly leasedAt?: string;
   readonly limit: number;
 }): SqlStatement => ({
   text: `
@@ -41,7 +42,7 @@ WITH due AS (
       AND
       outbox.status = 'processing'
       AND outbox.leased_at IS NOT NULL
-      AND outbox.leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+      AND outbox.leased_at <= $3::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
     )
   )
   AND (
@@ -54,10 +55,10 @@ WITH due AS (
 )
 UPDATE waste_email_reminder_outbox AS outbox
 SET status = 'processing',
-    leased_at = $1::timestamptz,
+    leased_at = $3::timestamptz,
     attempt_count = outbox.attempt_count + 1,
     last_error = NULL,
-    updated_at = $1::timestamptz
+    updated_at = $3::timestamptz
 FROM due
 WHERE outbox.id = due.id
 RETURNING
@@ -70,7 +71,7 @@ RETURNING
   outbox.attempt_count,
   outbox.payload;
 `,
-  values: [input.now, input.limit],
+  values: [input.now, input.limit, input.leasedAt ?? input.now],
 });
 
 const buildClaimOutboxEntryForDispatchStatement = (input: {

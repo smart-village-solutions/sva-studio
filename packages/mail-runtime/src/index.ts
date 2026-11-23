@@ -139,7 +139,7 @@ const getAbortableSmtpSocket = (
 const withMailAbort = async <T>(signal: AbortSignal | undefined, send: () => Promise<T>): Promise<T> => {
   if (!signal) return send();
   signal.throwIfAborted();
-  let onAbort: () => void = () => {};
+  let onAbort: () => void = () => undefined;
   const aborted = new Promise<never>((_, reject) => {
     onAbort = () => reject(new Error('mail_dispatch_aborted'));
     signal.addEventListener('abort', onAbort, { once: true });

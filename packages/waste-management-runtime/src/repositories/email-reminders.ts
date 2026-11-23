@@ -102,8 +102,6 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
   payload: MailDispatchPayload;
 }>;
 
-export type WasteEmailReminderOutboxRefreshInput = Omit<WasteEmailReminderOutboxEntryInput, 'id'>;
-
 export type WasteEmailReminderPlanningOrder = Readonly<{
   dedupeKey: string;
   status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
@@ -135,7 +133,7 @@ export type WasteEmailReminderRepository = Readonly<{
   enqueueOutboxEntry: (
     input: WasteEmailReminderOutboxEntryInput
   ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
-  refreshPendingOutboxEntry: (input: WasteEmailReminderOutboxRefreshInput) => Promise<boolean>;
+  refreshPendingOutboxEntry: (input: Omit<WasteEmailReminderOutboxEntryInput, 'id'>) => Promise<boolean>;
   cancelInvalidReminderOutboxEntries: (input: {
     readonly validDedupeKeys: readonly string[];
     readonly now: string;
@@ -149,6 +147,7 @@ export type WasteEmailReminderRepository = Readonly<{
   markUnresolvedReminderDeliveries: (input: { readonly now: string }) => Promise<number>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
+    readonly leasedAt?: string;
     readonly limit: number;
   }) => Promise<readonly WasteEmailReminderOutboxLease[]>;
   claimOutboxEntryForDispatch: (input: {

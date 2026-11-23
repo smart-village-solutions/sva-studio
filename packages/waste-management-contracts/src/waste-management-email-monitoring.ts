@@ -1,7 +1,15 @@
 export const wasteEmailMonitoringPermission = 'waste-management.email-reminder-monitoring.read';
 
-export const isWasteReminderEmailAddress = (value: string): boolean =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value.trim());
+export const isWasteReminderEmailAddress = (value: string): boolean => {
+  const email = value.trim();
+  const atIndex = email.indexOf('@');
+  if (atIndex < 1 || email.indexOf('@', atIndex + 1) !== -1 || /\s/u.test(email)) {
+    return false;
+  }
+
+  const dotIndex = email.indexOf('.', atIndex + 2);
+  return dotIndex !== -1 && dotIndex < email.length - 1;
+};
 
 export type WasteEmailSubscriptionStatus = 'pending' | 'active' | 'unsubscribed' | 'expired';
 export type WasteEmailDeliveryStatus = 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
@@ -12,9 +20,10 @@ export type WasteEmailMonitoringQuery = Readonly<{
   subscriptionId?: string;
   deliveryPage: number;
 }>;
-export type WasteEmailMonitoringSearchQuery = Omit<WasteEmailMonitoringQuery, 'status'> & Readonly<{
-  email: string;
-}>;
+export type WasteEmailMonitoringSearchQuery = Omit<WasteEmailMonitoringQuery, 'status'> &
+  Readonly<{
+    email: string;
+  }>;
 export type WasteEmailSubscriptionSummary = Readonly<{
   id: string;
   maskedEmail: string;

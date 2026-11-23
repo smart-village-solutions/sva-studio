@@ -48,6 +48,33 @@ export type WasteEmailMonitoringLookup = WasteEmailMonitoringQuery & Readonly<{
 const subscriptionFilters = `($1::text IS NULL OR status = $1)
   AND ($2::text IS NULL OR (status = 'active' AND email_hash = $2))`;
 
+const loadWasteEmailDeliveryHistory = async (
+  executor: SqlExecutor,
+  subscriptionId: string,
+  { pageSize, deliveryPage }: WasteEmailMonitoringLookup
+) => {
+  const deliveryCount = await executor.execute<{ total: number }>({
+    text: 'SELECT COUNT(*)::int AS total FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid',
+    values: [subscriptionId],
+  });
+  const rows = await executor.execute<DeliveryRow>({
+    text: `SELECT id::text, message_kind AS kind, status,
+      to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt", to_char(send_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "scheduledAt", to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "sentAt",
+      attempt_count AS attempts, payload->'templatePayload'->>'fractionName' AS fraction,
+      payload->'metadata'->>'pickupDate' AS "pickupDate", last_error AS "lastError"
+      FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid
+      ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
+    values: [subscriptionId, pageSize, (deliveryPage - 1) * pageSize],
+  });
+  return {
+    deliveries: rows.rows.map(({ lastError, ...row }) => ({
+      ...row,
+      error: classifyWasteEmailError(lastError),
+    })),
+    deliveryTotal: deliveryCount.rows[0]?.total ?? 0,
+  };
+};
+
 export const loadWasteEmailMonitoring = async (
   executor: SqlExecutor,
   query: WasteEmailMonitoringLookup
@@ -96,30 +123,11 @@ export const loadWasteEmailMonitoring = async (
       ORDER BY s.created_at DESC, s.id DESC`,
     values: [...filters, query.pageSize, (query.page - 1) * query.pageSize],
   });
-  let deliveries: readonly WasteEmailDeliverySummary[] = [];
-  let deliveryTotal = 0;
-  if (query.subscriptionId && (
+  const deliveryHistory = query.subscriptionId && (
     !query.emailHash || subscriptions.rows.some((row) => row.id === query.subscriptionId)
-  )) {
-    const deliveryCount = await executor.execute<{ total: number }>({
-      text: 'SELECT COUNT(*)::int AS total FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid',
-      values: [query.subscriptionId],
-    });
-    deliveryTotal = deliveryCount.rows[0]?.total ?? 0;
-    const rows = await executor.execute<DeliveryRow>({
-      text: `SELECT id::text, message_kind AS kind, status,
-        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt", to_char(send_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "scheduledAt", to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "sentAt",
-        attempt_count AS attempts, payload->'templatePayload'->>'fractionName' AS fraction,
-        payload->'metadata'->>'pickupDate' AS "pickupDate", last_error AS "lastError"
-        FROM waste_email_reminder_outbox WHERE subscription_id = $1::uuid
-        ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
-      values: [query.subscriptionId, query.pageSize, (query.deliveryPage - 1) * query.pageSize],
-    });
-    deliveries = rows.rows.map(({ lastError, ...row }) => ({
-      ...row,
-      error: classifyWasteEmailError(lastError),
-    }));
-  }
+  )
+    ? await loadWasteEmailDeliveryHistory(executor, query.subscriptionId, query)
+    : { deliveries: [], deliveryTotal: 0 };
   return {
     subscriptions: subscriptions.rows.map(({ email, ...row }) => ({
       ...row,
@@ -127,7 +135,6 @@ export const loadWasteEmailMonitoring = async (
     })),
     total: count.rows[0]?.total ?? 0,
     activeTotal: count.rows[0]?.activeTotal ?? 0,
-    deliveries,
-    deliveryTotal,
+    ...deliveryHistory,
   };
 };

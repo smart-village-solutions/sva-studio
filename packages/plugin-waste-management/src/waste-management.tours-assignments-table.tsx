@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Checkbox } from '@sva/studio-ui-react';
 
@@ -47,9 +48,23 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const selectedLocationIdSet = new Set(props.selectedLocationIds);
   const sort = props.sortDirection === 'asc' ? 'ascending' : 'descending';
+  const tableGroup = useRef<HTMLDivElement>(null);
+  const toggledCheckbox = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const checkbox = toggledCheckbox.current;
+    toggledCheckbox.current = null;
+    if (
+      checkbox &&
+      !checkbox.isConnected &&
+      checkbox.ownerDocument.activeElement === checkbox.ownerDocument.body
+    ) {
+      tableGroup.current?.focus();
+    }
+  }, [props.locations]);
 
   return (
     <div
+      ref={tableGroup}
       role="group"
       aria-label={pt('tours.assignments.workspace.tableLabel')}
       tabIndex={0}
@@ -99,9 +114,13 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
                     value: location.label,
                   })}
                   checked={selectedLocationIdSet.has(location.id)}
-                  onChange={(event) =>
-                    props.onToggleLocation(location.id, event.currentTarget.checked)
-                  }
+                  onChange={(event) => {
+                    const checkbox = event.currentTarget;
+                    if (checkbox.ownerDocument.activeElement === checkbox) {
+                      toggledCheckbox.current = checkbox;
+                    }
+                    props.onToggleLocation(location.id, checkbox.checked);
+                  }}
                 />
               </td>
               {addressColumns.map(({ field, fallback }) => (

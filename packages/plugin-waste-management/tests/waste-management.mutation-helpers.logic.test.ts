@@ -19,6 +19,7 @@ const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() =>
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
+const getWasteManagementMasterDataOverviewMock = vi.hoisted(() => vi.fn());
 const submitWasteLocationTourLinksBulkInChunksMock = vi.hoisted(() => vi.fn(async () => undefined));
 const applySuccessMock = vi.hoisted(() =>
   vi.fn((close, setMessage, message, setOutcome) => {
@@ -60,6 +61,7 @@ vi.mock('../src/waste-management.api.js', () => ({
   updateWasteManagementLocationTourLink: (
     ...args: Parameters<typeof updateWasteManagementLocationTourLinkMock>
   ) => updateWasteManagementLocationTourLinkMock(...args),
+  getWasteManagementMasterDataOverview: getWasteManagementMasterDataOverviewMock,
 }));
 
 vi.mock('../src/waste-management.location-tour-links-bulk-client.js', () => ({
@@ -313,23 +315,24 @@ describe('waste-management mutation helper logic', () => {
     });
   });
 
-  it('updates assignment sets in edit mode via bulk create, delete and update operations', async () => {
+  it('confirms updated assignments through a fresh read after writes', async () => {
+    const initial = [
+      { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
+      { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },
+    ];
+    const confirmed = [initial[1], { id: 'link-3', locationId: 'location-3', tourId: 'tour-1' }];
     const state = {
-      masterDataOverview: {
-        locationTourLinks: [
-          { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
-          { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },
-        ],
-      },
+      masterDataOverview: { locationTourLinks: initial },
+      setMasterDataOverview: vi.fn(),
       setSaving: vi.fn(),
       setMessage: vi.fn(),
-      setAssignmentsDialogOpen: vi.fn(),
     };
-    const loadOverview = vi.fn(async () => undefined);
+    getWasteManagementMasterDataOverviewMock
+      .mockResolvedValueOnce(state.masterDataOverview)
+      .mockResolvedValueOnce({ locationTourLinks: confirmed });
     const handler = createToursAssignmentSubmitHandler({
       state: state as never,
       pt,
-      loadOverview,
     });
 
     await expect(
@@ -346,9 +349,45 @@ describe('waste-management mutation helper logic', () => {
     expect(submitWasteLocationTourLinksBulkInChunksMock).toHaveBeenCalledOnce();
     expect(deleteWasteManagementLocationTourLinkMock).toHaveBeenCalledExactlyOnceWith('link-1');
     expect(updateWasteManagementLocationTourLinkMock).not.toHaveBeenCalled();
+    expect(getWasteManagementMasterDataOverviewMock).toHaveBeenLastCalledWith({
+      scope: 'locations', fresh: true,
+    });
+    expect(state.setMasterDataOverview).toHaveBeenLastCalledWith({ locationTourLinks: confirmed });
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'success',
       text: 'tours.assignments.messages.updateSuccess',
     });
+  });
+
+  it('keeps the editor open on readback failure and deletes only the remaining link on retry', async () => {
+    const first = { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' };
+    const second = { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' };
+    const state = {
+      masterDataOverview: { locationTourLinks: [first, second] },
+      setMasterDataOverview: vi.fn(),
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+    };
+    getWasteManagementMasterDataOverviewMock
+      .mockResolvedValueOnce(state.masterDataOverview)
+      .mockRejectedValueOnce(new Error('readback unavailable'))
+      .mockResolvedValueOnce({ locationTourLinks: [second] })
+      .mockResolvedValueOnce({ locationTourLinks: [] });
+    deleteWasteManagementLocationTourLinkMock
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValueOnce(undefined);
+    const handler = createToursAssignmentSubmitHandler({ state: state as never, pt });
+    const changes = new Map([[first.locationId, false], [second.locationId, false]]);
+
+    await expect(handler('tour-1', changes, () => true)).resolves.toBe(false);
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'error',
+      text: 'tours.assignments.messages.saveError',
+    });
+    await expect(handler('tour-1', changes, () => true)).resolves.toBe(true);
+    expect(deleteWasteManagementLocationTourLinkMock.mock.calls).toEqual([
+      ['link-1'], ['link-2'], ['link-2'],
+    ]);
   });
 });

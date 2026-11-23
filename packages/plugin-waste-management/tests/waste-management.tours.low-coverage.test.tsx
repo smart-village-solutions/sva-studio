@@ -442,6 +442,46 @@ describe('waste-management tours low coverage views', () => {
     expect(onSubmit).toHaveBeenCalledWith(new Map(locations.map(({ id }) => [id, true])));
   });
 
+  it('keeps keyboard focus in the table when the selected row moves to an earlier page', () => {
+    const locations = Array.from({ length: 101 }, (_, index) => {
+      const id = String(index).padStart(3, '0');
+      return {
+        id,
+        label: id,
+        regionId: '',
+        regionName: '',
+        cityId: 'city',
+        cityName: 'Perleberg',
+        streetId: '',
+        streetName: '',
+        houseNumberId: '',
+        houseNumberName: '',
+      };
+    });
+    render(
+      <TourAssignmentsPage
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={locations}
+        saving={false}
+        message={null}
+        onBack={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'meta.pagination.next' }));
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'tours.assignments.workspace.selectLocation:{"value":"100"}',
+    });
+    checkbox.focus();
+
+    fireEvent.click(checkbox);
+
+    expect(checkbox.isConnected).toBe(false);
+    expect(document.activeElement).toBe(
+      screen.getByRole('group', { name: 'tours.assignments.workspace.tableLabel' })
+    );
+  });
+
   it('keeps assignment changes through an empty loading result for the same tour', () => {
     const locations = ['location-1', 'location-2'].map((id, index) => ({
       id,

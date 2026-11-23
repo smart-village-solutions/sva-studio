@@ -80,7 +80,6 @@ export const resolveAnnualCoverageStart = (
         )
       : regularWindowEnd;
 
-  if (nominalStart > windowEnd) return nominalStart;
-  if (first && first.date <= windowEnd) return startDate;
-  return first?.date ?? shiftIsoDate(windowEnd, 1);
+  if (first) return first.date <= windowEnd ? startDate : first.date;
+  return nominalStart > windowEnd ? nominalStart : shiftIsoDate(windowEnd, 1);
 };

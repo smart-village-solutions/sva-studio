@@ -135,6 +135,31 @@ describe('checkLocationFractionCoverage', () => {
     ]);
   });
 
+  it('ends the initial gap at the effective pickup when a late first pickup is postponed', () => {
+    const lateTour = {
+      ...tour('late-tour', ['paper'], '2027-01-20', '2027-12-31'),
+      recurrence: 'weekly' as const,
+    };
+    const tourDateShifts = [{
+      id: 'shift',
+      tourId: lateTour.id,
+      originalDate: '2027-01-20',
+      actualDate: '2027-01-25',
+      hasYear: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }];
+    expect(check(
+      [location('late')],
+      [lateTour],
+      [link('late-link', 'late', lateTour.id)],
+      false,
+      { ...emptySchedule, tourDateShifts }
+    )).toEqual([
+      { locationId: 'late', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-24' }] },
+    ]);
+  });
+
   it('reports a missing initial event when a recurring tour has no calculated start', () => {
     const missingStart = { ...tour('missing-start', ['paper'], undefined, '2027-12-31'), recurrence: 'biweekly' as const };
     expect(check(

@@ -7,6 +7,7 @@ const { Workbook } = ExcelJS;
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn());
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
+const getWasteManagementMasterDataOverviewMock = vi.hoisted(() => vi.fn());
 const getWasteManagementSchedulingOverviewMock = vi.hoisted(() =>
   vi.fn(async () => ({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] }))
 );
@@ -48,6 +49,7 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
     createWasteManagementLocationTourLink: createWasteManagementLocationTourLinkMock,
     createWasteManagementLocationTourLinksBulk: createWasteManagementLocationTourLinksBulkMock,
     deleteWasteManagementLocationTourLink: deleteWasteManagementLocationTourLinkMock,
+    getWasteManagementMasterDataOverview: getWasteManagementMasterDataOverviewMock,
     getWasteManagementSchedulingOverview: getWasteManagementSchedulingOverviewMock,
     updateWasteManagementLocationTourLink: updateWasteManagementLocationTourLinkMock,
   };
@@ -918,18 +920,23 @@ describe('waste management helper modules', () => {
   });
 
   it('reports assignment creation and forbidden writes to the detail page', async () => {
-    const loadOverview = vi.fn(async () => undefined);
     const state = {
       masterDataOverview: { locationTourLinks: [] },
+      setMasterDataOverview: vi.fn(),
       setSaving: vi.fn(),
       setMessage: vi.fn(),
     };
     const { onSubmitAssignments } = createWasteToursAssignmentMutationHandlers({
       state: state as never,
       pt: (key) => key,
-      loadOverview,
     });
     const changes = new Map([['location-1', true]]);
+    const persisted = { locationTourLinks: [{ locationId: 'location-1', tourId: 'tour-1' }] };
+    getWasteManagementMasterDataOverviewMock
+      .mockReset()
+      .mockResolvedValue(state.masterDataOverview)
+      .mockResolvedValueOnce(state.masterDataOverview)
+      .mockResolvedValueOnce(persisted);
     createWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
     await expect(onSubmitAssignments('tour-1', changes, () => true)).resolves.toBe(true);
     expect(createWasteManagementLocationTourLinkMock).toHaveBeenCalledWith({
@@ -937,7 +944,7 @@ describe('waste management helper modules', () => {
       locationId: 'location-1',
       tourId: 'tour-1',
     });
-    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setMasterDataOverview).toHaveBeenLastCalledWith(persisted);
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'success',
       text: 'tours.assignments.messages.createSuccess',
@@ -957,7 +964,6 @@ describe('waste management helper modules', () => {
   it.each([true, false])(
     'checks access after the first request when chunking tour assignment bulk creates (still allowed: %s)',
     async (accessRemainsValid) => {
-      const loadOverview = vi.fn(async () => undefined);
       const translate = (key: string) => key;
       const selectedLocationIds = Array.from(
         { length: 205 },
@@ -966,9 +972,18 @@ describe('waste management helper modules', () => {
       createWasteManagementLocationTourLinksBulkMock.mockClear();
       const chunkingState = {
         masterDataOverview: { locationTourLinks: [] },
+        setMasterDataOverview: vi.fn(),
         setSaving: vi.fn(),
         setMessage: vi.fn(),
       };
+      getWasteManagementMasterDataOverviewMock
+        .mockReset()
+        .mockResolvedValueOnce(chunkingState.masterDataOverview);
+      if (accessRemainsValid) {
+        getWasteManagementMasterDataOverviewMock.mockResolvedValueOnce({
+          locationTourLinks: selectedLocationIds.map((locationId) => ({ locationId, tourId: 'tour-1' })),
+        });
+      }
 
       let canContinue = true;
       createWasteManagementLocationTourLinksBulkMock.mockResolvedValue(undefined);
@@ -980,7 +995,6 @@ describe('waste management helper modules', () => {
       const handlers = createWasteToursAssignmentMutationHandlers({
         state: chunkingState as never,
         pt: translate,
-        loadOverview,
       });
 
       const saved = await handlers.onSubmitAssignments(
@@ -992,7 +1006,7 @@ describe('waste management helper modules', () => {
 
       if (!accessRemainsValid) {
         expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledOnce();
-        expect(loadOverview).not.toHaveBeenCalled();
+        expect(getWasteManagementMasterDataOverviewMock).toHaveBeenCalledOnce();
         expect(chunkingState.setMessage).toHaveBeenLastCalledWith({
           kind: 'error',
           text: 'tours.assignments.messages.saveForbidden',
@@ -1013,7 +1027,7 @@ describe('waste management helper modules', () => {
         locationIds: selectedLocationIds.slice(200),
         tourId: 'tour-1',
       });
-      expect(loadOverview).toHaveBeenCalledWith(true);
+      expect(getWasteManagementMasterDataOverviewMock).toHaveBeenCalledTimes(2);
     }
   );
 

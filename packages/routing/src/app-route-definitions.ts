@@ -12,7 +12,7 @@ export type UiRouteDefinition = {
   readonly guard?: AccountUiRouteGuardKey;
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
-  readonly requiredModuleId?: string;
+  readonly requiredModuleIds?: readonly string[];
   readonly requiredPermissions?: readonly string[];
 };
 
@@ -55,7 +55,7 @@ export const standardUiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'mediaUsage',
     path: uiRoutePaths.mediaUsage,
     guard: 'media',
-    requiredModuleId: 'media',
+    requiredModuleIds: ['media'],
     requiredPermissions: ['media.read'],
     documentation: page('media.usage', 'usage'),
   },
@@ -63,7 +63,7 @@ export const standardUiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'media',
     path: uiRoutePaths.media,
     guard: 'media',
-    requiredModuleId: 'media',
+    requiredModuleIds: ['media'],
     requiredPermissions: ['media.read'],
     documentation: page('media.overview', 'overview'),
   },
@@ -71,7 +71,7 @@ export const standardUiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'categories',
     path: uiRoutePaths.categories,
     guard: 'content',
-    requiredModuleId: 'categories',
+    requiredModuleIds: ['categories'],
     requiredPermissions: ['categories.read'],
     documentation: page('categories.overview', 'overview'),
   },

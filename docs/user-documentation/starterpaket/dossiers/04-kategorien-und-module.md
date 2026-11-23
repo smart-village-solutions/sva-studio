@@ -60,7 +60,7 @@ Vor einem Sammelauftrag werden die tatsächlich fehlenden oder veralteten Standa
 
 ## `mobile-app.configuration` – App-Konfiguration
 
-- **Route:** `/app-configuration`. Das Modul `app` muss in der Instanz zugewiesen sein.
+- **Route:** `/app-configuration`. Die Module `app` und `application-workspace` müssen der Instanz zugewiesen sein.
 - **App-Konfiguration:** Berechtigte können in der Seitenleiste **Anwendungen → App → App-Konfiguration** öffnen und dort eine JSON-Datei und die gewünschte Variante auswählen. Das erste Formular für `globalSettings` bearbeitet alternative Standortwahl und Zeilen für Service-Kacheltitel. „Im Mainserver speichern“ gleicht die Änderung direkt ab. Wenn sich der Stand geändert hat, zeigt Studio Ausgangswert, eigene Änderung und aktuellen Mainserver-Wert. Bei einem Konflikt ist pro Feld eine Auswahl notwendig. Die Dateiliste lässt sich ausdrücklich aktualisieren.
 - **Varianten verwalten:** Die gewählte Variante dient als Vorlage für eine vollständige Kopie. Eine leere Zielversion erzeugt eine unversionierte Variante. Studio prüft, ob die Zielversion bereits vorhanden ist. Dateien, deren Name sich beim Anlegen im Mainserver ändern würde, lassen sich derzeit nicht kopieren. Beim Löschen nennt der Dialog Datei, Version und ID. Die App kann danach eine andere Variante verwenden.
 - **Rechte für App-Konfiguration:** `application-workspace.settings.read` zum Lesen, zusätzlich `application-workspace.settings.update` zum Speichern und zusätzlich `integration.manage` zum Anlegen oder Löschen von Varianten.

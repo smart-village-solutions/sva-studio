@@ -1365,6 +1365,9 @@ describe('app.routes', () => {
     await expect(
       checkAccess('/app-configuration', ['application-workspace'], true)
     ).rejects.toBeDefined();
+    await expect(checkAccess('/app-configuration', ['app'], true)).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
     await expect(
       checkAccess('/app-configuration', ['app', 'application-workspace'])
     ).rejects.toBeDefined();

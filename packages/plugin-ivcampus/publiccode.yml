@@ -1,0 +1,37 @@
+publiccodeYmlVersion: '0'
+name: ivCampus
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Redaktionelle Aufgaben im SVA Studio direkt aus einem ivCampus-Teamraum öffnen.
+    longDescription: >-
+      Das Modul stellt eine Kachel für ivCampus bereit. Redaktionsmitglieder öffnen aus ihrem
+      Teamraum die bestehenden Studio-Formulare für eine neue Meldung oder Veranstaltung.
+      Die Widget-Adresse für die Einreichung bei ivCampus ist in der Modulübersicht erreichbar.
+    features:
+      - Direkter Einstieg in die Studio-Redaktion
+  en:
+    shortDescription: Open editorial tasks in SVA Studio directly from an ivCampus team room.
+    longDescription: >-
+      The module provides a widget for ivCampus. Editors can open the existing Studio forms
+      for a new news item or event from their team room. The module overview provides the
+      widget address for submission to ivCampus.
+    features:
+      - Direct access to Studio editorial tasks
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Smart Village Solutions
+      email: operations@smart-village.app
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - de
+    - en

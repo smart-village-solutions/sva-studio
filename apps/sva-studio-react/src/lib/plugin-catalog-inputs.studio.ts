@@ -92,6 +92,12 @@ const workspacePluginCatalogConfig = [
     enabled: true,
     sourceRef: 'packages/plugin-search',
   },
+  {
+    pluginId: 'ivcampus',
+    sourceType: 'workspace',
+    enabled: true,
+    sourceRef: 'packages/plugin-ivcampus',
+  },
 ] as const satisfies readonly StudioPluginCatalogConfigEntry[];
 
 export const pluginCatalogConfig = [

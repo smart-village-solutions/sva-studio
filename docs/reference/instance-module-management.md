@@ -41,6 +41,34 @@ Erwartetes Ergebnis:
 - die modulbezogenen Permissions, Systemrollen und `role_permissions` werden idempotent aufgebaut
 - die Detailansicht zeigt das Modul unter `zugewiesene Module`
 
+## ivCampus-Pilot in der Studio-Sandbox
+
+Das optionale Modul `ivcampus` wird der Staging-Instanz `de-studio-sandbox`
+zugewiesen. In der Mandantenansicht unter **Module → ivCampus → Einstellungen**
+können berechtigte Administratoren die Widget-URL für die Einreichung kopieren.
+
+Vor der Einreichung wird im [versionierten Staging-Profil](../../config/runtime/remote/staging.vars)
+unter `SVA_IVCAMPUS_PILOT_ORIGIN` die konkrete HTTPS-Origin des einbettenden Campus
+hinterlegt, beispielsweise `https://campus.example`. Raum-URLs mit Pfad sind
+dafür ungeeignet. Die öffentliche Widget-Route liefert nur auf dem
+Staging-Sandbox-Host und bei zugewiesenem Modul ein Dokument aus. Sie enthält
+ausschließlich die Links zum Anlegen von Meldungen und Veranstaltungen. Die
+Studio-Anmeldung und Berechtigungsprüfung finden im jeweils geöffneten Tab statt.
+
+Für die manuelle [Einreichung bei ivCampus](https://github.com/ivicos-GmbH/widget-sdk#dein-widget-einreichen)
+verwendet ein Manager oder Owner die Widget-ID
+`sva-studio-sandbox-app-redaktion`, den Namen **App-Redaktion**, Version `0.0.1`
+und die Platzierung **Raum**. Als Icon kann das bestehende Studio-Favicon unter
+`/favicon.ico` auf der Sandbox-Origin dienen. Die beiden Ziele liegen auf
+derselben Origin wie die Widget-URL.
+
+Nach der ivCampus-Freigabe wird im Test-Teamraum geprüft, ob beide Aktionen per
+Maus und Tastatur bedienbar sind, sich im neuen Tab öffnen und mit einem
+Redaktionskonto zum korrekten Formular führen. Zusätzlich wird geprüft, ob sich
+der Einstieg bei abgelaufener Studio-Sitzung nach der Anmeldung fortsetzen
+lässt. Wird das Modul entzogen oder die Staging-Origin entfernt, antwortet die
+Widget-Route mit HTTP 404.
+
 ## Module entziehen
 
 1. `Module` im Studio-Root öffnen.

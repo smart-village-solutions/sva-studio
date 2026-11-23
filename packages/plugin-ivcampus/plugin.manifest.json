@@ -1,0 +1,16 @@
+{
+  "pluginId": "ivcampus",
+  "manifestVersion": 1,
+  "extensionTier": "feature",
+  "tenantActivationPolicy": "optional",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1"
+  },
+  "entryPoints": {
+    "descriptor": "./dist/descriptor.js",
+    "browser": "./dist/index.js",
+    "server": "./dist/server.js"
+  }
+}

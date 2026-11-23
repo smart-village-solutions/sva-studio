@@ -1,5 +1,7 @@
 import type { PluginWorkerBootstrapLogger } from './plugin-worker-bootstrap-logging.server';
 
+export const ivCampusWidgetRoutePath = '/integrations/ivcampus/widget';
+
 export type WorkspaceContext = { readonly requestId?: string | null };
 export type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
 export type RouteDispatcher = (request: Request) => Promise<Response | null>;

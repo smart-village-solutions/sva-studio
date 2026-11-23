@@ -18,6 +18,7 @@ export const wasteManagementPluginTranslationsENSettings =
       selectedInterface: 'Interface',
       selectedInterfacePlaceholder: 'Select interface',
       calendarWebUrl: 'Web version link',
+      calendarEmbedCode: 'Embed code',
       holidayStateCode: 'Holiday state',
       holidayStateCodePlaceholder: 'Select state',
       customRecurrenceName: 'Name',
@@ -52,6 +53,7 @@ export const wasteManagementPluginTranslationsENSettings =
     },
     actions: {
       save: 'Save settings',
+      copyCalendarEmbedCode: 'Copy code',
       saving: 'Saving…',
       saved: 'Saved',
       cancel: 'Cancel',
@@ -82,6 +84,8 @@ export const wasteManagementPluginTranslationsENSettings =
       calendarWebUrlDescription:
         'Enter the public waste calendar web link here. It is rendered in the plugin as a shortcut.',
       calendarWebUrlTitle: 'Web version link',
+      calendarEmbedCodeCopied: 'Embed code copied.',
+      calendarEmbedCodeCopyFailed: 'Select and copy the embed code from the text field.',
       holidayStateDescription:
         'Choose the holiday state and save the change to trigger the holiday sync for the next ten years.',
       holidayStateOverwriteWarningTitle: 'Overwrite existing holidays?',

@@ -76,7 +76,12 @@ export const WasteSettingsForm = ({
           lastSuccessfulHolidaySyncAt={lastSuccessfulHolidaySyncAt}
           onChange={onChange}
         />
-        <WasteCalendarWebUrlSection form={form} saving={saving} onChange={onChange} />
+        <WasteCalendarWebUrlSection
+          form={form}
+          saving={saving}
+          onChange={onChange}
+          savedCalendarWebUrl={settings?.calendarWebUrl}
+        />
         <WasteDisruptionNotificationsSection form={form} saving={saving} onChange={onChange} />
         <WasteInterfaceSelectionSection
           form={form}

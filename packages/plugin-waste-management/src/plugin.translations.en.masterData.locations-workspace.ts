@@ -6,7 +6,9 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
     description:
       'Work in a Newcms-like mode with collection locations, tour filters and the geographic hierarchy in one place.',
     emptyTitle: 'No collection locations found',
-    emptyBody: 'Adjust the filters or create the first collection location.',
+    emptyBody: 'Create the first collection point.',
+    emptyFilteredTitle: 'No collection points match this search or filter selection',
+    emptyFilteredBody: 'Adjust your search or filters.',
     emptyRegions: 'No regions created yet.',
     emptyCities: 'No cities created yet.',
     emptyStreets: 'No streets created yet.',
@@ -105,6 +107,7 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       actions: 'Actions',
       selectAllRows: 'Select all rows in {{label}}',
       selectRow: 'Select row {{rowId}}',
+      showTours: 'Show {{count}} routes',
       noTours: 'No tours',
       regionUnavailable: 'No region',
       cityUnavailable: 'No city',

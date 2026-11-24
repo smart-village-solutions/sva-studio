@@ -17,6 +17,7 @@ export const WasteMasterDataLocationsTableSection = ({
   sortMode,
   sortDirection,
   onSort,
+  onResetFilters,
   onToggleSelectAll,
   onToggleLocation,
   onCopyLocation,
@@ -25,6 +26,7 @@ export const WasteMasterDataLocationsTableSection = ({
   onOpenEditTour,
 }: Pick<WasteMasterDataLocationsTableProps, 'sortMode' | 'sortDirection'> & {
   readonly onSort: WasteMasterDataLocationsTableProps['onApplyFilters'];
+  readonly onResetFilters?: WasteMasterDataLocationsTableProps['onResetFilters'];
   readonly collectionLocations: WasteMasterDataLocationsTableProps['collectionLocations'];
   readonly search: WasteMasterDataLocationsTableProps['search'];
   readonly allFilteredLocationsSelected: WasteMasterDataLocationsTableProps['allFilteredLocationsSelected'];
@@ -44,7 +46,18 @@ export const WasteMasterDataLocationsTableSection = ({
     !allFilteredLocationsSelected;
 
   if (!collectionLocations.length) {
-    return <WasteMasterDataLocationsEmptyState />;
+    const filtered = [
+      search?.q.trim(),
+      search?.status !== undefined && search.status !== 'all',
+      search?.regionId,
+      search?.cityId,
+      search?.locationStreetId,
+      search?.locationHouseNumberId,
+      search?.tourId,
+    ].some(Boolean);
+    return (
+      <WasteMasterDataLocationsEmptyState filtered={filtered} onResetFilters={onResetFilters} />
+    );
   }
 
   return (

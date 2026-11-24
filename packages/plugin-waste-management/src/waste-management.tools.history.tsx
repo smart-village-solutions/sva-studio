@@ -1,5 +1,8 @@
 import { usePluginTranslation, type StudioJobResponse } from '@sva/plugin-sdk';
-import { type WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
+import {
+  wasteManagementOperationsContract,
+  type WasteManagementHistoryOverview,
+} from '@sva/waste-management-contracts';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
@@ -9,6 +12,7 @@ import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.j
 import { WasteToolsHistoryDeleteDialog } from './waste-management.tools.history-delete-dialog.js';
 import { WasteToolsArtifactDownloads } from './waste-management.tools.artifact-downloads.js';
 import {
+  formatWasteJobPhase,
   isActiveImportJob,
   WasteToolsActiveImportProgress,
 } from './waste-management.tools.import-progress.js';
@@ -44,6 +48,19 @@ export const WasteToolsHistory = ({
         } as StudioJobResponse['data'])
       : null);
 
+  const statusLabel = displayedLastJob
+    ? pt(`tools.progress.jobStatuses.${displayedLastJob.status}`)
+    : pt('tools.meta.noJobStatus');
+  const phase =
+    displayedLastJob?.status === 'succeeded'
+      ? undefined
+      : formatWasteJobPhase(pt, displayedLastJob?.progress?.currentPhase);
+  const jobTypeId = displayedLastJob?.jobTypeId;
+  const jobTypeLabel =
+    jobTypeId && wasteManagementOperationsContract.isJobTypeId(jobTypeId)
+      ? pt(`tools.progress.jobTypes.${jobTypeId.replace('waste-management.', '')}`)
+      : pt('tools.meta.unknownJobType');
+
   return (
     <div className="space-y-4">
       <StudioJobSummaryCard
@@ -51,33 +68,19 @@ export const WasteToolsHistory = ({
         description={
           displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')
         }
-        statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
+        statusLabel={statusLabel}
         statusTone={toJobStatusTone(displayedLastJob?.status)}
         announcement={
           displayedLastJob
             ? pt('tools.meta.statusAnnouncement', {
-                status: pt(`tools.progress.jobStatuses.${displayedLastJob.status}`),
-                phase: displayedLastJob.progress?.currentPhase
-                  ? ` ${pt(`tools.progress.phases.${displayedLastJob.progress.currentPhase}`)}`
-                  : '',
+                status: statusLabel,
+                phase: phase ? ` ${phase}` : '',
               })
             : undefined
         }
         metadata={
           displayedLastJob
-            ? [
-                { id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: displayedLastJob.id },
-                {
-                  id: 'jobTypeId',
-                  label: pt('tools.meta.jobTypeLabel'),
-                  value: displayedLastJob.jobTypeId,
-                },
-                {
-                  id: 'jobStatus',
-                  label: pt('tools.meta.jobStatusLabel'),
-                  value: displayedLastJob.status,
-                },
-              ]
+            ? [{ id: 'jobType', label: pt('tools.meta.jobTypeLabel'), value: jobTypeLabel }]
             : undefined
         }
         actions={

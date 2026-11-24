@@ -63,53 +63,60 @@ const WasteLocationsRowTours = ({
   readonly onOpenEditTour?: (tourId: string) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const tourList = (
+    <div className="space-y-1">
+      {linkedTours.map((tour) => {
+        const period = formatTourDateRange(pt, tour);
+        const label = (
+          <>
+            <span>{tour.name}</span>
+            {period ? <span className="block text-xs text-muted-foreground">{period}</span> : null}
+          </>
+        );
+        return search ? (
+          <Button
+            key={tour.id}
+            asChild
+            variant="tertiary"
+            size="sm"
+            className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
+          >
+            <Link to="/plugins/waste-management" search={toWasteTourEditSearch(search, tour.id)}>
+              {label}
+            </Link>
+          </Button>
+        ) : onOpenEditTour ? (
+          <Button
+            key={tour.id}
+            type="button"
+            variant="tertiary"
+            size="sm"
+            className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
+            onClick={() => onOpenEditTour(tour.id)}
+          >
+            {label}
+          </Button>
+        ) : (
+          <p key={tour.id} className="text-sm">
+            {label}
+          </p>
+        );
+      })}
+    </div>
+  );
   return (
     <td className="px-3 py-3 align-top">
       {linkedTours.length ? (
-        <div className="space-y-1">
-          {linkedTours.map((tour) => {
-            const period = formatTourDateRange(pt, tour);
-            const label = (
-              <>
-                <span>{tour.name}</span>
-                {period ? (
-                  <span className="block text-xs text-muted-foreground">{period}</span>
-                ) : null}
-              </>
-            );
-            return search ? (
-              <Button
-                key={tour.id}
-                asChild
-                variant="tertiary"
-                size="sm"
-                className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
-              >
-                <Link
-                  to="/plugins/waste-management"
-                  search={toWasteTourEditSearch(search, tour.id)}
-                >
-                  {label}
-                </Link>
-              </Button>
-            ) : onOpenEditTour ? (
-              <Button
-                key={tour.id}
-                type="button"
-                variant="tertiary"
-                size="sm"
-                className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
-                onClick={() => onOpenEditTour(tour.id)}
-              >
-                {label}
-              </Button>
-            ) : (
-              <p key={tour.id} className="text-sm">
-                {label}
-              </p>
-            );
-          })}
-        </div>
+        linkedTours.length > 3 ? (
+          <details>
+            <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
+              {pt('masterData.locationsWorkspace.table.showTours', { count: linkedTours.length })}
+            </summary>
+            <div className="mt-2">{tourList}</div>
+          </details>
+        ) : (
+          tourList
+        )
       ) : (
         <span className="text-sm text-muted-foreground">
           {pt(

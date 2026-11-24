@@ -165,7 +165,7 @@ const executeLockedTransfer = async (input: {
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
-  markProviderWriteStarted: () => void;
+  markJournalMayExist: () => void;
   reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
   const observation = await observeTransferSource(input);
@@ -181,6 +181,7 @@ const executeLockedTransfer = async (input: {
     reconcilePreviousTransfer: input.reconcilePreviousTransfer,
   });
   if (reconciliationBlock) return withMutationNotApplied(reconciliationBlock);
+  input.markJournalMayExist();
   const source = await authorizeObservedTransferSource({
     actor: input.actor,
     route: input.route,
@@ -248,17 +249,15 @@ const executeLockedTransfer = async (input: {
     actor: input.actor,
     target: targetResolution.target,
     ownershipTransfer,
-    execute: () => {
-      input.markProviderWriteStarted();
-      return executeProviderTransfer({
+    execute: () =>
+      executeProviderTransfer({
         actor: input.actor,
         route: input.route,
         content: input.content,
         sourceDataProviderId,
         target: targetResolution.target,
         ownershipTransfer,
-      });
-    },
+      }),
   });
   if (failure) return failure;
   const response = json({
@@ -291,13 +290,13 @@ export const handleContentOwnershipTransfer = async (
   if (csrfError) return csrfError;
   const principal = await parseOwnershipTargetPrincipal(request);
   if (isResponse(principal)) return principal;
-  return runUnstartedOwnershipTransfer(actor, route, (markProviderWriteStarted) =>
+  return runUnstartedOwnershipTransfer(actor, route, (markJournalMayExist) =>
     executeLockedTransfer({
       actor,
       route,
       content,
       principal,
-      markProviderWriteStarted,
+      markJournalMayExist,
       ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
     })
   );

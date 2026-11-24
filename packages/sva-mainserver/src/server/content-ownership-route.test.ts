@@ -558,6 +558,21 @@ describe('Mainserver content ownership route', () => {
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
+  it('leaves failures after journaling eligible for reconciliation', async () => {
+    state.withTargetLock.mockRejectedValueOnce(new Error('target lock unavailable'));
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response?.status).toBe(500);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
+    expect(state.authorize).toHaveBeenCalledOnce();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
   it('blocks a second write while an earlier transfer needs reconciliation', async () => {
     state.hasUnresolvedTransfer.mockResolvedValueOnce(true);
 

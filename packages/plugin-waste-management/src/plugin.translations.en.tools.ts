@@ -1,5 +1,9 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
-import { wasteManagementJobStatusesEN } from './plugin.translations.tools-job-statuses.js';
+import {
+  wasteManagementJobPhasesEN,
+  wasteManagementJobStatusesEN,
+  wasteManagementJobTypesEN,
+} from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsENTools = createWasteManagementToolsTranslations({
   exports: {
@@ -213,28 +217,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     percentage: '{{value}}%',
     rows: '{{processed}} / {{total}} rows',
     updatedAt: 'Updated: {{value}}',
-    phases: {
-      'waste-management': {
-        'provision-database': 'Database is being provisioned',
-        'tenant-readiness': 'Database readiness is being checked',
-        'apply-migrations': 'Migrations are being applied',
-        'verify-access': 'Database access is being verified',
-        initialize: 'Data source is being initialized',
-        migrations: 'Migrations are running',
-        'import-preparation': 'Preparation in progress',
-        'import-running': 'Import run in progress',
-        'export-preparation': 'Export is being prepared',
-        'export-running': 'Export is running',
-        seed: 'Initial data is being loaded',
-        reset: 'Waste data is being reset',
-        'mainserver-sync': 'Mainserver synchronization is running',
-        'sync-waste-types': 'Waste types are being synchronized',
-        'enrich-postal-codes': 'Postal codes are being resolved',
-        'materialize-email-reminders': 'Email reminders are being created',
-        'process-email-reminder-outbox': 'Email reminders are being sent',
-        completed: 'Operation is being completed',
-      },
-    },
+    phases: wasteManagementJobPhasesEN,
     statuses: {
       queued: 'Import is being prepared',
       running: 'Import is being processed',
@@ -244,21 +227,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
       cancelled: 'Import cancelled',
     },
     jobStatuses: wasteManagementJobStatusesEN,
-    jobTypes: {
-      'provision-tenant-database': 'Provision tenant database',
-      'tenant-readiness': 'Check database readiness',
-      'initialize-data-source': 'Initialize data source',
-      'apply-migrations': 'Apply database migrations',
-      'import-data': 'Import data',
-      'export-data': 'Export data',
-      'seed-data': 'Load initial data',
-      'reset-data': 'Reset waste data',
-      'sync-mainserver': 'Synchronize with Mainserver',
-      'sync-waste-types': 'Synchronize waste types',
-      'materialize-email-reminders': 'Prepare email reminders',
-      'process-email-reminder-outbox': 'Send email reminders',
-      'enrich-postal-codes': 'Complete postal codes',
-    },
+    jobTypes: wasteManagementJobTypesEN,
     steps: {
       'prepare-import': 'Import is being prepared',
       'process-rows': 'Valid rows are being imported',

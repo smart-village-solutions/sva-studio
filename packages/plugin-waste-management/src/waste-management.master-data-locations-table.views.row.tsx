@@ -63,8 +63,9 @@ const WasteLocationsRowTours = ({
   readonly onOpenEditTour?: (tourId: string) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const emptyKey = locationYear || locationTourStatus ? 'noToursForFilters' : 'noTours';
   const tourList = (
-    <div className="space-y-1">
+    <div className={linkedTours.length > 3 ? 'mt-2 space-y-1' : 'space-y-1'}>
       {linkedTours.map((tour) => {
         const period = formatTourDateRange(pt, tour);
         const label = (
@@ -73,57 +74,49 @@ const WasteLocationsRowTours = ({
             {period ? <span className="block text-xs text-muted-foreground">{period}</span> : null}
           </>
         );
-        return search ? (
-          <Button
-            key={tour.id}
-            asChild
-            variant="tertiary"
-            size="sm"
-            className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
-          >
-            <Link to="/plugins/waste-management" search={toWasteTourEditSearch(search, tour.id)}>
+        if (!search && !onOpenEditTour) {
+          return (
+            <p key={tour.id} className="text-sm">
               {label}
-            </Link>
-          </Button>
-        ) : onOpenEditTour ? (
+            </p>
+          );
+        }
+        return (
           <Button
             key={tour.id}
-            type="button"
+            asChild={Boolean(search)}
+            type={search ? undefined : 'button'}
             variant="tertiary"
             size="sm"
             className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
-            onClick={() => onOpenEditTour(tour.id)}
+            onClick={search ? undefined : () => onOpenEditTour?.(tour.id)}
           >
-            {label}
+            {search ? (
+              <Link to="/plugins/waste-management" search={toWasteTourEditSearch(search, tour.id)}>
+                {label}
+              </Link>
+            ) : (
+              label
+            )}
           </Button>
-        ) : (
-          <p key={tour.id} className="text-sm">
-            {label}
-          </p>
         );
       })}
     </div>
   );
   return (
     <td className="px-3 py-3 align-top">
-      {linkedTours.length ? (
-        linkedTours.length > 3 ? (
-          <details>
-            <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
-              {pt('masterData.locationsWorkspace.table.showTours', { count: linkedTours.length })}
-            </summary>
-            <div className="mt-2">{tourList}</div>
-          </details>
-        ) : (
-          tourList
-        )
+      {linkedTours.length > 3 ? (
+        <details>
+          <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
+            {pt('masterData.locationsWorkspace.table.showTours', { count: linkedTours.length })}
+          </summary>
+          {tourList}
+        </details>
+      ) : linkedTours.length ? (
+        tourList
       ) : (
         <span className="text-sm text-muted-foreground">
-          {pt(
-            locationYear || locationTourStatus
-              ? 'masterData.locationsWorkspace.table.noToursForFilters'
-              : 'masterData.locationsWorkspace.table.noTours'
-          )}
+          {pt(`masterData.locationsWorkspace.table.${emptyKey}`)}
         </span>
       )}
     </td>

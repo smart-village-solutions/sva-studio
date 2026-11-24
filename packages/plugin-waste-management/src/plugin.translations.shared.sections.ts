@@ -248,19 +248,4 @@ export const createWasteManagementToolsTranslations = <
   const TCopy extends WasteManagementToolsCopy,
 >(
   copy: TCopy
-) =>
-  ({
-    tools: {
-      exports: copy.exports,
-      imports: copy.imports,
-      migrations: copy.migrations,
-      seed: copy.seed,
-      postalCodes: copy.postalCodes,
-      sync: copy.sync,
-      reset: copy.reset,
-      actions: copy.actions,
-      messages: copy.messages,
-      meta: copy.meta,
-      progress: copy.progress,
-    },
-  }) as const;
+) => ({ tools: copy }) as const;

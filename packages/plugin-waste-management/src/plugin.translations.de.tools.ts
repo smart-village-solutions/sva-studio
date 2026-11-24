@@ -1,5 +1,9 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
-import { wasteManagementJobStatusesDE } from './plugin.translations.tools-job-statuses.js';
+import {
+  wasteManagementJobPhasesDE,
+  wasteManagementJobStatusesDE,
+  wasteManagementJobTypesDE,
+} from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
   exports: {
@@ -219,28 +223,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     percentage: '{{value}} %',
     rows: '{{processed}} / {{total}} Zeilen',
     updatedAt: 'Zuletzt aktualisiert: {{value}}',
-    phases: {
-      'waste-management': {
-        'provision-database': 'Datenbank wird provisioniert',
-        'tenant-readiness': 'Datenbankbereitschaft wird geprüft',
-        'apply-migrations': 'Migrationen werden angewendet',
-        'verify-access': 'Datenbankzugriff wird geprüft',
-        initialize: 'Datenquelle wird initialisiert',
-        migrations: 'Migrationen werden ausgeführt',
-        'import-preparation': 'Vorbereitung läuft',
-        'import-running': 'Importlauf läuft',
-        'export-preparation': 'Export wird vorbereitet',
-        'export-running': 'Export läuft',
-        seed: 'Initialdaten werden geladen',
-        reset: 'Abfalldaten werden zurückgesetzt',
-        'mainserver-sync': 'Mainserver-Synchronisierung läuft',
-        'sync-waste-types': 'Abfallarten werden synchronisiert',
-        'enrich-postal-codes': 'Postleitzahlen werden ermittelt',
-        'materialize-email-reminders': 'E-Mail-Erinnerungen werden erstellt',
-        'process-email-reminder-outbox': 'E-Mail-Erinnerungen werden versendet',
-        completed: 'Vorgang wird abgeschlossen',
-      },
-    },
+    phases: wasteManagementJobPhasesDE,
     statuses: {
       queued: 'Import wird vorbereitet',
       running: 'Import wird verarbeitet',
@@ -250,21 +233,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       cancelled: 'Import abgebrochen',
     },
     jobStatuses: wasteManagementJobStatusesDE,
-    jobTypes: {
-      'provision-tenant-database': 'Mandantendatenbank bereitstellen',
-      'tenant-readiness': 'Datenbankbereitschaft prüfen',
-      'initialize-data-source': 'Datenquelle initialisieren',
-      'apply-migrations': 'Datenbankmigrationen anwenden',
-      'import-data': 'Fachdaten importieren',
-      'export-data': 'Fachdaten exportieren',
-      'seed-data': 'Initialdaten laden',
-      'reset-data': 'Abfalldaten zurücksetzen',
-      'sync-mainserver': 'Mit dem Mainserver abgleichen',
-      'sync-waste-types': 'Abfallarten synchronisieren',
-      'materialize-email-reminders': 'E-Mail-Erinnerungen erstellen',
-      'process-email-reminder-outbox': 'E-Mail-Erinnerungen versenden',
-      'enrich-postal-codes': 'Postleitzahlen ergänzen',
-    },
+    jobTypes: wasteManagementJobTypesDE,
     steps: {
       'prepare-import': 'Import wird vorbereitet',
       'process-rows': 'Gültige Zeilen werden importiert',

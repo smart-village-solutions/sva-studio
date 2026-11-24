@@ -43,6 +43,13 @@ export const WasteMasterDataLocationsTable = (props: WasteMasterDataLocationsTab
           sortMode={props.sortMode}
           sortDirection={props.sortDirection}
           onSort={props.onApplyFilters}
+          onResetFilters={
+            props.onResetFilters &&
+            (() => {
+              feedbackFocusFallbackRef.current?.focus();
+              props.onResetFilters?.();
+            })
+          }
           maps={maps}
           matchingSelectedLocationsCount={props.matchingSelectedLocationsCount}
           selectedLocationIds={props.selectedLocationIds}

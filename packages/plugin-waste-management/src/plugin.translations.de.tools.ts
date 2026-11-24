@@ -1,5 +1,9 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
-import { wasteManagementJobStatusesDE } from './plugin.translations.tools-job-statuses.js';
+import {
+  wasteManagementJobPhasesDE,
+  wasteManagementJobStatusesDE,
+  wasteManagementJobTypesDE,
+} from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
   exports: {
@@ -211,6 +215,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     jobIdLabel: 'Prozess',
     statusAnnouncement: 'Jobstatus: {{status}}.{{phase}}',
     jobTypeLabel: 'Typ',
+    unknownJobType: 'Technischer Vorgang',
     jobStatusLabel: 'Status',
   },
   progress: {
@@ -218,26 +223,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     percentage: '{{value}} %',
     rows: '{{processed}} / {{total}} Zeilen',
     updatedAt: 'Zuletzt aktualisiert: {{value}}',
-    phases: {
-      'waste-management.provision-database': 'Datenbank wird provisioniert',
-      'waste-management.tenant-readiness': 'Datenbankbereitschaft wird geprüft',
-      'waste-management.apply-migrations': 'Migrationen werden angewendet',
-      'waste-management.verify-access': 'Datenbankzugriff wird geprüft',
-      'waste-management.initialize': 'Datenquelle wird initialisiert',
-      'waste-management.migrations': 'Migrationen werden ausgeführt',
-      'waste-management.import-preparation': 'Vorbereitung läuft',
-      'waste-management.import-running': 'Importlauf läuft',
-      'waste-management.export-preparation': 'Export wird vorbereitet',
-      'waste-management.export-running': 'Export läuft',
-      'waste-management.seed': 'Initialdaten werden geladen',
-      'waste-management.reset': 'Abfalldaten werden zurückgesetzt',
-      'waste-management.mainserver-sync': 'Mainserver-Synchronisierung läuft',
-      'waste-management.sync-waste-types': 'Abfallarten werden synchronisiert',
-      'waste-management.enrich-postal-codes': 'Postleitzahlen werden ermittelt',
-      'waste-management.materialize-email-reminders': 'E-Mail-Erinnerungen werden erstellt',
-      'waste-management.process-email-reminder-outbox': 'E-Mail-Erinnerungen werden versendet',
-      'waste-management.completed': 'Vorgang wird abgeschlossen',
-    },
+    phases: wasteManagementJobPhasesDE,
     statuses: {
       queued: 'Import wird vorbereitet',
       running: 'Import wird verarbeitet',
@@ -247,6 +233,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       cancelled: 'Import abgebrochen',
     },
     jobStatuses: wasteManagementJobStatusesDE,
+    jobTypes: wasteManagementJobTypesDE,
     steps: {
       'prepare-import': 'Import wird vorbereitet',
       'process-rows': 'Gültige Zeilen werden importiert',

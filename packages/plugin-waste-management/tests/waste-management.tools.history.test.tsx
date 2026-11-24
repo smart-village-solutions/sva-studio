@@ -18,7 +18,14 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
-    values ? `${key}:${Object.values(values).join('|')}` : key,
+    values
+      ? `${key}:${Object.values(values).join('|')}`
+      : ((
+          {
+            'tools.progress.phases.waste-management.import-running': 'Import läuft',
+            'tools.progress.phases.waste-management.completed': 'Vorgang wird abgeschlossen',
+          } as Record<string, string>
+        )[key] ?? key),
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
@@ -169,11 +176,13 @@ describe('WasteToolsHistory', () => {
     );
 
     expect(screen.getByText('tools.meta.lastJobDescription')).toBeTruthy();
-    expect(screen.getByText('failed')).toBeTruthy();
+    expect(screen.getByText('tools.progress.jobStatuses.failed')).toBeTruthy();
     expect(screen.getByText('tone:failed')).toBeTruthy();
-    expect(screen.getByText('tools.meta.jobIdLabel:job-7')).toBeTruthy();
-    expect(screen.getByText('tools.meta.jobTypeLabel:waste-management.import-data')).toBeTruthy();
-    expect(screen.getByText('tools.meta.jobStatusLabel:failed')).toBeTruthy();
+    expect(screen.queryByText('tools.meta.jobIdLabel:job-7')).toBeNull();
+    expect(
+      screen.getByText('tools.meta.jobTypeLabel:tools.progress.jobTypes.import-data')
+    ).toBeTruthy();
+    expect(screen.queryByText('tools.meta.jobStatusLabel:failed')).toBeNull();
     expect(
       screen.getByText('overview.meta.occurredAt:formatted:2026-05-10T10:00:00.000Z')
     ).toBeTruthy();
@@ -218,8 +227,9 @@ describe('WasteToolsHistory', () => {
         lastJob={
           {
             id: 'reset-job-1',
-            jobTypeId: 'waste-management.reset',
+            jobTypeId: 'waste-management.reset-data',
             status: 'succeeded',
+            progress: { currentPhase: 'waste-management.completed' },
           } as never
         }
         technicalHistory={[]}
@@ -260,7 +270,7 @@ describe('WasteToolsHistory', () => {
     expect(progressBar.getAttribute('aria-valuenow')).toBe('50');
     expect(screen.getAllByText('tools.progress.steps.process-rows').length).toBeGreaterThan(0);
     expect(screen.getByText('tools.progress.rows:25|50')).toBeTruthy();
-    expect(screen.getByText('tools.progress.phases.waste-management.import-running')).toBeTruthy();
+    expect(screen.getByText('Import läuft')).toBeTruthy();
     expect(
       screen.getByText('tools.progress.updatedAt:formatted:2026-05-10T11:00:00.000Z')
     ).toBeTruthy();
@@ -429,8 +439,10 @@ describe('WasteToolsHistory', () => {
     );
 
     expect(screen.getByText('tools.meta.lastJobDescription')).toBeTruthy();
-    expect(screen.getByText('tools.meta.jobIdLabel:postal-job-1')).toBeTruthy();
-    expect(screen.getByText('tools.meta.jobStatusLabel:succeeded')).toBeTruthy();
+    expect(
+      screen.getByText('tools.meta.jobTypeLabel:tools.progress.jobTypes.enrich-postal-codes')
+    ).toBeTruthy();
+    expect(screen.getByText('tools.progress.jobStatuses.succeeded')).toBeTruthy();
   });
 
   it('preserves a cancelled job status after a page reload', () => {
@@ -454,7 +466,7 @@ describe('WasteToolsHistory', () => {
       />
     );
 
-    expect(screen.getByText('tools.meta.jobStatusLabel:cancelled')).toBeTruthy();
+    expect(screen.getByText('tools.progress.jobStatuses.cancelled')).toBeTruthy();
     expect(screen.getByText('tone:cancelled')).toBeTruthy();
   });
 });

@@ -58,10 +58,15 @@ const resolveImportProgressMessageKey = (job: StudioJobResponse['data']) => {
   return `tools.progress.statuses.${job.status}`;
 };
 
-const resolveImportProgressPhaseKey = (job: StudioJobResponse['data']) =>
-  job.progress?.currentPhase
-    ? `tools.progress.phases.${job.progress.currentPhase}`
-    : `tools.progress.statuses.${job.status}`;
+export const formatWasteJobPhase = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  phase?: string
+): string | undefined => {
+  if (!phase?.startsWith('waste-management.')) return undefined;
+  const key = `tools.progress.phases.${phase}`;
+  const label = pt(key);
+  return label === key || label === `wasteManagement.${key}` ? undefined : label;
+};
 
 const resolveImportProgressRows = (job: StudioJobResponse['data']) => {
   const structuredProgress = readStructuredRowProgress(job);
@@ -86,7 +91,9 @@ export const WasteToolsActiveImportProgress = ({
   const pt = usePluginTranslation('wasteManagement');
   const progressPercentage = resolveImportProgressPercentage(job);
   const progressMessageKey = resolveImportProgressMessageKey(job);
-  const progressPhaseKey = resolveImportProgressPhaseKey(job);
+  const progressPhase =
+    formatWasteJobPhase(pt, job.progress?.currentPhase) ??
+    pt(`tools.progress.statuses.${job.status}`);
   const rowProgress = resolveImportProgressRows(job);
 
   return (
@@ -97,7 +104,7 @@ export const WasteToolsActiveImportProgress = ({
             {pt('tools.progress.title')}
           </p>
           <p className="text-sm font-semibold text-foreground">{pt(progressMessageKey)}</p>
-          <p className="text-sm text-muted-foreground">{pt(progressPhaseKey)}</p>
+          <p className="text-sm text-muted-foreground">{progressPhase}</p>
         </div>
         <div className="rounded-full border border-border-subtle bg-card px-3 py-1 text-sm font-semibold text-foreground">
           {pt('tools.progress.percentage', { value: progressPercentage })}

@@ -84,14 +84,38 @@ export const WasteMasterDataLocationsHeader = ({
     </thead>
   );
 };
-export const WasteMasterDataLocationsEmptyState = () => {
+export const WasteMasterDataLocationsEmptyState = ({
+  filtered,
+  onResetFilters,
+}: {
+  readonly filtered: boolean;
+  readonly onResetFilters?: () => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="p-6">
       <StudioEmptyState>
         <div className="space-y-2 text-left">
-          <p className="font-medium">{pt('masterData.locationsWorkspace.emptyTitle')}</p>
-          <p>{pt('masterData.locationsWorkspace.emptyBody')}</p>
+          <p className="font-medium">
+            {pt(
+              filtered
+                ? 'masterData.locationsWorkspace.emptyFilteredTitle'
+                : 'masterData.locationsWorkspace.emptyTitle'
+            )}
+          </p>
+          {filtered && onResetFilters ? (
+            <Button type="button" variant="secondary" onClick={onResetFilters}>
+              {pt('filters.reset')}
+            </Button>
+          ) : (
+            <p>
+              {pt(
+                filtered
+                  ? 'masterData.locationsWorkspace.emptyFilteredBody'
+                  : 'masterData.locationsWorkspace.emptyBody'
+              )}
+            </p>
+          )}
         </div>
       </StudioEmptyState>
     </div>

@@ -1,6 +1,7 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useMemo, useState } from 'react';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { formatTourSelectionLabel } from './waste-management.tours.presentation.js';
 import { matchesLocationTourFilters } from './waste-management.master-data-locations-table.helpers.js';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 
@@ -117,6 +118,7 @@ const getFilterChips = (
   props: Pick<WasteMasterDataLocationsTableProps, 'onApplyFilters' | 'availableTours'>,
   pt: ReturnType<typeof usePluginTranslation>
 ) => {
+  const selectedTour = props.availableTours.find((tour) => tour.id === applied.tourId);
   return Object.entries({
     q: applied.q,
     status: applied.status === 'all' ? undefined : pt(`filters.status.${applied.status}`),
@@ -130,9 +132,7 @@ const getFilterChips = (
         ];
       })
     ),
-    tourId:
-      applied.tourId &&
-      (props.availableTours.find((tour) => tour.id === applied.tourId)?.name ?? applied.tourId),
+    tourId: selectedTour ? formatTourSelectionLabel(pt, selectedTour) : applied.tourId,
     locationYear:
       applied.locationYear &&
       `${pt('masterData.locationsWorkspace.filters.tourYear')} · ${applied.locationYear}`,

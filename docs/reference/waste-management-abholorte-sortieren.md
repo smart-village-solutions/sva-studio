@@ -18,7 +18,10 @@ Reihenfolge:
 Im Dialog **Filter** ergänzt die Adressreihenfolge mit Region dieses erste Kriterium.
 Die einzelnen Spalten Region, Ort, Straße, Hausnummer, Touren und Status sind
 über die Tabellenköpfe und die Feldauswahl im Dialog sortierbar. Die Spalte
-Touren sortiert nach der Zahl der angezeigten Zuordnungen einschließlich null.
+Touren sortiert nach der Zahl der angezeigten Zuordnungen einschließlich null. Bis zu drei
+Touren sind je Abholpunkt direkt sichtbar. Längere Listen lassen sich über
+die angezeigte Anzahl aufklappen. Dort stehen die Touren mit ihren
+Gültigkeitszeiträumen und Verknüpfungen zu den Tourdetails.
 Die gemeinsame Richtung gilt für alle fachlichen Kriterien. Die technische ID
 bleibt immer aufsteigend, damit ein Datensatz beim Blättern nicht zwischen
 Seiten wandert. Fehlende Region, Straße oder Hausnummer stehen in beiden
@@ -60,7 +63,10 @@ Die sechs Listen beginnen mit Suche oder Filter und den fachlichen Aktionen.
 Der mittig geöffnete Dialog bearbeitet einen Entwurf. **Filter anwenden**
 übernimmt ihn. **Abbrechen** und Escape lassen die Treffer unverändert.
 Angewandte Kriterien stehen unter der Bedienleiste und lassen sich einzeln
-entfernen. Sammelaktionen für markierte Einträge stehen bei der Auswahl.
+entfernen. Sammelaktionen für markierte Einträge stehen bei der Auswahl. Der
+aktive Tourfilter der Abholpunktliste zeigt auch den Gültigkeitszeitraum.
+Bei einer Suche oder Filterauswahl ohne Treffer lässt sich der Listenfilter
+direkt im Leerzustand zurücksetzen.
 
 Abfallarten sind auch über das PDF-Kürzel auffindbar. In den Stammdaten steuert
 der Datentyp die Elternauswahl. Ausweichtermine lassen sich zusätzlich nach Typ,

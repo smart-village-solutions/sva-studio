@@ -7,6 +7,9 @@ import {
   WasteMasterDataLocationsTableToolbar,
 } from '../src/waste-management.master-data-locations-table.views.js';
 
+import { WasteMasterDataLocationsTableSection } from '../src/waste-management.master-data-locations-table.section.js';
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
+
 const linkSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@tanstack/react-router', () => ({
@@ -143,6 +146,107 @@ describe('waste-management master-data location table views', () => {
         locationSortDirection: 'desc',
       })
     );
+  });
+
+  it('shows the applied route with the validity period of the selected record', () => {
+    const routes = [
+      { id: 'old', name: 'HM.2.2', firstDate: '2026-01-06', endDate: '2026-12-31' },
+      { id: 'next', name: 'HM.2.2', firstDate: '2027-01-05', endDate: '2027-12-31' },
+    ];
+    render(
+      <WasteMasterDataLocationsTableToolbar
+        {...({} as Parameters<typeof WasteMasterDataLocationsTableToolbar>[0])}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations', tourId: 'next' })}
+        regions={[]}
+        cities={[]}
+        streets={[]}
+        houseNumbers={[]}
+        availableTours={routes as never}
+        selectedCollectionLocationsCount={0}
+        allFilteredLocationsSelected={false}
+        sortMode="address"
+        sortDirection="asc"
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /HM\.2\.2.*05\.01\.2027.*31\.12\.2027/ })
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /HM\.2\.2.*2026/ })).toBeNull();
+  });
+
+  it('offers a reset for an empty filtered list and the create hint for an empty inventory', () => {
+    const onResetFilters = vi.fn();
+    const props = {
+      ...({} as Parameters<typeof WasteMasterDataLocationsTableSection>[0]),
+      collectionLocations: [],
+      selectedLocationIds: [],
+      onResetFilters,
+    };
+    const { rerender } = render(
+      <WasteMasterDataLocationsTableSection
+        {...props}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations', q: 'unmatched' })}
+      />
+    );
+    expect(screen.getByText('masterData.locationsWorkspace.emptyFilteredTitle')).toBeTruthy();
+    expect(screen.queryByText('masterData.locationsWorkspace.emptyBody')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
+    expect(onResetFilters).toHaveBeenCalledOnce();
+
+    rerender(
+      <WasteMasterDataLocationsTableSection
+        {...props}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations' })}
+      />
+    );
+    expect(screen.getByText('masterData.locationsWorkspace.emptyBody')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'filters.reset' })).toBeNull();
+  });
+
+  it('keeps long route lists collapsed and preserves the route links on expansion', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={
+              {
+                id: 'location-1',
+                cityId: 'city-1',
+                cityName: 'Abbendorf',
+                active: true,
+                tours: Array.from({ length: 4 }, (_, i) => ({
+                  id: `tour-${i}`,
+                  name: `Tour ${i}`,
+                  firstDate: '2027-01-05',
+                })),
+              } as never
+            }
+            search={normalizeWasteManagementSearchParams({ tab: 'locations' })}
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              toursById: new Map(),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn()}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+    const summary = screen.getByText(/showTours.*4/, { selector: 'summary' });
+    const disclosure = summary.closest('details');
+    expect(disclosure?.open).toBe(false);
+    fireEvent.click(summary);
+    expect(disclosure?.open).toBe(true);
+    expect(screen.getByRole('link', { name: /Tour 3.*05\.01\.2027/ })).toBeTruthy();
   });
 
   it('requests single-column server ordering and forwards select-all', () => {

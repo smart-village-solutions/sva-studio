@@ -1,3 +1,4 @@
+import type { IamContentListQuery } from '@sva/core';
 import {
   Button,
   StudioDataTable,
@@ -16,6 +17,13 @@ import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
 import { studioContentTypes } from '../../lib/plugins';
+import { transferRowId } from './-content-list-transfer';
+import {
+  ContentListTransferActions,
+  ContentListTransferResult,
+} from './-content-list-transfer-controls';
+import { useContentListTransfer } from './-content-list-transfer-state';
+import { ContentCategoryFilter } from './-content-category-filter';
 import { ContentTypeFilters } from './-content-type-filters';
 import {
   contentPagination,
@@ -106,6 +114,10 @@ const ContentListFilters = ({
   navigateSearch: (next: Partial<ContentListRouteState>) => void;
 }>) => (
   <>
+    <ContentCategoryFilter
+      value={routeState.categoryId}
+      onChange={(categoryId) => navigateSearch({ categoryId, page: 1 })}
+    />
     <ContentTypeFilters
       contentTypes={readableContentTypes}
       selectedType={routeState.type}
@@ -158,7 +170,59 @@ const ContentListFilters = ({
   </>
 );
 
+const ContentListFooter = ({
+  pagination,
+  isTotalFinal,
+  currentCount,
+  projectionSyncMessage,
+  navigateSearch,
+}: Readonly<{
+  pagination: ReturnType<typeof useContents>['pagination'];
+  isTotalFinal: boolean;
+  currentCount: number;
+  projectionSyncMessage: string | null;
+  navigateSearch: (next: Partial<ContentListRouteState>) => void;
+}>) => {
+  const safePage = Math.max(1, pagination.page);
+  const pageCount = Math.max(1, Math.ceil(pagination.total / Math.max(1, pagination.pageSize)));
+  return (
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
+        <Select
+          id="content-page-size"
+          value={String(pagination.pageSize)}
+          onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
+        >
+          {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
+            <option key={option} value={option}>
+              {String(option)}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex flex-col gap-2">
+        {!isTotalFinal ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
+          </p>
+        ) : null}
+        <ContentPaginationNav
+          page={safePage}
+          pageCount={pageCount}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          currentCount={currentCount}
+          isTotalFinal={isTotalFinal}
+          onPageChange={(page) => navigateSearch({ page })}
+        />
+      </div>
+    </div>
+  );
+};
+
 export const ContentListTable = ({
+  query,
   contentsApi,
   contentAccessApi,
   authSessionPending,
@@ -178,6 +242,7 @@ export const ContentListTable = ({
   navigateSearch,
   onRequestDelete,
 }: Readonly<{
+  query: IamContentListQuery;
   contentsApi: ReturnType<typeof useContents>;
   contentAccessApi: ReturnType<typeof useContentAccess>;
   authSessionPending: boolean;
@@ -197,6 +262,16 @@ export const ContentListTable = ({
   navigateSearch: (next: Partial<ContentListRouteState>) => void;
   onRequestDelete: (item: RegisteredContentRow) => void;
 }>) => {
+  const transferEnabled =
+    effectivePermissionActions.includes('content.transferOwnership') &&
+    enabledMainserverMutationActions.includes('content.transferOwnership');
+  const transfer = useContentListTransfer({
+    query,
+    registeredContents,
+    principalControl,
+    refetch: contentsApi.refetch,
+    enabled: transferEnabled,
+  });
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const contentColumns = useContentColumns({
@@ -207,13 +282,9 @@ export const ContentListTable = ({
   });
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
-  const safePage = Math.max(1, contentsApi.pagination.page);
-  const pageCount = Math.max(
-    1,
-    Math.ceil(contentsApi.pagination.total / Math.max(1, contentsApi.pagination.pageSize))
-  );
   return (
-    <section>
+    <section className="space-y-3">
+      <ContentListTransferResult transfer={transfer} enabled={transferEnabled} />
       <StudioDataTable
         ariaLabel={t('content.table.ariaLabel')}
         sorting={{
@@ -236,12 +307,13 @@ export const ContentListTable = ({
         }}
         labels={studioDataTableLabels}
         caption={t('content.table.caption')}
-        data={registeredContents}
+        data={transfer.tableRows}
         columns={contentColumns}
-        getRowId={(item) => item.id}
-        selectionMode={bulkActionButtons.length > 0 ? 'multiple' : 'none'}
-        canSelectRow={canSelectContent}
-        bulkActions={bulkActionButtons}
+        getRowId={transfer.active ? transferRowId : (item) => item.id}
+        selectionMode={transfer.active || bulkActionButtons.length > 0 ? 'multiple' : 'none'}
+        canSelectRow={transfer.active ? transfer.canSelectRow : canSelectContent}
+        bulkActions={transfer.active ? [] : bulkActionButtons}
+        selection={transfer.active ? transfer.selection : undefined}
         isLoading={
           contentsApi.isLoading ||
           contentAccessApi.isLoading ||
@@ -254,6 +326,17 @@ export const ContentListTable = ({
             <h3 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h3>
             <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
           </div>
+        }
+        toolbarStart={
+          <ContentListTransferActions
+            transfer={transfer}
+            enabled={transferEnabled}
+            canSelectAll={
+              !contentsApi.isLoading &&
+              !contentsApi.error &&
+              contentsApi.metadata?.isTotalFinal !== false
+            }
+          />
         }
         toolbarCenter={
           <ContentListFilters
@@ -286,40 +369,13 @@ export const ContentListTable = ({
           </div>
         }
         footer={
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
-              <Select
-                id="content-page-size"
-                value={String(contentsApi.pagination.pageSize)}
-                onChange={(event) =>
-                  navigateSearch({ page: 1, pageSize: Number(event.target.value) })
-                }
-              >
-                {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
-                  <option key={option} value={option}>
-                    {String(option)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
-              {contentsApi.metadata?.isTotalFinal === false ? (
-                <p className="text-sm text-muted-foreground" role="status">
-                  {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
-                </p>
-              ) : null}
-              <ContentPaginationNav
-                page={safePage}
-                pageCount={pageCount}
-                pageSize={contentsApi.pagination.pageSize}
-                total={contentsApi.pagination.total}
-                currentCount={registeredContents.length}
-                isTotalFinal={contentsApi.metadata?.isTotalFinal !== false}
-                onPageChange={(page) => navigateSearch({ page })}
-              />
-            </div>
-          </div>
+          <ContentListFooter
+            pagination={contentsApi.pagination}
+            isTotalFinal={contentsApi.metadata?.isTotalFinal !== false}
+            currentCount={registeredContents.length}
+            projectionSyncMessage={projectionSyncMessage}
+            navigateSearch={navigateSearch}
+          />
         }
         rowActions={(item) => (
           <ContentRowActions

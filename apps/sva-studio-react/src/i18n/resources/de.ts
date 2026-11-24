@@ -1,5 +1,6 @@
 import { accountDEResources } from './de/account.resources.js';
 import { adminDEResources } from './de/admin.resources.js';
+import { contentDEBatch } from './de/content.batch.resources.js';
 import { contentDEResources } from './de/content.resources.js';
 import { homeDEResources } from './de/home.resources.js';
 import { hostDEResources } from './de/host.resources.js';
@@ -16,7 +17,7 @@ import { studioTableDEResources } from './de/studioTable.resources.js';
 export const deResources = {
   account: accountDEResources,
   admin: adminDEResources,
-  content: contentDEResources,
+  content: { ...contentDEResources, batch: contentDEBatch },
   home: homeDEResources,
   host: hostDEResources,
   interfaces: interfacesDEResources,

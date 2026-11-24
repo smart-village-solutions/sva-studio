@@ -3,7 +3,7 @@ import { readNormalizedRouteState, updateRouteState } from './-content-list-rout
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
 import { deleteMainserverItem } from './-content-list-row-actions';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -138,6 +138,18 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       detailPath: '/admin/projects/$contentId',
     },
   ] as const,
+}));
+
+const listSelectionMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../lib/iam-api-content', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/iam-api-content')>()),
+  listContentSelection: listSelectionMock,
+}));
+
+vi.mock('@sva/plugin-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-categories')>()),
+  listCategories: async () => [{ id: '21', name: 'Kultur' }],
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -1225,6 +1237,69 @@ describe('ContentListPage', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('preserves transfer selections across pages, then excludes a row from all filtered hits', async () => {
+    useContentAccessMock.mockReturnValue({
+      access: { canCreate: false },
+      permissionActions: ['news.read', 'content.transferOwnership'],
+      isLoading: false,
+      error: null,
+    });
+    const item = (id: string) => ({
+      id, contentType: 'news.article', title: `Artikel ${id}`,
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-21T11:00:00.000Z',
+      historyRef: `mainserver:news:${id}`,
+      author: 'Redaktion', credentialSource: 'user', payload: {}, status: 'draft',
+    });
+    const setPage = (page: number, categoryId = '21') => {
+      searchState = { page, pageSize: 1, categoryId };
+      useContentsMock.mockReturnValue(createContentsApiResult({
+        contents: [item(String(page))],
+        pagination: { page, pageSize: 1, total: 3 },
+      }));
+    };
+    listSelectionMock.mockResolvedValue({ data: ['1', '2', '3'].map(item) });
+    setPage(1);
+    const renderPage = () => (
+      <ContentListPage enabledMainserverMutationActions={['content.transferOwnership']} />
+    );
+    const view = render(renderPage());
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    const row1 = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:1 auswählen' })[0];
+    if (!row1) throw new Error('Missing transfer checkbox for row 1');
+    fireEvent.click(row1);
+    expect(screen.getByText('Ausgewählt: 1')).toBeTruthy();
+    setPage(2);
+    view.rerender(renderPage());
+    expect(screen.getByText('Ausgewählt: 1')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alle übertragbaren Treffer auswählen' }));
+    await waitFor(() => expect(screen.getByText('Ausgewählt: 3')).toBeTruthy());
+    expect(listSelectionMock).toHaveBeenCalledWith(expect.objectContaining({ categoryId: '21' }));
+    const row2 = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:2 auswählen' })[0];
+    if (!row2) throw new Error('Missing transfer checkbox for row 2');
+    fireEvent.click(row2);
+    expect(screen.getByText('Ausgewählt: 2')).toBeTruthy();
+
+    setPage(1, '22');
+    view.rerender(renderPage());
+    expect(screen.queryByText('Ausgewählt: 2')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' })).toBeTruthy();
+
+    // Returning to a previous filter must still discard its original in-flight request.
+    let resolveSelection: (result: { data: ReturnType<typeof item>[] }) => void = () => undefined;
+    listSelectionMock.mockReturnValueOnce(new Promise((resolve) => { resolveSelection = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alle übertragbaren Treffer auswählen' }));
+    setPage(1, '21');
+    view.rerender(renderPage());
+    setPage(1, '22');
+    view.rerender(renderPage());
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    await act(async () => resolveSelection({ data: [item('3')] }));
+    expect(screen.getByText('Ausgewählt: 0')).toBeTruthy();
+  });
+
   it('hydrates host list controls from route search state and updates canonical params', () => {
     searchState = {
       filters: { status: 'archived' },
@@ -1794,7 +1869,7 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
-    let dialog = screen.getByRole('alertdialog', {
+    const dialog = screen.getByRole('alertdialog', {
       name: 'Ausgewählte Inhalte endgültig löschen?',
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));

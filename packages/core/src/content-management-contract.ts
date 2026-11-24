@@ -59,6 +59,7 @@ export type IamContentListQuery = {
   readonly type?: string;
   readonly languageCode?: string;
   readonly poiId?: string;
+  readonly categoryId?: string;
   readonly visibleTypes?: readonly string[];
   readonly status?: IamContentStatus;
   readonly sortBy: IamContentListSortField;

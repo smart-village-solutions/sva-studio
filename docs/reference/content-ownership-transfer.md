@@ -28,6 +28,14 @@ Die serverseitige Typmatrix begrenzt die Übertragung auf unterstützte Inhaltst
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
+## Mehrere Inhalte übertragen
+
+In der Studio-Inhaltsübersicht lässt sich die Liste nach einer direkt zugeordneten Mainserver-Kategorie filtern. Unterkategorien sind separat auswählbar. Der Filter prüft die ID der Zuordnung vor der Seiteneinteilung. Bei älteren Listenständen stehen neu projizierte Kategoriezuordnungen nach der nächsten Inhaltssynchronisierung zur Verfügung. Reine Namensangaben ohne eindeutigen Kategoriebezug werden nicht als Treffer gewertet.
+
+Wer über die Transferberechtigung verfügt, kann **Inhalte zur Übertragung auswählen** öffnen. Die Auswahl bleibt beim Blättern erhalten. **Alle übertragbaren Treffer auswählen** erfasst die gefilterte Liste über alle Seiten. Die Aktion benötigt einen vollständigen Listenstand. Einzelne Treffer lassen sich abwählen. Eine Änderung der Filter setzt die Auswahl zurück. Bei **Auswahl übertragen** werden die ausgewählten Inhalte festgeschrieben. Nach der Zielauswahl bestätigt der Benutzer die Übertragung.
+
+Studio zeigt das Ergebnis je Inhalt an. **Im Abgleich** umfasst unbestätigte Transfers und bestätigte Mainserver-Transfers mit offenem Studio-Nachlauf. **Status aktualisieren** liest das Transferjournal. Nach einem Neuladen im selben Browser-Tab kann **Auftrag fortsetzen** die noch nicht begonnenen Übertragungen ausführen. Bereits angestoßene Übertragungen werden anhand des Journals geprüft. Die auftragsbezogene Auswahl ist an das Browser-Tab, den Account, die Instanz und den Organisationskontext gebunden.
+
 ## Unterstützte Typen
 
 | Typ                                             | Anzeige im Studio | Transfer im Studio |

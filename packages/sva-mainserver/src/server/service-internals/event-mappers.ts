@@ -155,6 +155,7 @@ export const mapEventItemDetail = (
       ...(recurringInterval !== undefined ? { recurringInterval } : {}),
       recurringWeekdays: parsed.data.recurringWeekdays ?? [],
       ...(category ? { categoryName: category.name } : {}),
+      ...(category?.id ? { categoryId: category.id } : {}),
       categories,
       addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
       ...(location ? { location } : {}),

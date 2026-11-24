@@ -181,8 +181,10 @@ export const normalizeContentAdminResourceListSearch = (
     /^\d+$/.test(search.poiId.trim())
       ? search.poiId.trim()
       : '';
+  const categoryId = resource.resourceId === 'content' ? readSearchValue(search, 'categoryId') : undefined;
   return {
     ...normalized,
+    ...(categoryId && /^[A-Za-z0-9][A-Za-z0-9._:=-]{0,127}$/.test(categoryId) ? { categoryId } : {}),
     ...(contentType === '' ? {} : { type: contentType }),
     ...(languageCode === '' ? {} : { languageCode }),
     ...(poiId === '' ? {} : { poiId }),

@@ -5,6 +5,11 @@ import type {
   UpdateIamContentInput,
 } from '@sva/core';
 
+export type ContentSelectionItem = Pick<
+  IamContentListItem,
+  'id' | 'contentType' | 'title' | 'historyRef' | 'credentialSource'
+>;
+
 export type CreateContentPayload = CreateIamContentInput;
 
 export type UpdateContentPayload = UpdateIamContentInput;

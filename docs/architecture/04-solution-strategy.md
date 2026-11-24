@@ -290,7 +290,7 @@ eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht
 
 ### Ergänzung 2026-08: Expliziter Inhabertransfer
 
-Seit dem 16.11.2026 sind Mainserver-Inhaberwechsel vorübergehend serverseitig gesperrt: Der ersetzende Upstream-Schreibvertrag löscht ausgelassene Beziehungen. Der gefährliche Adapter ist entfernt; die Wiederfreigabe erfordert einen reinen Inhaberwechsel mit nachgewiesenem Erhalt aller Daten und Beziehungs-IDs. Details: [Inhaber von Inhalten übertragen](../reference/content-ownership-transfer.md).
+Der Mainserver-Inhaberwechsel nutzt die dedizierte Mutation `transferContentOwnership`. Sie aktualisiert die Zuordnung des DataProviders und erhält Inhaltsdaten und Beziehungs-IDs. Auch die stapelweise Übertragung aus der gefilterten Inhaltsübersicht führt diesen Vertrag pro Inhalt aus. Einzelheiten stehen unter [Inhaber von Inhalten übertragen](../reference/content-ownership-transfer.md).
 
 Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editorvertrag zeigt den frisch gelesenen Inhaber und wiederholt am Save, dass Bearbeitung keine Übertragung auslöst. Der Transfer löst Ziel-Principal, Credentials und DataProvider-Binding serverseitig auf und revalidiert sie unter Lock. Die Suche nach persönlichen Zielaccounts verwendet die tenantgebundene Keycloak-Suche und schneidet deren Ergebnisse serverseitig mit aktiven, nicht technischen lokalen Account-Projektionen derselben Instanz; verschlüsselte Studio-PII erhält keinen zusätzlichen Suchindex.
 

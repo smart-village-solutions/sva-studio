@@ -16,6 +16,7 @@ export type ContentListRouteState = Readonly<{
   pageSize: number;
   languageCode?: string;
   poiId?: string;
+  categoryId?: string;
   sort?: ContentListSortState;
 }>;
 type SortStateLike = Readonly<{
@@ -139,6 +140,9 @@ export const readNormalizedRouteState = (search: RouteSearchState): ContentListR
     page: normalizePositiveInteger(search.page, 1),
     pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
     ...(languageCode ? { languageCode } : {}),
+    ...(typeof search.categoryId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:=-]{0,127}$/.test(search.categoryId)
+      ? { categoryId: search.categoryId }
+      : {}),
     ...(type === 'vouchers.voucher' &&
     typeof search.poiId === 'string' &&
     /^\d+$/.test(search.poiId.trim())
@@ -152,6 +156,7 @@ const serializeRouteState = (state: ContentListRouteState): RouteSearchState => 
   ...(state.type !== 'all' ? { type: state.type } : {}),
   ...(state.type === 'faq.faq' && state.languageCode ? { languageCode: state.languageCode } : {}),
   ...(state.type === 'vouchers.voucher' && state.poiId ? { poiId: state.poiId } : {}),
+  ...(state.categoryId ? { categoryId: state.categoryId } : {}),
   ...(state.status !== 'all' ? { status: state.status } : {}),
   ...(state.sort ? { sortBy: state.sort.field, sortDirection: state.sort.direction } : {}),
   page: state.page,

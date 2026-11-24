@@ -41,6 +41,13 @@ describe('iam content list api shared helpers', () => {
     });
   });
 
+  it('accepts category IDs and rejects malformed filter parameters', () => {
+    expect(readContentListQuery(new Request('https://studio.test/api/content?categoryId=123')))
+      .toMatchObject({ categoryId: '123' });
+    expect(() => readContentListQuery(new Request('https://studio.test/api/content?categoryId=bad%20value')))
+      .toThrow();
+  });
+
   it('accepts a numeric POI filter only for vouchers', () => {
     expect(readContentListQuery(new Request('https://studio.test/api/content?type=vouchers.voucher&poiId=%2033394%20')))
       .toMatchObject({ type: 'vouchers.voucher', poiId: '33394' });

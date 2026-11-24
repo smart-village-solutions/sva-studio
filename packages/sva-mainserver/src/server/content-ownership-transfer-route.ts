@@ -1,4 +1,5 @@
 import {
+  loadMainserverMutationJournal,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -294,13 +295,25 @@ export const handleContentOwnershipTransfer = async (
     instanceId: actor.instanceId,
     contentType: route.contentType,
     contentId: route.contentId,
-    execute: () =>
-      executeLockedTransfer({
+    execute: async () => {
+      const previousOperation = await loadMainserverMutationJournal({
+        instanceId: actor.instanceId,
+        operationExternalId: actor.operationExternalId,
+      });
+      if (previousOperation) {
+        return errorJson(
+          409,
+          'content_transfer_operation_already_started',
+          'Diese Übertragung wurde bereits gestartet.'
+        );
+      }
+      return executeLockedTransfer({
         actor,
         route,
         content,
         principal,
         ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
-      }),
+      });
+    },
   });
 };

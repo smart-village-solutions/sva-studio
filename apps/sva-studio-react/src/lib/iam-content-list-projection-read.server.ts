@@ -84,7 +84,8 @@ export const loadProjectionPage = async (
   query: IamContentListQuery,
   rules: readonly ProjectionReadVisibilityRule[],
   actorAccountId: string | undefined,
-  activeOrganizationId: string | undefined
+  activeOrganizationId: string | undefined,
+  selection?: 'all'
 ): Promise<{ readonly items: readonly IamContentListItem[]; readonly total: number }> =>
   withInstanceScopedDb(instanceId, async (client) => {
     const target = {
@@ -112,6 +113,23 @@ export const loadProjectionPage = async (
       if (query.type === 'vouchers.voucher' && query.poiId) {
         params.push(query.poiId);
         conditions.push(`projection.payload_json ->> 'pointOfInterestId' = $${params.length}`);
+      }
+      if (query.categoryId) {
+        params.push(query.categoryId);
+        conditions.push(`(
+          projection.source_system = 'mainserver'
+          AND (
+            projection.payload_json ->> 'categoryId' = $${params.length}
+            OR EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(
+                CASE WHEN jsonb_typeof(projection.payload_json -> 'categories') = 'array'
+                  THEN projection.payload_json -> 'categories' ELSE '[]'::jsonb END
+              ) AS membership
+              WHERE membership ->> 'id' = $${params.length}
+            )
+          )
+        )`);
       }
       if (query.q && query.q.trim().length > 0) {
         params.push(`%${query.q.trim().toLowerCase()}%`);
@@ -201,7 +219,7 @@ WHERE ${conditions.join('\n  AND ')};
       );
       const offset = Math.max(0, (query.page - 1) * query.pageSize);
       return {
-        items: filteredRows.slice(offset, offset + query.pageSize).map(mapProjectionRow),
+        items: (selection === 'all' ? filteredRows : filteredRows.slice(offset, offset + query.pageSize)).map(mapProjectionRow),
         total: filteredRows.length,
       };
     });

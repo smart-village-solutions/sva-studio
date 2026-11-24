@@ -1,5 +1,4 @@
 import type { ContentJsonValue, IamContentAccessSummary, IamContentListItem } from '@sva/core';
-import type { EffectivePermission } from '@sva/iam-core';
 
 type MainserverDataProvider = Readonly<{
   id?: string;
@@ -11,6 +10,7 @@ type MainserverNewsItem = Readonly<{
   contentType: string;
   title?: string;
   contentBlocks?: readonly Readonly<{ title?: string }>[];
+  categories?: unknown;
   author: string;
   payload?: unknown;
   visible?: boolean;
@@ -26,6 +26,8 @@ type MainserverEventItem = Readonly<{
   title?: string;
   description?: string;
   categoryName?: string;
+  categoryId?: string;
+  categories?: unknown;
   dates?: unknown;
   addresses?: unknown;
   contacts?: unknown;
@@ -47,6 +49,8 @@ type MainserverPoiItem = Readonly<{
   active?: boolean;
   visible?: boolean;
   categoryName?: string;
+  categoryId?: string;
+  categories?: unknown;
   payload?: unknown;
   addresses?: unknown;
   contact?: unknown;
@@ -151,7 +155,7 @@ const deriveNamespacedAction = (
   return namespace ? `${namespace}.${action}` : null;
 };
 
-type PermissionView = Pick<EffectivePermission, 'action'>;
+type PermissionView = Readonly<{ action: string }>;
 
 const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
   permissions.some((permission) => permission.action === action);
@@ -211,7 +215,11 @@ export const mapNewsItem = (
   authorDisplayMode: 'organization',
   author: item.author,
   ...mapDataProviderProjection(item.dataProvider),
-  payload: toContentJsonValue(item.payload),
+  payload: toContentJsonValue(
+    Array.isArray(item.categories) && item.categories.length > 0
+      ? { ...(item.payload && typeof item.payload === 'object' ? item.payload : {}), categories: item.categories }
+      : item.payload
+  ),
   status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:news:${item.id}`,
@@ -238,6 +246,8 @@ export const mapEventItem = (
   payload: toContentJsonValue({
     description: item.description,
     categoryName: item.categoryName,
+    categoryId: item.categoryId,
+    categories: item.categories,
     dates: item.dates,
     addresses: item.addresses,
     contacts: item.contacts,
@@ -272,6 +282,8 @@ export const mapPoiItem = (
     mobileDescription: item.mobileDescription,
     active: item.active,
     categoryName: item.categoryName,
+    categoryId: item.categoryId,
+    categories: item.categories,
     payload: item.payload,
     addresses: item.addresses,
     contact: item.contact,

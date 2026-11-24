@@ -82,13 +82,16 @@ const handleProjectedContentList = async (request: Request): Promise<Response> =
     }
 
     try {
-      return await listProjectedContents(ctx, readContentListQuery(request));
+      const query = readContentListQuery(request);
+      return new URL(request.url).searchParams.get('selection') === 'all'
+        ? await listProjectedContents(ctx, query, 'all')
+        : await listProjectedContents(ctx, query);
     } catch (error) {
       if (error instanceof InvalidContentListQueryError) {
         return createListErrorResponse(
           400,
           'invalid_request',
-          'Ungültige Sortierparameter.',
+          'Ungültige Listenparameter.',
           getWorkspaceContext().requestId
         );
       }

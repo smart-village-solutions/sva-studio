@@ -87,6 +87,7 @@ export type SvaMainserverEventItem = {
   readonly recurringType?: number;
   readonly recurringInterval?: number;
   readonly recurringWeekdays: readonly number[];
+  readonly categoryId?: string;
   readonly categoryName?: string;
   readonly categories: readonly SvaMainserverCategory[];
   readonly addresses: readonly SvaMainserverAddress[];
@@ -158,6 +159,7 @@ export type SvaMainserverPoiItem = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly active: boolean;
+  readonly categoryId?: string;
   readonly categoryName?: string;
   readonly payload?: unknown;
   readonly categories: readonly SvaMainserverCategory[];

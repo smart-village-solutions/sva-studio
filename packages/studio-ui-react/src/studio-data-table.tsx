@@ -48,11 +48,13 @@ export function StudioDataTable<TData extends RowData>({
   isLoading = false,
   getRowId,
   selectionMode = 'multiple',
+  selection,
   canSelectRow,
   sorting: sortingConfig,
 }: StudioDataTableProps<TData>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [localRowSelection, setLocalRowSelection] = React.useState<RowSelectionState>({});
+  const rowSelection = selection?.state ?? localRowSelection;
   const selectedRowCount = Object.keys(rowSelection).length;
   const controlledSorting = sortingConfig.mode === 'disabled' ? undefined : sortingConfig.state;
   const sorting =
@@ -121,7 +123,7 @@ export function StudioDataTable<TData extends RowData>({
       data.filter((row) => (canSelectRow ? canSelectRow(row) : true)).map((row) => getRowId(row))
     );
 
-    setRowSelection((current) => {
+    setLocalRowSelection((current) => {
       let changed = false;
       const next: RowSelectionState = {};
 
@@ -138,8 +140,9 @@ export function StudioDataTable<TData extends RowData>({
   }, [canSelectRow, data, getRowId, isLoading, selectableScopeKey, selectionScopeKey]);
 
   const clearSelection = React.useCallback(() => {
-    setRowSelection({});
-  }, []);
+    if (selection) selection.onChange({});
+    else setLocalRowSelection({});
+  }, [selection]);
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((current: SortingState) => SortingState)) => {
@@ -180,7 +183,10 @@ export function StudioDataTable<TData extends RowData>({
         ? (row) => (canSelectRow ? canSelectRow(row.original) : true)
         : false,
     onSortingChange: handleSortingChange,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: (updater) => {
+      if (selection) selection.onChange(typeof updater === 'function' ? updater(rowSelection) : updater);
+      else setLocalRowSelection(updater);
+    },
     state: {
       sorting,
       rowSelection,

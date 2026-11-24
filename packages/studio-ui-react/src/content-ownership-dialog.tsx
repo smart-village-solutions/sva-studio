@@ -23,11 +23,12 @@ const TransferConfirmation = ({
   currentOwner,
   labels,
   state,
-}: DialogPartProps & Readonly<{ currentOwner: ContentOwnershipPanelOwner }>) =>
+}: DialogPartProps & Readonly<{ currentOwner?: ContentOwnershipPanelOwner }>) =>
   state.selected ? (
     <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <p className="font-medium">
-        {currentOwner.displayName} → {state.selected.displayName}
+        {currentOwner ? `${currentOwner.displayName} → ` : null}
+        {state.selected.displayName}
       </p>
       <p className="text-sm text-muted-foreground">{labels.authorEffect}</p>
       <p className="text-sm text-muted-foreground">{labels.accessWarning}</p>
@@ -53,7 +54,7 @@ export const ContentOwnershipDialog = ({
   state,
   onSuccess,
 }: Readonly<{
-  currentOwner: ContentOwnershipPanelOwner;
+  currentOwner?: ContentOwnershipPanelOwner;
   labels: ContentOwnershipPanelLabels;
   open: boolean;
   setOpen: (open: boolean) => void;

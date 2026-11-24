@@ -1,4 +1,4 @@
-import { Activity, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Activity, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
@@ -23,7 +23,10 @@ import {
   useWasteManagementTabsAccess,
 } from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import { WasteManagementPageTabs } from './waste-management.page.layout.js';
+import {
+  WasteManagementPageTabs,
+  useWasteWorkspaceLayout,
+} from './waste-management.page.layout.js';
 const useWasteManagementCalendarWebUrl = (
   uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
@@ -149,46 +152,6 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
   return { error, loading: !status && !error, refresh, status };
 };
 
-const useWasteWorkspaceLayout = (isActive: boolean) => {
-  const pageRef = useRef<HTMLDivElement>(null);
-  const tabsRef = useRef<HTMLDivElement | null>(null);
-  const lastFocus = useRef<HTMLElement | null>(null);
-  const [pageHeight, setPageHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    const page = pageRef.current;
-    if (!isActive || !page) return;
-    const measure = () => setPageHeight(page.getBoundingClientRect().height);
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(page);
-    return () => observer.disconnect();
-  }, [isActive]);
-
-  const restoreTabFocus = useCallback((tabs: HTMLDivElement | null) => {
-    if (!tabs) {
-      const previous = tabsRef.current;
-      const focused = previous?.ownerDocument.activeElement;
-      lastFocus.current =
-        focused instanceof HTMLElement && previous?.contains(focused) ? focused : null;
-    } else {
-      const focused = lastFocus.current;
-      if (
-        tabs.ownerDocument.activeElement === tabs.ownerDocument.body &&
-        focused &&
-        tabs.contains(focused)
-      ) {
-        focused.focus({ preventScroll: true });
-      }
-      lastFocus.current = null;
-    }
-    tabsRef.current = tabs;
-  }, []);
-
-  return { pageHeight, pageRef, restoreTabFocus };
-};
-
 const WasteManagementAccessStatus = ({
   uiAccess,
   pt,
@@ -208,11 +171,9 @@ const WasteManagementAccessStatus = ({
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
-  const rawSearch = useSearch({ strict: false });
-  const routeSearch = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
-  const locationKey = useLocation({
-    select: (location) => location.state.__TSR_key ?? location.href,
-  });
+  const rawSearch = useSearch({ strict: false }) as Record<string, unknown>;
+  const routeSearch = normalizeWasteManagementSearchParams(rawSearch);
+  const locationKey = useLocation({ select: ({ state, href }) => state.__TSR_key ?? href });
   const uiAccess = useWasteManagementUiAccess(routeSearch.tab);
   const { search, changeTab } = useWasteManagementTabNavigation(
     navigate,
@@ -225,71 +186,65 @@ export const WasteManagementPage = () => {
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
   const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead && !isAssignmentPage);
   const { activeAccess, tabsAccess } = useWasteManagementTabsAccess(uiAccess);
-  // A changed capability can invalidate an already-open confirmation or draft.
-  const workspaceKey = tabsAccess ? JSON.stringify(tabsAccess) : undefined;
-  const { pageHeight, pageRef, restoreTabFocus } = useWasteWorkspaceLayout(Boolean(activeAccess));
+  const { pageStyle, pageRef, restoreTabFocus } = useWasteWorkspaceLayout(
+    Boolean(activeAccess),
+    Boolean(tabsAccess),
+    uiAccess.hasError
+  );
   useWasteManagementVisibleTabRedirect(navigate, search, uiAccess);
 
-  const page = (
-    <StudioOverviewPageTemplate
-      title={pt(isAssignmentPage ? 'tours.assignments.title' : 'page.title')}
-      description={
-        isAssignmentPage ? undefined : (
-          <WasteManagementPageDescription
-            description={pt('page.description')}
-            calendarWebUrl={uiAccess.canRead ? calendarWebUrl : null}
-            webVersionLead={pt('page.webVersionLead')}
-            webVersionLinkLabel={pt('page.webVersionLinkLabel')}
-          />
-        )
-      }
-    >
-      {activeAccess && !isAssignmentPage ? (
-        <div className="mb-6 space-y-3">
-          <WasteManagementMainserverSyncStatus
-            canOpenJobDetails={uiAccess.canOpenJobDetails}
-            canRunMainserverSync={uiAccess.canRunMainserverSync}
-            error={syncStatus.error}
-            loading={syncStatus.loading}
-            onStartSync={() => startSync(syncStatus.refresh)}
-            pt={pt}
-            starting={syncRunning}
-            status={syncStatus.status}
-          />
-          {statusMessage ? <StatusNotice message={statusMessage} /> : null}
-        </div>
-      ) : null}
-      <WasteManagementAccessStatus uiAccess={uiAccess} pt={pt} />
-      {tabsAccess ? (
-        <div hidden={!activeAccess}>
-          <Activity key={workspaceKey} mode={activeAccess ? 'visible' : 'hidden'}>
-            <div ref={restoreTabFocus}>
-              <WasteManagementPageTabs
-                pt={pt}
-                search={search}
-                rawSearch={rawSearch as Record<string, unknown>}
-                access={tabsAccess}
-                visibleTabIds={tabsAccess.visibleTabIds}
-                assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
-                onTabChange={changeTab}
-                onAddressSearchChange={(patch) =>
-                  updateWasteManagementSearch(navigate, search, patch)
-                }
-              />
-            </div>
-          </Activity>
-        </div>
-      ) : null}
-    </StudioOverviewPageTemplate>
-  );
   return (
-    <div
-      ref={pageRef}
-      style={
-        !activeAccess && tabsAccess && !uiAccess.hasError ? { minHeight: pageHeight } : undefined
-      }
-    >
-      {page}
+    <div ref={pageRef} style={pageStyle}>
+      <StudioOverviewPageTemplate
+        title={pt(isAssignmentPage ? 'tours.assignments.title' : 'page.title')}
+        description={
+          isAssignmentPage ? undefined : (
+            <WasteManagementPageDescription
+              description={pt('page.description')}
+              calendarWebUrl={uiAccess.canRead ? calendarWebUrl : null}
+              webVersionLead={pt('page.webVersionLead')}
+              webVersionLinkLabel={pt('page.webVersionLinkLabel')}
+            />
+          )
+        }
+      >
+        {activeAccess && !isAssignmentPage ? (
+          <div className="mb-6 space-y-3">
+            <WasteManagementMainserverSyncStatus
+              canOpenJobDetails={uiAccess.canOpenJobDetails}
+              canRunMainserverSync={uiAccess.canRunMainserverSync}
+              error={syncStatus.error}
+              loading={syncStatus.loading}
+              onStartSync={() => startSync(syncStatus.refresh)}
+              pt={pt}
+              starting={syncRunning}
+              status={syncStatus.status}
+            />
+            {statusMessage ? <StatusNotice message={statusMessage} /> : null}
+          </div>
+        ) : null}
+        <WasteManagementAccessStatus uiAccess={uiAccess} pt={pt} />
+        {tabsAccess ? (
+          <div hidden={!activeAccess}>
+            <Activity key={JSON.stringify(tabsAccess)} mode={activeAccess ? 'visible' : 'hidden'}>
+              <div ref={restoreTabFocus}>
+                <WasteManagementPageTabs
+                  pt={pt}
+                  search={search}
+                  rawSearch={rawSearch}
+                  access={tabsAccess}
+                  visibleTabIds={tabsAccess.visibleTabIds}
+                  assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
+                  onTabChange={changeTab}
+                  onAddressSearchChange={(patch) =>
+                    updateWasteManagementSearch(navigate, search, patch)
+                  }
+                />
+              </div>
+            </Activity>
+          </div>
+        ) : null}
+      </StudioOverviewPageTemplate>
     </div>
   );
 };

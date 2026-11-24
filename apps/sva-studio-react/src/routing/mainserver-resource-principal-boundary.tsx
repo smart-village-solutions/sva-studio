@@ -8,6 +8,7 @@ import {
   ContentOwnershipPanel,
   ContentOwnershipSlotsProvider,
   StudioLoadingState,
+  cn,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { useNavigate, useParams } from '@tanstack/react-router';
@@ -128,7 +129,7 @@ export const MainserverResourcePrincipalBoundary = ({
   }, [contentId, actingPrincipalType, baseUrl, resolution.kind, user?.id]);
   const unavailable =
     resolution.kind === 'loading' ? (
-      <StudioLoadingState className={ready ? 'sr-only' : undefined}>
+      <StudioLoadingState className={cn({ 'sr-only': Boolean(ready) })}>
         {t('content.principal.resourceLoading')}
       </StudioLoadingState>
     ) : resolution.kind === 'error' ? (

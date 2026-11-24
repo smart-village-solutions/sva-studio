@@ -114,6 +114,8 @@ export function StudioDataTable<TData extends RowData>({
   }, [hasRows, isLoading]);
 
   React.useEffect(() => {
+    if (isLoading) return;
+
     const availableRowIds = new Set(data.map((row) => getRowId(row)));
     const selectableRowIds = new Set(
       data.filter((row) => (canSelectRow ? canSelectRow(row) : true)).map((row) => getRowId(row))
@@ -133,7 +135,7 @@ export function StudioDataTable<TData extends RowData>({
 
       return changed ? next : current;
     });
-  }, [canSelectRow, data, getRowId, selectableScopeKey, selectionScopeKey]);
+  }, [canSelectRow, data, getRowId, isLoading, selectableScopeKey, selectionScopeKey]);
 
   const clearSelection = React.useCallback(() => {
     setRowSelection({});

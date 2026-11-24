@@ -67,6 +67,69 @@ const openWastePlugin = async (page: Page) => {
 };
 
 test.describe('waste management plugin', () => {
+  test('preserves scroll and settings focus through an access recheck', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 });
+    const instanceId = 'de-musterhausen';
+    const permissionActions = ['waste-management.read', 'waste-management.settings.manage'];
+    await mockSharedShellRequests(page, { instanceId, permissionActions });
+    await mockWasteFacade(page, {
+      instanceId,
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Link zur Webversion' }).click();
+    const input = page.getByRole('textbox', { name: 'Link zur Webversion' });
+    await input.scrollIntoViewIfNeeded({ timeout: 5_000 });
+    await input.fill('https://abfall.example.invalid/');
+    await expect(input).toBeFocused();
+    const scrollPosition = await page.evaluate(() => window.scrollY);
+    expect(scrollPosition).toBeGreaterThan(0);
+
+    let finishAccessCheck!: () => void;
+    const accessCheck = new Promise<void>((resolve) => {
+      finishAccessCheck = resolve;
+    });
+    await page.route(
+      '**/iam/me/permissions?**',
+      async (route) => {
+        await accessCheck;
+        await route.fallback();
+      },
+      { times: 1 }
+    );
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('sva:effective-access-invalidation-required'))
+    );
+    try {
+      await expect(page.getByText('Berechtigungen werden geprüft …')).toBeVisible();
+      await expect(input).toBeHidden();
+      // Let the browser finish layout before checking its actual scroll position.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+    } finally {
+      finishAccessCheck();
+    }
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('https://abfall.example.invalid/');
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+  });
+
   for (const width of [1280, 390]) {
     test(`renders readable email monitoring at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });

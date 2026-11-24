@@ -255,10 +255,10 @@ describe('useContents', () => {
     expect(result.current.contents[0]?.id).toBe('current-faq');
   });
 
-  it('preserves polling backoff when refetch returns equivalent sync metadata', async () => {
+  it('revalidates in the background with backoff and stops polling when unmounted', async () => {
     vi.useFakeTimers();
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
-    listContentsMock.mockImplementation(async () => ({
+    const payload = {
       data: [],
       pagination: { page: 1, pageSize: 25, total: 0 },
       metadata: {
@@ -275,26 +275,47 @@ describe('useContents', () => {
         hasBlockingSyncGap: false,
         hasRunningMainserverSync: true,
       },
-    }));
+    };
+    listContentsMock.mockResolvedValue(payload);
 
-    renderHook(() => useContents(contentListQuery));
+    const { result, unmount } = renderHook(() => useContents(contentListQuery));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(listContentsMock).toHaveBeenCalledTimes(1);
 
+    let finishPoll!: (value: typeof payload) => void;
+    listContentsMock.mockReturnValueOnce(
+      new Promise<typeof payload>((resolve) => {
+        finishPoll = resolve;
+      })
+    );
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
     expect(listContentsMock).toHaveBeenCalledTimes(2);
+    expect(result.current.isLoading).toBe(false);
+    await act(async () => finishPoll(payload));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
     expect(listContentsMock).toHaveBeenCalledTimes(2);
 
+    listContentsMock.mockReturnValueOnce(
+      new Promise<typeof payload>((resolve) => {
+        finishPoll = resolve;
+      })
+    );
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(listContentsMock).toHaveBeenCalledTimes(3);
+
+    unmount();
+    await act(async () => {
+      finishPoll(payload);
+      await vi.advanceTimersByTimeAsync(15_000);
     });
     expect(listContentsMock).toHaveBeenCalledTimes(3);
   });

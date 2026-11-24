@@ -59,7 +59,7 @@ describe('WasteToursValidityDialog', () => {
 
   it('submits explicit set and clear operations for every selected tour', async () => {
     const onSubmit = vi.fn().mockResolvedValue(true);
-    render(
+    const dialog = (
       <WasteToursValidityDialog
         open
         tours={[createTour(), createTour({ id: 'tour-2', name: 'Bio Süd' })]}
@@ -68,6 +68,7 @@ describe('WasteToursValidityDialog', () => {
         onSubmit={onSubmit}
       />
     );
+    const view = render(<React.Activity mode="visible">{dialog}</React.Activity>);
 
     fireEvent.change(screen.getByLabelText('tours.bulkValidityDialog.fields.firstMode'), {
       target: { value: 'set' },
@@ -78,6 +79,8 @@ describe('WasteToursValidityDialog', () => {
     fireEvent.change(screen.getByLabelText('tours.bulkValidityDialog.fields.endMode'), {
       target: { value: 'clear' },
     });
+    view.rerender(<React.Activity mode="hidden">{dialog}</React.Activity>);
+    view.rerender(<React.Activity mode="visible">{dialog}</React.Activity>);
     fireEvent.click(screen.getByRole('button', { name: 'tours.bulkValidityDialog.apply' }));
 
     await waitFor(() =>

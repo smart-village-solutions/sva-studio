@@ -255,7 +255,7 @@ describe('WasteOutputPanel', () => {
   });
 
   it('loads and persists static pdf configuration instead of generating a pdf', async () => {
-    apiMocks.getWasteManagementSettings.mockResolvedValueOnce({
+    apiMocks.getWasteManagementSettings.mockResolvedValue({
       instanceId: 'de-musterhausen',
       provider: 'supabase',
       projectUrl: 'https://tenant.supabase.co',
@@ -338,7 +338,11 @@ describe('WasteOutputPanel', () => {
       visibleStatus: 'ok',
       customRecurrencePresets: [],
     });
-    render(<WasteOutputPanel />);
+    const view = render(
+      <React.Activity mode="visible">
+        <WasteOutputPanel />
+      </React.Activity>
+    );
 
     expect(await screen.findByText('output.pdf.title')).toBeTruthy();
     await waitFor(() => {
@@ -352,6 +356,32 @@ describe('WasteOutputPanel', () => {
     fireEvent.change(screen.getByLabelText('output.pdf.fields.contactBlock'), {
       target: { value: 'Abfallberatung 03395 / 9999' },
     });
+
+    const previousSettings = await apiMocks.getWasteManagementSettings.getMockImplementation()!();
+    let finishRefresh!: () => void;
+    apiMocks.getWasteManagementSettings.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRefresh = () => resolve(previousSettings);
+      })
+    );
+    view.rerender(
+      <React.Activity mode="hidden">
+        <WasteOutputPanel />
+      </React.Activity>
+    );
+    view.rerender(
+      <React.Activity mode="visible">
+        <WasteOutputPanel />
+      </React.Activity>
+    );
+    await waitFor(() => expect(apiMocks.getWasteManagementSettings).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByLabelText<HTMLInputElement>('output.pdf.fields.brandingAssetUrl').value
+    ).toBe('https://cdn.example/logo-next.svg');
+    expect(screen.getByLabelText<HTMLTextAreaElement>('output.pdf.fields.contactBlock').value).toBe(
+      'Abfallberatung 03395 / 9999'
+    );
+
     fireEvent.click(screen.getByRole('button', { name: 'output.pdf.actions.save' }));
 
     await waitFor(() => {
@@ -369,6 +399,10 @@ describe('WasteOutputPanel', () => {
     );
 
     expect(await screen.findByRole('button', { name: 'output.pdf.actions.saved' })).toBeTruthy();
+    await act(async () => finishRefresh());
+    expect(
+      screen.getByLabelText<HTMLInputElement>('output.pdf.fields.brandingAssetUrl').value
+    ).toBe('https://cdn.example/logo-next.svg');
   });
 
   it('selects a public logo from the shared media library and stores its persistent url', async () => {
@@ -493,7 +527,8 @@ describe('WasteOutputPanel', () => {
   });
 
   it('persists the email reminder service card through the waste settings endpoint', async () => {
-    render(<WasteOutputPanel />);
+    const panel = <WasteOutputPanel />;
+    const view = render(<React.Activity mode="visible">{panel}</React.Activity>);
 
     expect(await screen.findByText('output.emailReminder.title')).toBeTruthy();
 
@@ -547,6 +582,21 @@ describe('WasteOutputPanel', () => {
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessBody'), {
       target: { value: 'Sie wurden abgemeldet.' },
     });
+    const settings = await apiMocks.getWasteManagementSettings.getMockImplementation()!();
+    apiMocks.getWasteManagementSettings.mockResolvedValueOnce({
+      ...settings,
+      emailReminderConfig: {
+        ...normalizeEmailReminderConfig({
+          transportOptions: getMailTransportOptions(settings.availableInterfaces),
+        }),
+        replyToEmail: 'redaktion@example.org',
+      },
+    });
+    view.rerender(<React.Activity mode="hidden">{panel}</React.Activity>);
+    await act(async () => view.rerender(<React.Activity mode="visible">{panel}</React.Activity>));
+    expect(
+      screen.getByLabelText<HTMLInputElement>('output.emailReminder.fields.replyToEmail').value
+    ).toBe('redaktion@example.org');
     fireEvent.click(screen.getByRole('button', { name: 'output.emailReminder.actions.save' }));
 
     await waitFor(() => {
@@ -561,6 +611,7 @@ describe('WasteOutputPanel', () => {
           publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app',
           fromName: 'Landkreis Prignitz',
           fromEmail: 'abfall@example.org',
+          replyToEmail: 'redaktion@example.org',
           consentVersion: '2026-06-14',
           reminderSubjectTemplate: 'Nicht vergessen',
         }),

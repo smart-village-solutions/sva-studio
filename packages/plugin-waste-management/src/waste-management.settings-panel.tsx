@@ -15,7 +15,6 @@ import {
 import { WasteSettingsForm } from './waste-management.settings-form.js';
 import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
 import {
-  mapWasteSettingsToForm,
   persistWasteSettings,
   useWasteSettingsState,
 } from './waste-management.settings-panel.support.js';
@@ -26,7 +25,7 @@ export const WasteSettingsPanel = () => {
   const saveFeedback = useStudioSaveFeedback();
   const [retrying, setRetrying] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
-  const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
+  const { applySettings, error, form, loading, setForm, settings } = useWasteSettingsState(pt);
   const syncFeedback = useWasteSettingsSyncFeedback(pt, setMessage);
 
   if (loading) {
@@ -38,10 +37,7 @@ export const WasteSettingsPanel = () => {
   }
 
   const applyPersistedSettings = (result: WasteManagementSettingsRecord | null) => {
-    startTransition(() => {
-      setSettings(result);
-      setForm(mapWasteSettingsToForm(result));
-    });
+    startTransition(() => applySettings(result));
   };
 
   const handleSubmit = async () => {
@@ -86,8 +82,7 @@ export const WasteSettingsPanel = () => {
       await retryWasteTenantProvisioning();
       const refreshed = await getWasteManagementSettings();
       startTransition(() => {
-        setSettings(refreshed);
-        setForm(mapWasteSettingsToForm(refreshed));
+        applySettings(refreshed, true);
         setMessage({ kind: 'success', text: pt('settings.messages.retryProvisioningSuccess') });
       });
     } catch (retryError) {

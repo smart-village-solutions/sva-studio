@@ -3,6 +3,8 @@ import type React from 'react';
 import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import { studioPlugins } from '../lib/plugins';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
+import { useOrganizationContext } from '../hooks/use-organization-context';
+import { useAuth } from '../providers/auth-provider';
 import { ContentListPage } from '../routes/content/-content-list-page';
 import {
   MainserverPrincipalAlert,
@@ -25,6 +27,8 @@ export const ContentListRoutePage = () => {
     React.ComponentType<{ principalControl?: MainserverPrincipalControlModel }> | undefined;
   const mutationCapabilities = useMainserverMutationCapabilities();
   const resolution = useMainserverPrincipalControl();
+  const { user } = useAuth();
+  const { context, isUpdating } = useOrganizationContext();
 
   if (PluginList)
     return resolution.kind === 'ready' ? (
@@ -32,19 +36,23 @@ export const ContentListRoutePage = () => {
     ) : (
       <MainserverPrincipalAlert reason={resolution.reason} />
     );
-  if (resolution.kind === 'unavailable') {
-    return (
-      <div className="space-y-5">
-        <MainserverPrincipalAlert reason={resolution.reason} />
-        <ContentListPage enabledMainserverMutationActions={[]} />
-      </div>
-    );
-  }
-
   return (
-    <ContentListPage
-      enabledMainserverMutationActions={mutationCapabilities.enabledActions}
-      principalControl={resolution.control}
-    />
+    <div className="space-y-5">
+      {resolution.kind === 'unavailable' ? (
+        <MainserverPrincipalAlert reason={resolution.reason} />
+      ) : null}
+      <ContentListPage
+        key={JSON.stringify([
+          user?.id,
+          user?.instanceId,
+          context?.activeOrganizationId,
+          isUpdating,
+        ])}
+        enabledMainserverMutationActions={
+          resolution.kind === 'ready' ? mutationCapabilities.enabledActions : []
+        }
+        principalControl={resolution.kind === 'ready' ? resolution.control : undefined}
+      />
+    </div>
   );
 };

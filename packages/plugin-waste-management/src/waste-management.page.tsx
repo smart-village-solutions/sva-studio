@@ -2,7 +2,11 @@ import { Activity, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
-import { StudioErrorState, StudioLoadingState, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import {
+  StudioErrorState,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+} from '@sva/studio-ui-react';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
 import {
   getWasteManagementSettings,
@@ -19,7 +23,10 @@ import {
   useWasteManagementTabsAccess,
 } from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import { WasteManagementPageTabs } from './waste-management.page.layout.js';
+import {
+  WasteManagementPageTabs,
+  useWasteWorkspaceLayout,
+} from './waste-management.page.layout.js';
 const useWasteManagementCalendarWebUrl = (
   uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
@@ -90,7 +97,6 @@ const useWasteManagementSyncAction = (pt: ReturnType<typeof usePluginTranslation
 
 const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
   const [status, setStatus] = useState<WasteMainserverSyncStatusRecord | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const latestRequestId = useRef(0);
 
@@ -107,17 +113,12 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
       if (requestId === latestRequestId.current) {
         setError(true);
       }
-    } finally {
-      if (requestId === latestRequestId.current) {
-        setLoading(false);
-      }
     }
   }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
       latestRequestId.current += 1;
-      setLoading(false);
       return;
     }
     void refresh();
@@ -148,7 +149,7 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
     };
   }, [enabled, pollingDelayMs, refresh]);
 
-  return { error, loading, refresh, status };
+  return { error, loading: !status && !error, refresh, status };
 };
 
 const WasteManagementAccessStatus = ({
@@ -170,66 +171,80 @@ const WasteManagementAccessStatus = ({
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
-  const rawSearch = useSearch({ strict: false });
-  const routeSearch = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
-  const locationKey = useLocation({ select: (location) => location.state.__TSR_key ?? location.href });
+  const rawSearch = useSearch({ strict: false }) as Record<string, unknown>;
+  const routeSearch = normalizeWasteManagementSearchParams(rawSearch);
+  const locationKey = useLocation({ select: ({ state, href }) => state.__TSR_key ?? href });
   const uiAccess = useWasteManagementUiAccess(routeSearch.tab);
   const { search, changeTab } = useWasteManagementTabNavigation(
-    navigate, routeSearch, uiAccess, locationKey
+    navigate,
+    routeSearch,
+    uiAccess,
+    locationKey
   );
   const isAssignmentPage = search.tab === 'tours' && search.toursView === 'assignments';
   const calendarWebUrl = useWasteManagementCalendarWebUrl(uiAccess);
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
-  const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead);
-  const { activeAccess, tabsAccess } = useWasteManagementTabsAccess(uiAccess, search.tab);
+  const syncStatus = useWasteManagementMainserverSyncStatus(uiAccess.canRead && !isAssignmentPage);
+  const { activeAccess, tabsAccess } = useWasteManagementTabsAccess(uiAccess);
+  const { pageStyle, pageRef, restoreTabFocus } = useWasteWorkspaceLayout(
+    Boolean(activeAccess),
+    Boolean(tabsAccess),
+    uiAccess.hasError
+  );
   useWasteManagementVisibleTabRedirect(navigate, search, uiAccess);
 
   return (
-    <StudioOverviewPageTemplate
-      title={pt(isAssignmentPage ? 'tours.assignments.title' : 'page.title')}
-      description={
-        isAssignmentPage ? undefined : (
-          <WasteManagementPageDescription
-            description={pt('page.description')}
-            calendarWebUrl={uiAccess.canRead ? calendarWebUrl : null}
-            webVersionLead={pt('page.webVersionLead')}
-            webVersionLinkLabel={pt('page.webVersionLinkLabel')}
-          />
-        )
-      }
-    >
-      {activeAccess && !isAssignmentPage ? (
-        <div className="mb-6 space-y-3">
-          <WasteManagementMainserverSyncStatus
-            canOpenJobDetails={uiAccess.canOpenJobDetails}
-            canRunMainserverSync={uiAccess.canRunMainserverSync}
-            error={syncStatus.error}
-            loading={syncStatus.loading}
-            onStartSync={() => startSync(syncStatus.refresh)}
-            pt={pt}
-            starting={syncRunning}
-            status={syncStatus.status}
-          />
-          {statusMessage ? <StatusNotice message={statusMessage} /> : null}
-        </div>
-      ) : null}
-      <WasteManagementAccessStatus uiAccess={uiAccess} pt={pt} />
-      {tabsAccess ? (
-        <div hidden={!activeAccess}>
-          <Activity key={tabsAccess.contextKey} mode={activeAccess ? 'visible' : 'hidden'}>
-            <WasteManagementPageTabs
-              pt={pt}
-              search={search}
-              rawSearch={rawSearch as Record<string, unknown>}
-              access={tabsAccess}
-              visibleTabIds={tabsAccess.visibleTabIds}
-              assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
-              onTabChange={changeTab}
-              onAddressSearchChange={(patch) => updateWasteManagementSearch(navigate, search, patch)}
+    <div ref={pageRef} style={pageStyle}>
+      <StudioOverviewPageTemplate
+        title={pt(isAssignmentPage ? 'tours.assignments.title' : 'page.title')}
+        description={
+          isAssignmentPage ? undefined : (
+            <WasteManagementPageDescription
+              description={pt('page.description')}
+              calendarWebUrl={uiAccess.canRead ? calendarWebUrl : null}
+              webVersionLead={pt('page.webVersionLead')}
+              webVersionLinkLabel={pt('page.webVersionLinkLabel')}
             />
-          </Activity>
-        </div>
-      ) : null}
-    </StudioOverviewPageTemplate>
+          )
+        }
+      >
+        {activeAccess && !isAssignmentPage ? (
+          <div className="mb-6 space-y-3">
+            <WasteManagementMainserverSyncStatus
+              canOpenJobDetails={uiAccess.canOpenJobDetails}
+              canRunMainserverSync={uiAccess.canRunMainserverSync}
+              error={syncStatus.error}
+              loading={syncStatus.loading}
+              onStartSync={() => startSync(syncStatus.refresh)}
+              pt={pt}
+              starting={syncRunning}
+              status={syncStatus.status}
+            />
+            {statusMessage ? <StatusNotice message={statusMessage} /> : null}
+          </div>
+        ) : null}
+        <WasteManagementAccessStatus uiAccess={uiAccess} pt={pt} />
+        {tabsAccess ? (
+          <div hidden={!activeAccess}>
+            <Activity key={JSON.stringify(tabsAccess)} mode={activeAccess ? 'visible' : 'hidden'}>
+              <div ref={restoreTabFocus}>
+                <WasteManagementPageTabs
+                  pt={pt}
+                  search={search}
+                  rawSearch={rawSearch}
+                  access={tabsAccess}
+                  visibleTabIds={tabsAccess.visibleTabIds}
+                  assignmentContextKey={tabsAccess.canManageTours ? tabsAccess.contextKey : null}
+                  onTabChange={changeTab}
+                  onAddressSearchChange={(patch) =>
+                    updateWasteManagementSearch(navigate, search, patch)
+                  }
+                />
+              </div>
+            </Activity>
+          </div>
+        ) : null}
+      </StudioOverviewPageTemplate>
+    </div>
   );
 };

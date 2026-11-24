@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sva/studio-ui-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 export const WasteListFilterDialog = ({
   id,
@@ -125,7 +125,11 @@ export const WasteListSearch = ({
   readonly onCommit: (value: string) => void;
 }) => {
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  const [committedValue, setCommittedValue] = useState(value);
+  if (value !== committedValue) {
+    setCommittedValue(value);
+    setDraft(value);
+  }
   return (
     <label className="flex min-w-52 flex-col gap-1 text-sm">
       {label}

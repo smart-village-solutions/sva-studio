@@ -5,7 +5,7 @@ import {
   StudioLoadingState,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsRecord,
@@ -72,33 +72,20 @@ export const WasteOutputPanel = () => {
   const emailSaveFeedback = useStudioSaveFeedback();
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [emailMessage, setEmailMessage] = useState<StatusMessage | null>(null);
-  const [brandingAssetUrl, setBrandingAssetUrl] = useState('');
+  const [brandingDraft, setBrandingDraft] = useState<string>();
   const [brandingAssetUrlError, setBrandingAssetUrlError] = useState<string | undefined>();
-  const [contactBlock, setContactBlock] = useState('');
-  const [emailReminderConfig, setEmailReminderConfig] =
-    useState<WasteManagementEmailReminderConfig | null>(null);
+  const [contactDraft, setContactDraft] = useState<string>();
+  const [emailDraft, setEmailDraft] = useState<Partial<WasteManagementEmailReminderConfig>>({});
 
   const mailTransportOptions = getMailTransportOptions(settings?.availableInterfaces ?? []);
-
-  useEffect(() => {
-    const nextMailTransportOptions = getMailTransportOptions(settings?.availableInterfaces ?? []);
-    setBrandingAssetUrl(settings?.pdfBrandingAssetUrl ?? '');
-    setBrandingAssetUrlError(undefined);
-    setContactBlock(settings?.pdfContactBlock ?? '');
-    setEmailReminderConfig(
-      normalizeEmailReminderConfig({
-        config: settings?.emailReminderConfig,
-        calendarWebUrl: settings?.calendarWebUrl,
-        transportOptions: nextMailTransportOptions,
-      })
-    );
-  }, [
-    settings?.availableInterfaces,
-    settings?.calendarWebUrl,
-    settings?.emailReminderConfig,
-    settings?.pdfBrandingAssetUrl,
-    settings?.pdfContactBlock,
-  ]);
+  const brandingAssetUrl = brandingDraft ?? settings?.pdfBrandingAssetUrl ?? '';
+  const contactBlock = contactDraft ?? settings?.pdfContactBlock ?? '';
+  const savedEmailConfig = normalizeEmailReminderConfig({
+    config: settings?.emailReminderConfig,
+    calendarWebUrl: settings?.calendarWebUrl,
+    transportOptions: mailTransportOptions,
+  });
+  const emailReminderConfig = { ...savedEmailConfig, ...emailDraft };
 
   if (loading) {
     return <StudioLoadingState>{pt('output.pdf.messages.loading')}</StudioLoadingState>;
@@ -141,8 +128,8 @@ export const WasteOutputPanel = () => {
       });
       const nextSettings = result?.data ?? (await getWasteManagementSettings());
       setSettings(nextSettings);
-      setBrandingAssetUrl(nextSettings?.pdfBrandingAssetUrl ?? '');
-      setContactBlock(nextSettings?.pdfContactBlock ?? '');
+      setBrandingDraft(undefined);
+      setContactDraft(undefined);
       pdfSaveFeedback.markSaved(operationId);
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
@@ -159,7 +146,7 @@ export const WasteOutputPanel = () => {
 
   const onEmailReminderSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!settings || !emailReminderConfig) {
+    if (!settings) {
       return;
     }
 
@@ -180,13 +167,9 @@ export const WasteOutputPanel = () => {
         contactBlock,
       });
       setSettings(nextSettings);
-      setEmailReminderConfig(
-        normalizeEmailReminderConfig({
-          config: nextSettings?.emailReminderConfig,
-          calendarWebUrl: nextSettings?.calendarWebUrl,
-          transportOptions: getMailTransportOptions(nextSettings?.availableInterfaces ?? []),
-        })
-      );
+      setBrandingDraft(undefined);
+      setContactDraft(undefined);
+      setEmailDraft({});
       emailSaveFeedback.markSaved(operationId);
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
@@ -214,28 +197,32 @@ export const WasteOutputPanel = () => {
         setBrandingAssetUrl={(value) => {
           pdfSaveFeedback.markDirty();
           setBrandingAssetUrlError(undefined);
-          setBrandingAssetUrl(value);
+          setBrandingDraft(value);
         }}
         setContactBlock={(value) => {
           pdfSaveFeedback.markDirty();
-          setContactBlock(value);
+          setContactDraft(value);
         }}
         translate={pt}
       />
-      {emailReminderConfig ? (
-        <WasteEmailReminderConfigurationSection
-          hasMailTransportOptions={mailTransportOptions.length > 0}
-          onChange={(value) => {
-            emailSaveFeedback.markDirty();
-            setEmailReminderConfig(value);
-          }}
-          onSubmit={onEmailReminderSubmit}
-          saveStatus={emailSaveFeedback.status}
-          transportOptions={mailTransportOptions}
-          translate={pt}
-          value={emailReminderConfig}
-        />
-      ) : null}
+      <WasteEmailReminderConfigurationSection
+        hasMailTransportOptions={mailTransportOptions.length > 0}
+        onChange={(value) => {
+          emailSaveFeedback.markDirty();
+          setEmailDraft(
+            Object.fromEntries(
+              (Object.keys(value) as (keyof WasteManagementEmailReminderConfig)[])
+                .filter((key) => value[key] !== savedEmailConfig[key])
+                .map((key) => [key, value[key]])
+            )
+          );
+        }}
+        onSubmit={onEmailReminderSubmit}
+        saveStatus={emailSaveFeedback.status}
+        transportOptions={mailTransportOptions}
+        translate={pt}
+        value={emailReminderConfig}
+      />
     </div>
   );
 };

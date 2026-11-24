@@ -8,6 +8,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mergeI18nResources, resetMergedI18nResources, resetTranslatorCache } from '../../i18n';
+import { ContentListRoutePage } from '../../routing/app-route-pages';
 import {
   ContentListPage as ContentListPageComponent,
   type ContentListPageProps,
@@ -176,6 +177,10 @@ vi.mock('../../hooks/use-content-access', () => ({
 
 vi.mock('../../hooks/use-organization-context', () => ({
   useOrganizationContext: () => useOrganizationContextMock(),
+}));
+
+vi.mock('../../hooks/use-mainserver-mutation-capabilities', () => ({
+  useMainserverMutationCapabilities: () => ({ enabledActions: [] }),
 }));
 
 vi.mock('../../providers/auth-provider', () => ({
@@ -1657,7 +1662,7 @@ describe('ContentListPage', () => {
     expect(screen.queryAllByRole('checkbox', { name: /Inhalte:.*auswählen/ })).toHaveLength(0);
   });
 
-  it('shows local-only bulk actions when the current page contains IAM content', async () => {
+  it('keeps selection on revalidation and clears open confirmations when the organization changes', () => {
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -1690,13 +1695,47 @@ describe('ContentListPage', () => {
       error: null,
     });
 
-    render(<ContentListPage />);
+    const view = render(<ContentListRoutePage />);
 
     expect(screen.getByRole('button', { name: 'Archivieren (Auswahl)' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Löschen (Auswahl)' })).toBeTruthy();
     expect(
       screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile local-1 auswählen' })
     ).toHaveLength(2);
+
+    const rowCheckbox = () =>
+      screen.getAllByRole<HTMLInputElement>('checkbox', {
+        name: 'Inhalte: Zeile local-1 auswählen',
+      })[0]!;
+    fireEvent.click(rowCheckbox());
+    expect(rowCheckbox().checked).toBe(true);
+
+    const confirmedAccess = useContentAccessMock.getMockImplementation()!();
+    const organization = useOrganizationContextMock.getMockImplementation()!();
+    useOrganizationContextMock.mockReturnValue({ ...organization, isLoading: true });
+    useContentAccessMock.mockReturnValue(createPendingAccessResult());
+    view.rerender(<ContentListRoutePage />);
+    expect(screen.queryByRole('button', { name: 'Archivieren (Auswahl)' })).toBeNull();
+
+    useOrganizationContextMock.mockReturnValue(organization);
+    useContentAccessMock.mockReturnValue(confirmedAccess);
+    view.rerender(<ContentListRoutePage />);
+    expect(rowCheckbox().checked).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+
+    useOrganizationContextMock.mockReturnValue({ ...organization, isUpdating: true });
+    view.rerender(<ContentListRoutePage />);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    useOrganizationContextMock.mockReturnValue({
+      ...organization,
+      context: { ...organization.context, activeOrganizationId: 'org-2' },
+    });
+    view.rerender(<ContentListRoutePage />);
+    expect(rowCheckbox().checked).toBe(false);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
   it('retains failed bulk deletions in the shared dialog until a retry succeeds', async () => {

@@ -163,7 +163,7 @@ export const WasteToursStatusBulkDialog = ({
   const exceedsLimit = selectedTourIds.length > wasteTourStatusBulkLimit;
 
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setTarget('');
       setError(null);
     }

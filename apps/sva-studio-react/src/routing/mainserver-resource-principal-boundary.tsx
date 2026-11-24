@@ -128,7 +128,9 @@ export const MainserverResourcePrincipalBoundary = ({
   }, [contentId, actingPrincipalType, baseUrl, resolution.kind, user?.id]);
   const unavailable =
     resolution.kind === 'loading' ? (
-      <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>
+      <StudioLoadingState className={ready ? 'sr-only' : undefined}>
+        {t('content.principal.resourceLoading')}
+      </StudioLoadingState>
     ) : resolution.kind === 'error' ? (
       <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
         <AlertDescription>{t('content.principal.resourceUnavailable')}</AlertDescription>

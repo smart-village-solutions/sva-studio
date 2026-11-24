@@ -75,7 +75,7 @@ const useValidityDialogState = (tours: readonly WasteTourRecord[], open: boolean
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setFirstMode('unchanged');
       setFirstDate('');
       setEndMode('unchanged');

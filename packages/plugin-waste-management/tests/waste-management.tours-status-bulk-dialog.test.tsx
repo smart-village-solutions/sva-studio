@@ -45,7 +45,7 @@ describe('WasteToursStatusBulkDialog', () => {
   it('requires an explicit target status and submits every selected ID', async () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     const onUpdated = vi.fn();
-    render(
+    const dialog = (
       <WasteToursStatusBulkDialog
         open
         selectedTourIds={['tour-1', 'tour-2']}
@@ -55,12 +55,15 @@ describe('WasteToursStatusBulkDialog', () => {
         onUpdated={onUpdated}
       />
     );
+    const view = render(<React.Activity mode="visible">{dialog}</React.Activity>);
 
     const submit = screen.getByRole('button', { name: 'tours.bulkStatusDialog.apply' });
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.targetLabel'), {
       target: { value: 'archived' },
     });
+    view.rerender(<React.Activity mode="hidden">{dialog}</React.Activity>);
+    view.rerender(<React.Activity mode="visible">{dialog}</React.Activity>);
     fireEvent.click(submit);
 
     await waitFor(() =>

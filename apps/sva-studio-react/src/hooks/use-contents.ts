@@ -90,6 +90,7 @@ const useContentProjectionRevalidation = (
   React.useEffect(() => {
     if (!shouldRevalidate) return;
 
+    let cancelled = false;
     let delayMs = 2_000;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = () => {
@@ -100,6 +101,7 @@ const useContentProjectionRevalidation = (
           return;
         }
         void refetch().finally(() => {
+          if (cancelled) return;
           delayMs = Math.min(Math.round(delayMs * 1.5), 15_000);
           poll();
         });
@@ -107,6 +109,7 @@ const useContentProjectionRevalidation = (
     };
     poll();
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
     };
   }, [refetch, shouldRevalidate]);
@@ -191,6 +194,7 @@ export const useContents = (
 ): UseContentsResult => {
   const { refreshSession } = useAuth();
   const enabled = options.enabled ?? true;
+  const [loadedQuery, setLoadedQuery] = React.useState<IamContentListQuery | null>(null);
   const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
   const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
   const listItems = React.useCallback(() => listContents(query), [query]);
@@ -200,10 +204,11 @@ export const useContents = (
       readonly metadata?: IamContentListMetadata;
     }) => {
       const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
+      setLoadedQuery(query);
       setPagination((current) => reusePaginationIfUnchanged(current, nextPagination));
       setMetadata(response.metadata ?? null);
     },
-    []
+    [query]
   );
   const adminList = useIamAdminList(listItems, refreshSession, {
     enabled,
@@ -215,6 +220,7 @@ export const useContents = (
       return;
     }
 
+    setLoadedQuery(null);
     setMetadata(null);
     setPagination(DEFAULT_CONTENT_PAGINATION);
   }, [enabled]);
@@ -270,7 +276,8 @@ export const useContents = (
     pagination,
     metadata,
     credentialRecovery,
-    isLoading: adminList.isLoading,
+    isLoading:
+      enabled && loadedQuery !== query && (adminList.isLoading || adminList.error === null),
     error: adminList.error,
     mutationError: adminList.mutationError,
     refetch: adminList.refetch,

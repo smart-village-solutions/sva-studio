@@ -863,6 +863,28 @@ describe('WasteManagementPage', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
+  it('preserves the workspace height and restores tab focus after an access check', () => {
+    const measure = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, 0, 800, 1600));
+    const { container } = render(<WasteManagementPage />);
+    measure.mockRestore();
+    const page = container.firstElementChild as HTMLElement;
+    const activeTab = screen.getByRole('tab', { selected: true });
+    activeTab.focus();
+
+    act(() => invalidateSessionAccessSnapshot());
+    expect(activeTab.isConnected).toBe(true);
+    expect(activeTab.closest('[hidden]')).toBeTruthy();
+    expect(page.style.minHeight).toBe('1600px');
+    activeTab.blur();
+
+    act(() => publishSessionAccessSnapshot(editorAccess));
+    expect(screen.getByRole('tab', { selected: true })).toBe(activeTab);
+    expect(document.activeElement).toBe(activeTab);
+    expect(page.style.minHeight).toBe('');
+  });
+
   it('does not load settings for the page header when the user cannot access settings', async () => {
     publishSessionAccessSnapshot({
       ...editorAccess,
@@ -983,6 +1005,35 @@ describe('WasteManagementPage', () => {
     });
   });
 
+  it('discards a pending reset confirmation when only reset access is revoked', () => {
+    render(<WasteManagementPage />);
+    fireEvent.click(
+      screen.getByText('wasteManagement.tools.meta.advancedTitle', { selector: 'summary' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'wasteManagement.tools.actions.startReset' })
+    );
+    fireEvent.change(screen.getByLabelText('wasteManagement.tools.reset.tokenLabel'), {
+      target: { value: 'RESET' },
+    });
+
+    act(() => invalidateSessionAccessSnapshot());
+    act(() =>
+      publishSessionAccessSnapshot({
+        ...editorAccess,
+        permissionActions: wastePermissions.filter(
+          (action) => action !== 'waste-management.reset.execute'
+        ),
+      })
+    );
+
+    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('tools');
+    expect(
+      screen.queryByRole('button', { name: 'wasteManagement.tools.reset.confirmAction' })
+    ).toBeNull();
+    expect(wasteManagementApiMocks.startWasteManagementReset).not.toHaveBeenCalled();
+  });
+
   it('loads and renders the technical waste history in Datentools', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'tools',
@@ -1038,6 +1089,7 @@ describe('WasteManagementPage', () => {
   });
 
   it('loads and saves settings through the host api client', async () => {
+    let savedSchemaName = 'wm';
     searchMock.mockImplementation(() => ({
       tab: 'settings',
       q: '',
@@ -1050,7 +1102,7 @@ describe('WasteManagementPage', () => {
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
-      schemaName: 'wm',
+      schemaName: savedSchemaName,
       enabled: true,
       selectedInterfaceId: 'supabase-1',
       selectedInterfaceName: 'Supabase A',
@@ -1114,6 +1166,15 @@ describe('WasteManagementPage', () => {
     fireEvent.change(calendarWebUrlInput, {
       target: { value: 'https://abfall.example.de' },
     });
+
+    savedSchemaName = 'wm_updated';
+    act(() => invalidateSessionAccessSnapshot());
+    await act(async () => publishSessionAccessSnapshot(editorAccess));
+    expect(
+      screen.getByLabelText<HTMLInputElement>('wasteManagement.settings.fields.calendarWebUrl')
+        .value
+    ).toBe('https://abfall.example.de');
+
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.save' }));
 
     await waitFor(() => {
@@ -1121,6 +1182,7 @@ describe('WasteManagementPage', () => {
         expect.objectContaining({
           selectedInterfaceId: 'supabase-1',
           calendarWebUrl: 'https://abfall.example.de',
+          schemaName: 'wm_updated',
         })
       );
     });
@@ -1304,7 +1366,7 @@ describe('WasteManagementPage', () => {
       shiftContext: 'all',
       regionId: 'region-1',
     }));
-    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValueOnce({
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
       fractions: [
         {
           id: 'fraction-1',
@@ -1388,6 +1450,14 @@ describe('WasteManagementPage', () => {
 
     expect(screen.getAllByText('Restmüll').length).toBeGreaterThan(0);
     expect(screen.queryByText('Biomüll')).toBeNull();
+
+    const searchInput = screen.getByRole<HTMLInputElement>('searchbox', {
+      name: 'wasteManagement.filters.searchLabel',
+    });
+    fireEvent.change(searchInput, { target: { value: 'Restmüll Nord' } });
+    act(() => invalidateSessionAccessSnapshot());
+    await act(async () => publishSessionAccessSnapshot(editorAccess));
+    expect(searchInput.value).toBe('Restmüll Nord');
   });
 
   it('creates a waste fraction from the master-data dialog and reloads the overview', async () => {
@@ -2073,8 +2143,30 @@ describe('WasteManagementPage', () => {
     });
   };
 
+  it('shows loading while fetching the first sync status after leaving tour assignments', async () => {
+    setUpTourAssignmentOverview();
+    searchMock.mockReturnValue({ ...searchMock(), toursView: 'assignments', tourId: 'tour-1' });
+    const view = render(<WasteManagementPage />);
+    expect(wasteManagementApiMocks.getWasteMainserverSyncStatus).not.toHaveBeenCalled();
+
+    const status = { sourceState: 'clean', expectedYearWindow: [2026, 2027] } as const;
+    let finishStatus!: (value: typeof status) => void;
+    wasteManagementApiMocks.getWasteMainserverSyncStatus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishStatus = resolve;
+      })
+    );
+    searchMock.mockReturnValue({ ...searchMock(), toursView: 'list' });
+    view.rerender(<WasteManagementPage />);
+
+    expect(screen.queryByText('wasteManagement.page.syncStatus.errorTitle')).toBeNull();
+    expect(screen.getByText('wasteManagement.page.syncStatus.loadingTitle')).toBeTruthy();
+    await act(async () => finishStatus(status));
+    expect(screen.queryByText('wasteManagement.page.syncStatus.loadingTitle')).toBeNull();
+  });
+
   it.each(['Perleberg', 'Pferdeschwemme'])(
-    'keeps the tour assignment draft for %s after sync status polling',
+    'keeps the tour assignment draft for %s without polling the hidden sync status',
     async (query) => {
       vi.useFakeTimers();
       try {
@@ -2117,7 +2209,7 @@ describe('WasteManagementPage', () => {
           await vi.advanceTimersByTimeAsync(10_000);
         });
 
-        expect(wasteManagementApiMocks.getWasteMainserverSyncStatus).toHaveBeenCalledTimes(2);
+        expect(wasteManagementApiMocks.getWasteMainserverSyncStatus).not.toHaveBeenCalled();
         expect(search.value).toBe(query);
         expect(region.value).toBe('region-1');
         expect(city.value).toBe('city-1');

@@ -200,8 +200,7 @@ export const useWasteManagementTabNavigation = (
 };
 
 export const useWasteManagementTabsAccess = (
-  uiAccess: ReturnType<typeof useWasteManagementUiAccess>,
-  tab: WasteManagementTabId
+  uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
   const activeAccess = uiAccess.canRead ? uiAccess : null;
   const [confirmedAccess, setConfirmedAccess] = useState(activeAccess);
@@ -212,13 +211,11 @@ export const useWasteManagementTabsAccess = (
     setConfirmedAccess(activeAccess);
   }
 
-  const retainTourEditor =
+  const retainTabs =
     !uiAccess.isResolved &&
-    tab === 'tours' &&
     uiAccess.contextKey !== null &&
-    uiAccess.contextKey === confirmedAccess?.contextKey &&
-    confirmedAccess.canManageTours;
-  const tabsAccess = activeAccess ?? (retainTourEditor ? confirmedAccess : null);
+    uiAccess.contextKey === confirmedAccess?.contextKey;
+  const tabsAccess = activeAccess ?? (retainTabs ? confirmedAccess : null);
 
   return { activeAccess, tabsAccess };
 };

@@ -922,6 +922,22 @@ describe('appRouteBindings', () => {
     }
   );
 
+  it('keeps the CMS news list mounted across an organization context reload', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.search = { type: 'news.article' };
+    const view = render(<appRouteBindings.content />);
+    const list = screen.getByTestId('content-list-page');
+
+    routeState.organizationContextIsLoading = true;
+    view.rerender(<appRouteBindings.content />);
+    expect(screen.getByText('Author context loading')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBe(list);
+
+    routeState.organizationContextIsLoading = false;
+    view.rerender(<appRouteBindings.content />);
+    expect(screen.getByTestId('content-list-page')).toBe(list);
+  });
+
   it('unmounts categories while the organization context changes', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
     routeState.organizationContext.activeOrganizationId = 'organization-1';
@@ -1422,6 +1438,22 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.queryByText('Resource principal loading')).toBeNull();
+  });
+
+  it('keeps the news editor in place while its resource access is rechecked', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.newsDetail />);
+    const editor = await screen.findByTestId('news-edit-page');
+
+    routeState.getContent.mockReturnValueOnce(new Promise(() => undefined));
+    routeState.organizationContextIsLoading = true;
+    view.rerender(<appRouteBindings.newsDetail />);
+
+    expect(screen.getByTestId('news-edit-page')).toBe(editor);
+    expect(editor.closest('fieldset')?.disabled).toBe(true);
+    expect(screen.getByText('Resource principal loading').classList.contains('sr-only')).toBe(true);
   });
 
   it('enables the ownership panel only after server-side transfer authorization', async () => {

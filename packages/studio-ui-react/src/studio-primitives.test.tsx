@@ -1188,7 +1188,29 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
-  it('keeps toolbar controls, focus and selection while rows reload', () => {
+  it('replaces the whole table with the loading state unless the toolbar is kept', () => {
+    render(
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={[{ id: 'a' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        toolbarStart={<Input aria-label="Suche" />}
+        footer={<p>Seite 1</p>}
+        isLoading
+      />
+    );
+
+    expect(screen.getByRole('status').textContent).toBe('Lädt.');
+    expect(screen.getByRole('status').parentElement?.getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
+    expect(screen.queryByText('Seite 1')).toBeNull();
+  });
+
+  it('keeps toolbar controls, focus and selection while rows reload when requested', () => {
     const rows = [{ id: 'a' }, { id: 'b' }];
     const renderTable = (isLoading: boolean) => (
       <StudioDataTable
@@ -1203,6 +1225,7 @@ describe('studio-ui-react primitives', () => {
         toolbarStart={<Input aria-label="Suche" />}
         footer={<p>Seite 1</p>}
         isLoading={isLoading}
+        keepToolbarWhileLoading
       />
     );
     const { container, rerender } = render(renderTable(false));
@@ -1222,6 +1245,10 @@ describe('studio-ui-react primitives', () => {
     expect(search.value).toBe('Ma');
     expect(screen.getByRole('status')).toBe(status);
     expect(status?.textContent).toBe('Lädt.');
+    const busyResultArea = container.querySelector('[aria-busy="true"]');
+    expect(busyResultArea).not.toBeNull();
+    expect(busyResultArea?.contains(search)).toBe(false);
+    expect(busyResultArea?.contains(status)).toBe(false);
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
       true
@@ -1234,6 +1261,7 @@ describe('studio-ui-react primitives', () => {
     expect(status?.textContent).toBe('');
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByRole('table', { name: 'News' })).toBeTruthy();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
     expect(screen.getByLabelText<HTMLInputElement>('News a auswählen').checked).toBe(true);
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
       false

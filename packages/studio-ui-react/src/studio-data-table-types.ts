@@ -83,6 +83,13 @@ export type StudioDataTableProps<TData> = Readonly<{
   emptyState: React.ReactNode;
   loadingState?: React.ReactNode;
   isLoading?: boolean;
+  /**
+   * Keeps the toolbar and footer mounted while `isLoading` is set, so search fields and filters
+   * keep their value and focus; only the result area shows the loading state. Enable this only
+   * when the data source ignores outdated responses, because users can now start new requests
+   * while one is still running.
+   */
+  keepToolbarWhileLoading?: boolean;
   getRowId: (row: TData) => string;
   selectionMode?: 'none' | 'multiple';
   canSelectRow?: (row: TData) => boolean;

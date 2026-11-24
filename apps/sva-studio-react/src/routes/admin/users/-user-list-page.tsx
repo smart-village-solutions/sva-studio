@@ -94,12 +94,10 @@ export const UserListPage = () => {
           columns={userColumns}
           getRowId={(user) => user.id}
           isLoading={usersApi.isLoading}
+          keepToolbarWhileLoading
           loadingState={t('content.messages.loading')}
           emptyState={
-            <Card
-              className="border-none p-0 text-sm text-muted-foreground shadow-none"
-              role="status"
-            >
+            <Card className="border-none p-0 text-sm text-muted-foreground shadow-none">
               {t('admin.users.messages.emptyState')}
             </Card>
           }
@@ -128,6 +126,7 @@ export const UserListPage = () => {
             <UserListToolbarEnd
               canUpdateUsers={canUpdateUsers}
               syncStatus={syncStatus}
+              isLoading={usersApi.isLoading}
               total={usersApi.total}
               onSyncUsers={onSyncUsers}
             />

@@ -170,8 +170,8 @@ export function StudioDataTableView<TData extends RowData>({
     statusContent = emptyState;
   }
 
-  // The toolbar and footer stay mounted while loading so that search fields and filters
-  // keep their value and focus. Only the result area switches to the loading state.
+  // While loading (only reached with `keepToolbarWhileLoading`), the toolbar and footer stay
+  // mounted so search fields and filters keep their value and focus; only the result area changes.
   return (
     <div
       ref={showRows ? containerRef : undefined}
@@ -196,24 +196,28 @@ export function StudioDataTableView<TData extends RowData>({
       >
         {statusContent}
       </div>
-      {showRows ? (
-        <>
-          <StudioDataTableWide
-            table={table}
-            ariaLabel={ariaLabel}
-            caption={caption}
-            isCompact={isCompact}
-          />
-          <StudioDataTableCompact
-            table={table}
-            ariaLabel={ariaLabel}
-            labels={labels}
-            selectionMode={selectionMode}
-            isCompact={isCompact}
-            mobileSortingControls={mobileSortingControls}
-          />
-        </>
-      ) : null}
+      {/* Result area, marked busy while loading. The live region above stays outside of it so
+          the loading announcement is not suppressed. */}
+      <div aria-busy={isLoading || undefined}>
+        {showRows ? (
+          <>
+            <StudioDataTableWide
+              table={table}
+              ariaLabel={ariaLabel}
+              caption={caption}
+              isCompact={isCompact}
+            />
+            <StudioDataTableCompact
+              table={table}
+              ariaLabel={ariaLabel}
+              labels={labels}
+              selectionMode={selectionMode}
+              isCompact={isCompact}
+              mobileSortingControls={mobileSortingControls}
+            />
+          </>
+        ) : null}
+      </div>
       {footerContent}
     </div>
   );

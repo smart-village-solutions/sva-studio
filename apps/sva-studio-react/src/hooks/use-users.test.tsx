@@ -577,6 +577,67 @@ describe('useUsers', () => {
       expect(result.current.users.map((user) => user.id)).toEqual(['newest']);
     });
 
+    it.each([
+      {
+        name: 'a mutation',
+        mockAction: (deferred: Promise<unknown>) => deactivateUserMock.mockReturnValue(deferred),
+        resolution: { data: { id: 'user-1' } },
+        run: (api: ReturnType<typeof useUsers>) => api.deactivateUser('user-1'),
+      },
+      {
+        name: 'a Keycloak sync',
+        mockAction: (deferred: Promise<unknown>) =>
+          syncUsersFromKeycloakMock.mockReturnValue(deferred),
+        resolution: {
+          data: {
+            outcome: 'success',
+            checkedCount: 1,
+            correctedCount: 0,
+            manualReviewCount: 0,
+            importedCount: 1,
+            updatedCount: 0,
+            skippedCount: 0,
+            totalKeycloakUsers: 1,
+          },
+        },
+        run: (api: ReturnType<typeof useUsers>) => api.syncUsersFromKeycloak(),
+      },
+    ])(
+      'reloads with the current filters when $name finishes after a filter change',
+      async ({ mockAction, resolution, run }) => {
+        listUsersMock.mockImplementation(({ status }: { status?: string }) =>
+          Promise.resolve(listResponse(status === 'active' ? 'active-user' : 'any-user'))
+        );
+        const action = createDeferred<unknown>();
+        mockAction(action.promise);
+
+        const { result } = renderHook(() => useUsers());
+        await waitFor(() =>
+          expect(result.current.users.map((user) => user.id)).toEqual(['any-user'])
+        );
+
+        let pendingAction!: Promise<unknown>;
+        act(() => {
+          pendingAction = run(result.current);
+        });
+        act(() => result.current.setStatus('active'));
+        await waitFor(() =>
+          expect(result.current.users.map((user) => user.id)).toEqual(['active-user'])
+        );
+
+        await act(async () => {
+          action.resolve(resolution);
+          await pendingAction;
+        });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(listUsersMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ status: 'active' })
+        );
+        expect(result.current.users.map((user) => user.id)).toEqual(['active-user']);
+      }
+    );
+
     it('still reports a failure of the newest request', async () => {
       const { result, olderRequest, newerRequest } = await startOverlappingRequests();
 

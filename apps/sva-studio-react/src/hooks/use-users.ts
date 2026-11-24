@@ -83,11 +83,22 @@ const DEFAULT_FILTERS: UserFilters = {
 
 const usersLogger = createOperationLogger('users-hook', 'debug');
 
+/**
+ * Starts a tracked list request. The returned check only passes while the hook is mounted
+ * and no newer list request has been started, so slower responses for an outdated query
+ * cannot overwrite the current results, error or loading state.
+ */
+const startListRequest = (
+  latestRequestIdRef: React.RefObject<number>,
+  isMountedRef: React.RefObject<boolean>
+): (() => boolean) => {
+  const requestId = ++latestRequestIdRef.current;
+  return () => isMountedRef.current && requestId === latestRequestIdRef.current;
+};
+
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const { refreshSession } = useAuth();
   const isMountedRef = React.useRef(false);
-  // Only the most recently started list request may update list state, so a slower
-  // response for an outdated query cannot overwrite the current results.
   const latestListRequestIdRef = React.useRef(0);
 
   const [filters, setFilters] = React.useState<UserFilters>({
@@ -129,9 +140,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   }, [filters.search]);
 
   const loadUsers = React.useCallback(async () => {
-    const requestId = ++latestListRequestIdRef.current;
-    const isCurrentRequest = () =>
-      isMountedRef.current && requestId === latestListRequestIdRef.current;
+    const isCurrentRequest = startListRequest(latestListRequestIdRef, isMountedRef);
     logBrowserOperationStart(usersLogger, 'user_list_refetch_started', {
       operation: 'list_users',
       page: filters.page,
@@ -202,6 +211,14 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     refreshSession,
   ]);
 
+  // Reloads after mutations, sync or external updates must use the query that is current
+  // when the reload starts, not the one captured when the triggering action began.
+  const loadCurrentUsersRef = React.useRef(loadUsers);
+  React.useEffect(() => {
+    loadCurrentUsersRef.current = loadUsers;
+  }, [loadUsers]);
+  const reloadUsers = React.useCallback(() => loadCurrentUsersRef.current(), []);
+
   React.useEffect(() => {
     loadUsers().catch((cause) => {
       const resolvedError = asIamError(cause);
@@ -216,7 +233,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   React.useEffect(
     () =>
       subscribeIamUsersUpdated(() =>
-        loadUsers().catch((cause) => {
+        reloadUsers().catch((cause) => {
           const resolvedError = asIamError(cause);
           usersLogger.error('background_user_list_refresh_failed_after_update', {
             error_code: resolvedError.code,
@@ -224,7 +241,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
           });
         })
       ),
-    [loadUsers]
+    [reloadUsers]
   );
 
   const mutate = React.useCallback(
@@ -238,7 +255,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         requestEffectiveAccessInvalidation();
         // Do not block the visible mutation result on the follow-up list refresh.
         // If the reload is slow, the create/edit/deactivate flow should still complete.
-        loadUsers().catch((cause) => {
+        reloadUsers().catch((cause) => {
           const resolvedError = asIamError(cause);
           usersLogger.error('background_user_list_refresh_failed_after_mutation', {
             operation,
@@ -267,7 +284,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         return null;
       }
     },
-    [refreshSession, loadUsers]
+    [refreshSession, reloadUsers]
   );
 
   return {
@@ -285,7 +302,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     setIncludeTechnicalAccounts: (value) =>
       setFilters((current) => ({ ...current, page: 1, includeTechnicalAccounts: value })),
     setPage: (value) => setFilters((current) => ({ ...current, page: Math.max(1, value) })),
-    refetch: loadUsers,
+    refetch: reloadUsers,
     createUser: async (payload) => {
       const response = await mutate(() => createUser(payload), 'user_create');
       return response?.data ?? null;
@@ -322,7 +339,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         requestEffectiveAccessInvalidation();
         // Do not block the visible sync feedback on the follow-up list refresh.
         // The list reload keeps its own loading/error handling.
-        loadUsers().catch((cause: unknown) => {
+        reloadUsers().catch((cause: unknown) => {
           const resolvedError = asIamError(cause);
           usersLogger.warn('user_sync_keycloak_list_refresh_failed', {
             operation: 'user_sync_keycloak',

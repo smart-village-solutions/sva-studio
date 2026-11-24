@@ -126,6 +126,8 @@ describe('UserListPage search while results are loading', () => {
     // Pause longer than the debounce: the first search request is now in flight.
     await waitForSearchRequest('Ma');
     expect(screen.getByText(t('content.messages.loading'))).toBeTruthy();
+    // The count of the previous result is not shown while the new search loads.
+    expect(screen.queryByText(t('admin.users.messages.resultCount', { count: 3 }))).toBeNull();
     expect(screen.getByLabelText(t('admin.users.filters.searchLabel'))).toBe(search);
     expect(document.activeElement).toBe(search);
 
@@ -168,5 +170,20 @@ describe('UserListPage search while results are loading', () => {
     expect(within(screen.getByRole('table')).getByText('Max Mustermann')).toBeTruthy();
     expect(screen.queryAllByText('Maria Meyer')).toHaveLength(0);
     expect(screen.getByText(t('admin.users.messages.resultCount', { count: 1 }))).toBeTruthy();
+  });
+
+  it('announces the empty state once when a search has no results', async () => {
+    render(<UserListPage />);
+    expect(await findInTable('Anna Admin')).toBeTruthy();
+
+    const search = screen.getByLabelText<HTMLInputElement>(t('admin.users.filters.searchLabel'));
+    fireEvent.change(search, { target: { value: 'zzz' } });
+    await waitForSearchRequest('zzz');
+    await act(async () => pendingSearches.get('zzz')?.resolve(listResponse()));
+
+    const emptyMessage = screen.getByText(t('admin.users.messages.emptyState'));
+    expect(
+      screen.getAllByRole('status').filter((status) => status.contains(emptyMessage))
+    ).toHaveLength(1);
   });
 });

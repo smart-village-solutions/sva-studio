@@ -46,6 +46,7 @@ export function StudioDataTable<TData extends RowData>({
   emptyState,
   loadingState,
   isLoading = false,
+  keepToolbarWhileLoading = false,
   getRowId,
   selectionMode = 'multiple',
   canSelectRow,
@@ -207,6 +208,15 @@ export function StudioDataTable<TData extends RowData>({
   const footerContent = footer ? (
     <div className="border-t border-border px-4 py-4">{footer}</div>
   ) : null;
+  if (isLoading && !keepToolbarWhileLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card shadow-shell" aria-busy="true">
+        <div className="p-6 text-sm text-muted-foreground" role="status" aria-live="polite">
+          {loadingState ?? labels.loading}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <StudioDataTableView

@@ -871,7 +871,7 @@ Fehlerpfad:
 ### Szenario 9: Admin-Flow User- und Rollenverwaltung
 
 1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/users`.
-2. Liste wird paginiert über `GET /api/v1/iam/users` geladen. Suche und Filter bleiben während laufender Anfragen bedienbar; überholen sich Anfragen, bestimmt ausschließlich die zuletzt gestartete Anfrage Ergebnisse, Fehler und Ladezustand.
+2. Liste wird paginiert über `GET /api/v1/iam/users` geladen. Suche und Filter bleiben während laufender Anfragen bedienbar; überholen sich Anfragen, bestimmt ausschließlich die zuletzt gestartete Anfrage Ergebnisse, Fehler und Ladezustand. Nachladen nach Mutationen oder Keycloak-Sync verwendet stets die zu diesem Zeitpunkt aktuellen Filter.
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
 4. Von der Detailansicht aus können Admins zusätzlich Passwort-Einladungen erneut auslösen und Mainserver-Credentials über `POST /api/v1/iam/users/$userId/reprovision-mainserver` neu provisionieren.
 5. Die Benutzerliste leitet den technischen Mainserver-Credential-Status aus den Attributen der bereits geladenen Keycloak-Benutzerprojektion ab. Fehlende Application-ID, fehlendes Secret und vollständig fehlende Credentials werden getrennt ausgewiesen; kanonische und Legacy-Einzelwerte bilden kein vollständiges Mischpaar, ein nicht bestimmbarer Zustand bleibt neutral. Dadurch entstehen keine zusätzlichen Keycloak-Aufrufe pro Tabellenzeile und keine Credential-Werte gelangen in den Browser.

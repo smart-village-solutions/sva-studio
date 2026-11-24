@@ -1,5 +1,4 @@
 export const contentENErrors = {
-  ownershipTransferTemporarilyDisabled: 'Ownership transfers are temporarily disabled to protect content data.',
   forbidden: 'You do not have sufficient permissions for this content action.',
   csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
   rateLimited: 'Too many requests in a short time. Please wait and try again.',

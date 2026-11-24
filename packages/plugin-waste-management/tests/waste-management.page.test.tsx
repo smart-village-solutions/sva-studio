@@ -781,6 +781,11 @@ describe('WasteManagementPage', () => {
   });
 
   it('renders the plugin shell from normalized search params without a redundant settings shortcut', async () => {
+    wasteManagementApiMocks.startWasteManagementSeed.mockResolvedValueOnce({
+      id: 'job-2',
+      jobTypeId: 'waste-management.seed-data',
+      status: 'queued',
+    });
     wasteManagementApiMocks.getWasteManagementSettings.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
@@ -843,7 +848,9 @@ describe('WasteManagementPage', () => {
     });
     expect(await screen.findByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
     expect(await screen.findByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
-    expect(await screen.findByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
+    expect(
+      await screen.findByText('wasteManagement.tools.progress.jobStatuses.succeeded')
+    ).toBeTruthy();
   });
 
   it('keeps the route and blocks waste forms while permissions cannot be loaded', () => {

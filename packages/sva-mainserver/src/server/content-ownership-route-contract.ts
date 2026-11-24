@@ -1,6 +1,5 @@
 import { resolveActorInfo, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
-import { errorJson } from './content-route-core.js';
 import {
   resolveMainserverMutationActor,
   type MainserverMutationActor,
@@ -11,7 +10,6 @@ import type {
   SvaMainserverProjectionContentType,
 } from '../types.js';
 import { PROJECTS_GENERIC_TYPE } from './projects-contract.js';
-import { isContentOwnershipTransferEnabled } from './service-internals/content-ownership-transfer.js';
 import {
   getSvaMainserverEvent,
   getSvaMainserverGenericItem,
@@ -48,26 +46,12 @@ export type OwnershipTransferAudit = Readonly<{
   targetBindingVersion: string;
 }>;
 
-const transferDisabledResponse = () =>
-  errorJson(
-    409,
-    'content_transfer_temporarily_disabled',
-    'Die Inhaberübertragung ist vorübergehend gesperrt.'
-  );
-
 export const resolveOwnershipRouteActor = async (
   request: Request,
-  ctx: AuthenticatedRequestContext,
-  operation: ContentOwnershipRouteMatch['operation']
+  ctx: AuthenticatedRequestContext
 ): Promise<MainserverMutationActor | Response> => {
-  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(ctx.user.instanceId)) {
-    return transferDisabledResponse();
-  }
   const resolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in resolution) return resolution.error;
-  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(resolution.actor.instanceId)) {
-    return transferDisabledResponse();
-  }
   return resolveMainserverMutationActor({
     request,
     ctx,

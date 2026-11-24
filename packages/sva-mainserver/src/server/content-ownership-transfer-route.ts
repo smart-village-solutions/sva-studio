@@ -54,9 +54,7 @@ const finalizeUnclearTransfer = async (input: {
 }): Promise<Response | null> => {
   const errorCode = input.error instanceof SvaMainserverError ? input.error.code : undefined;
   const providerRejected = errorCode === 'content_transfer_provider_rejected';
-  const writeNotSent =
-    errorCode === 'content_transfer_temporarily_disabled' ||
-    errorCode === 'content_transfer_write_unavailable';
+  const writeNotSent = errorCode === 'content_transfer_write_unavailable';
   if (!providerRejected && !writeNotSent && (await targetConfirmsTransfer(input))) {
     try {
       await finalizeMainserverMutation({

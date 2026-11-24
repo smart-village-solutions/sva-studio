@@ -1,28 +1,8 @@
 # Inhaber von Inhalten übertragen
 
-## Vorübergehende Schutzsperre (2026-11-16)
+## Mainserver-Transfer
 
-Der gemeinsame SDK-Service lehnt Mainserver-Inhaberwechsel für alle unterstützten Typen mit HTTP 409 und
-`content_transfer_temporarily_disabled` ab. Das gilt für News, Veranstaltungen, POIs und
-sämtliche über GenericItems abgebildeten Typen einschließlich FAQ, Cockpit Cards und Projekte.
-Die Sperre greift im gemeinsamen SDK-Service vor Konfigurations-, Credential- und Netzwerkzugriffen;
-der bisherige Transferadapter mit Inhaltsmutationen wurde entfernt. Lokale Studio-Inhalte sind
-von dieser Mainserver-Sperre nicht betroffen. Der HTTP-Orchestrator führt weiterhin seine
-Vorprüfungen und Journalführung aus. Scheitern zusätzliche Abgleich-Lesezugriffe, kann seine Antwort
-`content_transfer_reconciliation_required` statt der Schutzmeldung enthalten; ein Provider-Write
-findet auch dann nicht statt.
-
-Der bisherige Adapter sendete nur Titel und Ziel-DataProvider an eine ersetzende Inhaltsmutation.
-Der Mainserver löschte dadurch ausgelassene verschachtelte Datensätze. Ein vollständiges Zurücksenden
-der Leseantwort ist kein sicherer Ersatz: Leseabfragen können etwa vergangene Termine ausblenden,
-und neu angelegte Beziehungen würden ihre bisherige Identität verlieren.
-
-Der sichere Mainserver-Vertrag wird in [SVA-1790](https://tpwd.atlassian.net/browse/SVA-1790) verfolgt.
-Die nachfolgend beschriebene Mainserver-Übertragung bleibt bis zu einer gezielten, transaktionalen
-Inhaberwechsel-Mutation außer Betrieb. Eine Wiederfreigabe benötigt einen Nachweis, dass Inhalte,
-verschachtelte Beziehungen und deren IDs unverändert erhalten bleiben. Eine bloße Bestätigung des
-Ziel-DataProviders reicht nicht aus. Die bestehenden Abgleichpfade dürfen frühere Vorgänge weiterhin
-lesend beziehungsweise lokal nachführen, aber keinen neuen Provider-Transfer starten.
+Studio überträgt Inhalte über die dedizierte GraphQL-Mutation `transferContentOwnership` an der konfigurierten Mainserver-Schnittstelle der Instanz. Die Mutation ändert gezielt die Inhaberzuordnung. Der Mainserver führt abhängige Provider-Zuordnungen und externe Referenzen transaktional nach und erhält die bestehenden Inhaltsdaten und IDs. Studio verwendet den Zugang des autorisierten persönlichen oder organisatorischen Principals. [Mainserver-Vertrag in SVA-1790](https://tpwd.atlassian.net/browse/SVA-1790)
 
 ## Fachlicher Vertrag
 
@@ -44,23 +24,19 @@ Die Zielauswahl enthält nur aktive Principals derselben Instanz. Für Mainserve
 
 Diese Prüfung erfolgt anlassbezogen: Erst nach ausdrücklicher Bestätigung lädt der Server für genau das ausgewählte Ziel `/data_provider.json`, speichert die authentifizierte Beobachtung konfliktbewusst und löst das Ziel erneut auf. Blättern und Suchen in der Zielauswahl erzeugen daher keine externen Identity-Aufrufe je Treffer. Liefert die Prüfung keine verwendbare Identität oder einen Konflikt, erfolgt kein Mainserver-Write.
 
-Mainserver-Transfers sind derzeit durch die oben beschriebene Schutzsperre deaktiviert. Nicht unterstützte Typen bleiben zusätzlich durch die serverseitige Typmatrix ausgeschlossen.
+Die serverseitige Typmatrix begrenzt die Übertragung auf unterstützte Inhaltstypen.
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
 ## Unterstützte Typen
 
-| Typ                                                      | Mainserver-Vertrag in `ee619d0e` | Anzeige im Studio | Transfer im Studio |
-| -------------------------------------------------------- | -------------------------------- | ----------------- | ------------------ |
-| News, Events, POI                                        | Bestätigt                        | Ja                | Vorübergehend gesperrt |
-| Root-GenericItems, FAQ, Cockpit Cards, Featured Projects | Bestätigt                        | Ja                | Vorübergehend gesperrt |
-| Touren                                                   | Bestätigt                        | Kein Editor       | Nein               |
-| Surveys                                                  | Nicht bestätigt                  | Ja                | Nein               |
-| Legacy SurveyPolls und Batch-Importe                     | Ausgeschlossen                   | Nein              | Nein               |
-
-Der Mainserver-Vertrag führt bei den fünf bestätigten Root-Typen die jeweils abhängigen Datensätze und `ExternalReference` innerhalb derselben Transaktion auf den Ziel-DataProvider nach. Für Touren ist der Upstream-Vertrag vorhanden; das Studio besitzt derzeit jedoch keinen redaktionellen Tour-Editor und aktiviert deshalb keinen ungenutzten Transferpfad.
-
-Der bisherige Vertragsnachweis aus Mainserver-Commit `ee619d0e` belegt Provider-Auswahl, die Übertragung abhängiger Datensätze und Rollback-Verhalten. Er belegt jedoch nicht den Erhalt ausgelassener verschachtelter Inhaltsdaten und reicht deshalb für eine Wiederfreigabe nicht aus. Die Studio-Regressionstests prüfen nun für alle vier SDK-Typen die Ablehnung vor jeglichem Konfigurations-, Credential- oder Upstream-Zugriff; die Routentests sichern weiterhin die getrennte Autorisierungs- und Abgleichlogik ab.
+| Typ                                             | Anzeige im Studio | Transfer im Studio |
+| ----------------------------------------------- | ----------------- | ------------------ |
+| News, Veranstaltungen, POIs                     | Ja                | Ja                 |
+| Root-GenericItems, FAQ, Cockpit Cards, Projekte | Ja                | Ja                 |
+| Touren                                          | Kein Editor       | Nein               |
+| Surveys                                         | Ja                | Nein               |
+| Legacy SurveyPolls und Batch-Importe            | Nein              | Nein               |
 
 Die Konflikt-Changes `add-mainserver-user-conflict-reconciliation` und `auto-reconcile-deleted-user-data-provider-conflicts` pflegen Principal- und DataProvider-Bindungen. Sie übernehmen keine Content-Transfersemantik. Der Transfer konsumiert ausschließlich deren eindeutiges, aktuelles Binding-Ergebnis; eine noch fehlende Zielbindung darf er vor dem Write über denselben authentifizierten Beobachtungsvertrag erzeugen.
 

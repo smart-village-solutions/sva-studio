@@ -222,7 +222,7 @@ const dispatchAuthenticated = async (
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
-  const actor = await resolveOwnershipRouteActor(request, ctx, route.operation);
+  const actor = await resolveOwnershipRouteActor(request, ctx);
   if (isResponse(actor)) return actor;
   if (route.contentType === 'surveys.survey') {
     try {

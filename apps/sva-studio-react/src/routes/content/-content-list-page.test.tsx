@@ -1376,7 +1376,7 @@ describe('ContentListPage', () => {
       historyRef: `mainserver:news:${id}`,
       author: 'Redaktion', credentialSource: 'user', payload: {}, status: 'draft',
     });
-    const setPage = (page: number, categoryId = '21') => {
+    const setPage = (page: number, categoryId = 'category/1') => {
       searchState = { page, pageSize: 1, categoryId };
       useContentsMock.mockReturnValue(createContentsApiResult({
         contents: [item(String(page))],
@@ -1410,7 +1410,7 @@ describe('ContentListPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Treffer auf allen Seiten auswählen' }));
     await waitFor(() => expect(screen.getByText('Ausgewählt: 3')).toBeTruthy());
-    expect(listSelectionMock).toHaveBeenCalledWith(expect.objectContaining({ categoryId: '21' }));
+    expect(listSelectionMock).toHaveBeenCalledWith(expect.objectContaining({ categoryId: 'category/1' }));
     const row2 = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:2 auswählen' })[0];
     if (!row2) throw new Error('Missing transfer checkbox for row 2');
     fireEvent.click(row2);

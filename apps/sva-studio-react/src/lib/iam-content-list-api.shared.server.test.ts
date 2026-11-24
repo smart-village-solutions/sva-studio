@@ -42,9 +42,9 @@ describe('iam content list api shared helpers', () => {
   });
 
   it('accepts category IDs and rejects malformed filter parameters', () => {
-    expect(readContentListQuery(new Request('https://studio.test/api/content?categoryId=123')))
-      .toMatchObject({ categoryId: '123' });
-    expect(() => readContentListQuery(new Request('https://studio.test/api/content?categoryId=bad%20value')))
+    expect(readContentListQuery(new Request('https://studio.test/api/content?categoryId=category%2F1')))
+      .toMatchObject({ categoryId: 'category/1' });
+    expect(() => readContentListQuery(new Request('https://studio.test/api/content?categoryId=bad%0Avalue')))
       .toThrow();
   });
 

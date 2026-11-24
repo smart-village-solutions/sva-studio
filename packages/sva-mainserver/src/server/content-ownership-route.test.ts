@@ -539,8 +539,9 @@ describe('Mainserver content ownership route', () => {
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
-  it('marks a failed journal lookup as not applied before any provider write', async () => {
-    state.loadJournal.mockRejectedValueOnce(new Error('journal unavailable'));
+  it.each(['lock', 'journal'])('marks a failed %s as not applied before any provider write', async (stage) => {
+    const failure = stage === 'lock' ? state.withLock : state.loadJournal;
+    failure.mockRejectedValueOnce(new Error(`${stage} unavailable`));
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
         'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',

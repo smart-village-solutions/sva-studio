@@ -50,6 +50,7 @@ export {
   iamContentStatuses,
   iamContentValidationStates,
   isContentJsonValue,
+  isIamContentCategoryId,
   isIamContentDomainCapability,
   isIamContentPrimitiveAction,
   isIamContentStatus,
@@ -91,7 +92,6 @@ export {
   type TransferIamContentOwnershipInput,
   type UpdateIamContentInput,
 } from './content-management.js';
-
 export {
   buildMainserverProjectionScopeKey,
   type MainserverProjectionScope,

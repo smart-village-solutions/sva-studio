@@ -1,4 +1,4 @@
-import type { IamContentListQuery } from '@sva/core';
+import { isIamContentCategoryId, type IamContentListQuery } from '@sva/core';
 import { studioContentTypes } from '../../lib/plugins';
 import { appAdminResources } from '../../routing/admin-resources';
 
@@ -140,9 +140,7 @@ export const readNormalizedRouteState = (search: RouteSearchState): ContentListR
     page: normalizePositiveInteger(search.page, 1),
     pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
     ...(languageCode ? { languageCode } : {}),
-    ...(typeof search.categoryId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:=-]{0,127}$/.test(search.categoryId)
-      ? { categoryId: search.categoryId }
-      : {}),
+    ...(isIamContentCategoryId(search.categoryId) ? { categoryId: search.categoryId } : {}),
     ...(type === 'vouchers.voucher' &&
     typeof search.poiId === 'string' &&
     /^\d+$/.test(search.poiId.trim())

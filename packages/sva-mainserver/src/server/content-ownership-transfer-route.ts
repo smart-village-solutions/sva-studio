@@ -1,6 +1,5 @@
 import {
   validateCsrf,
-  withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
 } from '@sva/auth-runtime/server';
 import type { IamContentOwnerPrincipal } from '@sva/core';
@@ -16,7 +15,7 @@ import {
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
 import {
-  loadPreviousTransferOperation,
+  runUnstartedOwnershipTransfer,
   reconcileOrBlockOwnershipTransfer,
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-reconciliation.js';
@@ -291,27 +290,13 @@ export const handleContentOwnershipTransfer = async (
   if (csrfError) return csrfError;
   const principal = await parseOwnershipTargetPrincipal(request);
   if (isResponse(principal)) return principal;
-  return withMainserverContentOwnershipLock({
-    instanceId: actor.instanceId,
-    contentType: route.contentType,
-    contentId: route.contentId,
-    execute: async () => {
-      const previousOperation = await loadPreviousTransferOperation(actor, route);
-      if (isResponse(previousOperation)) return previousOperation;
-      if (previousOperation) {
-        return errorJson(
-          409,
-          'content_transfer_operation_already_started',
-          'Diese Übertragung wurde bereits gestartet.'
-        );
-      }
-      return executeLockedTransfer({
-        actor,
-        route,
-        content,
-        principal,
-        ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
-      });
-    },
-  });
+  return runUnstartedOwnershipTransfer(actor, route, () =>
+    executeLockedTransfer({
+      actor,
+      route,
+      content,
+      principal,
+      ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
+    })
+  );
 };

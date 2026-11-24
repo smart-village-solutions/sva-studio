@@ -2,6 +2,7 @@ import {
   hasUnresolvedMainserverOwnershipTransfer,
   loadMainserverMutationJournal,
   resolveActorInfo,
+  withMainserverContentOwnershipLock,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
@@ -71,18 +72,40 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
   );
 };
 
-export const loadPreviousTransferOperation = (
+export const runUnstartedOwnershipTransfer = async (
   actor: MainserverMutationActor,
-  route: SupportedContentOwnershipRouteMatch
-) =>
-  loadMainserverMutationJournal({
-    instanceId: actor.instanceId,
-    operationExternalId: actor.operationExternalId,
-  }).catch((error: unknown) =>
-    withMutationNotApplied(
+  route: SupportedContentOwnershipRouteMatch,
+  execute: () => Promise<Response>
+): Promise<Response> => {
+  let journalChecked = false;
+  try {
+    return await withMainserverContentOwnershipLock({
+      instanceId: actor.instanceId,
+      contentType: route.contentType,
+      contentId: route.contentId,
+      execute: async () => {
+        const previousOperation = await loadMainserverMutationJournal({
+          instanceId: actor.instanceId,
+          operationExternalId: actor.operationExternalId,
+        });
+        journalChecked = true;
+        if (previousOperation) {
+          return errorJson(
+            409,
+            'content_transfer_operation_already_started',
+            'Diese Übertragung wurde bereits gestartet.'
+          );
+        }
+        return execute();
+      },
+    });
+  } catch (error) {
+    if (journalChecked) throw error;
+    return withMutationNotApplied(
       ownershipRouteFailureResponse(error, actor, route, 'Die Inhaberübertragung ist fehlgeschlagen.')
-    )
-  );
+    );
+  }
+};
 
 export const readTransferOperation = async (
   request: Request,

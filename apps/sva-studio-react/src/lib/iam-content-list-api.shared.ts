@@ -2,6 +2,7 @@ import type { ApiErrorCode, ApiErrorResponse, IamContentListQuery } from '@sva/c
 import {
   iamContentListSortDirections,
   iamContentListSortFields,
+  isIamContentCategoryId,
   isIamContentStatus,
 } from '@sva/core';
 
@@ -76,8 +77,8 @@ export const normalizeApiErrorCode = (value: unknown): ApiErrorCode =>
     : 'internal_error';
 
 const readCategoryId = (url: URL): string | undefined => {
-  const categoryId = url.searchParams.get('categoryId')?.trim();
-  if (categoryId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._:=-]{0,127}$/.test(categoryId)) {
+  const categoryId = url.searchParams.get('categoryId') ?? undefined;
+  if (categoryId !== undefined && !isIamContentCategoryId(categoryId)) {
     throw new InvalidContentListQueryError();
   }
   return categoryId;

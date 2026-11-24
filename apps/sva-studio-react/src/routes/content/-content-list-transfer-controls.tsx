@@ -6,7 +6,7 @@ import {
 } from '@sva/studio-ui-react';
 import React from 'react';
 
-import { t } from '../../i18n';
+import { getActiveLocale, t } from '../../i18n';
 import { ownershipPanelLabels } from '../../routing/mainserver-resource-principal';
 import {
   loadBatchOwnershipTargets,
@@ -21,10 +21,12 @@ const BatchTransferDialog = ({
   items,
   onConfirm,
   onCancel,
+  onCloseAutoFocus,
 }: Readonly<{
   items: readonly TransferSelectionItem[];
   onConfirm: (job: TransferJob) => Promise<void>;
   onCancel: () => void;
+  onCloseAutoFocus: (event: Event) => void;
 }>) => {
   const binding = React.useRef<string | undefined>(undefined);
   const started = React.useRef(false);
@@ -73,6 +75,7 @@ const BatchTransferDialog = ({
       setOpen={onCancel}
       state={state}
       onSuccess={onCancel}
+      onCloseAutoFocus={onCloseAutoFocus}
     />
   );
 };
@@ -81,12 +84,20 @@ export const ContentListTransferActions = ({
   transfer,
   enabled,
   canSelectAll,
+  selectionLimit,
 }: Readonly<{
   transfer: TransferController;
   enabled: boolean;
   canSelectAll: boolean;
+  selectionLimit?: number;
 }>) => {
   if (transfer.job.job || !enabled || !transfer.job.available) return null;
+  const selectionBlocked = !canSelectAll || selectionLimit !== undefined;
+  const selectionBlockedMessage = selectionLimit === undefined
+    ? t('content.batch.partial')
+    : t('content.batch.limitReached', {
+        limit: new Intl.NumberFormat(getActiveLocale()).format(selectionLimit),
+      });
   if (!transfer.active) {
     return (
       <Button variant="secondary" onClick={transfer.start}>
@@ -101,7 +112,8 @@ export const ContentListTransferActions = ({
       </p>
       <Button
         variant="secondary"
-        disabled={!canSelectAll || transfer.loadingAll}
+        disabled={selectionBlocked || transfer.loadingAll}
+        aria-describedby={selectionBlocked ? 'content-transfer-selection-blocked' : undefined}
         aria-busy={transfer.loadingAll}
         onClick={() => void transfer.selectAll()}
       >
@@ -114,16 +126,22 @@ export const ContentListTransferActions = ({
       >
         {t('content.batch.clear')}
       </Button>
-      <Button onClick={transfer.review} disabled={!transfer.count || transfer.loadingAll}>
+      <Button
+        ref={transfer.reviewButtonRef}
+        onClick={transfer.review}
+        disabled={!transfer.count || transfer.loadingAll}
+      >
         {t('content.batch.review')}
       </Button>
       <Button variant="tertiary" disabled={transfer.loadingAll} onClick={transfer.stop}>
         {t('content.actions.cancel')}
       </Button>
-      {!canSelectAll ? (
-        <p className="text-sm text-muted-foreground">{t('content.batch.partial')}</p>
+      {selectionBlocked ? (
+        <p id="content-transfer-selection-blocked" role="status" className="text-sm text-muted-foreground">
+          {selectionBlockedMessage}
+        </p>
       ) : null}
-      {transfer.selectionError ? (
+      {transfer.selectionError && !selectionBlocked ? (
         <p role="alert" className="text-sm text-destructive">
           {t('content.batch.selectionError')}
         </p>
@@ -137,11 +155,17 @@ export const ContentListTransferResult = ({
   enabled,
 }: Readonly<{ transfer: TransferController; enabled: boolean }>) => {
   const { job, busy, storageError, run, discard } = transfer.job;
+  const resultHeading = React.useRef<HTMLHeadingElement>(null);
+  const [hiddenJobId, setHiddenJobId] = React.useState<string>();
   if (!job && enabled && transfer.draft)
     return (
       <BatchTransferDialog
         items={transfer.draft}
         onCancel={transfer.closeDraft}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          (resultHeading.current ?? transfer.reviewButtonRef.current)?.focus();
+        }}
         onConfirm={async (next) => {
           await run(next, true);
           transfer.stop();
@@ -150,6 +174,14 @@ export const ContentListTransferResult = ({
       />
     );
   if (!job) return null;
+  const jobId = job.operations[0]?.operationId;
+  if (jobId && hiddenJobId === jobId) {
+    return (
+      <Button variant="secondary" onClick={() => setHiddenJobId(undefined)}>
+        {t('content.batch.showOpenJob')}
+      </Button>
+    );
+  }
 
   const hasQueued = job.operations.some((operation) => operation.status === 'queued');
   const hasUnclear = job.operations.some((operation) => operation.status === 'reconciling');
@@ -160,7 +192,9 @@ export const ContentListTransferResult = ({
       aria-label={t('content.batch.result')}
       aria-busy={busy}
     >
-      <h2 className="font-medium">{t('content.batch.result')}</h2>
+      <h2 ref={resultHeading} tabIndex={-1} className="font-medium">
+        {t('content.batch.result')}
+      </h2>
       {busy ? <p role="status">{t('content.ownership.transferring')}</p> : null}
       {storageError ? <p role="alert">{t('content.batch.storageError')}</p> : null}
       <ul
@@ -186,7 +220,14 @@ export const ContentListTransferResult = ({
             {t('content.batch.check')}
           </Button>
         ) : null}
-        <Button variant="tertiary" disabled={busy} onClick={discard}>
+        <Button
+          variant="tertiary"
+          disabled={busy}
+          onClick={() => {
+            if (hasQueued || hasUnclear) setHiddenJobId(jobId);
+            else discard();
+          }}
+        >
           {t('content.batch.finish')}
         </Button>
       </div>

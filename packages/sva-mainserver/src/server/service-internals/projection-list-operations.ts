@@ -57,6 +57,19 @@ const readFaqLanguageCode = (
   return stringValue((source.payload as RawItem).languageCode);
 };
 
+const mapCategoryIds = (source: RawItem): Pick<SvaMainserverProjectionListItem, 'categoryIds'> => {
+  const categories: unknown[] = Array.isArray(source.categories) ? source.categories : [];
+  const ids = new Set<string>();
+  for (const category of [source.category, ...categories]) {
+    const id =
+      category && typeof category === 'object' && 'id' in category
+        ? stringValue(category.id)
+        : undefined;
+    if (id) ids.add(id);
+  }
+  return ids.size > 0 ? { categoryIds: [...ids] } : {};
+};
+
 const resolveTitle = (
   source: RawItem,
   contentType: SvaMainserverProjectionContentType,
@@ -99,6 +112,7 @@ const mapItem = (
     ...(typeof source.active === 'boolean' ? { active: source.active } : {}),
     ...(stringValue(source.status) ? { status: stringValue(source.status) } : {}),
     ...(languageCode ? { languageCode } : {}),
+    ...mapCategoryIds(source),
     ...(pointOfInterestId ? { pointOfInterestId } : {}),
     ...(provider ? { dataProvider: provider } : {}),
   };

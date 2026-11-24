@@ -331,6 +331,7 @@ export const ContentListTable = ({
           <ContentListTransferActions
             transfer={transfer}
             enabled={transferEnabled}
+            selectionLimit={contentsApi.metadata?.selectionLimit}
             canSelectAll={
               !contentsApi.isLoading &&
               !contentsApi.error &&

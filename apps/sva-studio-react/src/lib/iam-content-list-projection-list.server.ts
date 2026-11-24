@@ -4,6 +4,8 @@ import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import {
   createListErrorResponse,
   isMainserverContentType,
+  MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+  MAINSERVER_PROJECTION_ITEM_LIMIT,
   normalizeApiErrorCode,
   type MainserverContentType,
 } from './iam-content-list-api.shared.js';
@@ -38,6 +40,11 @@ const createEmptyProjectionListResponse = (
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );
 
+// Page progress also detects the cutoff when rows were deduplicated before persisting.
+const reachedSelectionLimit = (state: ContentProjectionSyncState): boolean =>
+  state.availableCount >= MAINSERVER_PROJECTION_ITEM_LIMIT ||
+  state.completedPage * MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE >= MAINSERVER_PROJECTION_ITEM_LIMIT;
+
 const createProjectionListResponse = (input: {
   readonly query: IamContentListQuery;
   readonly items: readonly IamContentListItem[];
@@ -55,6 +62,9 @@ const createProjectionListResponse = (input: {
             hasStaleMainserverContent: input.syncStates.some((state) => state.isStale),
             hasBlockingSyncGap: input.syncStates.some((state) => !state.hasSnapshot),
             hasRunningMainserverSync: input.syncStates.some((state) => state.isSyncRunning),
+            ...(input.syncStates.some(reachedSelectionLimit)
+              ? { selectionLimit: MAINSERVER_PROJECTION_ITEM_LIMIT }
+              : {}),
             availableCount: input.total,
             ...(isTotalFinal ? { totalCount: input.total } : {}),
             isTotalFinal,
@@ -155,6 +165,14 @@ export const listProjectedContents = async (
     loadableAllowedTypes,
     typeAuthorization.permissions
   );
+  if (selection && responseSyncStates.some(reachedSelectionLimit)) {
+    return createListErrorResponse(
+      409,
+      'conflict',
+      'Die Obergrenze der Inhaltsliste ist erreicht. Eine Gesamtauswahl ist nicht verfügbar.',
+      requestId
+    );
+  }
   if (selection && responseSyncStates.some((state) => !state.hasSnapshot || !state.isTotalFinal)) {
     return createListErrorResponse(409, 'conflict', 'Die Inhaltsliste ist noch nicht vollständig.');
   }

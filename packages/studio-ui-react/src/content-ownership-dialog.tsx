@@ -53,6 +53,7 @@ export const ContentOwnershipDialog = ({
   setOpen,
   state,
   onSuccess,
+  onCloseAutoFocus,
 }: Readonly<{
   currentOwner?: ContentOwnershipPanelOwner;
   labels: ContentOwnershipPanelLabels;
@@ -60,10 +61,12 @@ export const ContentOwnershipDialog = ({
   setOpen: (open: boolean) => void;
   state: ContentOwnershipDialogState;
   onSuccess: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }>) => (
   <Dialog open={open} onOpenChange={(nextOpen) => !state.pending && setOpen(nextOpen)}>
     <DialogContent
       className="flex max-h-[90dvh] flex-col sm:max-w-xl"
+      onCloseAutoFocus={onCloseAutoFocus}
       onEscapeKeyDown={(event) => {
         if (document.activeElement?.closest('[data-content-ownership-target-popover]')) {
           event.preventDefault();

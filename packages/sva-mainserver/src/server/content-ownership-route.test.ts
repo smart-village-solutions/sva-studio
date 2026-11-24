@@ -556,6 +556,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     expect(state.authorize).not.toHaveBeenCalled();
     expect(state.finalize).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
@@ -722,6 +723,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'unknown',

@@ -5,73 +5,59 @@ type MainserverDataProvider = Readonly<{
   name?: string;
 }>;
 
-type MainserverNewsItem = Readonly<{
+type MainserverCategorizedItem = Readonly<{
   id: string;
   contentType: string;
-  title?: string;
-  contentBlocks?: readonly Readonly<{ title?: string }>[];
-  categories?: unknown;
-  author: string;
-  payload?: unknown;
+  categories?: readonly Readonly<{ id?: string }>[];
   visible?: boolean;
   createdAt: string;
   updatedAt: string;
-  publishedAt?: string;
   dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverEventItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverNewsItem = MainserverCategorizedItem & Readonly<{
+  title?: string;
+  contentBlocks?: readonly Readonly<{ title?: string }>[];
+  author: string;
+  payload?: unknown;
+  publishedAt?: string;
+}>;
+
+type MainserverEventItem = MainserverCategorizedItem & Readonly<{
   title?: string;
   description?: string;
   categoryName?: string;
   categoryId?: string;
-  categories?: unknown;
   dates?: unknown;
   addresses?: unknown;
   contacts?: unknown;
   urls?: unknown;
   tags?: unknown;
   pointOfInterestId?: string;
-  visible?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverPoiItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverPoiItem = MainserverCategorizedItem & Readonly<{
   name?: string;
   description?: string;
   mobileDescription?: string;
   active?: boolean;
-  visible?: boolean;
   categoryName?: string;
   categoryId?: string;
-  categories?: unknown;
   payload?: unknown;
   addresses?: unknown;
   contact?: unknown;
   openingHours?: unknown;
   webUrls?: unknown;
   tags?: unknown;
-  createdAt: string;
-  updatedAt: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverGenericItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverGenericItem = MainserverCategorizedItem & Readonly<{
   title?: string;
   genericType?: string;
   pointOfInterestId?: string;
   author?: string;
   keywords?: string;
   payload?: unknown;
-  categories?: unknown;
   contacts?: unknown;
   webUrls?: unknown;
   addresses?: unknown;
@@ -82,11 +68,7 @@ type MainserverGenericItem = Readonly<{
   dates?: unknown;
   accessibilityInformations?: unknown;
   priceInformations?: unknown;
-  visible?: boolean;
-  createdAt: string;
-  updatedAt: string;
   publishedAt?: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
 type MainserverSurveyLocalizedText = Readonly<Record<string, string>>;
@@ -147,6 +129,14 @@ const resolveLocalizedText = (
 const toContentJsonValue = (value: unknown): ContentJsonValue =>
   JSON.parse(JSON.stringify(value ?? null)) as ContentJsonValue;
 
+const directCategoryIds = (
+  categories: MainserverNewsItem['categories'],
+  primaryCategoryId?: string
+): string[] =>
+  [...new Set([primaryCategoryId, ...(categories ?? []).map(({ id }) => id)])].filter(
+    (id): id is string => Boolean(id)
+  );
+
 const deriveNamespacedAction = (
   contentType: string,
   action: 'create' | 'update'
@@ -199,6 +189,19 @@ const mapDataProviderProjection = (
   ...(dataProvider?.name ? { sourceDataProviderName: dataProvider.name } : {}),
 });
 
+const mapNewsProjectionPayload = (item: MainserverNewsItem): ContentJsonValue => {
+  const payload =
+    item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
+      ? item.payload
+      : undefined;
+  if (!payload && !item.categories?.length) return toContentJsonValue(item.payload);
+  return toContentJsonValue({
+    ...payload,
+    ...(item.categories?.length ? { categories: item.categories } : {}),
+    mainserverCategoryIds: directCategoryIds(item.categories),
+  });
+};
+
 export const mapNewsItem = (
   item: MainserverNewsItem,
   instanceId: string,
@@ -215,11 +218,7 @@ export const mapNewsItem = (
   authorDisplayMode: 'organization',
   author: item.author,
   ...mapDataProviderProjection(item.dataProvider),
-  payload: toContentJsonValue(
-    Array.isArray(item.categories) && item.categories.length > 0
-      ? { ...(item.payload && typeof item.payload === 'object' ? item.payload : {}), categories: item.categories }
-      : item.payload
-  ),
+  payload: mapNewsProjectionPayload(item),
   status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:news:${item.id}`,
@@ -247,6 +246,7 @@ export const mapEventItem = (
     description: item.description,
     categoryName: item.categoryName,
     categoryId: item.categoryId,
+    mainserverCategoryIds: directCategoryIds(item.categories, item.categoryId),
     categories: item.categories,
     dates: item.dates,
     addresses: item.addresses,
@@ -283,6 +283,7 @@ export const mapPoiItem = (
     active: item.active,
     categoryName: item.categoryName,
     categoryId: item.categoryId,
+    mainserverCategoryIds: directCategoryIds(item.categories, item.categoryId),
     categories: item.categories,
     payload: item.payload,
     addresses: item.addresses,
@@ -318,6 +319,7 @@ export const mapGenericItem = (
     ...(item.pointOfInterestId ? { pointOfInterestId: item.pointOfInterestId } : {}),
     keywords: item.keywords,
     payload: item.payload,
+    mainserverCategoryIds: directCategoryIds(item.categories),
     categories: item.categories,
     contacts: item.contacts,
     webUrls: item.webUrls,

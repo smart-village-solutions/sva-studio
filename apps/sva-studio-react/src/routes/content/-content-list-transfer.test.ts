@@ -50,29 +50,34 @@ describe('batch ownership transfer', () => {
     expect([...selection.values()]).toEqual([project]);
   });
 
-  it('uses an authorized selected record for target search and binds the subsequent job to its context', async () => {
-    const target = { principal: { type: 'organization', id: 'target' }, displayName: 'Redaktion' };
-    const fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/1/targets')) return Response.json({ error: 'forbidden' }, { status: 403 });
-      return Response.json(
-        { data: [target], pagination: { total: 1 } },
-        { headers: { 'X-SVA-Context-Binding': 'v1.target-scope' } }
-      );
-    });
-    vi.stubGlobal('fetch', fetch);
-    const binding = vi.fn();
-    await expect(
-      loadBatchOwnershipTargets(
-        [news('1'), news('2')],
-        { type: 'organization', page: 1, pageSize: 10 },
-        binding
-      )
-    ).resolves.toEqual({ items: [target], total: 1 });
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(fetch.mock.calls[1]?.[0]).toContain('selection=batch');
-    expect(binding).toHaveBeenCalledExactlyOnceWith('v1.target-scope');
-  });
+  it.each(['forbidden', 'content_transfer_source_changed'])(
+    'uses another record for target search after %s and binds the subsequent job to its context',
+    async (error) => {
+      const target = { principal: { type: 'organization', id: 'target' }, displayName: 'Redaktion' };
+      const fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/1/targets')) {
+          return Response.json({ error }, { status: error === 'forbidden' ? 403 : 409 });
+        }
+        return Response.json(
+          { data: [target], pagination: { total: 1 } },
+          { headers: { 'X-SVA-Context-Binding': 'v1.target-scope' } }
+        );
+      });
+      vi.stubGlobal('fetch', fetch);
+      const binding = vi.fn();
+      await expect(
+        loadBatchOwnershipTargets(
+          [news('1'), news('2')],
+          { type: 'organization', page: 1, pageSize: 10 },
+          binding
+        )
+      ).resolves.toEqual({ items: [target], total: 1 });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch.mock.calls[1]?.[0]).toContain('selection=batch');
+      expect(binding).toHaveBeenCalledExactlyOnceWith('v1.target-scope');
+    }
+  );
 
   it('shows individual rejections and only marks confirmed journal entries as transferred', async () => {
     const { initial, commit, read } = setup();
@@ -105,6 +110,28 @@ describe('batch ownership transfer', () => {
       'rejected',
       'reconciling',
     ]);
+  });
+
+  it('distinguishes an earlier transfer blocking the write from an uncertain current write', async () => {
+    const { initial, commit, read } = setup();
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST') return Response.json({ error: 'operation_not_found' }, { status: 404 });
+      const id = String(input).split('/').at(-2);
+      return Response.json(
+        { error: 'content_transfer_reconciliation_required' },
+        { status: 409, headers: id === '1' ? { 'X-SVA-Mutation-Outcome': 'not_applied' } : {} }
+      );
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    await runTransferJob(initial, true, new AbortController().signal, commit);
+
+    expect(read().operations.map(({ status }) => status)).toEqual([
+      'rejected', 'reconciling', 'reconciling',
+    ]);
+    expect(fetch.mock.calls.map(([input]) => String(input))).not.toContain(
+      '/api/v1/mainserver/content-ownership/operations/operation-1'
+    );
   });
 
   it('resumes work after interruption without resending an uncertain request', async () => {

@@ -451,6 +451,58 @@ describe('content projection reconciliation paging', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['slim', 'legacy'])('filters synchronized %s news by assigned categories', async (mode) => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = mode;
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news' }],
+    });
+    const base = {
+      contentType: 'news.article',
+      title: 'Beitrag',
+      author: 'Redaktion',
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    };
+    const pagination = { page: 1, pageSize: 100, hasNextPage: false };
+    state.listSvaMainserverProjection.mockResolvedValue({
+      data: [
+        { ...base, id: 'matching', categoryIds: ['10'] },
+        { ...base, id: 'unrelated', categoryIds: ['20'] },
+      ],
+      skippedInvalidCount: 0,
+      pagination,
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        { ...base, id: 'matching', categories: [{ id: '10', name: 'Kultur' }] },
+        {
+          ...base,
+          id: 'unrelated',
+          categories: [],
+          payload: { categoryId: '10', categories: [{ id: '10' }], mainserverCategoryIds: ['10'] },
+        },
+      ],
+      pagination,
+    });
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
+    const response = await listProjectedContents(ctx, {
+      type: 'news.article',
+      categoryId: '10',
+      page: 1,
+      pageSize: 25,
+      sortBy: 'title',
+      sortDirection: 'asc',
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: [expect.objectContaining({ id: 'matching' })],
+      pagination: { total: 1 },
+    });
+  });
+
   it('persists the FAQ language code from slim projection rows', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.resolveEffectivePermissions.mockResolvedValue({

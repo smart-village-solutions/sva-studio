@@ -118,17 +118,8 @@ export const loadProjectionPage = async (
         params.push(query.categoryId);
         conditions.push(`(
           projection.source_system = 'mainserver'
-          AND (
-            projection.payload_json ->> 'categoryId' = $${params.length}
-            OR EXISTS (
-              SELECT 1
-              FROM jsonb_array_elements(
-                CASE WHEN jsonb_typeof(projection.payload_json -> 'categories') = 'array'
-                  THEN projection.payload_json -> 'categories' ELSE '[]'::jsonb END
-              ) AS membership
-              WHERE membership ->> 'id' = $${params.length}
-            )
-          )
+          AND jsonb_typeof(projection.payload_json -> 'mainserverCategoryIds') = 'array'
+          AND (projection.payload_json -> 'mainserverCategoryIds') ? $${params.length}::text
         )`);
       }
       if (query.q && query.q.trim().length > 0) {

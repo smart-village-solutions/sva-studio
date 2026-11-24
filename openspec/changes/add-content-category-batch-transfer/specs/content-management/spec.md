@@ -33,7 +33,8 @@ Studio SHALL einzelne ausgewählte Inhalte und eine Auswahl aller gefilterten Tr
 - **GEGEBEN** die Inhaltsübersicht zeigt einen unvollständigen Listenstand
 - **WENN** der Benutzer Inhalte auswählt
 - **DANN** kann er die bereits sichtbaren Inhalte einzeln auswählen
-- **UND** Studio kennzeichnet die Auswahl aller Treffer als vorübergehend nicht verfügbar
+- **UND** Studio kennzeichnet die Auswahl aller Treffer als nicht verfügbar
+- **UND** wenn das Projektionslimit erreicht ist, nennt Studio das Limit als Grund
 
 #### Scenario: Derselbe Datensatz erscheint in zwei Ansichten
 

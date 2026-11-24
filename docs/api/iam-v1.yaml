@@ -1740,7 +1740,10 @@ paths:
             Bei selection=all liefert data je Treffer ausschließlich id, contentType, title,
             historyRef und gegebenenfalls credentialSource.
         '409':
-          description: Die Gesamtauswahl benötigt einen vollständigen Listenstand.
+          description: >-
+            Die Gesamtauswahl benötigt einen vollständigen Listenstand unterhalb des
+            Projektionslimits. Die Listenmetadaten enthalten selectionLimit, wenn das
+            Limit für einen angefragten Inhaltstyp erreicht ist.
         '503':
           description: >
             Kein verwertbarer Snapshot für mindestens einen angefragten Mainserver-Typ

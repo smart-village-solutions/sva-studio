@@ -1,10 +1,11 @@
 // Generated-style documents backed by the checked-in Mainserver schema snapshot.
 const provider = `dataProvider { id name }`;
+const categories = `categories { id }`;
 
 export const svaMainserverNewsProjectionListDocument = /* GraphQL */ `
   query SvaMainserverNewsProjectionList($limit: Int, $skip: Int, $order: NewsItemsOrder) {
     newsItems(limit: $limit, skip: $skip, order: $order) {
-      id title contentBlocks { title } author createdAt updatedAt publicationDate publishedAt visible ${provider}
+      id title contentBlocks { title } author createdAt updatedAt publicationDate publishedAt visible ${categories} ${provider}
     }
   }
 `;
@@ -12,7 +13,7 @@ export const svaMainserverNewsProjectionListDocument = /* GraphQL */ `
 export const svaMainserverEventProjectionListDocument = /* GraphQL */ `
   query SvaMainserverEventProjectionList($limit: Int, $skip: Int, $order: EventRecordsOrder) {
     eventRecords(limit: $limit, skip: $skip, order: $order) {
-      id title createdAt updatedAt visible ${provider}
+      id title createdAt updatedAt visible category { id } ${categories} ${provider}
     }
   }
 `;
@@ -20,7 +21,7 @@ export const svaMainserverEventProjectionListDocument = /* GraphQL */ `
 export const svaMainserverPoiProjectionListDocument = /* GraphQL */ `
   query SvaMainserverPoiProjectionList($limit: Int, $skip: Int, $order: PointsOfInterestOrder) {
     pointsOfInterest(limit: $limit, skip: $skip, order: $order) {
-      id name createdAt updatedAt active visible ${provider}
+      id name createdAt updatedAt active visible category { id } ${categories} ${provider}
     }
   }
 `;
@@ -28,7 +29,7 @@ export const svaMainserverPoiProjectionListDocument = /* GraphQL */ `
 export const svaMainserverGenericItemProjectionListDocument = /* GraphQL */ `
   query SvaMainserverGenericItemProjectionList($limit: Int, $skip: Int, $order: GenericItemOrder) {
     genericItems(limit: $limit, skip: $skip, order: $order) {
-      id title genericType author payload pointOfInterest { id } createdAt updatedAt publicationDate publishedAt visible ${provider}
+      id title genericType author payload pointOfInterest { id } createdAt updatedAt publicationDate publishedAt visible ${categories} ${provider}
     }
   }
 `;

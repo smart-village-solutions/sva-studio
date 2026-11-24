@@ -3,6 +3,7 @@ import {
   createMainserverMutationHeaders,
   createMainserverReadHeaders,
   MainserverApiError,
+  readMainserverMutationFailureOutcome,
   requestMainserverJson,
   type MainserverActingPrincipalType,
 } from '@sva/plugin-sdk';
@@ -95,6 +96,7 @@ export const loadBatchOwnershipTargets = async (
           'forbidden',
           'content_transfer_permission_missing',
           'content_transfer_source_unresolved',
+          'content_transfer_source_changed',
           'acting_principal_not_allowed',
         ].includes(error.code)
       )
@@ -156,6 +158,7 @@ export const executeTransferOperation = async (
       },
     });
   } catch (error) {
+    if (readMainserverMutationFailureOutcome(error) === 'not_applied') return 'rejected';
     if (
       error instanceof MainserverApiError &&
       [
@@ -167,6 +170,7 @@ export const executeTransferOperation = async (
         'csrf_validation_failed',
         'content_transfer_permission_missing',
         'content_transfer_type_unsupported',
+        'content_transfer_source_changed',
         'content_transfer_target_invalid',
         'content_transfer_target_credentials_missing',
         'content_transfer_target_verification_failed',

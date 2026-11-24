@@ -119,11 +119,11 @@ describe('content projection title order', () => {
   it('filters exact category membership before pagination and freezes the complete authorized selection', async () => {
     const contentType = 'events.event-record';
     fixture.projectionRows = [
-      { ...projectionRow(contentType, 'other-id', 'A', 'Studio'), payload_json: { categories: [{ id: '20', name: 'Kultur' }] } },
-      { ...projectionRow(contentType, 'legacy-name', 'B', 'Studio'), payload_json: { categoryName: 'Kultur' } },
-      { ...projectionRow(contentType, 'main-category', 'C', 'Studio'), payload_json: { categoryId: '10' } },
-      { ...projectionRow(contentType, 'member', 'D', 'Studio'), payload_json: { categories: [{ id: '10', name: 'Kultur' }] } },
-      { ...projectionRow(contentType, 'other-tenant', 'E', 'Studio'), instance_id: 'de-fremd', payload_json: { categoryId: '10' } },
+      { ...projectionRow(contentType, 'other-id', 'A', 'Studio'), payload_json: { mainserverCategoryIds: ['20'] } },
+      { ...projectionRow(contentType, 'legacy-name', 'B', 'Studio'), payload_json: { categoryName: 'Kultur', categoryId: '10', categories: [{ id: '10' }] } },
+      { ...projectionRow(contentType, 'main-category', 'C', 'Studio'), payload_json: { mainserverCategoryIds: ['10'] } },
+      { ...projectionRow(contentType, 'member', 'D', 'Studio'), payload_json: { mainserverCategoryIds: ['10'] } },
+      { ...projectionRow(contentType, 'other-tenant', 'E', 'Studio'), instance_id: 'de-fremd', payload_json: { mainserverCategoryIds: ['10'] } },
     ];
     markProjected(contentType, 4);
     state.resolveEffectivePermissions.mockResolvedValue({
@@ -150,6 +150,37 @@ describe('content projection title order', () => {
 
     markProjected(contentType, 4, false);
     expect((await listProjectedContents(ctx, query)).status).toBe(200);
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
+  });
+
+  it('reports the projection limit and rejects all-selection even when the sync ended successfully', async () => {
+    const contentType = 'events.event-record';
+    fixture.projectionRows = [projectionRow(contentType, 'event-1', 'Veranstaltung', 'Studio')];
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        readPermission(contentType),
+        { action: 'content.transferOwnership', resourceType: 'content' },
+      ],
+    });
+    const query = { type: contentType, page: 1, pageSize: 25, sortBy: 'title', sortDirection: 'asc' } as const;
+
+    markProjected(contentType, 4_999);
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(200);
+
+    markProjected(contentType, 5_000);
+    const page = await listProjectedContents(ctx, query);
+    expect(page.status).toBe(200);
+    await expect(page.json()).resolves.toMatchObject({
+      data: [{ id: 'event-1' }],
+      metadata: { selectionLimit: 5_000 },
+    });
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
+
+    markProjected(contentType, 4_999);
+    const syncState = fixture.syncStates.get(contentType);
+    if (!syncState) throw new Error('Expected a synchronized projection');
+    fixture.syncStates.set(contentType, { ...syncState, completed_page: 50 });
     expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
   });
 

@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { useOrganizationContext } from '../../hooks/use-organization-context';
 import { listContentSelection } from '../../lib/iam-api-content';
+import { asIamError } from '../../lib/iam-http-client';
 import { useAuth } from '../../providers/auth-provider';
 import {
   runTransferJob,
@@ -102,7 +103,11 @@ const useTransferJob = (key: string | undefined, refetch: () => Promise<void>) =
     available: Boolean(key),
     run,
     discard: () => {
-      if (!key || runRef.current) return;
+      if (
+        !key ||
+        runRef.current ||
+        job?.operations.some(({ status }) => status === 'queued' || status === 'reconciling')
+      ) return;
       try {
         window.sessionStorage.removeItem(key);
         setSaved({ key, job: null });
@@ -133,7 +138,12 @@ export const useContentListTransfer = ({
     user?.instanceId && organizationContext.context
       ? `studio.content-transfer.v1:${JSON.stringify([user.instanceId, user.id, organizationContext.context.activeOrganizationId])}`
       : undefined;
-  const job = useTransferJob(key, refetch);
+  const currentRefetch = React.useRef(refetch);
+  React.useLayoutEffect(() => {
+    currentRefetch.current = refetch;
+  }, [refetch]);
+  const refetchCurrentList = React.useCallback(() => currentRefetch.current(), []);
+  const job = useTransferJob(key, refetchCurrentList);
   const { type, status, categoryId, q, languageCode, poiId, visibleTypes } = query;
   const scope = JSON.stringify([
     key,
@@ -147,6 +157,7 @@ export const useContentListTransfer = ({
     visibleTypes,
   ]);
   const selectionRequest = React.useRef(0);
+  const reviewButtonRef = React.useRef<HTMLButtonElement>(null);
   const [activeScope, setActiveScope] = React.useState<string>();
   const [selected, setSelected] = React.useState(() => new Map<string, TransferSelectionItem>());
   const [draft, setDraft] = React.useState<readonly TransferSelectionItem[]>();
@@ -193,8 +204,10 @@ export const useContentListTransfer = ({
         if (candidate) selectTransferCandidate(next, candidate);
       }
       setSelected(next);
-    } catch {
-      if (selectionRequest.current === requestId) setSelectionError(true);
+    } catch (error) {
+      if (selectionRequest.current !== requestId) return;
+      setSelectionError(true);
+      if (asIamError(error).status === 409) await refetchCurrentList().catch(() => undefined);
     } finally {
       if (selectionRequest.current === requestId) setLoadingAll(false);
     }
@@ -217,6 +230,7 @@ export const useContentListTransfer = ({
       setSelected(new Map());
       setActiveScope(undefined);
     },
+    reviewButtonRef,
     review: () => setDraft([...selected.values()]),
     closeDraft: () => setDraft(undefined),
     selection: {

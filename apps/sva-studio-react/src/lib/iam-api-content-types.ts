@@ -50,6 +50,7 @@ export type IamContentListMetadata = Readonly<{
   hasRunningMainserverSync: boolean;
   availableCount?: number;
   totalCount?: number;
+  selectionLimit?: number;
   isTotalFinal?: boolean;
 }>;
 

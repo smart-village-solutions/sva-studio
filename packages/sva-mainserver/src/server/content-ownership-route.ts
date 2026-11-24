@@ -7,7 +7,7 @@ import {
   type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
 
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { readTransferOperation } from './content-ownership-transfer-reconciliation.js';
 import {
@@ -195,7 +195,9 @@ const dispatchAuthenticated = async (
     );
   }
   const actor = await resolveOwnershipRouteActor(request, ctx);
-  if (isResponse(actor)) return actor;
+  if (isResponse(actor)) {
+    return route.operation === 'transfer' ? withMutationNotApplied(actor) : actor;
+  }
   if (route.contentType === 'surveys.survey') {
     try {
       return await handleSurveyAuthorization(route, actor);

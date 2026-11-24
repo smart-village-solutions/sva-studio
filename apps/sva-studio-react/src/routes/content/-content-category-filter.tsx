@@ -40,10 +40,18 @@ export function ContentCategoryFilter({
     };
   }, [userId, instanceId, organization]);
 
-  const options = categories.map(({ id, name, parent }) => ({
+  const labels = categories.map(({ id, name, parent }) => ({
     value: id,
     label: parent ? `${parent.name} / ${name}` : name,
     keywords: [id],
+  }));
+  const labelCounts = new Map<string, number>();
+  for (const { label } of labels) labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  const options = labels.map((option) => ({
+    ...option,
+    label: (labelCounts.get(option.label) ?? 0) > 1
+      ? t('content.batch.categoryWithId', { label: option.label, id: option.value })
+      : option.label,
   }));
   return (
     <div className="flex flex-col gap-1">

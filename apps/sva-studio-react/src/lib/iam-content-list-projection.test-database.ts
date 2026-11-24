@@ -163,14 +163,15 @@ const applyProjectionFilters = (
     const poiId = readNullableString(values?.[Number.parseInt(poiIdMatch[1] ?? '0', 10) - 1]);
     rows = rows.filter((row) => readNullableString(row.payload_json.pointOfInterestId) === poiId);
   }
-  const categoryMatch = text.match(/payload_json ->> 'categoryId' = \$(\d+)/);
+  const categoryMatch = text.match(/'mainserverCategoryIds'\) \? \$(\d+)/);
   if (categoryMatch) {
     const categoryId = readNullableString(values?.[Number(categoryMatch[1]) - 1]);
-    rows = rows.filter((row) => row.source_system === 'mainserver' && (
-      row.payload_json.categoryId === categoryId ||
-      (Array.isArray(row.payload_json.categories) &&
-        row.payload_json.categories.some((value: { id?: string } | null) => value?.id === categoryId))
-    ));
+    rows = rows.filter(
+      (row) =>
+        row.source_system === 'mainserver' &&
+        Array.isArray(row.payload_json.mainserverCategoryIds) &&
+        row.payload_json.mainserverCategoryIds.includes(categoryId)
+    );
   }
   const languageCodeMatch = text.match(/payload_json ->> 'languageCode'\)\) = \$(\d+)/);
   if (languageCodeMatch) {

@@ -12,6 +12,11 @@ export const json = (body: unknown, status = 200): Response =>
     },
   });
 
+export const withMutationNotApplied = (response: Response): Response => {
+  response.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
+  return response;
+};
+
 export const errorJson = (
   status: number,
   error: string,
@@ -26,7 +31,7 @@ export const errorJson = (
     (status === 403 && error === 'csrf_validation_failed') ||
     (status === 409 && error === 'stale_mainserver_context')
   ) {
-    response.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
+    return withMutationNotApplied(response);
   }
   return response;
 };

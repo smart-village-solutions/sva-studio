@@ -138,6 +138,11 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 vi.mock('../src/waste-management.page.layout.js', () => ({
+  useWasteWorkspaceLayout: () => ({
+    pageStyle: undefined,
+    pageRef: null,
+    restoreTabFocus: undefined,
+  }),
   WasteManagementPageToolbar: ({
     onSearchChange,
     onStatusChange,

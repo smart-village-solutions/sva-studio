@@ -125,6 +125,7 @@ describe('Mainserver content ownership route', () => {
     state.sessionInstanceId.mockReturnValue('de-testkommune');
     delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
     state.hasUnresolvedTransfer.mockResolvedValue(false);
+    state.loadJournal.mockResolvedValue(undefined);
     state.loadExternalContentReference.mockResolvedValue(undefined);
     state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'de-testkommune' } });
     state.resolveMutationActor.mockResolvedValue(actor);
@@ -535,6 +536,21 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_target_binding_conflict',
     });
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('marks a failed journal lookup as not applied before any provider write', async () => {
+    state.loadJournal.mockRejectedValueOnce(new Error('journal unavailable'));
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response?.status).toBe(500);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
+    expect(state.authorize).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
   });
 

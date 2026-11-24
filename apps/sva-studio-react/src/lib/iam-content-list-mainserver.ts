@@ -8,7 +8,7 @@ type MainserverDataProvider = Readonly<{
 type MainserverCategorizedItem = Readonly<{
   id: string;
   contentType: string;
-  categories?: readonly Readonly<{ id?: string }>[];
+  categories?: readonly Readonly<{ id?: string; name?: string }>[];
   visible?: boolean;
   createdAt: string;
   updatedAt: string;

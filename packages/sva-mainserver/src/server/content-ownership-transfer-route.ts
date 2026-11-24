@@ -1,5 +1,4 @@
 import {
-  loadMainserverMutationJournal,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -17,6 +16,7 @@ import {
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
 import {
+  loadPreviousTransferOperation,
   reconcileOrBlockOwnershipTransfer,
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-reconciliation.js';
@@ -296,10 +296,8 @@ export const handleContentOwnershipTransfer = async (
     contentType: route.contentType,
     contentId: route.contentId,
     execute: async () => {
-      const previousOperation = await loadMainserverMutationJournal({
-        instanceId: actor.instanceId,
-        operationExternalId: actor.operationExternalId,
-      });
+      const previousOperation = await loadPreviousTransferOperation(actor, route);
+      if (isResponse(previousOperation)) return previousOperation;
       if (previousOperation) {
         return errorJson(
           409,

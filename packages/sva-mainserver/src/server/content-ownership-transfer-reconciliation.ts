@@ -6,9 +6,10 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
 import { readActingPrincipalType } from './content-route-context.js';
 import type { SupportedContentOwnershipRouteMatch } from './content-ownership-route-contract.js';
+import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
 import type { MainserverMutationActor } from './mutation-principal.js';
 
 const logger = createSdkLogger({
@@ -69,6 +70,19 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
     'Ein früherer Transfer muss zuerst abgeglichen werden.'
   );
 };
+
+export const loadPreviousTransferOperation = (
+  actor: MainserverMutationActor,
+  route: SupportedContentOwnershipRouteMatch
+) =>
+  loadMainserverMutationJournal({
+    instanceId: actor.instanceId,
+    operationExternalId: actor.operationExternalId,
+  }).catch((error: unknown) =>
+    withMutationNotApplied(
+      ownershipRouteFailureResponse(error, actor, route, 'Die Inhaberübertragung ist fehlgeschlagen.')
+    )
+  );
 
 export const readTransferOperation = async (
   request: Request,

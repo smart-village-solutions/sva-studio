@@ -1,5 +1,6 @@
 export const contentENBatch = {
   category: 'Category',
+  categoryForbidden: 'You need permission to read categories to use the category selector.',
   categoryWithId: '{{label}} (ID {{id}})',
   loadingCategories: 'Loading categories …',
   categoryError: 'Categories could not be loaded.',

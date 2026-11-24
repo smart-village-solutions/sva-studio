@@ -16,7 +16,7 @@ export function ContentCategoryFilter({
   const { id: userId, instanceId } = useAuth().user ?? {};
   const organization = useOrganizationContext().context?.activeOrganizationId;
   const [categories, setCategories] = React.useState<readonly CategoryListItem[]>([]);
-  const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = React.useState<'loading' | 'ready' | 'forbidden' | 'error'>('loading');
 
   React.useEffect(() => {
     if (!userId) return;
@@ -31,8 +31,10 @@ export function ContentCategoryFilter({
           setCategories(items);
           setStatus('ready');
         },
-        () => {
-          if (active) setStatus('error');
+        (error: unknown) => {
+          if (!active) return;
+          const denied = error instanceof Error && 'code' in error && error.code === 'forbidden';
+          setStatus(denied ? 'forbidden' : 'error');
         }
       );
     return () => {
@@ -63,7 +65,13 @@ export function ContentCategoryFilter({
         options={options}
         helpText=""
         loading={status === 'loading'}
-        errorMessage={status === 'error' ? t('content.batch.categoryError') : undefined}
+        errorMessage={
+          status === 'forbidden'
+            ? t('content.batch.categoryForbidden')
+            : status === 'error'
+              ? t('content.batch.categoryError')
+              : undefined
+        }
         loadingText={t('content.batch.loadingCategories')}
         emptyText={t('content.batch.emptyCategories')}
         placeholder={t('content.batch.allCategories')}

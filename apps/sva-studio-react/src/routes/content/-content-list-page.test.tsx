@@ -141,6 +141,7 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
 }));
 
 const listSelectionMock = vi.hoisted(() => vi.fn());
+const listCategoriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../lib/iam-api-content', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/iam-api-content')>()),
@@ -149,7 +150,7 @@ vi.mock('../../lib/iam-api-content', async (importOriginal) => ({
 
 vi.mock('@sva/plugin-categories', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/plugin-categories')>()),
-  listCategories: async () => [{ id: '21', name: 'Kultur' }, { id: '22', name: 'Kultur' }],
+  listCategories: listCategoriesMock,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -299,6 +300,8 @@ describe('ContentListPage', () => {
     navigateMock.mockReset();
     searchState = {};
     locationState = {};
+    listCategoriesMock.mockReset();
+    listCategoriesMock.mockResolvedValue([{ id: '21', name: 'Kultur' }, { id: '22', name: 'Kultur' }]);
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -1237,6 +1240,17 @@ describe('ContentListPage', () => {
     expect(
       screen.getAllByRole('link', { name: 'Kontextlos lesbar bearbeiten' }).length
     ).toBeGreaterThan(0);
+  });
+
+  it('explains when content can be read but category options cannot', async () => {
+    listCategoriesMock.mockRejectedValueOnce(Object.assign(new Error('forbidden'), { code: 'forbidden' }));
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+
+    expect(await screen.findByText(/Leseberechtigung für Kategorien/)).toBeTruthy();
+    const trigger = screen.getByLabelText<HTMLButtonElement>('Kategorie', { selector: 'button' });
+    expect(trigger.disabled).toBe(true);
+    expect(useContentsMock).toHaveBeenCalledWith(DEFAULT_QUERY, { enabled: true });
   });
 
   it('shows distinct labels for categories with the same name', async () => {

@@ -75,9 +75,9 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
 export const runUnstartedOwnershipTransfer = async (
   actor: MainserverMutationActor,
   route: SupportedContentOwnershipRouteMatch,
-  execute: () => Promise<Response>
+  execute: (markProviderWriteStarted: () => void) => Promise<Response>
 ): Promise<Response> => {
-  let journalChecked = false;
+  let operationMayHaveWritten = false;
   try {
     return await withMainserverContentOwnershipLock({
       instanceId: actor.instanceId,
@@ -88,19 +88,21 @@ export const runUnstartedOwnershipTransfer = async (
           instanceId: actor.instanceId,
           operationExternalId: actor.operationExternalId,
         });
-        journalChecked = true;
         if (previousOperation) {
+          operationMayHaveWritten = true;
           return errorJson(
             409,
             'content_transfer_operation_already_started',
             'Diese Übertragung wurde bereits gestartet.'
           );
         }
-        return execute();
+        return execute(() => {
+          operationMayHaveWritten = true;
+        });
       },
     });
   } catch (error) {
-    if (journalChecked) throw error;
+    if (operationMayHaveWritten) throw error;
     return withMutationNotApplied(
       ownershipRouteFailureResponse(error, actor, route, 'Die Inhaberübertragung ist fehlgeschlagen.')
     );

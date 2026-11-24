@@ -165,6 +165,7 @@ const executeLockedTransfer = async (input: {
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
+  markProviderWriteStarted: () => void;
   reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
   const observation = await observeTransferSource(input);
@@ -177,9 +178,7 @@ const executeLockedTransfer = async (input: {
     providerEntityId: input.content.id,
     currentDataProviderId: sourceDataProviderId,
     currentOperationExternalId: input.actor.operationExternalId,
-    ...(input.reconcilePreviousTransfer
-      ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
-      : {}),
+    reconcilePreviousTransfer: input.reconcilePreviousTransfer,
   });
   if (reconciliationBlock) return withMutationNotApplied(reconciliationBlock);
   const source = await authorizeObservedTransferSource({
@@ -249,15 +248,17 @@ const executeLockedTransfer = async (input: {
     actor: input.actor,
     target: targetResolution.target,
     ownershipTransfer,
-    execute: () =>
-      executeProviderTransfer({
+    execute: () => {
+      input.markProviderWriteStarted();
+      return executeProviderTransfer({
         actor: input.actor,
         route: input.route,
         content: input.content,
         sourceDataProviderId,
         target: targetResolution.target,
         ownershipTransfer,
-      }),
+      });
+    },
   });
   if (failure) return failure;
   const response = json({
@@ -290,12 +291,13 @@ export const handleContentOwnershipTransfer = async (
   if (csrfError) return csrfError;
   const principal = await parseOwnershipTargetPrincipal(request);
   if (isResponse(principal)) return principal;
-  return runUnstartedOwnershipTransfer(actor, route, () =>
+  return runUnstartedOwnershipTransfer(actor, route, (markProviderWriteStarted) =>
     executeLockedTransfer({
       actor,
       route,
       content,
       principal,
+      markProviderWriteStarted,
       ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
     })
   );

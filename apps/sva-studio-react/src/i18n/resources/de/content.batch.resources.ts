@@ -1,5 +1,6 @@
 export const contentDEBatch = {
   category: 'Kategorie',
+  categoryForbidden: 'Für die Kategorieauswahl fehlt dir die Leseberechtigung für Kategorien.',
   categoryWithId: '{{label}} (ID {{id}})',
   loadingCategories: 'Kategorien werden geladen …',
   categoryError: 'Kategorien konnten nicht geladen werden.',

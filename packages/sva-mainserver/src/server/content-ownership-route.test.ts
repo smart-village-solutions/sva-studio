@@ -539,8 +539,11 @@ describe('Mainserver content ownership route', () => {
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
-  it.each(['lock', 'journal'])('marks a failed %s as not applied before any provider write', async (stage) => {
-    const failure = stage === 'lock' ? state.withLock : state.loadJournal;
+  it.each([
+    ['lock', state.withLock],
+    ['journal', state.loadJournal],
+    ['source read', state.getNews],
+  ] as const)('marks a failed %s as not applied before any provider write', async (stage, failure) => {
     failure.mockRejectedValueOnce(new Error(`${stage} unavailable`));
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(

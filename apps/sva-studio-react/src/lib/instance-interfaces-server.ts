@@ -1,3 +1,4 @@
+import { hasLegacyMeilisearchSource } from './instance-interface-meilisearch.js';
 import {
   ensureManagedMapGeocodingInterface,
   deleteExternalInterfaceRecord,
@@ -9,7 +10,7 @@ import {
   saveDeepLInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { createSdkLogger } from '@sva/server-runtime';
-import { hasLegacyMeilisearchSource, type InstanceInterfaceDraft } from './instance-interfaces';
+import { type InstanceInterfaceDraft } from './instance-interfaces';
 import type { StoredEntry } from './instance-interface-record-mapping.server.js';
 import {
   mapRecordToStoredEntry,

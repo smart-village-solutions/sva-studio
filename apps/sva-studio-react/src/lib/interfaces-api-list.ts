@@ -5,7 +5,6 @@ import type {
   InstanceInterface,
   InstanceInterfaceDeepL,
   InstanceInterfaceMapGeocoding,
-  InstanceInterfaceMeilisearch,
   InstanceInterfaceMailTransport,
   InstanceInterfacePostgresql,
   InstanceInterfaceS3,
@@ -52,7 +51,7 @@ export const projectStoredEntry = async (
   instanceId: string,
   entry:
     | Omit<InstanceInterfaceDeepL, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
-    | Omit<InstanceInterfaceMeilisearch, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<Extract<InstanceInterface, { type: 'meilisearch' }>, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfacePostgresql, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>

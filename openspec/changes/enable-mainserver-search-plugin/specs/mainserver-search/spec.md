@@ -32,6 +32,14 @@ Das System SHALL die bereits öffentlich indexierten Mainserver-Inhalte innerhal
 - **AND** bindet der Host den verschlüsselten Zugang, HTTPS-Origin, Indexumgebung und Gemeindeumfang an die aktuelle Mainserver-Verbindung
 - **AND** validiert der Host den Zugriff auf die vorgesehenen Suchindizes
 
+#### Scenario: Root-Admin verwaltet die Meilisearch-Schnittstelle eines Tenants
+
+- **WHEN** ein berechtigter Root-Admin die Einstellungen eines aktiven Tenants mit aktivem Suchmodul öffnet
+- **THEN** kann er dessen Meilisearch-Schnittstelle lesen, einrichten, ändern und deaktivieren
+- **AND** prüft der Server Root-Host, Instanzberechtigung und CSRF für Änderungen
+- **AND** stammt die Zielinstanz aus dem Pfad und die Schnittstelle bleibt an die Mainserver-Verbindung dieses Tenants gebunden
+- **AND** enthält die Antwort weder gespeicherte noch eingereichte Zugangsdaten
+
 #### Scenario: Eine konfigurierte Suchanbindung wird ungültig
 
 - **WHEN** die Meilisearch-Schnittstelle deaktiviert oder entfernt wird oder sich die Mainserver-Verbindung ändert

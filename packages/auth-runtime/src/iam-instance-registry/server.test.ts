@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { instanceRegistryHandlers, withRootMainserverRegistryAccess } from './server.js';
+import { instanceRegistryHandlers, withRootMainserverRegistryAccess, withRootInstanceInterfaceRegistryAccess } from './server.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -250,7 +250,7 @@ describe('iam-instance-registry/server', () => {
     }
   });
 
-  it('rejects a Root session PUT without the required CSRF header', async () => {
+  it.each([['mainserver', 'mainserver_interface'], ['meilisearch', 'meilisearch_interface']] as const)('rejects a Root session PUT for %s without CSRF', async (type, area) => {
     vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
     state.withAuthenticatedUser.mockImplementation(
       async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
@@ -258,12 +258,13 @@ describe('iam-instance-registry/server', () => {
     );
     try {
       const work = vi.fn(async () => new Response('unreachable'));
-      const response = await withRootMainserverRegistryAccess(
-        new Request('https://studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
+      const response = await withRootInstanceInterfaceRegistryAccess(
+        new Request(`https://studio.example.org/api/v1/iam/instances/demo/${type}-interface`, {
           method: 'PUT',
         }),
         'instance.update',
-        work
+        work,
+        area
       );
       expect(response.status).toBe(403);
       expect(work).not.toHaveBeenCalled();

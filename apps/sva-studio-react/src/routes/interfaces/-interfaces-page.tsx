@@ -1,3 +1,4 @@
+import { hasLegacyMeilisearchSource } from '../../lib/instance-interface-meilisearch';
 import React from 'react';
 
 import {
@@ -15,7 +16,6 @@ import {
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
 import {
-  hasLegacyMeilisearchSource,
   instanceInterfaceTypeMeta,
   type InstanceInterface,
 } from '../../lib/instance-interfaces';
@@ -70,6 +70,9 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
   editState.mode === 'create'
     ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
     : t('interfaces.edit.title');
+
+const hasStoredMeilisearchKey = (editState: EditState): boolean =>
+  editState.mode === 'edit' && editState.entry.type === 'meilisearch' && editState.entry.apiKeyConfigured;
 
 export const InterfacesPage = () => {
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
@@ -227,11 +230,7 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
-              hasStoredMeilisearchKey={
-                editState.mode === 'edit' &&
-                editState.entry.type === 'meilisearch' &&
-                editState.entry.apiKeyConfigured
-              }
+              hasStoredMeilisearchKey={hasStoredMeilisearchKey(editState)}
               deepLEntry={
                 editState.mode === 'edit' && editState.entry.type === 'deepl'
                   ? editState.entry

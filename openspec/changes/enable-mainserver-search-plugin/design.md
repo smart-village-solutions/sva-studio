@@ -96,6 +96,10 @@ Bad Belzig verwendet seinen dedizierten Origin mit einem eingeschränkten Suchsc
 
 Die lokal erprobten zusätzlichen Environment-Variablen werden für diesen Ausbau nicht veröffentlicht. Für die bestehenden Suchzugänge in Sandbox und Guben erfolgt die Umstellung erst, wenn ihre Schnittstellen eingerichtet und mit angemeldeten Benutzern geprüft sind. Ein befristeter Übergang darf ausschließlich diese bereits eingerichteten Zugänge abdecken. Der Wechsel entfernt anschließend den bisherigen Environment-Pfad. Der Nachweis umfasst Typverfügbarkeit bei Modulstatuswechseln, Rechte auf Listen- und Schreibpfaden, verschlüsselte Speicherung, die Bindung an Verbindung und Tenant sowie ausbleibende Anfragen mit deaktivierter, gelöschter oder veralteter Schnittstelle.
 
+### Zentrale Einrichtung im Root-Instanzdetail
+
+Root-Admins verwenden unter **Instanzen → Einstellungen** dieselben Meilisearch-Felder und dieselbe Tenant-Registry. Zugriff und Änderung folgen dem vorhandenen Root-Vertrag der Mainserver-Schnittstelle mit `instance.read`, `instance.update`, Root-Host und Session-CSRF. Die Ziel-ID stammt ausschließlich aus dem Pfad. Der Server prüft Status und wirksame Suchaktivierung vor jedem Zugriff. Die Antwort enthält nur den maskierten Schnittstellenstand. Das Audit enthält Zieltenant, Aktion und Aktivstatus. Die bestehenden Service-Zugänge erhalten über diese Browserroute keine weitere Berechtigung. Die lokale Absicherung prüft Root-Abweisung, Zielbindung, Modulstatus und Maskierung.
+
 ## Bestätigte UX-Anpassung vom 8. November 2026
 
 Der Nutzer bestätigt die übliche StudioDataTable mit Titel, Inhaltstyp, Datenanbieter, Kategorien, Spaltensortierung, Filtern und Paging. Das einzige Suchfeld bleibt auf allen Ansichten im Header, auch mobil; auf der Ergebnisseite gibt es keine zweite Eingabe. Suchbegriff, Filter, Sortierung und Paging bleiben in der URL. Die Sortierung erfolgt nach der Rechteprüfung und vor dem Paging auf der tatsächlich geprüften Treffermenge; unvollständige Läufe bleiben als solche erkennbar.

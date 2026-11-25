@@ -1,3 +1,4 @@
+import { hasLegacyMeilisearchSource, meilisearchPublicConfigSchema } from './instance-interface-meilisearch.js';
 import {
   readEffectiveSvaMainserverCredentialsWithStatus,
   resolveEffectivePermissions,
@@ -18,10 +19,6 @@ import type {
 } from '@sva/plugin-search/search-contract';
 import { studioServerPluginSnapshot } from './plugin-catalog.server.js';
 import { studioMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.server.js';
-import {
-  hasLegacyMeilisearchSource,
-  meilisearchPublicConfigSchema,
-} from './instance-interfaces.js';
 import { parseSecretConfig } from './instance-interface-record-mapping.server.js';
 
 const record = (value: unknown): Record<string, unknown> | null =>

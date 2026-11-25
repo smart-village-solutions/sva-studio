@@ -1,3 +1,4 @@
+import { meilisearchInterfaceDraftSchema } from '../../lib/instance-interface-meilisearch';
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
 import { useStudioSaveFeedback } from '@sva/studio-ui-react';
@@ -13,7 +14,6 @@ import {
 } from '../../lib/interfaces-api';
 import {
   createEmptyInstanceInterfaceDraft,
-  meilisearchInterfaceDraftSchema,
   type InstanceInterface,
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
@@ -171,13 +171,18 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
 export const buildUpsertPayload = (
   instanceId: string,
   editState: Extract<EditState, { mode: 'create' | 'edit' }>
-) => ({
-  instanceId,
-  draft: editState.draft,
-  ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
-    ? { existingId: editState.entry.id }
-    : {}),
-});
+) => {
+  const { draft } = editState;
+  if (draft.type === 'meilisearch' && !meilisearchInterfaceDraftSchema.safeParse(draft).success)
+    throw new Error('meilisearch_invalid_config');
+  return {
+    instanceId,
+    draft,
+    ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
+      ? { existingId: editState.entry.id }
+      : {}),
+  };
+};
 
 const useServerFnRefs = () => {
   const checkDeepL = useServerFn(checkDeepLInterfaceServerFn);
@@ -279,8 +284,6 @@ export const useInterfacesPageController = () => {
     const operationId = saveFeedback.beginSaving();
     try {
       const draft = editState.draft;
-      if (draft.type === 'meilisearch' && !meilisearchInterfaceDraftSchema.safeParse(draft).success)
-        throw new Error('meilisearch_invalid_config');
       let savedEntry: InstanceInterface | null = null;
       if (draft.type === 'mainserver') {
         await saveMainserverRef.current({

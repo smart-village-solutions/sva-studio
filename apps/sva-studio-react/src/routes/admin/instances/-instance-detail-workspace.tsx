@@ -27,6 +27,7 @@ import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import { MainserverInterfaceCard } from './-mainserver-interface-card';
+import { MeilisearchInterfaceCard } from './-meilisearch-interface-card';
 
 type WorkspaceTab = 'betrieb' | 'doctor' | 'einstellungen';
 
@@ -267,6 +268,9 @@ export const InstanceDetailWorkspace = ({
           />
           {selectedInstance.status === 'active' ? (
             <MainserverInterfaceCard instanceId={selectedInstance.instanceId} />
+          ) : null}
+          {selectedInstance.status === 'active' && selectedInstance.assignedModules.includes('search') ? (
+            <MeilisearchInterfaceCard key={selectedInstance.instanceId} instanceId={selectedInstance.instanceId} />
           ) : null}
         </TabsContent>
       </Tabs>

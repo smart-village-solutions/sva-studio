@@ -1,3 +1,4 @@
+import { meilisearchPublicConfigSchema } from './instance-interface-meilisearch.js';
 import type {
   ExternalInterfaceRecord,
   ExternalInterfaceVisibleStatus,
@@ -11,9 +12,8 @@ import type {
   InstanceInterfacePostgresql,
   InstanceInterfaceMailTransport,
   InstanceInterfaceMapGeocoding,
-  InstanceInterfaceMeilisearch,
+  InstanceInterface,
 } from './instance-interfaces';
-import { meilisearchPublicConfigSchema } from './instance-interfaces';
 import { readDeepLSettings, mailTransportContract } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
@@ -62,7 +62,10 @@ export type StoredDeepL = Omit<
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
 >;
 export type StoredEntry =
-  | Omit<InstanceInterfaceMeilisearch, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+  | Omit<
+      Extract<InstanceInterface, { type: 'meilisearch' }>,
+      'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+    >
   | StoredDeepL
   | StoredS3
   | StoredSupabase
@@ -136,29 +139,35 @@ const coerceMailSecurityMode = (value: unknown): MailTransportSecurityMode =>
 const coerceMailAuthMode = (value: unknown): MailTransportAuthMode =>
   typeof value === 'string' && mailTransportContract.isAuthMode(value) ? value : 'basic';
 
+const mapMeilisearchRecord = (
+  record: ExternalInterfaceRecord,
+  createdAt: string,
+  updatedAt: string
+): PersistedStoredEntry | null => {
+  const config = meilisearchPublicConfigSchema.safeParse(record.publicConfig);
+  if (!config.success) return null;
+  return {
+    id: record.id,
+    instanceId: record.instanceId,
+    type: 'meilisearch',
+    name: record.displayName,
+    enabled: record.enabled,
+    config: config.data,
+    apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+    createdAt,
+    updatedAt,
+    visibleStatus: record.visibleStatus,
+    lastCheckedAt: record.lastCheckedAt,
+  };
+};
+
 export const mapRecordToStoredEntry = (
   record: ExternalInterfaceRecord
 ): PersistedStoredEntry | null => {
   const createdAt = record.createdAt ?? nowIso();
   const updatedAt = record.updatedAt ?? createdAt;
 
-  if (record.typeKey === 'meilisearch') {
-    const config = meilisearchPublicConfigSchema.safeParse(record.publicConfig);
-    if (!config.success) return null;
-    return {
-      id: record.id,
-      instanceId: record.instanceId,
-      type: 'meilisearch',
-      name: record.displayName,
-      enabled: record.enabled,
-      config: config.data,
-      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
-      createdAt,
-      updatedAt,
-      visibleStatus: record.visibleStatus,
-      lastCheckedAt: record.lastCheckedAt,
-    };
-  }
+  if (record.typeKey === 'meilisearch') return mapMeilisearchRecord(record, createdAt, updatedAt);
 
   if (record.typeKey === 'deepl') {
     const config = readDeepLSettings(record.publicConfig);

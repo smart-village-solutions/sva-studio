@@ -129,7 +129,8 @@ export const readTransferStatus = async (
       url: `${path}/operations/${encodeURIComponent(operation.operationId)}`,
       init: { headers: createMainserverReadHeaders(operation.item.principal), signal },
     });
-    if (data.providerOutcome === 'failed') return 'rejected';
+    if (data.providerOutcome === 'failed' && data.reconciliationStatus === 'complete')
+      return 'rejected';
     if (data.providerOutcome === 'succeeded' && data.reconciliationStatus === 'complete')
       return 'succeeded';
   } catch {
@@ -171,11 +172,6 @@ export const executeTransferOperation = async (
         'content_transfer_permission_missing',
         'content_transfer_type_unsupported',
         'content_transfer_source_changed',
-        'content_transfer_target_invalid',
-        'content_transfer_target_credentials_missing',
-        'content_transfer_target_verification_failed',
-        'content_transfer_provider_rejected',
-        'content_transfer_write_unavailable',
       ].includes(error.code)
     )
       return 'rejected';

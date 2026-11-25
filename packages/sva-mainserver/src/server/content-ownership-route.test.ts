@@ -476,6 +476,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_target_verification_failed',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.recordObservation).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
     expect(state.finalize).toHaveBeenCalledWith(
@@ -510,6 +511,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_target_verification_failed',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.transfer).not.toHaveBeenCalled();
     expect(state.finalize).toHaveBeenCalledOnce();
   });

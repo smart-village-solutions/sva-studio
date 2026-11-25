@@ -195,7 +195,7 @@ const executeLockedTransfer = async (input: {
     principal: input.principal,
     sourceDataProviderId,
   });
-  if (isResponse(targetResolution)) return withMutationNotApplied(targetResolution);
+  if (isResponse(targetResolution)) return targetResolution;
   if (!targetResolution.ok) {
     recordOwnershipTransferOutcome({
       actor: input.actor,

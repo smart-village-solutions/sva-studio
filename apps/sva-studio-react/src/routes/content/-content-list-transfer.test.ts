@@ -134,6 +134,29 @@ describe('batch ownership transfer', () => {
     );
   });
 
+  it('uses the journal outcome after a target verification error', async () => {
+    const { initial, commit, read } = setup();
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return Response.json({ error: 'content_transfer_target_verification_failed' }, { status: 503 });
+      }
+      if (String(input).endsWith('operation-1')) {
+        return Response.json({ data: { providerOutcome: 'failed', reconciliationStatus: 'complete' } });
+      }
+      return String(input).endsWith('operation-2')
+        ? Response.json({ data: { providerOutcome: 'pending', reconciliationStatus: 'pending' } })
+        : Response.json({ data: { providerOutcome: 'failed', reconciliationStatus: 'reconciliation_required' } });
+    }));
+
+    await runTransferJob(initial, true, new AbortController().signal, commit);
+
+    expect(read().operations.map(({ status }) => status)).toEqual([
+      'rejected',
+      'reconciling',
+      'reconciling',
+    ]);
+  });
+
   it('resumes work after interruption without resending an uncertain request', async () => {
     const { initial, commit, read } = setup();
     const controller = new AbortController();

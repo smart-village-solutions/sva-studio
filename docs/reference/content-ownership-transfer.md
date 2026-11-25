@@ -28,6 +28,8 @@ Die serverseitige Typmatrix begrenzt die Übertragung auf unterstützte Inhaltst
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
+Der Transfer-Nachlauf prüft die Leseberechtigung des ausführenden Kontos anhand des bestätigten neuen Inhabers. Bei weiter bestehendem Zugriff liest Studio den betroffenen Datensatz mit den Zugangsdaten des bisherigen Kontexts und aktualisiert dessen Listeneintrag zusammen mit dem Eintrag des Empfängers. Bei entfallenem Zugriff entfernt Studio die bisherige Kopie. Bei einem technischen Fehler bleibt der Nachlauf im Journal zur Prüfung offen. Dafür ist kein vollständiger Neuabgleich des Inhaltstyps erforderlich.
+
 ## Mehrere Inhalte übertragen
 
 In der Studio-Inhaltsübersicht lässt sich die Liste nach einer direkt zugeordneten Mainserver-Kategorie filtern. Die Kategorieauswahl setzt die Leseberechtigung für Kategorien voraus. Unterkategorien sind separat auswählbar. Studio übernimmt die IDs tatsächlicher Kategoriezuordnungen aus der Mainserver-Liste und prüft sie vor der Seiteneinteilung. Bei älteren Listenständen stehen die IDs nach der nächsten Inhaltssynchronisierung zur Verfügung. Kategorienamen und freie Zusatzfelder ändern die Treffermenge nicht.

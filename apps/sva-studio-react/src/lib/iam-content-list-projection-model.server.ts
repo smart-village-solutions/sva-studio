@@ -84,6 +84,16 @@ export type ContentProjectionSyncState = Readonly<{
   skippedInvalidCount: number;
 }>;
 
+export const transferActorProjectionError = 'content_transfer_actor_projection_refresh_failed';
+
+export type TransferActorReadContext = Readonly<{
+  keycloakSubject: string;
+  actorAccountId: string;
+  organizationId?: string;
+  actingPrincipalType: 'organization' | 'user';
+  credentialFingerprint: string;
+}>;
+
 export type ContentProjectionSyncTarget = Readonly<{
   instanceId: string;
   keycloakSubject: string;
@@ -92,6 +102,7 @@ export type ContentProjectionSyncTarget = Readonly<{
   actorDisplayName?: string;
   ownershipPrincipal?: Readonly<{ type: 'account' | 'organization'; id: string }>;
   preserveExistingContentState?: boolean;
+  transferActorReadContext?: TransferActorReadContext;
   mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;

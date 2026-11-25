@@ -5,18 +5,22 @@ import {
   loadMainserverMutationJournal,
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,
+  resolveEffectivePermissions,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
+import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { isMainserverContentType, normalizeApiErrorCode } from './iam-content-list-api.shared.js';
-import type {
-  ContentProjectionSyncTarget,
-  MainserverProjectionMutationOperation,
-  MainserverProjectionRowInput,
+import {
+  transferActorProjectionError,
+  type ContentProjectionSyncTarget,
+  type MainserverProjectionMutationOperation,
+  type MainserverProjectionRowInput,
 } from './iam-content-list-projection-model.server.js';
 import {
   buildProjectionLogContext,
+  buildProjectionTargetKey,
   countProjectedRowsForScopeWithClient,
   deleteMainserverProjectionRowByEntity,
   invalidateOtherMainserverProjectionSnapshots,
@@ -127,10 +131,89 @@ const recordMutationAudit = async (
   });
 };
 
+const loadTransferActorProjection = async (
+  target: ContentProjectionSyncTarget,
+  confirmedRow: MainserverProjectionRowInput
+) => {
+  if (!target.ownershipPrincipal || !target.transferActorReadContext) return undefined;
+
+  const actorTarget = {
+    ...target.transferActorReadContext,
+    instanceId: target.instanceId,
+    contentType: target.contentType,
+    authorizationMode: 'exact',
+  } satisfies ContentProjectionSyncTarget;
+  if (buildProjectionTargetKey(actorTarget) === buildProjectionTargetKey(target)) return undefined;
+
+  try {
+    const { instanceId, keycloakSubject, organizationId, actorAccountId } = actorTarget;
+    const result = await resolveEffectivePermissions({
+      instanceId,
+      keycloakSubject,
+      ...(organizationId ? { organizationId } : {}),
+    });
+    if (!result.ok) throw new Error(transferActorProjectionError);
+
+    const resourceType = confirmedRow.contentType.split('.')[0] ?? 'content';
+    const resourceOrganizationId = confirmedRow.ownerOrganizationId ?? organizationId;
+    const decision = evaluateAuthorizeDecision(
+      {
+        instanceId,
+        action: resourceType + '.read',
+        resource: {
+          type: resourceType,
+          organizationId: resourceOrganizationId,
+          attributes: {
+            contentType: confirmedRow.contentType,
+            ownerUserId: confirmedRow.ownerUserId,
+            ownerOrganizationId: confirmedRow.ownerOrganizationId,
+          },
+        },
+        context: { organizationId, attributes: { actorAccountId } },
+      },
+      result.permissions
+    );
+    if (!decision.allowed) return undefined;
+
+    const actorRow = await loadMainserverProjectionMutationRow(
+      actorTarget,
+      confirmedRow.sourceEntityId
+    );
+    if (
+      actorRow.sourceEntityId !== confirmedRow.sourceEntityId ||
+      actorRow.sourceEntityType !== confirmedRow.sourceEntityType ||
+      actorRow.contentType !== confirmedRow.contentType ||
+      actorRow.sourceDataProviderId !== confirmedRow.sourceDataProviderId
+    ) {
+      throw new Error(transferActorProjectionError);
+    }
+    return {
+      target: actorTarget,
+      row: {
+        ...actorRow,
+        organizationId: confirmedRow.organizationId,
+        ownerUserId: confirmedRow.ownerUserId,
+        ownerOrganizationId: confirmedRow.ownerOrganizationId,
+        authorDisplayMode: confirmedRow.authorDisplayMode,
+      },
+    };
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      (error.code === 'forbidden' || error.code === 'not_found')
+    ) {
+      return undefined;
+    }
+    return new Error(transferActorProjectionError, { cause: error });
+  }
+};
+
 const upsertProjectionMutation = async (
   input: MutationRefreshInput,
   refreshRunId: string
-): Promise<void> => {
+): Promise<Error | undefined> => {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -139,14 +222,16 @@ const upsertProjectionMutation = async (
         input.row ?? (await loadMainserverProjectionMutationRow(input.target, input.entityId));
       const row = await enrichMutationProjectionRowWithBinding(input.target, loadedRow);
       assertVerifiedTransferOwner(input.target, row);
+      const actorProjection = await loadTransferActorProjection(input.target, row);
       await upsertSingleMainserverProjectionRow(
         input.target,
         input.target.actorAccountId,
         row,
-        refreshRunId
+        refreshRunId,
+        actorProjection instanceof Error ? undefined : actorProjection
       );
       await recordMutationAudit(input, row);
-      return;
+      return actorProjection instanceof Error ? actorProjection : undefined;
     } catch (error) {
       lastError = error;
       const errorCode =
@@ -232,8 +317,9 @@ export const refreshMainserverProjectionForMutation = async (
       return deferMutationHistory(input, true);
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
+    let actorProjectionError: void | Error;
     try {
-      await (input.operation === 'delete'
+      actorProjectionError = await (input.operation === 'delete'
         ? deleteProjectionMutation(input, refreshRunId)
         : upsertProjectionMutation(input, refreshRunId));
     } catch (error) {
@@ -250,6 +336,7 @@ export const refreshMainserverProjectionForMutation = async (
       }
       throw error;
     }
+    if (actorProjectionError) throw actorProjectionError;
     return undefined;
   });
 };

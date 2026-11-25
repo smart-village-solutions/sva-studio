@@ -1124,6 +1124,15 @@ test.describe('waste management plugin', () => {
       ],
     });
 
+    const extraStreets = ['Bahnhofstraße', 'Dorfstraße', 'Gartenstraße', 'Schulstraße', 'Wallstraße'].map(
+      (name, index) => ({
+        id: `street-custom-${index + 1}`,
+        cityId: 'city-custom',
+        name,
+        createdAt: '2026-05-10T11:00:00Z',
+        updatedAt: '2026-05-10T11:00:00Z',
+      })
+    );
     const harness = await mockWasteFacade(page, {
       instanceId: 'de-recurring',
       settings: {
@@ -1172,6 +1181,7 @@ test.describe('waste management plugin', () => {
           createdAt: '2026-05-10T11:00:00Z',
           updatedAt: '2026-05-10T11:00:00Z',
         },
+        ...extraStreets,
       ],
       collectionLocations: [
         {
@@ -1182,6 +1192,14 @@ test.describe('waste management plugin', () => {
           createdAt: '2026-05-10T11:00:00Z',
           updatedAt: '2026-05-10T11:00:00Z',
         },
+        ...extraStreets.map((street, index) => ({
+          id: `location-custom-${index + 1}`,
+          cityId: street.cityId,
+          streetId: street.id,
+          active: true,
+          createdAt: street.createdAt,
+          updatedAt: street.updatedAt,
+        })),
       ],
       tours: [],
     });
@@ -1218,7 +1236,9 @@ test.describe('waste management plugin', () => {
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('button', { name: 'Neue Tour' }).click();
     await page.locator('#waste-tour-name').fill('Ferienroute');
-    await page.getByLabel('Restmüll').click();
+    await page.getByRole('button', { name: 'Abfallfraktionen', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Restmüll', exact: true }).check();
+    await page.keyboard.press('Escape');
     await page.locator('#waste-tour-recurrence').selectOption('custom');
     await page.getByRole('button', { name: 'Tage im Kalender auswählen' }).click();
     const selectedDay = page.getByRole('button', { name: 'Dienstag, 2. Juni 2026', exact: true });
@@ -1268,7 +1288,9 @@ test.describe('waste management plugin', () => {
     await expect.poll(() => harness.requests.createdTours.length).toBe(0);
     await page.getByRole('button', { name: 'Neue Tour' }).click();
     await page.locator('#waste-tour-name').fill('Ferienroute');
-    await page.getByLabel('Restmüll').click();
+    await page.getByRole('button', { name: 'Abfallfraktionen', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Restmüll', exact: true }).check();
+    await page.keyboard.press('Escape');
     await page
       .locator('#waste-tour-recurrence')
       .selectOption({ label: 'Ferien 10 Tage (alle 10 Tage)' });

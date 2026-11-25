@@ -193,9 +193,9 @@ export const selectExistingCategory = async (
   const trigger = page.locator(`#${triggerId}`);
   await expect(trigger).toBeEnabled();
   await trigger.click();
-  await page
-    .getByRole('textbox', { name: /Kategorien suchen|Search categories|categoriesSearch/ })
-    .fill(categoryName);
+  await expect(
+    page.getByRole('textbox', { name: /Kategorien suchen|Search categories|categoriesSearch/ })
+  ).toHaveCount(0);
   await page.getByRole('checkbox', { name: categoryName }).check();
   await expect(trigger).toContainText(categoryName);
 };

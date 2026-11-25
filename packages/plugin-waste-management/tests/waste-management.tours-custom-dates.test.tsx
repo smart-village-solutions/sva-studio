@@ -89,6 +89,15 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
   Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
 }));
 
+const searchableLocations = [
+  { id: 'location-1', label: 'Musterhausen / Markt' },
+  { id: 'location-2', label: 'Musterhausen / Rathaus' },
+  ...['Dorfstraße', 'Gartenstraße', 'Bahnhofstraße', 'Schulstraße'].map((name) => ({
+    id: name,
+    label: `Musterhausen / ${name}`,
+  })),
+];
+
 describe('WasteToursCustomDatesField', () => {
   afterEach(() => {
     cleanup();
@@ -203,10 +212,7 @@ describe('WasteToursCustomDatesField', () => {
       <WasteToursCustomDatesField
         customDates={[{ date: '2027-01-01' }]}
         dateLocationAssignments={[]}
-        locations={[
-          { id: 'location-1', label: 'Musterhausen / Markt' },
-          { id: 'location-2', label: 'Musterhausen / Rathaus' },
-        ]}
+        locations={searchableLocations}
         firstDate="2027-01-01"
         endDate=""
         onChange={vi.fn()}
@@ -240,10 +246,7 @@ describe('WasteToursCustomDatesField', () => {
             note: '',
           },
         ]}
-        locations={[
-          { id: 'location-1', label: 'Musterhausen / Markt' },
-          { id: 'location-2', label: 'Musterhausen / Rathaus' },
-        ]}
+        locations={searchableLocations}
         firstDate="2027-01-01"
         endDate=""
         onChange={vi.fn()}
@@ -279,10 +282,7 @@ describe('WasteToursCustomDatesField', () => {
             note: '',
           },
         ]}
-        locations={[
-          { id: 'location-1', label: 'Musterhausen / Markt' },
-          { id: 'location-2', label: 'Musterhausen / Rathaus' },
-        ]}
+        locations={searchableLocations}
         firstDate="2027-01-01"
         endDate=""
         onChange={vi.fn()}
@@ -319,10 +319,7 @@ describe('WasteToursCustomDatesField', () => {
             note: '',
           },
         ]}
-        locations={[
-          { id: 'location-1', label: 'Musterhausen / Markt' },
-          { id: 'location-2', label: 'Musterhausen / Rathaus' },
-        ]}
+        locations={searchableLocations}
         firstDate="2027-01-01"
         endDate=""
         onChange={vi.fn()}
@@ -353,10 +350,7 @@ describe('WasteToursCustomDatesField', () => {
             note: '08:00 bis 10:00 Uhr',
           },
         ]}
-        locations={[
-          { id: 'location-1', label: 'Musterhausen / Markt' },
-          { id: 'location-2', label: 'Musterhausen / Rathaus' },
-        ]}
+        locations={searchableLocations}
         firstDate="2027-01-01"
         endDate=""
         onChange={onChange}

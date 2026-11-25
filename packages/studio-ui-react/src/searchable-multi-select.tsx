@@ -5,21 +5,24 @@ import {
   SearchableMultiSelectSelection,
   SearchableMultiSelectTrigger,
 } from './searchable-multi-select.parts.js';
+import { visibleSelectOptionCount } from './searchable-select-option-list.js';
 
 export type SearchableMultiSelectOption = Readonly<{
   label: string;
   value: string;
   keywords?: readonly string[];
+  leadingVisual?: React.ReactNode;
 }>;
 
 export type SearchableMultiSelectProps = Readonly<{
+  'aria-describedby'?: string;
   disabled?: boolean;
   emptyText: string;
   errorMessage?: string;
-  helpText: string;
+  helpText?: string;
   id: string;
-  loading: boolean;
-  loadingText: string;
+  loading?: boolean;
+  loadingText?: string;
   onValueChange: (value: string[]) => void;
   options: readonly SearchableMultiSelectOption[];
   placeholder: string;
@@ -100,7 +103,7 @@ const useOpenState = (
 ) => {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
-  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
   const close = React.useCallback(
     (focusTrigger = false) => {
       setOpen(false);
@@ -111,7 +114,7 @@ const useOpenState = (
   );
 
   React.useEffect(() => {
-    if (open) searchInputRef.current?.focus();
+    if (open) (panelRef.current?.querySelector('input') ?? panelRef.current)?.focus();
   }, [open]);
   React.useEffect(() => {
     if (!open) return;
@@ -122,7 +125,7 @@ const useOpenState = (
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [close, open, rootRef]);
 
-  return { close, open, searchInputRef, searchValue, setOpen, setSearchValue };
+  return { close, open, panelRef, searchValue, setOpen, setSearchValue };
 };
 
 export function SearchableMultiSelect(props: SearchableMultiSelectProps) {
@@ -134,6 +137,7 @@ export function SearchableMultiSelect(props: SearchableMultiSelectProps) {
     optionMatchesSearch(option, dropdown.searchValue)
   );
   const interactionDisabled = Boolean(props.disabled || props.loading || props.errorMessage);
+  const helpText = props.loading ? props.loadingText : props.helpText;
 
   return (
     <div
@@ -151,6 +155,7 @@ export function SearchableMultiSelect(props: SearchableMultiSelectProps) {
     >
       <div className="space-y-2">
         <SearchableMultiSelectTrigger
+          describedBy={props['aria-describedby']}
           disabled={interactionDisabled}
           id={props.id}
           open={dropdown.open}
@@ -166,24 +171,23 @@ export function SearchableMultiSelect(props: SearchableMultiSelectProps) {
             id={props.id}
             options={filteredOptions}
             placeholder={props.placeholder}
-            searchInputRef={dropdown.searchInputRef}
+            panelRef={dropdown.panelRef}
             searchLabel={props.searchLabel}
             searchValue={dropdown.searchValue}
+            showSearch={selection.normalizedOptions.length > visibleSelectOptionCount}
             selectedValues={selection.selectedValues}
             onSearchValueChange={dropdown.setSearchValue}
             onToggleValue={selection.toggleValue}
           />
         ) : null}
-        <p className="text-sm text-foreground">
-          {props.loading ? props.loadingText : props.helpText}
-        </p>
+        {helpText ? <p className="text-sm text-foreground">{helpText}</p> : null}
         {props.errorMessage ? (
           <p className="text-sm text-destructive">{props.errorMessage}</p>
         ) : null}
       </div>
       <SearchableMultiSelectSelection
         disabled={props.disabled ?? false}
-        loading={props.loading}
+        loading={props.loading ?? false}
         errorMessage={props.errorMessage}
         optionByValue={selection.optionByValue}
         removeLabel={props.removeLabel}

@@ -20,17 +20,28 @@ const defaultProps = {
   value: [] as readonly string[],
 };
 
+const longOptions = [
+  ...defaultProps.options,
+  ...['Sport', 'Bildung', 'Umwelt', 'Tourismus'].map((label) => ({ label, value: label })),
+];
+
 describe('SearchableMultiSelect', () => {
   afterEach(() => cleanup());
 
   it('selects only an available option and never creates a value from search text', () => {
     const onValueChange = vi.fn();
-    render(<SearchableMultiSelect {...defaultProps} onValueChange={onValueChange} />);
+    render(
+      <SearchableMultiSelect
+        {...defaultProps}
+        options={longOptions}
+        onValueChange={onValueChange}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
     const searchInput = screen.getByLabelText('Kategorien suchen');
     fireEvent.change(searchInput, { target: { value: 'Neue Kategorie' } });
-    fireEvent.keyDown(searchInput, { key: 'Enter' });
+    expect(fireEvent.keyDown(searchInput, { key: 'Enter' })).toBe(false);
 
     expect(onValueChange).not.toHaveBeenCalled();
     expect(screen.getByText('Keine passenden Kategorien gefunden.')).toBeTruthy();
@@ -48,31 +59,38 @@ describe('SearchableMultiSelect', () => {
     const trigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     fireEvent.click(trigger);
-    expect(
-      screen.getByRole('dialog', { name: 'Kategorie suchen oder auswählen' })
-    ).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Kategorie suchen oder auswählen' })).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Kultur'));
 
     expect(screen.getByLabelText('Mobilität')).toBeTruthy();
-    fireEvent.keyDown(screen.getByLabelText('Kategorien suchen'), { key: 'Escape' });
-    expect(screen.queryByLabelText('Kategorien suchen')).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Kategorien suchen' })).toBeNull();
+    fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Mobilität' }), { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
-  it.each(['name', 'row'] as const)(
+  it.each(['name', 'row', 'checkbox'] as const)(
     'selects a category by its %s without closing the panel',
     (target) => {
       const onValueChange = vi.fn();
       render(<SearchableMultiSelect {...defaultProps} onValueChange={onValueChange} />);
       const trigger = screen.getByRole('button', { name: defaultProps.placeholder });
       fireEvent.click(trigger);
-      const searchInput = screen.getByLabelText(defaultProps.searchLabel);
+      const focusedElement = document.activeElement as HTMLElement;
       const name = screen.getByText('Kultur');
-      const clickTarget = target === 'name' ? name : name.closest('label');
+      const clickTarget =
+        target === 'checkbox'
+          ? screen.getByRole('checkbox', { name: 'Kultur' })
+          : target === 'name'
+            ? name
+            : name.closest('label');
       if (!clickTarget) throw new Error('Category row is missing');
 
       // Emulate the browser's default focus loss when mousedown is not cancelled.
-      if (fireEvent.mouseDown(clickTarget)) searchInput.blur();
+      if (fireEvent.mouseDown(clickTarget)) {
+        if (clickTarget instanceof HTMLInputElement) clickTarget.focus();
+        else focusedElement.blur();
+      }
       fireEvent.mouseUp(clickTarget);
       fireEvent.click(clickTarget);
 

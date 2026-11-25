@@ -4,6 +4,7 @@ import { SearchableSelectPopover, SearchableSelectTrigger } from './searchable-s
 import {
   filterSearchableSelectOptions,
   findEnabledOptionIndex,
+  visibleSelectOptionCount,
   type SearchableSelectOption,
 } from './searchable-select-option-list.js';
 
@@ -37,7 +38,7 @@ type SearchableSelectUncontrolledSearchProps = {
 export type SearchableSelectProps = SearchableSelectBaseProps &
   (SearchableSelectControlledSearchProps | SearchableSelectUncontrolledSearchProps);
 
-const useSearchableSelectState = ({
+export const useSearchableSelectState = ({
   onSearchValueChange,
   options,
   searchValue,
@@ -71,6 +72,7 @@ const useSearchableSelectState = ({
 
   const setSearch = React.useCallback(
     (nextValue: string) => {
+      setActiveIndex(0);
       if (onSearchValueChange) {
         onSearchValueChange(nextValue);
         return;
@@ -90,15 +92,18 @@ const useSearchableSelectState = ({
     [setOpen, setSearch]
   );
 
-  const openWithActiveOption = React.useCallback(() => {
-    const selectedIndex = filteredOptions.findIndex((option) => option.value === value);
-    setActiveIndex(
-      selectedIndex >= 0 && !filteredOptions[selectedIndex]?.disabled
-        ? selectedIndex
-        : findEnabledOptionIndex(filteredOptions, 0, 1)
-    );
-    setOpen(true);
-  }, [filteredOptions, setOpen, value]);
+  const openWithActiveOption = React.useCallback(
+    (nextOptions = filteredOptions, nextValue = value) => {
+      const selectedIndex = nextOptions.findIndex((option) => option.value === nextValue);
+      setActiveIndex(
+        selectedIndex >= 0 && !nextOptions[selectedIndex]?.disabled
+          ? selectedIndex
+          : findEnabledOptionIndex(nextOptions, 0, 1)
+      );
+      setOpen(true);
+    },
+    [filteredOptions, setOpen, value]
+  );
 
   return {
     activeIndex,
@@ -171,6 +176,9 @@ export const SearchableSelect = (props: SearchableSelectProps) => {
             searchInputId={searchInputId}
             searchValue={effectiveSearchValue}
             selectedValue={value}
+            showSearch={
+              props.onSearchValueChange !== undefined || options.length > visibleSelectOptionCount
+            }
             setActiveIndex={setActiveIndex}
             setSearch={setSearch}
           />

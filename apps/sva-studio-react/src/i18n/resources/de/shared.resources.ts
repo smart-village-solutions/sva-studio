@@ -1,4 +1,9 @@
 export const sharedDEResources = {
+  select: {
+    options: 'Optionen',
+    search: 'Optionen suchen',
+    empty: 'Keine passenden Optionen gefunden.',
+  },
   studioMap: {
     chooseStyle: 'Kartenstil wählen',
     styles: {

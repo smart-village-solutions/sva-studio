@@ -8,6 +8,9 @@ export type SearchableSelectOption = {
   readonly description?: string;
 };
 
+// Five 44 px rows and their gaps fit in the 240 px option list.
+export const visibleSelectOptionCount = 5;
+
 const normalizeSearch = (value: string) => value.trim().toLocaleLowerCase();
 export const matchesSearchableSelectOption = (option: SearchableSelectOption, search: string) => {
   const normalizedSearch = normalizeSearch(search);
@@ -49,6 +52,8 @@ export const SearchableSelectOptionList = ({
   filteredOptions,
   id,
   label,
+  listRef,
+  onKeyDown,
   onValueChange,
   selectedValue,
 }: Readonly<{
@@ -58,14 +63,22 @@ export const SearchableSelectOptionList = ({
   filteredOptions: readonly SearchableSelectOption[];
   id: string;
   label: string;
+  listRef?: React.Ref<HTMLUListElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLUListElement>;
   onValueChange: (value: string) => void;
   selectedValue: string;
 }>) => (
   <ul
+    ref={listRef}
     id={`${id}-listbox`}
     role="listbox"
     aria-label={label}
-    className="mt-2 max-h-60 space-y-1 overflow-y-auto"
+    tabIndex={onKeyDown ? 0 : undefined}
+    onKeyDown={onKeyDown}
+    aria-activedescendant={
+      onKeyDown && filteredOptions[activeIndex] ? toOptionId(id, activeIndex) : undefined
+    }
+    className="max-h-60 space-y-1 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
   >
     {filteredOptions.length ? (
       filteredOptions.map((option, index) => {

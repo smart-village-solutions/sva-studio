@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioSection } from '@sva/studio-ui-react';
+import { Button, Select, StudioSection } from '@sva/studio-ui-react';
 import { subject } from './organisation-key-contracts.js';
 import type { AccessTransferEditor } from './admin.access-transfer-state.js';
 function SourceConversations({ editor }: { editor: AccessTransferEditor }) {
@@ -66,7 +66,7 @@ function TransferTarget({ editor }: { editor: AccessTransferEditor }) {
     <>
       <label>
         {pt('transfer.target')}{' '}
-        <select
+        <Select
           value={target}
           onChange={(e) => {
             discard();
@@ -79,7 +79,7 @@ function TransferTarget({ editor }: { editor: AccessTransferEditor }) {
               {p.displayName}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label>
         {pt('transfer.reason')}{' '}

@@ -188,7 +188,8 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Route / Typ / Owner:** `/admin/news/$id`, Detail, Plugin `news`.
 - **Nutzerziel:** Redaktionellen Inhalt, Veröffentlichung, Push-Zielgruppe und Medien aktualisieren.
 - **Produktfakten:** Historie und Löschen ergänzen den Anlegeumfang. Nach versendetem Push ist die
-  dokumentierte Empfängerauswahl nur lesbar. Bei partiellen Medienfehlern bleibt der Inhalt
+  dokumentierte Empfängerauswahl nur lesbar. Im Auswahldialog lassen sich Abholpunkte per Klick
+  auf die ganze Adresszeile markieren. Bei partiellen Medienfehlern bleibt der Inhalt
   gespeichert; Referenzen können erneut synchronisiert werden.
 - **Kontextabhängig:** Die Historie enthält nur Studio-Änderungen. Globale Push-Zustellung fordert
   je nach Zustand eine Bestätigung.

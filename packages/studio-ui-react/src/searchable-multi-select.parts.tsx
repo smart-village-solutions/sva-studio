@@ -9,6 +9,7 @@ import type { SearchableMultiSelectOption } from './searchable-multi-select.js';
 import { cn } from './utils.js';
 
 type TriggerProps = Readonly<{
+  describedBy?: string;
   disabled: boolean;
   id: string;
   onToggle: () => void;
@@ -20,6 +21,7 @@ type TriggerProps = Readonly<{
 }>;
 
 export function SearchableMultiSelectTrigger({
+  describedBy,
   disabled,
   id,
   onToggle,
@@ -39,6 +41,7 @@ export function SearchableMultiSelectTrigger({
       type="button"
       variant="secondary"
       className="h-10 w-full justify-between bg-surface-inset px-3 text-sm font-normal"
+      aria-describedby={describedBy}
       aria-controls={open ? `${id}-options` : undefined}
       aria-expanded={open}
       aria-haspopup="dialog"
@@ -63,29 +66,36 @@ type OptionsProps = Readonly<{
   onToggleValue: (value: string) => void;
   options: readonly SearchableMultiSelectOption[];
   placeholder: string;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
+  panelRef: React.RefObject<HTMLDivElement | null>;
   searchLabel: string;
   searchValue: string;
+  showSearch: boolean;
   selectedValues: ReadonlySet<string>;
 }>;
 
 export function SearchableMultiSelectOptions(props: OptionsProps) {
   return (
     <div
+      ref={props.panelRef}
       id={`${props.id}-options`}
       role="dialog"
+      tabIndex={-1}
       aria-label={props.placeholder}
       className="absolute left-0 right-0 z-20 mt-2 rounded-lg border border-border bg-popover p-2 shadow-shell"
     >
-      <Input
-        ref={props.searchInputRef}
-        id={`${props.id}-search`}
-        value={props.searchValue}
-        onChange={(event) => props.onSearchValueChange(event.currentTarget.value)}
-        placeholder={props.placeholder}
-        aria-label={props.searchLabel}
-      />
-      <fieldset className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+      {props.showSearch ? (
+        <Input
+          id={`${props.id}-search`}
+          value={props.searchValue}
+          onChange={(event) => props.onSearchValueChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.preventDefault();
+          }}
+          placeholder={props.placeholder}
+          aria-label={props.searchLabel}
+        />
+      ) : null}
+      <fieldset className={cn('max-h-60 space-y-1 overflow-y-auto', props.showSearch && 'mt-2')}>
         <legend className="sr-only">{props.searchLabel}</legend>
         {props.options.length > 0 ? (
           props.options.map((option, index) => {
@@ -101,9 +111,11 @@ export function SearchableMultiSelectOptions(props: OptionsProps) {
               >
                 <Checkbox
                   id={optionId}
+                  aria-label={option.label}
                   checked={props.selectedValues.has(option.value)}
                   onChange={() => props.onToggleValue(option.value)}
                 />
+                {option.leadingVisual}
                 <span>{option.label}</span>
               </label>
             );
@@ -144,6 +156,7 @@ export function SearchableMultiSelectSelection(props: SelectionProps) {
               unavailable ? 'border-dashed' : undefined
             )}
           >
+            {option?.leadingVisual}
             <span>{label}</span>
             {unavailable ? (
               <span className="text-xs text-muted-foreground">({props.unavailableText})</span>

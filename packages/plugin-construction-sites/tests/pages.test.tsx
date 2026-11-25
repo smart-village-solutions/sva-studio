@@ -376,9 +376,8 @@ describe('construction site editorial UI', () => {
     fireEvent.click(screen.getByLabelText('Kategorien'));
     await screen.findByLabelText('Verkehr');
     fireEvent.click(screen.getByLabelText('Verkehr'));
-    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Kategorien suchen' }), {
-      key: 'Escape',
-    });
+    expect(screen.queryByRole('textbox', { name: 'Kategorien suchen' })).toBeNull();
+    fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Verkehr' }), { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     expect(state.save.mock.calls[0]?.[1].site).toMatchObject({
@@ -513,6 +512,12 @@ describe('construction site editorial UI', () => {
     expect(state.save.mock.calls[0]?.[1].site.visible).toBe(true);
   });
   it('keeps selected categories while searching, closing and removing an unavailable category', async () => {
+    state.categories.mockResolvedValue(
+      ['Verkehr', 'Brücken', 'Radwege', 'Baustellen', 'Straßenbau', 'Umleitungen'].map((name, index) => ({
+        id: String(index + 1),
+        name,
+      }))
+    );
     state.get.mockResolvedValue({
       data: { ...record, input: { ...record.input, categories: [{ name: 'Bestand' }] } },
       access: { 'construction-sites.update': true },

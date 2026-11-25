@@ -37,6 +37,11 @@ export const wasteManagementPluginTranslationsDEToursList = {
     customDates: 'Individuelle Termine',
     wasteFractions: 'Abfallfraktionen',
     noFractionsAvailable: 'Es sind noch keine Abfallfraktionen vorhanden.',
+    chooseFractions: 'Abfallfraktionen auswählen',
+    searchFractions: 'Abfallfraktionen suchen',
+    noMatchingFractions: 'Keine passenden Abfallfraktionen gefunden.',
+    unavailableFraction: 'Nicht verfügbar',
+    removeFraction: '{{value}} aus der Auswahl entfernen',
     status: 'Status',
   },
   filters: {

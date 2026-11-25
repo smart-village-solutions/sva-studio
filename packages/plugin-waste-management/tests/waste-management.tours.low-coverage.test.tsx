@@ -442,7 +442,7 @@ describe('waste-management tours low coverage views', () => {
     expect(onSubmit).toHaveBeenCalledWith(new Map(locations.map(({ id }) => [id, true])));
   });
 
-  it('keeps keyboard focus in the table when the selected row moves to an earlier page', () => {
+  it('keeps the selected row and its focus on the same page', () => {
     const locations = Array.from({ length: 101 }, (_, index) => {
       const id = String(index).padStart(3, '0');
       return {
@@ -476,10 +476,9 @@ describe('waste-management tours low coverage views', () => {
 
     fireEvent.click(checkbox);
 
-    expect(checkbox.isConnected).toBe(false);
-    expect(document.activeElement).toBe(
-      screen.getByRole('group', { name: 'tours.assignments.workspace.tableLabel' })
-    );
+    expect(checkbox.isConnected).toBe(true);
+    expect(checkbox).toHaveProperty('checked', true);
+    expect(document.activeElement).toBe(checkbox);
   });
 
   it('keeps assignment changes through an empty loading result for the same tour', () => {
@@ -879,6 +878,11 @@ describe('waste-management tours low coverage views', () => {
     );
 
     expect(screen.getByText('assignment-message')).toBeTruthy();
+    fireEvent.click(screen.getByRole('cell', { name: 'Nord' }));
+    expect(screen.getByRole('checkbox', { name: /Schulhof/ })).toHaveProperty('checked', true);
+    expect(screen.getAllByRole('row')[2]?.textContent).toContain('Nord');
+    fireEvent.click(screen.getByRole('cell', { name: 'Nord' }));
+    expect(screen.getByRole('checkbox', { name: /Schulhof/ })).toHaveProperty('checked', false);
     fireEvent.change(screen.getByLabelText('filters.searchLabel'), { target: { value: 'Nord' } });
     expect(
       screen.getByText('tours.assignments.workspace.hiddenSelectedCount:{"value":1}')

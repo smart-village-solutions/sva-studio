@@ -6,6 +6,10 @@ import { Dialog, DialogContent, DialogTitle } from './dialog';
 
 afterEach(cleanup);
 
+const fillerOptions = ['Bauamt', 'Feuerwehr', 'Gesundheitsamt', 'Bibliothek', 'Museum'].map(
+  (label) => ({ value: label, label })
+);
+
 describe('SearchableSelect', () => {
   it('can use an external visible label while retaining its accessible name', () => {
     render(
@@ -43,6 +47,7 @@ describe('SearchableSelect', () => {
         options={[
           { value: 'org-1', label: 'Musterstadt' },
           { value: 'org-2', label: 'Stadtwerke' },
+          ...fillerOptions,
         ]}
         onValueChange={onValueChange}
       />
@@ -117,6 +122,7 @@ describe('SearchableSelect', () => {
           { value: 'org-1', label: 'Musterstadt' },
           { value: 'org-2', label: 'Stadtwerke' },
           { value: 'org-3', label: 'Kreisarchiv' },
+          ...fillerOptions,
         ]}
         onValueChange={onValueChange}
       />
@@ -152,9 +158,10 @@ describe('SearchableSelect', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Realm' }));
-    const searchInput = screen.getByPlaceholderText('Suchen');
-    fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
-    fireEvent.keyDown(searchInput, { key: 'Enter' });
+    expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
+    const listbox = screen.getByRole('listbox', { name: 'Realm' });
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    fireEvent.keyDown(listbox, { key: 'Enter' });
 
     expect(onValueChange).toHaveBeenCalledWith('realm-1');
   });
@@ -173,6 +180,7 @@ describe('SearchableSelect', () => {
         options={[
           { value: 'master', label: 'Master', disabled: true },
           { value: 'realm-1', label: 'Realm 1' },
+          ...fillerOptions,
         ]}
         onValueChange={onValueChange}
       />
@@ -212,10 +220,10 @@ describe('SearchableSelect', () => {
     const trigger = screen.getByRole('button', { name: 'Organisation' });
     fireEvent.click(trigger);
 
-    const searchInput = screen.getByPlaceholderText('Suchen');
-    fireEvent.keyDown(searchInput, { key: 'Escape' });
+    const listbox = screen.getByRole('listbox', { name: 'Organisation' });
+    fireEvent.keyDown(listbox, { key: 'Escape' });
 
-    expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
+    expect(screen.queryByRole('listbox')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -276,7 +284,7 @@ describe('SearchableSelect', () => {
           placeholder="Bitte wählen"
           searchPlaceholder="Suchen"
           emptyText="Keine Treffer"
-          options={[{ value: 'org-1', label: 'Musterstadt' }]}
+          options={[{ value: 'org-1', label: 'Musterstadt' }, ...fillerOptions]}
           onValueChange={vi.fn()}
         />
       </form>
@@ -309,7 +317,7 @@ describe('SearchableSelect', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
     act(() => screen.getByRole('button', { name: 'Weiter' }).focus());
 
-    expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 });
 
@@ -324,7 +332,7 @@ it('keeps an explicit clear action available when the search has no matches', ()
       searchPlaceholder="Suchen"
       emptyText="Keine Treffer"
       clearLabel="Auswahl aufheben"
-      options={[{ value: 'a', label: 'Markt' }]}
+      options={[{ value: 'a', label: 'Markt' }, ...fillerOptions]}
       onValueChange={onValueChange}
     />
   );
@@ -346,7 +354,7 @@ it('closes an open search when its owner disables the control', () => {
     placeholder: 'Wählen',
     searchPlaceholder: 'Suchen',
     emptyText: 'Leer',
-    options: [{ value: 'a', label: 'Stadt' }],
+    options: [{ value: 'a', label: 'Stadt' }, ...fillerOptions],
     onValueChange,
   };
   const { rerender } = render(<SearchableSelect {...props} />);
@@ -372,7 +380,7 @@ it('closes only the search on Escape inside a parent dialog and restores its tri
           placeholder="Wählen"
           searchPlaceholder="Suchen"
           emptyText="Leer"
-          options={[{ value: 'a', label: 'Markt' }]}
+          options={[{ value: 'a', label: 'Markt' }, ...fillerOptions]}
           onValueChange={vi.fn()}
         />
       </DialogContent>
@@ -397,7 +405,7 @@ it('leaves a search without a clear action on Tab instead of looping inside the 
       placeholder="Wählen"
       searchPlaceholder="Suchen"
       emptyText="Leer"
-      options={[{ value: 'a', label: 'Markt' }]}
+      options={[{ value: 'a', label: 'Markt' }, ...fillerOptions]}
       onValueChange={vi.fn()}
     />
   );

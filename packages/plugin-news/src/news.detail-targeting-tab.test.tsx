@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FormProvider, useForm } from 'react-hook-form';
 
@@ -193,7 +193,15 @@ describe('NewsDetailTargetingTab', () => {
     fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
       target: { value: 'h1' },
     });
-    fireEvent.click(screen.getByLabelText('Hauptstraße 1, 12345 Musterstadt'));
+    const checkbox = screen.getByRole('checkbox', { name: 'Hauptstraße 1, 12345 Musterstadt' });
+    const row = checkbox.closest('tr');
+    if (!row) throw new Error('Missing address row');
+    fireEvent.click(within(row).getByText('Hauptstraße 1, 12345 Musterstadt', { selector: 'td' }));
+    expect(checkbox).toHaveProperty('checked', false);
+    expect(document.activeElement).toBe(checkbox);
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveProperty('checked', true);
+    fireEvent.click(checkbox);
     fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
       target: { value: '' },
     });

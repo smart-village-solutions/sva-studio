@@ -609,6 +609,7 @@ it('keeps fraction selection names separate from labelled color samples', () => 
   const onChange = vi.fn();
   render(
     <WasteToursFractionSelection
+      id="waste-tour-fractions"
       fractions={[
         {
           id: 'fraction-bio',
@@ -624,9 +625,12 @@ it('keeps fraction selection names separate from labelled color samples', () => 
       onChange={onChange}
     />
   );
+  fireEvent.click(screen.getByRole('button', { name: 'tours.fields.chooseFractions' }));
+  expect(screen.queryByRole('textbox', { name: 'tours.fields.searchFractions' })).toBeNull();
   expect(
     screen.getByRole('img', { name: 'masterData.fractions.table.colorSwatch:#16A34A' })
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Biotonne', exact: true }));
+  expect(screen.getByRole('checkbox', { name: 'Biotonne', exact: true })).toBeTruthy();
+  fireEvent.click(screen.getByText('Biotonne', { exact: true }));
   expect(onChange).toHaveBeenCalledWith(['fraction-bio']);
 });

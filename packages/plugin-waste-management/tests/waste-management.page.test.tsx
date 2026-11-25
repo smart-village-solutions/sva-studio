@@ -2408,7 +2408,8 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.firstDate'), {
       target: { value: '2026-05-19' },
     });
-    fireEvent.click(screen.getByLabelText('Restmüll'));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tours.fields.wasteFractions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Restmüll' }));
     fireEvent.click(
       screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!
     );
@@ -2569,7 +2570,10 @@ describe('WasteManagementPage', () => {
         (screen.getByLabelText('wasteManagement.tours.fields.recurrence') as HTMLSelectElement)
           .value
       ).toBe(source.customRecurrenceId ? 'preset:preset-test' : source.recurrence);
-      expect((screen.getByLabelText('Restmüll') as HTMLInputElement).checked).toBe(true);
+      const fractions = screen.getByRole('button', { name: 'wasteManagement.tours.fields.wasteFractions' });
+      fireEvent.click(fractions);
+      expect(screen.getByRole('checkbox', { name: 'Restmüll' })).toHaveProperty('checked', true);
+      fireEvent.click(fractions);
       if (source.firstDate) {
         expect(
           (screen.getByLabelText('wasteManagement.tours.fields.firstDate') as HTMLInputElement)
@@ -2716,15 +2720,17 @@ describe('WasteManagementPage', () => {
     }));
     wasteManagementApiMocks.getWasteManagementToursOverview.mockResolvedValue({
       tours: [
-        {
-          id: 'tour-1',
-          name: 'Restmüll Nord',
-          wasteFractionIds: ['fraction-1'],
-          recurrence: 'weekly',
-          status: 'published',
-          createdAt: '2026-05-09T10:00:00.000Z',
-          updatedAt: '2026-05-09T10:00:00.000Z',
-        },
+        ...['Restmüll Nord', 'Bioabfall Süd', 'Papier', 'Glas', 'Sperrmüll', 'Grünschnitt'].map(
+          (name, index) => ({
+            id: `tour-${index + 1}`,
+            name,
+            wasteFractionIds: ['fraction-1'],
+            recurrence: 'weekly',
+            status: 'published',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          })
+        ),
       ],
     });
     wasteManagementApiMocks.getWasteManagementSchedulingOverview
@@ -2765,7 +2771,17 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.reasonKey'), {
       target: { value: 'new-year' },
     });
-    fireEvent.click(screen.getByLabelText('Restmüll Nord'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'wasteManagement.scheduling.global.fields.tourIds' })
+    );
+    const tourSearch = screen.getByRole('textbox', {
+      name: 'wasteManagement.scheduling.global.fields.searchTours',
+    });
+    fireEvent.change(tourSearch, { target: { value: 'Nord' } });
+    expect(screen.queryByRole('checkbox', { name: 'Papier' })).toBeNull();
+    fireEvent.click(screen.getByText('Restmüll Nord'));
+    fireEvent.change(tourSearch, { target: { value: 'Süd' } });
+    fireEvent.click(screen.getByText('Bioabfall Süd'));
     fireEvent.click(
       screen.getAllByRole('button', {
         name: 'wasteManagement.scheduling.global.actions.create',
@@ -2780,7 +2796,7 @@ describe('WasteManagementPage', () => {
           hasYear: true,
           reasonType: 'holiday',
           reasonKey: 'new-year',
-          tourIds: ['tour-1'],
+          tourIds: ['tour-1', 'tour-2'],
         })
       );
     });

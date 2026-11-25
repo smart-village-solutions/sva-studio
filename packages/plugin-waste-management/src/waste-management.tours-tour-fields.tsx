@@ -92,6 +92,7 @@ export const WasteToursTourFields = ({
             description={pt('tours.fieldHints.wasteFractions')}
           >
             <WasteToursFractionSelection
+              id="waste-tour-fractions"
               fractions={fractions}
               selectedFractionIds={form.wasteFractionIds}
               disabled={saving}

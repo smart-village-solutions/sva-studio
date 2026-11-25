@@ -117,6 +117,7 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     secretConfigured: true,
   },
   hostnames: [],
+  assignedModules: [],
   provisioningRuns: [],
   auditEvents: [],
   effectiveAccountInvitationTemplate: {

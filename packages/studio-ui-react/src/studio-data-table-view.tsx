@@ -12,6 +12,8 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   table: LegacyTable<TData>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hasRows: boolean;
+  isLoading: boolean;
+  loadingState: React.ReactNode;
   emptyState: React.ReactNode;
   ariaLabel: string;
   caption?: string;
@@ -147,6 +149,8 @@ export function StudioDataTableView<TData extends RowData>({
   table,
   containerRef,
   hasRows,
+  isLoading,
+  loadingState,
   emptyState,
   ariaLabel,
   caption,
@@ -158,40 +162,62 @@ export function StudioDataTableView<TData extends RowData>({
   mobileSortingControls,
   footerContent,
 }: StudioDataTableViewProps<TData>) {
+  const showRows = hasRows && !isLoading;
+  let statusContent: React.ReactNode = null;
+  if (isLoading) {
+    statusContent = loadingState;
+  } else if (!hasRows) {
+    statusContent = emptyState;
+  }
+
+  // While loading (only reached with `keepToolbarWhileLoading`), the toolbar and footer stay
+  // mounted so search fields and filters keep their value and focus; only the result area changes.
   return (
     <div
-      ref={hasRows ? containerRef : undefined}
+      ref={showRows ? containerRef : undefined}
       className={cn(
         'rounded-xl border border-border bg-card shadow-shell',
-        hasRows && 'overflow-hidden'
+        showRows && 'overflow-hidden'
       )}
-      aria-busy={hasRows ? 'false' : undefined}
-      data-selected-rows={hasRows ? selectedRowCount : undefined}
-      data-layout={hasRows ? (isCompact ? 'compact' : 'wide') : undefined}
+      aria-busy={showRows ? 'false' : undefined}
+      data-selected-rows={showRows ? selectedRowCount : undefined}
+      data-layout={showRows ? (isCompact ? 'compact' : 'wide') : undefined}
     >
       {toolbarContent}
-      {hasRows ? (
-        <>
-          <StudioDataTableWide
-            table={table}
-            ariaLabel={ariaLabel}
-            caption={caption}
-            isCompact={isCompact}
-          />
-          <StudioDataTableCompact
-            table={table}
-            ariaLabel={ariaLabel}
-            labels={labels}
-            selectionMode={selectionMode}
-            isCompact={isCompact}
-            mobileSortingControls={mobileSortingControls}
-          />
-        </>
-      ) : (
-        <div className="p-6" role="status" aria-live="polite">
-          {emptyState}
-        </div>
-      )}
+      {/* The live region stays mounted so that screen readers reliably announce loading and
+          empty states; it only exposes the status role while it has something to report. */}
+      <div
+        className={cn(
+          statusContent ? 'p-6' : 'sr-only',
+          isLoading && 'text-sm text-muted-foreground'
+        )}
+        role={statusContent ? 'status' : undefined}
+        aria-live="polite"
+      >
+        {statusContent}
+      </div>
+      {/* Result area, marked busy while loading. The live region above stays outside of it so
+          the loading announcement is not suppressed. */}
+      <div aria-busy={isLoading || undefined}>
+        {showRows ? (
+          <>
+            <StudioDataTableWide
+              table={table}
+              ariaLabel={ariaLabel}
+              caption={caption}
+              isCompact={isCompact}
+            />
+            <StudioDataTableCompact
+              table={table}
+              ariaLabel={ariaLabel}
+              labels={labels}
+              selectionMode={selectionMode}
+              isCompact={isCompact}
+              mobileSortingControls={mobileSortingControls}
+            />
+          </>
+        ) : null}
+      </div>
       {footerContent}
     </div>
   );

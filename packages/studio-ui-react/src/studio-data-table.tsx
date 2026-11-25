@@ -46,6 +46,7 @@ export function StudioDataTable<TData extends RowData>({
   emptyState,
   loadingState,
   isLoading = false,
+  keepToolbarWhileLoading = false,
   getRowId,
   selectionMode = 'multiple',
   selection,
@@ -198,6 +199,7 @@ export function StudioDataTable<TData extends RowData>({
       bulkActions={bulkActions}
       selectedRows={selectedRows}
       clearSelection={clearSelection}
+      isLoading={isLoading}
       toolbarStart={toolbarStart}
       toolbarCenter={toolbarCenter}
       toolbarEnd={toolbarEnd}
@@ -214,7 +216,7 @@ export function StudioDataTable<TData extends RowData>({
   const footerContent = footer ? (
     <div className="border-t border-border px-4 py-4">{footer}</div>
   ) : null;
-  if (isLoading) {
+  if (isLoading && !keepToolbarWhileLoading) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-shell" aria-busy="true">
         <div className="p-6 text-sm text-muted-foreground" role="status" aria-live="polite">
@@ -229,6 +231,8 @@ export function StudioDataTable<TData extends RowData>({
       table={table}
       containerRef={containerRef}
       hasRows={hasRows}
+      isLoading={isLoading}
+      loadingState={loadingState ?? labels.loading}
       emptyState={emptyState}
       ariaLabel={ariaLabel}
       caption={caption}

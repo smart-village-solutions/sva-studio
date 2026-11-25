@@ -9,20 +9,31 @@ import type {
   StudioColumnDef,
   StudioDataTableSorting,
 } from './studio-data-table-types.js';
+import { cn } from './utils.js';
 
 type StudioDataTableToolbarProps<TData> = Readonly<{
   bulkActions: readonly StudioBulkAction<TData>[];
   selectedRows: TData[];
   clearSelection: () => void;
+  isLoading: boolean;
   toolbarStart?: React.ReactNode;
   toolbarCenter?: React.ReactNode;
   toolbarEnd?: React.ReactNode;
 }>;
 
+const isBulkActionDisabled = <TData,>(
+  action: StudioBulkAction<TData>,
+  selectedRows: readonly TData[]
+) =>
+  typeof action.disabled === 'function'
+    ? selectedRows.length === 0 || action.disabled(selectedRows)
+    : (action.disabled ?? selectedRows.length === 0);
+
 export function StudioDataTableToolbar<TData>({
   bulkActions,
   selectedRows,
   clearSelection,
+  isLoading,
   toolbarStart,
   toolbarCenter,
   toolbarEnd,
@@ -30,18 +41,23 @@ export function StudioDataTableToolbar<TData>({
   const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarCenter || toolbarEnd;
   const bulkActionsContent = bulkActions.map((action) =>
     action.render ? (
-      <React.Fragment key={action.id}>{action.render}</React.Fragment>
+      // Custom content cannot be disabled generically. While loading, its rows are hidden but the
+      // selection is kept, so the wrapper makes it inert. The wrapper is always rendered, so the
+      // custom node is not remounted and the toolbar layout does not shift.
+      <div
+        key={action.id}
+        className={cn('contents', isLoading && '*:opacity-50')}
+        inert={isLoading || undefined}
+      >
+        {action.render}
+      </div>
     ) : (
       <Button
         key={action.id}
         type="button"
         variant={action.variant ?? 'secondary'}
         className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
-        disabled={
-          typeof action.disabled === 'function'
-            ? selectedRows.length === 0 || action.disabled(selectedRows)
-            : (action.disabled ?? selectedRows.length === 0)
-        }
+        disabled={isLoading || isBulkActionDisabled(action, selectedRows)}
         onClick={() => void action.onClick({ selectedRows, clearSelection })}
       >
         {action.label}

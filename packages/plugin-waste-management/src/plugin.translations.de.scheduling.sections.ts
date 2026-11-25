@@ -29,6 +29,11 @@ export const wasteManagementPluginTranslationsDESchedulingSections = {
       tour: 'Tour',
       tourUnset: 'Tour auswählen',
       locations: 'Abholpunkte',
+      chooseLocations: 'Abholpunkte auswählen',
+      searchLocations: 'Abholpunkte suchen',
+      noMatchingLocations: 'Keine passenden Abholpunkte gefunden.',
+      unavailableLocation: 'Nicht verfügbar',
+      removeLocation: '{{value}} aus der Auswahl entfernen',
       locationsHint:
         'Übergeordnete Orte können direkt ausgewählt werden und gelten für ihre untergeordneten Abholpunkte.',
       note: 'Hinweis (optional)',

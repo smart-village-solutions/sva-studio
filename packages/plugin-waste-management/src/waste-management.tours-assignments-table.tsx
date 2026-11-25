@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Checkbox } from '@sva/studio-ui-react';
 
@@ -44,35 +43,13 @@ type TourAssignmentsTableProps = {
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
 };
 
-const useAssignmentTableFocus = (locations: TourAssignmentsTableProps['locations']) => {
-  const tableGroup = useRef<HTMLDivElement>(null);
-  const toggledCheckbox = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    const checkbox = toggledCheckbox.current;
-    toggledCheckbox.current = null;
-    if (
-      checkbox &&
-      !checkbox.isConnected &&
-      checkbox.ownerDocument.activeElement === checkbox.ownerDocument.body
-    ) {
-      tableGroup.current?.focus();
-    }
-  }, [locations]);
-  const rememberFocusedCheckbox = (checkbox: HTMLInputElement) => {
-    if (checkbox.ownerDocument.activeElement === checkbox) toggledCheckbox.current = checkbox;
-  };
-  return { tableGroup, rememberFocusedCheckbox };
-};
-
 export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const selectedLocationIdSet = new Set(props.selectedLocationIds);
   const sort = props.sortDirection === 'asc' ? 'ascending' : 'descending';
-  const { tableGroup, rememberFocusedCheckbox } = useAssignmentTableFocus(props.locations);
 
   return (
     <div
-      ref={tableGroup}
       role="group"
       aria-label={pt('tours.assignments.workspace.tableLabel')}
       tabIndex={0}
@@ -114,7 +91,14 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
           {props.locations.map((location) => (
             <tr
               key={location.id}
-              className="border-b border-border-subtle align-top text-sm text-foreground hover:bg-surface-inset"
+              className="cursor-pointer border-b border-border-subtle align-top text-sm text-foreground hover:bg-surface-inset"
+              onClick={(event) => {
+                const checkbox = event.currentTarget.querySelector('input[type="checkbox"]');
+                if (event.target !== checkbox && checkbox instanceof HTMLInputElement) {
+                  checkbox.focus();
+                  checkbox.click();
+                }
+              }}
             >
               <td className="px-3 py-3">
                 <Checkbox
@@ -122,11 +106,9 @@ export const TourAssignmentsTable = (props: TourAssignmentsTableProps) => {
                     value: location.label,
                   })}
                   checked={selectedLocationIdSet.has(location.id)}
-                  onChange={(event) => {
-                    const checkbox = event.currentTarget;
-                    rememberFocusedCheckbox(checkbox);
-                    props.onToggleLocation(location.id, checkbox.checked);
-                  }}
+                  onChange={(event) =>
+                    props.onToggleLocation(location.id, event.currentTarget.checked)
+                  }
                 />
               </td>
               {addressColumns.map(({ field, fallback }) => (

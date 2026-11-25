@@ -39,6 +39,11 @@ Die Modulzuweisung und die Katalogpflege sind im [Dossier zu Kategorien und Modu
    Der gespeicherte Abholpunkt ist jetzt in der **Tour-Zuordnung** auswählbar. Prüfen Sie vor
    dem Speichern der Zuordnung den Ort, die Straße und gegebenenfalls die Hausnummer.
 
+In längeren Auswahllisten erscheint ein Suchfeld. Das gilt für die Abfallfraktionen beim Bearbeiten
+einer Tour, die betroffenen Touren eines globalen Ausweichtermins und die Abholpunkte eines
+Tour-Einsatzes. Bei diesen Mehrfachauswahlen können Sie die ganze Optionszeile anklicken. Bei der
+Zuordnung von Abholpunkten und Touren behalten die Zeilen beim Markieren ihre Position.
+
 ### PDF-Legende und Logo
 
 Unter dem Kalenderraster stehen links Name, Kürzel und Farbe der Abfallarten. Daneben erscheinen

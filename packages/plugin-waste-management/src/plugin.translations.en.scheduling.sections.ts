@@ -29,6 +29,11 @@ export const wasteManagementPluginTranslationsENSchedulingSections = {
       tour: 'Tour',
       tourUnset: 'Select tour',
       locations: 'Pickup locations',
+      chooseLocations: 'Select pickup locations',
+      searchLocations: 'Search pickup locations',
+      noMatchingLocations: 'No matching pickup locations found.',
+      unavailableLocation: 'Unavailable',
+      removeLocation: 'Remove {{value}} from the selection',
       locationsHint:
         'Parent locations can be selected directly and apply to their child pickup locations.',
       note: 'Note (optional)',

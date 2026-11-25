@@ -32,6 +32,11 @@ export const wasteManagementPluginTranslationsENSchedulingScopes = {
       description: 'Description',
       hasYear: 'Year-specific',
       tourIds: 'Affected tours',
+      chooseTours: 'Select tours',
+      searchTours: 'Search tours',
+      noMatchingTours: 'No matching tours found.',
+      unavailableTour: 'Unavailable',
+      removeTour: 'Remove {{value}} from the selection',
       noToursAvailable: 'No tours are available yet.',
     },
     dialog: {

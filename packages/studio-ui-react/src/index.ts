@@ -110,7 +110,7 @@ export {
   type MediaIntakePanelPhase,
   type MediaIntakePanelProps,
 } from './media-intake-panel.js';
-export { Select } from './select.js';
+export { Select, StudioSelectLabelsProvider } from './select.js';
 export {
   StudioDestructiveActionDialog,
   StudioPersistentActionResult,
@@ -229,7 +229,7 @@ export {
   type StudioContentHistoryProps,
 } from './studio-content-history.js';
 export { StudioSwitch, type StudioSwitchProps } from './studio-switch.js';
-export * from './searchable-select.js';
+export { SearchableSelect, type SearchableSelectProps } from './searchable-select.js';
 export * from './searchable-select-option-list.js';
 export { Calendar } from './calendar.js';
 export * from './card.js';

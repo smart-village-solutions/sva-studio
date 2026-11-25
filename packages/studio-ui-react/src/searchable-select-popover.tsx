@@ -70,10 +70,7 @@ export const SearchableSelectTrigger = ({
         onKeyDown={onTriggerKeyDown}
       >
         <span className="truncate">{selectedLabel ?? placeholder}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className={cn('h-4 w-4 shrink-0', open && 'rotate-180')}
-        />
+        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0', open && 'rotate-180')} />
       </Button>
     </Popover.Anchor>
   );
@@ -93,12 +90,13 @@ type SearchableSelectPopoverProps = Readonly<{
   searchPlaceholder: string;
   searchValue: string;
   selectedValue: string;
+  showSearch?: boolean;
   setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
   setSearch: (value: string) => void;
 }>;
 
-const onSearchInputKeyDown = (
-  event: React.KeyboardEvent<HTMLInputElement>,
+const onOptionsKeyDown = (
+  event: React.KeyboardEvent,
   {
     activeIndex,
     clearLabel,
@@ -114,7 +112,7 @@ const onSearchInputKeyDown = (
     return;
   }
 
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' || (event.key === ' ' && event.currentTarget.tagName !== 'INPUT')) {
     event.preventDefault();
     const activeOption = filteredOptions[activeIndex];
     if (!activeOption || activeOption.disabled) {
@@ -161,7 +159,7 @@ const SearchableSelectSearchInput = (props: SearchableSelectPopoverProps) => {
       role="combobox"
       value={searchValue}
       onChange={(event) => setSearch(event.target.value)}
-      onKeyDown={(event) => onSearchInputKeyDown(event, props)}
+      onKeyDown={(event) => onOptionsKeyDown(event, props)}
       placeholder={searchPlaceholder}
       aria-label={searchPlaceholder}
       aria-autocomplete="list"
@@ -186,7 +184,14 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
     label,
     onValueChange,
     selectedValue,
+    showSearch = true,
   } = props;
+  const listRef = React.useRef<HTMLUListElement>(null);
+
+  React.useEffect(() => {
+    const activeOption = listRef.current?.querySelectorAll('[role="option"]').item(activeIndex);
+    activeOption?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIndex, filteredOptions]);
 
   return (
     <Popover.Portal>
@@ -195,10 +200,10 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
         sideOffset={8}
         collisionPadding={16}
         aria-label={label}
-        className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-border-subtle bg-popover p-2 text-popover-foreground shadow-shell"
+        className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] space-y-2 overflow-y-auto rounded-lg border border-border-subtle bg-popover p-2 text-popover-foreground shadow-shell"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          inputRef.current?.focus();
+          (showSearch ? inputRef.current : listRef.current)?.focus();
         }}
         onCloseAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => {
@@ -210,12 +215,24 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
           if (document.getElementById(id)?.contains(event.target as Node)) event.preventDefault();
         }}
       >
-        <SearchableSelectSearchInput {...props} />
+        {showSearch ? <SearchableSelectSearchInput {...props} /> : null}
+        <SearchableSelectOptionList
+          activeIndex={activeIndex}
+          close={close}
+          emptyText={emptyText}
+          filteredOptions={filteredOptions}
+          id={id}
+          label={label}
+          listRef={listRef}
+          onKeyDown={showSearch ? undefined : (event) => onOptionsKeyDown(event, props)}
+          onValueChange={onValueChange}
+          selectedValue={selectedValue}
+        />
         {clearLabel ? (
           <Button
             type="button"
             variant="tertiary"
-            className="mt-2 w-full justify-start"
+            className="w-full justify-start"
             onKeyDown={(event) => {
               if (event.key === 'Tab' && !event.shiftKey) close({ focusTrigger: true });
             }}
@@ -227,16 +244,6 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
             {clearLabel}
           </Button>
         ) : null}
-        <SearchableSelectOptionList
-          activeIndex={activeIndex}
-          close={close}
-          emptyText={emptyText}
-          filteredOptions={filteredOptions}
-          id={id}
-          label={label}
-          onValueChange={onValueChange}
-          selectedValue={selectedValue}
-        />
       </Popover.Content>
     </Popover.Portal>
   );

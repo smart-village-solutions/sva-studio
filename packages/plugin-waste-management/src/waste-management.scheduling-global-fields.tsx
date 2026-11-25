@@ -92,6 +92,7 @@ export const WasteSchedulingGlobalFields = ({ form, tours, pt, onChange }: Globa
     </StudioField>
     <StudioField id="waste-global-shift-tours" label={pt('scheduling.global.fields.tourIds')}>
       <WasteSchedulingTourSelection
+        id="waste-global-shift-tours"
         tours={tours}
         selectedTourIds={form.tourIds}
         pt={pt}

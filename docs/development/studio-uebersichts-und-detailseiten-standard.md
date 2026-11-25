@@ -418,6 +418,8 @@ Alle Standard-Controls werden bevorzugt aus shadcn/ui komponiert. Dazu gehören 
 - Radio-Gruppen werden für wenige gegenseitig ausschließende Optionen verwendet.
 - Select- oder Combobox-Felder werden für längere Optionslisten verwendet.
 - Multi-Select wird verwendet, wenn mehrere Werte aus einer größeren Menge gewählt werden können.
+- Studio und Plugins verwenden die Auswahlkomponenten aus `@sva/studio-ui-react`. Bei lokalen Listen erscheint das Suchfeld ab sechs sichtbaren Optionen. Serverseitige Suche bleibt auch bei wenigen aktuellen Treffern verfügbar.
+- Bei Mehrfachauswahl schaltet die ganze Optionszeile den Eintrag um. Die Auswahl bleibt geöffnet, damit weitere Einträge gewählt werden können.
 - Checkbox-Gruppen werden verwendet, wenn alle Optionen gleichzeitig sichtbar sein sollen.
 - Pflichtauswahlen müssen einen klaren Leerzustand und eine validierbare Auswahl besitzen.
 

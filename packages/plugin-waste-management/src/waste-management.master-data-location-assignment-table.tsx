@@ -47,7 +47,22 @@ const LocationAssignmentRow = ({
     .filter((value: string | undefined): value is string => Boolean(value));
 
   return (
-    <tr key={tour.id} className="border-b border-border/50 align-top last:border-b-0">
+    <tr
+      key={tour.id}
+      className={
+        disabled
+          ? 'border-b border-border/50 align-top last:border-b-0'
+          : 'cursor-pointer border-b border-border/50 align-top last:border-b-0 hover:bg-surface-inset'
+      }
+      onClick={(event) => {
+        if (disabled) return;
+        const checkbox =
+          event.currentTarget.querySelector<HTMLInputElement>('input[type="checkbox"]');
+        if (!checkbox || event.target === checkbox) return;
+        checkbox.focus();
+        checkbox.click();
+      }}
+    >
       <td className="px-3 py-3">
         <Checkbox
           aria-label={pt('tours.table.selectRow', { value: tour.name })}

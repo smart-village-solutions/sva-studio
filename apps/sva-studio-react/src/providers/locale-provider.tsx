@@ -1,6 +1,13 @@
 import React from 'react';
+import { StudioSelectLabelsProvider } from '@sva/studio-ui-react';
 
-import { DEFAULT_LOCALE, isSupportedLocale, setActiveLocale, type SupportedLocale } from '../i18n';
+import {
+  createTranslator,
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  setActiveLocale,
+  type SupportedLocale,
+} from '../i18n';
 import { initializePluginTranslations } from '../lib/plugins';
 
 type LocaleContextValue = Readonly<{
@@ -66,10 +73,20 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
     }),
     [locale, setLocale]
   );
+  const selectLabels = React.useMemo(() => {
+    const t = createTranslator(locale);
+    return {
+      empty: t('shared.select.empty'),
+      options: t('shared.select.options'),
+      search: t('shared.select.search'),
+    };
+  }, [locale]);
 
   return (
     <LocaleContext.Provider value={contextValue}>
-      <React.Fragment key={locale}>{children}</React.Fragment>
+      <StudioSelectLabelsProvider key={locale} value={selectLabels}>
+        {children}
+      </StudioSelectLabelsProvider>
     </LocaleContext.Provider>
   );
 };

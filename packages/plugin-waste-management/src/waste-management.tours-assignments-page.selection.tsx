@@ -198,8 +198,8 @@ export const useTourAssignmentSelection = ({
   const [pageSize, setPageSize] = useState<number>(defaultWastePageSize);
 
   const orderedFilteredLocations = useMemo(
-    () => orderTourAssignmentLocations(filteredLocations, selectedLocationIds, sort),
-    [filteredLocations, selectedLocationIds, sort]
+    () => orderTourAssignmentLocations(filteredLocations, [...assignedLocationIds], sort),
+    [filteredLocations, assignedLocationIds, sort]
   );
   const pagedLocations = createPagedItems({ items: orderedFilteredLocations, page, pageSize });
 

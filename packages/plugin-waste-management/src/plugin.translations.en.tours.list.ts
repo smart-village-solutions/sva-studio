@@ -37,6 +37,11 @@ export const wasteManagementPluginTranslationsENToursList = {
     customDates: 'Custom dates',
     wasteFractions: 'Waste fractions',
     noFractionsAvailable: 'No waste fractions are available yet.',
+    chooseFractions: 'Select waste fractions',
+    searchFractions: 'Search waste fractions',
+    noMatchingFractions: 'No matching waste fractions found.',
+    unavailableFraction: 'Unavailable',
+    removeFraction: 'Remove {{value}} from the selection',
     status: 'Status',
   },
   filters: {

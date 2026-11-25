@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -334,6 +334,11 @@ describe('WasteSchedulingContent', () => {
         }
         assignmentLocationOptions={[
           { id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern' },
+          { id: 'location-2', label: 'Perleberg / Nordstraße' },
+          ...['Dorfstraße', 'Bahnhofstraße', 'Gartenstraße', 'Schulstraße'].map((label) => ({
+            id: label,
+            label,
+          })),
         ]}
         onSaveTourAssignment={onSaveTourAssignment}
         onDeleteTourAssignment={onDeleteTourAssignment}
@@ -350,14 +355,34 @@ describe('WasteSchedulingContent', () => {
     fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.pickupDate'), {
       target: { value: '2026-07-02' },
     });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Musterhausen/ }));
+    const pickupLocations = screen.getByRole('button', {
+      name: 'scheduling.assignments.fields.locations',
+    });
+    expect(pickupLocations.getAttribute('aria-describedby')).toBe(
+      'waste-tour-assignment-locations-description'
+    );
+    fireEvent.click(pickupLocations);
+    const search = screen.getByRole('textbox', {
+      name: 'scheduling.assignments.fields.searchLocations',
+    });
+    fireEvent.change(search, { target: { value: 'Rathausplatz' } });
+    expect(screen.queryByRole('checkbox', { name: /Nordstraße/ })).toBeNull();
+    fireEvent.click(
+      screen.getByText('Musterhausen / Mitte / Rathausplatz / alle Hausnummern', {
+        selector: 'label span',
+      })
+    );
+    fireEvent.change(search, { target: { value: 'Nordstraße' } });
+    fireEvent.click(screen.getByText('Perleberg / Nordstraße', { selector: 'label span' }));
+    fireEvent.change(search, { target: { value: 'Rathausplatz' } });
+    expect(screen.getByRole('checkbox', { name: /Musterhausen/ })).toHaveProperty('checked', true);
     fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.note'), {
       target: { value: '   ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.create' }));
 
     expect(onSaveTourAssignment).toHaveBeenCalledWith(
-      expect.objectContaining({ note: '', locationIds: ['location-1'] }),
+      expect.objectContaining({ note: '', locationIds: ['location-1', 'location-2'] }),
       'create'
     );
 
@@ -397,6 +422,10 @@ describe('WasteSchedulingContent', () => {
     fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.pickupDate'), {
       target: { value: '2026-07-03' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.fields.locations' }));
+    expect(
+      screen.queryByRole('textbox', { name: 'scheduling.assignments.fields.searchLocations' })
+    ).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: /Musterhausen/ }));
     fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.note'), {
       target: { value: '  Freitag 09:00-11:00 Uhr  ' },
@@ -414,15 +443,20 @@ describe('WasteSchedulingContent', () => {
       'create'
     );
 
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'scheduling.assignments.actions.create' })
+      ).toBeNull();
+    });
     fireEvent.click(
       screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
     );
     expect(
       (screen.getByLabelText('scheduling.assignments.fields.pickupDate') as HTMLInputElement).value
     ).toBe('');
-    expect(
-      (screen.getByRole('checkbox', { name: /Musterhausen/ }) as HTMLInputElement).checked
-    ).toBe(false);
+    expect(screen.queryByRole('checkbox', { name: /Musterhausen/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.fields.locations' }));
+    expect(screen.getByRole('checkbox', { name: /Musterhausen/ })).toHaveProperty('checked', false);
     expect(
       (screen.getByLabelText('scheduling.assignments.fields.note') as HTMLTextAreaElement).value
     ).toBe('');

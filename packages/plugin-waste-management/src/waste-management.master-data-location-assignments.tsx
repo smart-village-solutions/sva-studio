@@ -103,7 +103,10 @@ const LocationAssignmentsEditor = ({
   const selectedTours = sortedTours.filter(({ id }) => isSelected(id));
   const orderedTours = sort
     ? sortedTours
-    : [...selectedTours, ...sortedTours.filter(({ id }) => !isSelected(id))];
+    : [
+        ...sortedTours.filter(({ id }) => linkedTourIds.has(id)),
+        ...sortedTours.filter(({ id }) => !linkedTourIds.has(id)),
+      ];
   const pagedTours = createPagedItems({ items: orderedTours, page, pageSize });
   const allFilteredSelected = sortedTours.length > 0 && selectedTours.length === sortedTours.length;
   const someFilteredSelected = selectedTours.length > 0;

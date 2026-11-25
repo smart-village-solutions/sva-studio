@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Select } from '@sva/studio-ui-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { t } from '../i18n';
@@ -86,18 +87,30 @@ describe('LocaleProvider', () => {
     });
   });
 
-  it('persists explicit locale changes', async () => {
+  it('persists explicit locale changes and translates shared dropdown search', async () => {
     render(
       <LocaleProvider>
         <LocaleSwitchProbe />
+        <Select aria-label="Test">
+          {['A', 'B', 'C', 'D', 'E', 'F'].map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </Select>
       </LocaleProvider>
     );
 
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Test' }), { key: 'ArrowDown' });
+    const search = screen.getByRole('combobox', { name: 'Optionen suchen' });
+    fireEvent.keyDown(search, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'de' }));
 
     await waitFor(() => {
       expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
     });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Test' }), { key: 'ArrowDown' });
+    expect(screen.getByRole('combobox', { name: 'Search options' })).toBeTruthy();
   });
 
   it('resolves plugin translations on the first render', () => {
@@ -132,9 +145,7 @@ describe('LocaleProvider', () => {
     expect(screen.getByText('Kategorien')).toBeTruthy();
     expect(screen.getByText('Kategorie suchen oder auswählen')).toBeTruthy();
     expect(
-      screen.getAllByText(
-        'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.'
-      )
+      screen.getAllByText('Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.')
     ).toHaveLength(1);
     expect(screen.getByText('Schreibkontext & Metadaten')).toBeTruthy();
     expect(

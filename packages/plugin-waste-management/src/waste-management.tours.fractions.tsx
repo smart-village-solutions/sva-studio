@@ -1,61 +1,47 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
-import { Checkbox } from '@sva/studio-ui-react';
+import { SearchableMultiSelect } from '@sva/studio-ui-react';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const WasteToursFractionSelection = ({
+  id,
   fractions,
   selectedFractionIds,
   disabled = false,
   pt,
   onChange,
 }: {
+  readonly id: string;
   readonly fractions: readonly WasteFractionRecord[];
   readonly selectedFractionIds: readonly string[];
   readonly disabled?: boolean;
   readonly pt: Translate;
   readonly onChange: (wasteFractionIds: readonly string[]) => void;
 }) => (
-  <div className="space-y-1">
-    {fractions.length ? (
-      fractions.map((fraction) => {
-        const checked = selectedFractionIds.includes(fraction.id);
-        const label = fraction.containerSize
-          ? `${fraction.name} (${fraction.containerSize})`
-          : fraction.name;
-        return (
-          <label
-            key={fraction.id}
-            className={[
-              'flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
-              checked ? 'bg-primary/5' : 'hover:bg-accent/30',
-              disabled ? 'cursor-not-allowed opacity-70' : '',
-            ].join(' ')}
-          >
-            <Checkbox
-              aria-label={label}
-              checked={checked}
-              disabled={disabled}
-              onChange={(event) =>
-                onChange(
-                  event.currentTarget.checked
-                    ? [...selectedFractionIds, fraction.id]
-                    : selectedFractionIds.filter((value) => value !== fraction.id)
-                )
-              }
-            />
-            <span
-              role="img"
-              aria-label={pt('masterData.fractions.table.colorSwatch', { value: fraction.color })}
-              className="inline-block h-6 w-6 shrink-0 rounded-sm border border-border/70"
-              style={{ backgroundColor: fraction.color }}
-            />
-            <span className="min-w-0 flex-1 truncate font-medium text-foreground">{label}</span>
-          </label>
-        );
-      })
-    ) : (
-      <p className="text-sm text-muted-foreground">{pt('tours.fields.noFractionsAvailable')}</p>
-    )}
-  </div>
+  <SearchableMultiSelect
+    id={id}
+    value={selectedFractionIds}
+    disabled={disabled || (fractions.length === 0 && selectedFractionIds.length === 0)}
+    helpText={fractions.length === 0 ? pt('tours.fields.noFractionsAvailable') : undefined}
+    placeholder={pt('tours.fields.chooseFractions')}
+    searchLabel={pt('tours.fields.searchFractions')}
+    emptyText={pt('tours.fields.noMatchingFractions')}
+    unavailableText={pt('tours.fields.unavailableFraction')}
+    removeLabel={(label) => pt('tours.fields.removeFraction', { value: label })}
+    options={fractions.map((fraction) => ({
+      value: fraction.id,
+      label: fraction.containerSize
+        ? `${fraction.name} (${fraction.containerSize})`
+        : fraction.name,
+      leadingVisual: (
+        <span
+          role="img"
+          aria-label={pt('masterData.fractions.table.colorSwatch', { value: fraction.color })}
+          className="inline-block h-6 w-6 shrink-0 rounded-sm border border-border/70"
+          style={{ backgroundColor: fraction.color }}
+        />
+      ),
+    }))}
+    onValueChange={onChange}
+  />
 );

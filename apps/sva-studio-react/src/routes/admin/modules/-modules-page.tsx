@@ -1,5 +1,5 @@
 import React from 'react';
-import { StudioPageTitle } from '@sva/studio-ui-react';
+import { Select, StudioPageTitle } from '@sva/studio-ui-react';
 
 import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
@@ -159,7 +159,7 @@ const AdminModulesPage = () => {
             {t('admin.instances.instanceModules.instanceSelect.hint')}
           </p>
         </div>
-        <select
+        <Select
           id="modules-instance"
           className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={selectedInstanceId}
@@ -173,7 +173,7 @@ const AdminModulesPage = () => {
               {instance.displayName} ({instance.instanceId})
             </option>
           ))}
-        </select>
+        </Select>
       </StudioFilterSurface>
 
       <InstanceModulesWorkspace

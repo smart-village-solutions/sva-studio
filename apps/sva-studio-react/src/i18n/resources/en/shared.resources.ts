@@ -1,4 +1,9 @@
 export const sharedENResources = {
+  select: {
+    options: 'Options',
+    search: 'Search options',
+    empty: 'No matching options found.',
+  },
   studioMap: {
     chooseStyle: 'Choose map style',
     styles: {

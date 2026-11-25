@@ -532,9 +532,8 @@ test.describe('news plugin', () => {
     const categorySearch = page.getByRole('textbox', {
       name: /Kategorien suchen|Search categories|news\.fields\.categoriesSearch/,
     });
-    await categorySearch.fill('Allgemein');
+    await expect(categorySearch).toHaveCount(0);
     await page.getByRole('checkbox', { name: 'Allgemein' }).check();
-    await categorySearch.fill('Kultur');
     await page.getByRole('checkbox', { name: 'Kultur' }).check();
     await expect(categoryTrigger).toContainText('Allgemein, Kultur');
     await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);

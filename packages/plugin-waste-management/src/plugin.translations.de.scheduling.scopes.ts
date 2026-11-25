@@ -32,6 +32,11 @@ export const wasteManagementPluginTranslationsDESchedulingScopes = {
       description: 'Beschreibung',
       hasYear: 'Jahresbezug',
       tourIds: 'Betroffene Touren',
+      chooseTours: 'Touren auswählen',
+      searchTours: 'Touren suchen',
+      noMatchingTours: 'Keine passenden Touren gefunden.',
+      unavailableTour: 'Nicht verfügbar',
+      removeTour: '{{value}} aus der Auswahl entfernen',
       noToursAvailable: 'Es sind noch keine Touren vorhanden.',
     },
     dialog: {

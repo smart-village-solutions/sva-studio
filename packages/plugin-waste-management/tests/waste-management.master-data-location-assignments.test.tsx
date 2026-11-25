@@ -141,7 +141,13 @@ describe('LocationAssignmentsSection', () => {
     expect(byPeriod('01.02.2026 – 31.12.2026').checked).toBe(true);
     expect(byPeriod('tours.fields.firstDate 01.02.2027').checked).toBe(false);
     expect(byPeriod('tours.fields.customDates').checked).toBe(false);
-    fireEvent.click(byPeriod('tours.fields.firstDate 01.02.2027'));
+    const nextTour = byPeriod('tours.fields.firstDate 01.02.2027');
+    const row = nextTour.closest('tr');
+    if (!row) throw new Error('Tour row is missing');
+    const rowIndex = screen.getAllByRole('row').indexOf(row);
+    fireEvent.click(within(row).getByText('Restmüll'));
+    expect(screen.getAllByRole('row')[rowIndex]).toBe(row);
+    expect(document.activeElement).toBe(nextTour);
     expect(byPeriod('01.02.2026 – 31.12.2026').checked).toBe(true);
     expect(byPeriod('tours.fields.firstDate 01.02.2027').checked).toBe(true);
   });

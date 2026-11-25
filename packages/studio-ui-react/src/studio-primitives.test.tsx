@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +27,7 @@ import {
   DialogTitle,
   Input,
   Select,
+  StudioSelectLabelsProvider,
   StudioActionMenu,
   StudioConfirmDialog,
   StudioDataTable,
@@ -1477,6 +1478,59 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Hinweis')).toBeTruthy();
     expect(screen.getByText('Aktiv')).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Status' })).toBeTruthy();
+  });
+
+  it('searches a longer native select while preserving form values, refs and change events', () => {
+    const ref = { current: null as HTMLSelectElement | null };
+    const onChange = vi.fn();
+    render(
+      <StudioSelectLabelsProvider
+        value={{ empty: 'Keine Treffer', options: 'Optionen', search: 'Optionen suchen' }}
+      >
+        <form aria-label="Adresse">
+          <label htmlFor="street">Straße</label>
+          <Select id="street" name="street" ref={ref} required defaultValue="" onChange={onChange}>
+            <option value="">Bitte wählen</option>
+            <optgroup label="Perleberg">
+              {['Bäckerstraße', 'Markt', 'Mühlenstraße', 'Schulstraße', 'Wallstraße'].map(
+                (street) => (
+                  <option key={street} value={street}>
+                    {street}
+                  </option>
+                )
+              )}
+            </optgroup>
+            <optgroup label="Nicht verfügbar" disabled>
+              <option value="hidden-street">Verborgene Straße</option>
+            </optgroup>
+          </Select>
+        </form>
+      </StudioSelectLabelsProvider>
+    );
+
+    const select = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Straße' });
+    expect(select).toBe(ref.current);
+    expect(select.validity.valueMissing).toBe(true);
+    fireEvent.keyDown(select, { key: 'ArrowDown' });
+
+    const search = screen.getByRole('combobox', { name: 'Optionen suchen' });
+    const options = within(screen.getByRole('listbox', { name: 'Straße' }));
+    expect(
+      options.getByRole<HTMLButtonElement>('option', { name: /Verborgene Straße/ }).disabled
+    ).toBe(true);
+    fireEvent.change(search, { target: { value: 'mühlen' } });
+    expect(options.getAllByRole('option')).toEqual([
+      options.getByRole('option', { name: /Mühlenstraße/ }),
+    ]);
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(select.value).toBe('Mühlenstraße');
+    expect(document.activeElement).toBe(select);
+    const form = screen.getByRole<HTMLFormElement>('form', { name: 'Adresse' });
+    expect(new FormData(form).get('street')).toBe('Mühlenstraße');
+    form.reset();
+    expect(select.value).toBe('');
   });
 
   it('forwards checkbox refs to callback and object refs', () => {

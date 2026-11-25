@@ -159,7 +159,17 @@ export function TargetingTable({
         </thead>
         <tbody>
           {options.map((option) => (
-            <tr key={option.id} className="border-b last:border-0">
+            <tr
+              key={option.id}
+              className="cursor-pointer border-b last:border-0 hover:bg-surface-inset"
+              onClick={(event) => {
+                const checkbox =
+                  event.currentTarget.querySelector<HTMLInputElement>('input[type="checkbox"]');
+                if (!checkbox || event.target === checkbox) return;
+                checkbox.focus();
+                checkbox.click();
+              }}
+            >
               <td className="p-3">
                 <Checkbox
                   aria-label={option.label}

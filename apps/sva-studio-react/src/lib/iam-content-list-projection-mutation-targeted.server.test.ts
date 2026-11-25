@@ -364,6 +364,109 @@ describe('targeted content projection mutations', () => {
     );
   });
 
+  it.each([
+    { accessScope: 'all', visible: true, actorReadError: undefined },
+    { accessScope: 'own', visible: false, actorReadError: undefined },
+    { accessScope: 'organization', visible: false, actorReadError: undefined },
+    { accessScope: 'all', visible: false, actorReadError: 'not_found' },
+    { accessScope: 'all', visible: false, actorReadError: 'network_error' },
+  ] as const)(
+    'rechecks the actor projection for $accessScope with provider error $actorReadError',
+    async ({ accessScope, visible, actorReadError }) => {
+      state.resolveEffectivePermissions.mockResolvedValue({
+        ok: true,
+        permissions: [{ action: 'poi.read', resourceType: 'poi', accessScope }],
+      });
+      const poi = {
+        id: 'poi-transferred',
+        contentType: 'poi.point-of-interest',
+        visible: true,
+        dataProvider: { id: 'provider-target', name: 'Zielorganisation' },
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      };
+      state.getSvaMainserverPoi
+        .mockResolvedValueOnce({ ...poi, name: 'Vor der Übertragung' })
+        .mockImplementation(async ({ actingPrincipalType }) => {
+          if (actingPrincipalType === 'user' && actorReadError) {
+            throw Object.assign(new Error('Provider read failed'), { code: actorReadError });
+          }
+          return {
+            ...poi,
+            name: actingPrincipalType === 'user' ? 'Persönliche Sicht' : 'Organisationssicht',
+          };
+        });
+      state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+        dataProviderId: 'provider-target',
+      });
+
+      await refreshProjectedContentsForMainserverMutation({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-actor',
+        actorAccountId: 'account-actor',
+        contentType: 'poi.point-of-interest',
+        actingPrincipalType: 'user',
+        credentialFingerprint: 'a'.repeat(64),
+        operation: 'update',
+        entityId: poi.id,
+      });
+
+      const refresh = refreshProjectedContentsForMainserverMutation({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-actor',
+        actorAccountId: 'account-actor',
+        actorDisplayName: 'Ausführende Person',
+        contentType: 'poi.point-of-interest',
+        organizationId: 'org-target',
+        actingPrincipalType: 'organization',
+        authorizationMode: 'exact',
+        credentialFingerprint: 'b'.repeat(64),
+        mutationRef: 'transfer-poi',
+        ownershipPrincipal: { type: 'organization', id: 'org-target' },
+        transferActorReadContext: {
+          keycloakSubject: 'kc-actor',
+          actorAccountId: 'account-actor',
+          actingPrincipalType: 'user',
+          credentialFingerprint: 'a'.repeat(64),
+        },
+        operation: 'update',
+        entityId: 'poi-transferred',
+      });
+
+      if (actorReadError === 'network_error') {
+        await expect(refresh).rejects.toThrow('content_transfer_actor_projection_refresh_failed');
+      } else {
+        await refresh;
+      }
+
+      const actorRow = fixture.projectionRows.find((row) =>
+        row.projection_scope_key?.includes('::no-organization::user::')
+      );
+      if (visible) {
+        expect(actorRow).toEqual(
+          expect.objectContaining({
+            title: 'Persönliche Sicht',
+            owner_organization_id: 'org-target',
+            owner_user_id: null,
+            credential_source: 'user',
+          })
+        );
+      } else {
+        expect(actorRow).toBeUndefined();
+      }
+      expect(fixture.projectionRows).toContainEqual(
+        expect.objectContaining({
+          title: 'Organisationssicht',
+          owner_organization_id: 'org-target',
+          credential_source: 'organization',
+        })
+      );
+      expect(state.getSvaMainserverPoi).toHaveBeenCalledTimes(accessScope === 'all' ? 3 : 2);
+      expect(state.listSvaMainserverPoi).not.toHaveBeenCalled();
+      expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('passes an organization transfer target to the content core audit', async () => {
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
       status: 'ok',

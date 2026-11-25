@@ -11,6 +11,7 @@ import {
   readMainserverMutationFollowUpContext,
 } from '@sva/sva-mainserver/server';
 
+import { transferActorProjectionError } from './iam-content-list-projection-model.server.js';
 import { refreshProjectedContentsForMainserverMutation } from './iam-content-list-projection.server.js';
 import { refreshProjectionAfterMainserverMutation } from './mainserver-projection-refresh.server.js';
 
@@ -64,7 +65,7 @@ const readContentId = (request: Request): string | undefined => {
 };
 
 const refreshTransferredOwnershipProjection = async (input: {
-  readonly followUp: MutationFollowUpContext;
+  readonly followUp: RecoverableMainserverOwnershipTransfer['actor'];
   readonly contentType: ProjectionContentType;
   readonly contentId: string;
   readonly providerEntityId: string;
@@ -90,6 +91,15 @@ const refreshTransferredOwnershipProjection = async (input: {
     auditActorAccountId: input.followUp.actorAccountId,
     actorDisplayName: input.followUp.actorDisplayName,
     ownershipPrincipal: input.principal,
+    transferActorReadContext: {
+      keycloakSubject: input.followUp.keycloakSubject,
+      actorAccountId: input.followUp.actorAccountId,
+      ...(input.followUp.activeOrganizationId
+        ? { organizationId: input.followUp.activeOrganizationId }
+        : {}),
+      actingPrincipalType: input.followUp.actingPrincipalType,
+      credentialFingerprint: input.followUp.credentialFingerprint,
+    },
     ...(input.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
     mutationRef: input.operationExternalId,
     contentType: input.contentType,
@@ -109,6 +119,25 @@ const refreshTransferredOwnershipProjection = async (input: {
     completedSteps: ['target_projection_refreshed'],
     contentId: input.contentId,
   });
+};
+
+const markTransferProjectionFailed = async (
+  followUp: MutationFollowUpContext | undefined,
+  error: unknown
+): Promise<void> => {
+  if (!followUp) return;
+  const actorProjectionFailed =
+    error instanceof Error && error.message === transferActorProjectionError;
+  await markMainserverMutationReconciliationRequired({
+    instanceId: followUp.instanceId,
+    operationExternalId: followUp.operationExternalId,
+    completedStep: actorProjectionFailed
+      ? 'actor_projection_refresh_failed'
+      : 'target_projection_refresh_failed',
+    lastErrorCode: actorProjectionFailed
+      ? transferActorProjectionError
+      : 'content_transfer_projection_refresh_failed',
+  }).catch(() => undefined);
 };
 
 export const dispatchMainserverContentOwnershipRequest = async (
@@ -139,7 +168,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
             });
             for (const entry of recoverable) {
               await refreshTransferredOwnershipProjection({
-                followUp: reconciliationFollowUp,
+                followUp: entry.actor,
                 contentType,
                 contentId: input.contentId,
                 providerEntityId: input.providerEntityId,
@@ -194,15 +223,8 @@ export const dispatchMainserverContentOwnershipRequest = async (
         principal: { type: principal.type, id: principal.id },
       });
     } catch (error) {
-      if (followUp) {
-        await markMainserverMutationReconciliationRequired({
-          instanceId: followUp.instanceId,
-          operationExternalId: followUp.operationExternalId,
-          completedStep: 'target_projection_refresh_failed',
-          lastErrorCode: 'content_transfer_projection_refresh_failed',
-        }).catch(() => undefined);
-      }
-      logger.warn('Target projection refresh failed after confirmed ownership transfer', {
+      await markTransferProjectionFailed(followUp, error);
+      logger.warn('Projection refresh failed after confirmed ownership transfer', {
         operation: 'content_ownership_target_projection_refresh',
         content_type: contentType,
         error_code: error instanceof Error ? error.name : 'unknown_error',

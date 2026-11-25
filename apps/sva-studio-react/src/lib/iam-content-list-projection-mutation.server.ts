@@ -10,6 +10,7 @@ import {
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { isMainserverContentType, normalizeApiErrorCode } from './iam-content-list-api.shared.js';
+import { loadTransferActorProjection } from './iam-content-list-projection-authorization.server.js';
 import type {
   ContentProjectionSyncTarget,
   MainserverProjectionMutationOperation,
@@ -130,7 +131,7 @@ const recordMutationAudit = async (
 const upsertProjectionMutation = async (
   input: MutationRefreshInput,
   refreshRunId: string
-): Promise<void> => {
+): Promise<Error | undefined> => {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -139,14 +140,16 @@ const upsertProjectionMutation = async (
         input.row ?? (await loadMainserverProjectionMutationRow(input.target, input.entityId));
       const row = await enrichMutationProjectionRowWithBinding(input.target, loadedRow);
       assertVerifiedTransferOwner(input.target, row);
+      const actorProjection = await loadTransferActorProjection(input.target, row);
       await upsertSingleMainserverProjectionRow(
         input.target,
         input.target.actorAccountId,
         row,
-        refreshRunId
+        refreshRunId,
+        actorProjection instanceof Error ? undefined : actorProjection
       );
       await recordMutationAudit(input, row);
-      return;
+      return actorProjection instanceof Error ? actorProjection : undefined;
     } catch (error) {
       lastError = error;
       const errorCode =
@@ -232,8 +235,9 @@ export const refreshMainserverProjectionForMutation = async (
       return deferMutationHistory(input, true);
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
+    let actorProjectionError: void | Error;
     try {
-      await (input.operation === 'delete'
+      actorProjectionError = await (input.operation === 'delete'
         ? deleteProjectionMutation(input, refreshRunId)
         : upsertProjectionMutation(input, refreshRunId));
     } catch (error) {
@@ -250,6 +254,7 @@ export const refreshMainserverProjectionForMutation = async (
       }
       throw error;
     }
+    if (actorProjectionError) throw actorProjectionError;
     return undefined;
   });
 };

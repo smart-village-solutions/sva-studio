@@ -32,6 +32,16 @@ vi.mock('./mainserver-projection-refresh.server.js', () => ({
 
 import { dispatchMainserverContentOwnershipRequest } from './mainserver-content-ownership-api.server.js';
 
+const originalActor = {
+  instanceId: 'instance-1',
+  keycloakSubject: 'kc-original',
+  actorAccountId: '33333333-3333-4333-8333-333333333333',
+  actorDisplayName: 'Ursprüngliche Person',
+  activeOrganizationId: '44444444-4444-4444-8444-444444444444',
+  actingPrincipalType: 'organization',
+  credentialFingerprint: 'c'.repeat(64),
+} as const;
+
 describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,6 +53,8 @@ describe('mainserver content ownership API projection follow-up', () => {
       keycloakSubject: 'kc-actor',
       actorAccountId: '11111111-1111-4111-8111-111111111111',
       actorDisplayName: 'Ausführende Person',
+      actingPrincipalType: 'user',
+      credentialFingerprint: 'b'.repeat(64),
       operationExternalId: 'operation-1',
     });
     state.resolveTarget.mockResolvedValue({
@@ -91,6 +103,12 @@ describe('mainserver content ownership API projection follow-up', () => {
         organizationId: '22222222-2222-4222-8222-222222222222',
         actorAccountId: '11111111-1111-4111-8111-111111111111',
         actorDisplayName: 'Ausführende Person',
+        transferActorReadContext: {
+          keycloakSubject: 'kc-actor',
+          actorAccountId: '11111111-1111-4111-8111-111111111111',
+          actingPrincipalType: 'user',
+          credentialFingerprint: 'b'.repeat(64),
+        },
         ownershipPrincipal: {
           type: 'organization',
           id: '22222222-2222-4222-8222-222222222222',
@@ -142,7 +160,18 @@ describe('mainserver content ownership API projection follow-up', () => {
     );
   });
 
-  it('keeps the confirmed response successful when the local target projection fails', async () => {
+  it.each([
+    {
+      error: 'projection down',
+      step: 'target_projection_refresh_failed',
+      code: 'content_transfer_projection_refresh_failed',
+    },
+    {
+      error: 'content_transfer_actor_projection_refresh_failed',
+      step: 'actor_projection_refresh_failed',
+      code: 'content_transfer_actor_projection_refresh_failed',
+    },
+  ])('keeps a confirmed transfer successful when $step', async ({ error, step, code }) => {
     state.dispatch.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -158,7 +187,7 @@ describe('mainserver content ownership API projection follow-up', () => {
         { status: 200, headers: { 'content-type': 'application/json' } }
       )
     );
-    state.refreshProjection.mockRejectedValueOnce(new Error('projection down'));
+    state.refreshProjection.mockRejectedValueOnce(new Error(error));
     state.markReconciliationRequired.mockRejectedValueOnce(new Error('database down'));
 
     const response = await dispatchMainserverContentOwnershipRequest(
@@ -172,9 +201,10 @@ describe('mainserver content ownership API projection follow-up', () => {
     expect(state.markReconciliationRequired).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       operationExternalId: 'operation-1',
-      completedStep: 'target_projection_refresh_failed',
-      lastErrorCode: 'content_transfer_projection_refresh_failed',
+      completedStep: step,
+      lastErrorCode: code,
     });
+    expect(state.finalizeJournal).not.toHaveBeenCalled();
   });
 
   it('does not finalize a confirmed transfer while its projection history is deferred', async () => {
@@ -253,6 +283,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-target',
         targetPrincipal: {
           type: 'organization',
@@ -290,6 +321,15 @@ describe('mainserver content ownership API projection follow-up', () => {
     expect(state.refreshProjection).toHaveBeenCalledWith(
       expect.objectContaining({
         mutationRef: 'operation-previous',
+        auditActorAccountId: originalActor.actorAccountId,
+        actorDisplayName: originalActor.actorDisplayName,
+        transferActorReadContext: {
+          keycloakSubject: originalActor.keycloakSubject,
+          actorAccountId: originalActor.actorAccountId,
+          organizationId: originalActor.activeOrganizationId,
+          actingPrincipalType: originalActor.actingPrincipalType,
+          credentialFingerprint: originalActor.credentialFingerprint,
+        },
         preserveExistingContentState: true,
         ownershipPrincipal: {
           type: 'organization',
@@ -309,6 +349,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-target',
         targetPrincipal: {
           type: 'organization',
@@ -349,6 +390,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-recorded',
         targetPrincipal: {
           type: 'organization',

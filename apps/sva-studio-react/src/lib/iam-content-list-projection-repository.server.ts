@@ -5,6 +5,7 @@ import {
   type ContentProjectionSyncTarget,
   type MainserverProjectionRowInput,
   type ProjectionDbClient,
+  type TransferActorProjection,
 } from './iam-content-list-projection-model.server.js';
 import { reconcilePersistedMainserverProjectionRows } from './iam-content-list-projection-reconciliation.server.js';
 import {
@@ -115,34 +116,55 @@ export const upsertSingleMainserverProjectionRow = async (
   target: ContentProjectionSyncTarget,
   actorAccountId: string | undefined,
   row: MainserverProjectionRowInput,
-  refreshRunId: string
+  refreshRunId: string,
+  actorProjection?: TransferActorProjection
 ): Promise<void> => {
-  const projectionPayloadJson = buildMainserverProjectionPayloadJson(
-    [row],
-    actorAccountId,
-    buildProjectionTargetKey(target)
-  );
-
   await withInstanceScopedDb(target.instanceId, async (client) => {
     await lockMainserverProjectionType(client, target);
     const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
     const leader = await loadProjectionRefreshLeader(client, target, schemaMode);
     if (leader?.refresh_run_id !== refreshRunId) return;
     if (
-      await hasNewerMainserverProjectionSuccess(
+      (await hasNewerMainserverProjectionSuccess(
         client,
         target,
         leader.generation,
         schemaMode,
         row.credentialSource
-      )
+      )) ||
+      (actorProjection &&
+        (await hasNewerMainserverProjectionSuccess(
+          client,
+          { ...actorProjection.target, actingPrincipalType: undefined },
+          leader.generation,
+          schemaMode,
+          actorProjection.row.credentialSource
+        )))
     ) {
       throw Object.assign(new Error('Ein neuerer Mainserver-Abgleich hat diesen Lauf überholt.'), {
         code: 'projection_refresh_superseded',
       });
     }
-    await upsertMainserverProjectionRows(client, target, projectionPayloadJson);
+    await upsertMainserverProjectionRows(
+      client,
+      target,
+      buildMainserverProjectionPayloadJson([row], actorAccountId, buildProjectionTargetKey(target))
+    );
     await deleteTransferredProjectionRowsFromOtherScopes(client, target, row);
+    if (
+      actorProjection &&
+      (await loadProjectionTableSchemaMode(client, target.instanceId)) === 'scoped'
+    ) {
+      await upsertMainserverProjectionRows(
+        client,
+        actorProjection.target,
+        buildMainserverProjectionPayloadJson(
+          [actorProjection.row],
+          actorProjection.target.actorAccountId,
+          buildProjectionTargetKey(actorProjection.target)
+        )
+      );
+    }
     const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
     await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
     if (target.ownershipPrincipal) await markMainserverGlobalMutationSucceeded(client, target);

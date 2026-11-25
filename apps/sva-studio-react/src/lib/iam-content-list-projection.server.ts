@@ -108,6 +108,7 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     id: string;
   }>;
   readonly preserveExistingContentState?: boolean;
+  readonly transferActorReadContext?: ContentProjectionSyncTarget['transferActorReadContext'];
   readonly mutationRef?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
@@ -127,6 +128,9 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     ...(input.actorDisplayName ? { actorDisplayName: input.actorDisplayName } : {}),
     ...(input.ownershipPrincipal ? { ownershipPrincipal: input.ownershipPrincipal } : {}),
     ...(input.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
+    ...(input.transferActorReadContext
+      ? { transferActorReadContext: input.transferActorReadContext }
+      : {}),
     ...(input.mutationRef ? { mutationRef: input.mutationRef } : {}),
     contentType: input.contentType,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),

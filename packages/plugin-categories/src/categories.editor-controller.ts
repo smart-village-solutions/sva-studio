@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { saveCategory } from './categories.api.js';
+import { createDataTypeCatalog } from './categories.data-types.js';
 import { categoryFieldIds } from './categories.editor-fields.js';
 import {
   categoryDraft,
@@ -8,7 +9,6 @@ import {
   initialDraft,
   messageFor,
   normalizeDraft,
-  selectableDataTypeOptions,
   type Draft,
   type DraftErrors,
   type DraftField,
@@ -141,13 +141,7 @@ export const useCategoryEditorController = (props: CategoryEditorProps) => {
     : new Set<string>();
   const excluded = new Set(descendants);
   if (props.category) excluded.add(props.category.id);
-  const baseOptions = selectableDataTypeOptions(props.options, props.pt);
-  const options = [
-    ...baseOptions,
-    ...draft.dataTypes
-      .filter((value) => !baseOptions.some((option) => option.value === value))
-      .map((value) => ({ value, label: props.pt('values.unavailableType', { value }) })),
-  ];
+  const options = createDataTypeCatalog(props.options, props.pt).optionsFor(draft.dataTypes);
   const persist = usePersistCategory({ props, attempt, setPending, setError, setFieldErrors });
   const submit = (event: React.FormEvent) => {
     event.preventDefault();

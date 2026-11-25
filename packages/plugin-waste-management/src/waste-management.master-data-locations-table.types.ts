@@ -15,6 +15,9 @@ export type WasteMasterDataLocationsTableProps = {
   readonly search?: WasteManagementSearchParams;
   readonly onQueryChange?: (query: string) => void;
   readonly onResetFilters?: () => void;
+  readonly onApplyFilters?: (patch: Partial<WasteManagementSearchParams>) => void;
+  readonly tools?: import('react').ReactNode;
+  readonly toolContent?: import('react').ReactNode;
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];
@@ -24,25 +27,19 @@ export type WasteMasterDataLocationsTableProps = {
   readonly selectedLocationIds: readonly string[];
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
+  readonly hiddenSelectedLocationsCount?: number;
+  readonly matchingSelectedLocationsCount?: number;
   readonly availableTours: readonly WasteTourRecord[];
   readonly locationYear?: number;
-  readonly onLocationYearChange?: (year: number | undefined) => void;
   readonly locationTourStatus?: WasteManagementSearchParams['locationTourStatus'];
-  readonly onLocationTourStatusChange?: (
-    status: WasteManagementSearchParams['locationTourStatus']
-  ) => void;
   readonly page: number;
   readonly pageSize: number;
   readonly pageCount: number;
   readonly totalItems: number;
   readonly sortMode: WasteCollectionLocationSortMode;
   readonly sortDirection: WasteCollectionLocationSortDirection;
-  readonly selectedTourId?: string;
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
-  readonly onSortModeChange: (sortMode: WasteCollectionLocationSortMode) => void;
-  readonly onSortDirectionChange: (sortDirection: WasteCollectionLocationSortDirection) => void;
-  readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
   readonly onOpenCreateRegion: () => void;

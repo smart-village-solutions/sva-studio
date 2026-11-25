@@ -1,3 +1,4 @@
+export { wasteCollectionLocationSortModes } from './waste-management/collection-location-list.js';
 export * from './export-profile-definitions.js';
 export * from './import-profile-definitions.js';
 export * from './job-definitions.js';
@@ -250,7 +251,6 @@ export {
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
 } from './waste-management-annual-tour-transfer.preview.js';
-
 export { buildWasteHolidayApiUrl, deriveHolidayRuleConfigurationStatus, normalizeWasteHolidayApiResponse, wasteHolidaySyncHorizonYears } from './waste-management-holiday-sync.js';
 export type { WasteHolidayApiEntry } from './waste-management-holiday-sync.js';
 

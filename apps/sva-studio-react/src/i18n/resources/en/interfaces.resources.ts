@@ -1,30 +1,58 @@
 export const interfacesENResources = {
   appConfiguration: {
+    createVariant: 'Create variant',
+    deleteVariant: 'Delete variant',
+    confirmCreateVariant: 'Create copy',
+    confirmDeleteVariant: 'Delete permanently',
+    cancelVariant: 'Cancel',
+    targetVersion: 'New variant version',
+    targetVersionHelp:
+      'Enter a positive version number, e.g. 2.1.0. Leave blank for an unversioned copy.',
+    variantVersionError: 'Enter a positive dotted version number or leave the field blank.',
+    variantNameUnsupported:
+      'The Mainserver would change the file name during creation. This file cannot currently be copied in Studio.',
+    copyDescription:
+      'Template: {{name}} · {{version}} (ID {{id}}). The new variant copies the full JSON from this template.',
+    deleteDescription:
+      '{{name}} · {{version}} (ID {{id}}) will be deleted in full. The app may fall back to another variant.',
+    variantDenied: 'This action requires the additional permission to manage integrations.',
+    variant: {
+      created: 'The copy was verified on the Mainserver.',
+      deleted: 'The variant was deleted on the Mainserver.',
+      exists: 'The target version already exists.',
+      stale:
+        'The selected variant has changed. Refresh the file list and check the current variant.',
+      missing: 'The selected variant no longer exists. Refresh the file list.',
+      unsupported: 'The Mainserver cannot copy this file unchanged.',
+      unconfirmed:
+        'The Mainserver result could not be confirmed. Refresh the file list before trying again.',
+    },
+    save: 'Save to Mainserver',
+    saved: 'Mainserver state verified.',
+    variantMissing: 'The selected variant no longer exists.',
+    file: 'JSON file',
+    selectFile: 'Select a file',
+    selectVersion: 'Select a version',
+    refresh: 'Refresh file list',
+    noEditor: 'This file has no Studio form yet or the document is invalid.',
+    confirmSync: 'Confirm choices and save',
+    unconfirmed:
+      'The saved state could not be confirmed. Check the current version before saving again.',
+    reviewTitle: 'Mainserver data has changed',
+    reviewHelp:
+      'Review the editable fields. For each conflict, choose the value to keep. Other Mainserver changes are preserved.',
+    mainserverValue: 'Current Mainserver value',
+    choice: 'Value to keep',
+    chooseValue: 'Select a value',
+    keepStudio: 'My change',
+    keepMainserver: 'Mainserver value',
     title: 'App configuration',
-    open: 'Open app configuration',
-    intro: 'Load existing settings, edit locally and compare changes.',
-    notice:
-      'Changes are not saved yet. They only exist in this open form and do not change the Mainserver or app.',
-    version: 'Requested app version',
-    versionHelp:
-      'Leave empty for the unversioned configuration. A complete list of variants is not available yet.',
-    load: 'Load configuration',
+    version: 'App version',
     loading: 'Loading configuration …',
-    reload: 'Reload',
     discard: 'Discard changes',
-    confirmReload: 'Discard local changes and reload the configuration?',
     loadError:
       'The configuration could not be loaded. Check permissions and the Mainserver connection. Existing form changes are preserved.',
-    notResolved: 'The request did not resolve a record. No empty configuration is created.',
-    invalidDocument: 'The returned content cannot be read as a JSON object for this preview.',
-    versionError: 'Enter a valid app version, for example 4.0.0, or leave this field empty.',
-    loaded: 'Loaded configuration',
-    record: 'Record',
-    actualVersion: 'Actual version',
-    requestedVersion: 'Requested version',
     unversioned: 'Unversioned',
-    fallback:
-      'The Mainserver returned a different variant than requested. The displayed fields belong to the actual version below.',
     general: 'General',
     design: 'Design',
     alternativeLocation: 'Show alternative location selection',
@@ -35,12 +63,9 @@ export const interfacesENResources = {
     unsupported: 'Existing value is not supported',
     yes: 'Yes',
     no: 'No',
-    preview: 'Local change preview',
     field: 'Setting',
     before: 'Loaded',
     after: 'Local change',
-    noChanges: 'No local changes yet.',
-    invalidPreview: 'Correct the invalid value to display the change preview.',
     unsupportedHelp:
       'An existing value or its parent object has a different type. The preview does not change the stored configuration.',
   },
@@ -162,6 +187,9 @@ export const interfacesENResources = {
       bucket: 'Bucket',
       accessKeyId: 'Access key ID',
       secretAccessKey: 'Secret access key',
+      secretAccessKeyReplacementPlaceholder: 'Enter a new secret access key',
+      secretAccessKeyConfiguredStatus: 'A secret access key is already stored.',
+      secretAccessKeyConfiguredHint: 'Leave this field blank to keep the existing key.',
       forcePathStyle: 'Force path-style URLs',
       notImplemented:
         'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',

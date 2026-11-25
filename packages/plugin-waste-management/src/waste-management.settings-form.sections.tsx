@@ -4,6 +4,7 @@ import { wasteManagementMasterDataContract } from '@sva/waste-management-contrac
 import { Input, Select, StudioField } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
+import { WasteCalendarEmbedCode } from './waste-management.calendar-embed-code.js';
 import { WasteSettingsTechnicalConfigFields } from './waste-management.settings-managed-fields.js';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
 import { StudioSwitch } from '@sva/studio-ui-react';
@@ -19,15 +20,16 @@ const WasteSettingsSection = ({
   description,
   children,
 }: Readonly<WasteSettingsSectionProps>) => (
-  <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-    <div className="space-y-1">
-      <h3 className="text-sm font-semibold">{title}</h3>
+  <details className="rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
+    <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {title}
+    </summary>
+    <div className="mt-4 space-y-4">
       <p className="text-sm text-muted-foreground">{description}</p>
+      {children}
     </div>
-    {children}
-  </section>
+  </details>
 );
-
 const createVisuallyHiddenLabel = (label: string) => <span className="sr-only">{label}</span>;
 
 const interfaceOptionLabel = (
@@ -108,7 +110,12 @@ export const WasteHolidayStateSection = ({
   );
 };
 
-export const WasteCalendarWebUrlSection = ({ form, saving, onChange }: SharedSectionProps) => {
+export const WasteCalendarWebUrlSection = ({
+  form,
+  saving,
+  onChange,
+  savedCalendarWebUrl,
+}: SharedSectionProps & { readonly savedCalendarWebUrl?: string }) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -132,6 +139,7 @@ export const WasteCalendarWebUrlSection = ({ form, saving, onChange }: SharedSec
             placeholder="https://abfall.example.de"
           />
         </StudioField>
+        <WasteCalendarEmbedCode key={savedCalendarWebUrl} calendarWebUrl={savedCalendarWebUrl} />
       </div>
     </WasteSettingsSection>
   );

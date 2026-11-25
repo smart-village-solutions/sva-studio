@@ -1295,8 +1295,14 @@ test.describe('news plugin', () => {
                   ? '/admin/news/new'
                   : '/admin/news/news-visual'
             );
-            if (view === 'overview') await expectContentOverviewReady(page);
-            else await expectNewsEditorReady(page, view);
+            if (view === 'overview') {
+              await expectContentOverviewReady(page);
+              await expect(
+                page.getByRole('button', { name: 'Kategorie', exact: true })
+              ).toBeEnabled();
+            } else {
+              await expectNewsEditorReady(page, view);
+            }
 
             for (const width of [320, 390, 768, 1023, 1024, 1025, 1279, 1280, 1281, 1728]) {
               await page.setViewportSize({ width, height: 900 });

@@ -17,6 +17,9 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly search?: WasteManagementSearchParams;
   readonly onQueryChange?: (query: string) => void;
   readonly onResetFilters?: () => void;
+  readonly onApplyFilters?: (patch: Partial<WasteManagementSearchParams>) => void;
+  readonly tools?: import('react').ReactNode;
+  readonly toolContent?: import('react').ReactNode;
   readonly fractions?: readonly WasteFractionRecord[];
   readonly fractionsStatus?: WasteLocationCoverageDataStatus;
   readonly toursStatus?: WasteLocationCoverageDataStatus;
@@ -32,13 +35,11 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly selectedLocationIds: readonly string[];
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
+  readonly hiddenSelectedLocationsCount?: number;
+  readonly matchingSelectedLocationsCount?: number;
   readonly availableTours: readonly WasteTourRecord[];
   readonly locationYear?: number;
-  readonly onLocationYearChange?: (year: number | undefined) => void;
   readonly locationTourStatus?: WasteManagementSearchParams['locationTourStatus'];
-  readonly onLocationTourStatusChange?: (
-    status: WasteManagementSearchParams['locationTourStatus']
-  ) => void;
   readonly page: number;
   readonly pageSize: number;
   readonly pageCount: number;
@@ -46,13 +47,9 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly pageResponseReceived?: boolean;
   readonly sortMode: WasteCollectionLocationSortMode;
   readonly sortDirection: WasteCollectionLocationSortDirection;
-  readonly selectedTourId?: string;
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
-  readonly onSortModeChange: (sortMode: WasteCollectionLocationSortMode) => void;
-  readonly onSortDirectionChange: (sortDirection: WasteCollectionLocationSortDirection) => void;
-  readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
   readonly onReplaceLocationSelection: (locationIds: readonly string[]) => void;

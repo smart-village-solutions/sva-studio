@@ -6,6 +6,7 @@ import type {
 
 import type { AuthenticatedRequestContext } from './types.js';
 import { isUuid } from '@sva/core';
+import { wasteCollectionLocationSortModes } from '@sva/waste-management-contracts';
 import { createApiError } from '@sva/server-runtime';
 import { authorizeWasteManagementAction } from './auth.js';
 import { createJsonApiItemResponse, logWasteReadFailure } from './read-support.js';
@@ -14,10 +15,27 @@ import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 const listPageSizes = new Set<number>([10, 25, 50, 100]);
 const listStatuses = new Set(['all', 'active', 'inactive']);
-const listSortModes = new Set(['address', 'addressWithRegion']);
+const listSortModes = new Set<string>(wasteCollectionLocationSortModes);
+const tourStatuses = new Set(['draft', 'published', 'archived']);
 const listSortDirections = new Set(['asc', 'desc']);
-const listFilterKeys = ['q', 'status', 'regionId', 'cityId', 'tourId'] as const;
-const listQueryKeys = [...listFilterKeys, 'sortMode', 'sortDirection', 'page', 'pageSize'] as const;
+const listFilterKeys = [
+  'q',
+  'status',
+  'regionId',
+  'cityId',
+  'streetId',
+  'houseNumberId',
+  'tourId',
+] as const;
+const listQueryKeys = [
+  ...listFilterKeys,
+  'sortMode',
+  'sortDirection',
+  'page',
+  'pageSize',
+  'tourYear',
+  'tourStatus',
+] as const;
 
 type ParsedLocationQuery<T> = { readonly ok: true; readonly value: T } | { readonly ok: false };
 
@@ -45,7 +63,13 @@ const parseCollectionLocationFilters = (
   ) as Record<(typeof listFilterKeys)[number], string | undefined | null>;
   if (Object.values(values).some((value) => value === null)) return { ok: false };
   const status = values.status ?? 'all';
-  const identifierValues = [values.regionId, values.cityId, values.tourId];
+  const identifierValues = [
+    values.regionId,
+    values.cityId,
+    values.streetId,
+    values.houseNumberId,
+    values.tourId,
+  ];
   if (
     !listStatuses.has(status) ||
     values.q?.includes('\0') ||
@@ -60,8 +84,24 @@ const parseCollectionLocationFilters = (
       status: status as WasteCollectionLocationSelectionFilter['status'],
       regionId: values.regionId ?? undefined,
       cityId: values.cityId ?? undefined,
+      ...(values.streetId ? { streetId: values.streetId } : {}),
+      ...(values.houseNumberId ? { houseNumberId: values.houseNumberId } : {}),
       tourId: values.tourId ?? undefined,
     },
+  };
+};
+
+const readTourScope = (params: URLSearchParams) => {
+  const rawYear = readUniqueParam(params, 'tourYear');
+  const rawStatus = readUniqueParam(params, 'tourStatus');
+  if (rawYear === null || rawStatus === null) return null;
+  const year = Number(rawYear);
+  if (rawYear !== undefined && (!/^\d{4}$/u.test(rawYear) || year < 2000 || year > 2100))
+    return null;
+  if (rawStatus !== undefined && !tourStatuses.has(rawStatus)) return null;
+  return {
+    ...(rawYear ? { tourYear: year } : {}),
+    ...(rawStatus ? { tourStatus: rawStatus as WasteCollectionLocationQuery['tourStatus'] } : {}),
   };
 };
 
@@ -75,9 +115,12 @@ const parseWasteCollectionLocationQuery = (
   const rawSortDirection = readUniqueParam(params, 'sortDirection');
   const rawPage = readUniqueParam(params, 'page');
   const rawPageSize = readUniqueParam(params, 'pageSize');
-  if ([rawSortMode, rawSortDirection, rawPage, rawPageSize].some((value) => value === null)) {
+  const tourScope = readTourScope(params);
+  if (
+    !tourScope ||
+    [rawSortMode, rawSortDirection, rawPage, rawPageSize].some((value) => value === null)
+  )
     return { ok: false };
-  }
   const sortMode = rawSortMode ?? 'address';
   const sortDirection = rawSortDirection ?? 'asc';
   const page = parsePositiveInteger(rawPage ?? undefined, 1);
@@ -95,6 +138,7 @@ const parseWasteCollectionLocationQuery = (
     ok: true,
     value: {
       ...filters.value,
+      ...tourScope,
       sortMode: sortMode as WasteCollectionLocationQuery['sortMode'],
       sortDirection: sortDirection as WasteCollectionLocationQuery['sortDirection'],
       page,

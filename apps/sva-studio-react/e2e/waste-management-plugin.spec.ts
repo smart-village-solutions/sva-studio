@@ -67,6 +67,69 @@ const openWastePlugin = async (page: Page) => {
 };
 
 test.describe('waste management plugin', () => {
+  test('preserves scroll and settings focus through an access recheck', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 });
+    const instanceId = 'de-musterhausen';
+    const permissionActions = ['waste-management.read', 'waste-management.settings.manage'];
+    await mockSharedShellRequests(page, { instanceId, permissionActions });
+    await mockWasteFacade(page, {
+      instanceId,
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Link zur Webversion' }).click();
+    const input = page.getByRole('textbox', { name: 'Link zur Webversion' });
+    await input.scrollIntoViewIfNeeded({ timeout: 5_000 });
+    await input.fill('https://abfall.example.invalid/');
+    await expect(input).toBeFocused();
+    const scrollPosition = await page.evaluate(() => window.scrollY);
+    expect(scrollPosition).toBeGreaterThan(0);
+
+    let finishAccessCheck!: () => void;
+    const accessCheck = new Promise<void>((resolve) => {
+      finishAccessCheck = resolve;
+    });
+    await page.route(
+      '**/iam/me/permissions?**',
+      async (route) => {
+        await accessCheck;
+        await route.fallback();
+      },
+      { times: 1 }
+    );
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('sva:effective-access-invalidation-required'))
+    );
+    try {
+      await expect(page.getByText('Berechtigungen werden geprüft …')).toBeVisible();
+      await expect(input).toBeHidden();
+      // Let the browser finish layout before checking its actual scroll position.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+    } finally {
+      finishAccessCheck();
+    }
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('https://abfall.example.invalid/');
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+  });
+
   for (const width of [1280, 390]) {
     test(`renders readable email monitoring at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
@@ -207,6 +270,99 @@ test.describe('waste management plugin', () => {
   }
 
   test.describe.configure({ timeout: 120_000 });
+  test('keeps draft filters and focus local and provides sort controls across widths', async ({
+    page,
+  }) => {
+    test.setTimeout(75_000);
+    const stamp = '2026-05-10T11:00:00.000Z';
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-musterhausen',
+      permissionActions: ['waste-management.read'],
+    });
+    await mockWasteFacade(page, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_ops',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+        lastCheckedAt: stamp,
+      },
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Karton',
+          pdfShortLabel: 'PPK',
+          color: '#000000',
+          active: true,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        {
+          id: 'fraction-2',
+          name: 'Biogut',
+          pdfShortLabel: 'BIO',
+          color: '#00aa44',
+          active: false,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+      tours: [],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
+    await navigateClientSide(page, '/plugins/waste-management');
+    page.setDefaultTimeout(7_000);
+    await page.getByRole('tab', { name: 'Abfallarten' }).click();
+    const panel = page.getByRole('tabpanel', { name: 'Abfallarten' });
+    const trigger = panel.getByRole('button', { name: 'Filter', exact: true });
+    const filter = page.getByRole('dialog');
+    await expect(panel.getByRole('heading', { name: 'Abfallarten', exact: true })).toHaveCount(0);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      if (width === 1280) {
+        const shortLabelHeader = panel.getByRole('columnheader', { name: /Kürzel/ });
+        await shortLabelHeader.getByRole('button').click();
+        await expect(shortLabelHeader).toHaveAttribute('aria-sort', 'ascending');
+      } else {
+        const field = panel.getByLabel('Sortierfeld');
+        await expect(field).toHaveValue('pdfShortLabel');
+        await field.selectOption('status');
+      }
+      await trigger.click();
+      await expect(filter).toHaveAccessibleName('Filter');
+      await filter.getByRole('combobox', { name: 'Status', exact: true }).selectOption('active');
+      await expect(page).not.toHaveURL(/fractionsStatus=active/);
+      await page.keyboard.press('Escape');
+      await expect(filter).toBeHidden();
+      await expect(trigger).toBeFocused();
+      await trigger.click();
+      await expect(filter.getByRole('combobox', { name: 'Status', exact: true })).toHaveValue(
+        'all'
+      );
+      await filter.getByRole('combobox', { name: 'Status', exact: true }).selectOption('inactive');
+      await filter.getByRole('button', { name: 'Filter anwenden' }).click();
+      await expect(page).toHaveURL(/fractionsStatus=inactive/);
+      await expect(
+        panel.getByText('Biogut', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(panel.getByText('Karton', { exact: true })).toHaveCount(0);
+      await panel.getByRole('button', { name: 'Filter entfernen: Inaktiv' }).click();
+      await expect(
+        panel.getByText('Karton', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+    }
+    await panel.getByRole('searchbox', { name: 'Suche' }).fill('PPK');
+    await panel.getByRole('searchbox', { name: 'Suche' }).press('Enter');
+    await expect(
+      panel.getByText('Karton', { exact: true }).filter({ visible: true })
+    ).toBeVisible();
+    await expect(panel.getByText('Biogut', { exact: true })).toHaveCount(0);
+  });
+
   test('reads tour assignments in both directions after switching tabs', async ({ page }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-musterhausen',
@@ -293,10 +449,10 @@ test.describe('waste management plugin', () => {
     await expect(locationAssignments.getByRole('checkbox', { name: /Restmüll/ })).toHaveCount(2);
     await toursTab.click();
     await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('');
-    await page.getByRole('button', { name: 'Filtern', exact: true }).click();
+    await page.getByRole('button', { name: 'Filter', exact: true }).click();
     const tourFilters = page.getByRole('dialog', { name: 'Touren filtern' });
     await tourFilters.getByRole('textbox', { name: 'Name' }).fill('Restm');
-    await tourFilters.getByRole('button', { name: 'Anwenden', exact: true }).click();
+    await tourFilters.getByRole('button', { name: 'Filter anwenden', exact: true }).click();
     await expect(page).toHaveURL(/q=Restm/);
     await assignmentCount(2027).click();
     await expect(assignmentHeading).toBeVisible();
@@ -484,6 +640,7 @@ test.describe('waste management plugin', () => {
     context,
     page,
   }) => {
+    test.setTimeout(90_000);
     await mockSharedShellRequests(context, {
       instanceId: 'de-musterhausen',
       permissionActions: [
@@ -518,7 +675,10 @@ test.describe('waste management plugin', () => {
     await page.goto('/health/live');
     await establishServerReadableAuthSession(context, page);
     await openWastePlugin(page);
-    await navigateClientSide(page, '/plugins/waste-management?tab=tours&toursView=edit&tourId=tour-1');
+    await navigateClientSide(
+      page,
+      '/plugins/waste-management?tab=tours&toursView=edit&tourId=tour-1'
+    );
 
     for (const [linkLabel, tabLabel, tabParam] of [
       ['Tour-Einsätze', 'Tour-Einsätze', 'tourAssignments'],
@@ -527,9 +687,11 @@ test.describe('waste management plugin', () => {
       const popupPromise = page.waitForEvent('popup');
       await page.getByRole('link', { name: new RegExp(`^${linkLabel}`) }).click();
       const popup = await popupPromise;
+      // A new document initializes authentication and permissions before rendering the tabs.
       await expect(popup.getByRole('tab', { name: tabLabel, exact: true })).toHaveAttribute(
         'aria-selected',
-        'true'
+        'true',
+        { timeout: 30_000 }
       );
       const params = new URL(popup.url()).searchParams;
       expect(params.get('tab')).toBe(tabParam);
@@ -611,6 +773,8 @@ test.describe('waste management plugin', () => {
   test('supports settings, fraction creation and technical job starters through the host facade', async ({
     page,
   }) => {
+    page.setDefaultTimeout(8_000);
+    page.setDefaultNavigationTimeout(45_000);
     await mockSharedShellRequests(page, {
       instanceId: 'de-musterhausen',
       permissionActions: [
@@ -708,7 +872,75 @@ test.describe('waste management plugin', () => {
     });
 
     await openWastePlugin(page);
+
+    const tabs = [
+      ['Abfallarten', 'fractions'],
+      ['Touren', 'tours'],
+      ['Abholpunkte', 'locations'],
+      ['Stammdaten', 'addresses'],
+      ['Ausweichtermine', 'shifts'],
+      ['Tour-Einsätze', 'visits'],
+      ['Ausgabe', 'output'],
+      ['Datentools', 'tools'],
+      ['Einstellungen', 'settings'],
+    ] as const;
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const [index, [name, id]] of tabs.entries()) {
+        if (width === 390) {
+          await page
+            .getByRole('combobox', { name: 'Abfallmanagement-Bereiche' })
+            .selectOption({ label: name });
+        } else {
+          await page.getByRole('tab', { name, exact: true }).click();
+        }
+        const panel = page.getByRole('tabpanel', { name, exact: true });
+        await expect(panel).toBeVisible();
+        await expect(panel.getByRole('heading', { name, exact: true })).toHaveCount(0);
+        if (id === 'addresses') {
+          await expect(panel.getByRole('combobox', { name: 'Datentyp' })).toBeVisible();
+        } else if (index < 6) {
+          await expect(panel.getByRole('button', { name: 'Filter', exact: true })).toBeVisible();
+          if (id === 'locations') await expect(panel.getByRole('table')).toBeVisible();
+        } else {
+          await expect(panel.locator('summary').first()).toBeVisible();
+        }
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: test.info().outputPath(`waste-${id}-closed-${width}.png`) });
+        if (index >= 6) continue;
+        if (id === 'addresses') {
+          await panel.getByRole('combobox', { name: 'Datentyp' }).selectOption('city');
+        }
+        const button = panel.getByRole('button', { name: 'Filter', exact: true });
+        await button.click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        if (id === 'visits') {
+          await expect(dialog.getByRole('combobox')).toHaveCount(1);
+        }
+        if (id === 'shifts') {
+          await expect(dialog.getByRole('group', { name: 'Ursprünglicher Termin' })).toBeVisible();
+        }
+        await page.screenshot({ path: test.info().outputPath(`waste-${id}-filter-${width}.png`) });
+        if (id === 'shifts' && width === 1280) {
+          const from = dialog.getByRole('textbox', { name: 'Von', exact: true });
+          await from.fill('26.12.2026');
+          await from.press('Tab');
+          await expect(page).not.toHaveURL(/shiftDateFrom=/);
+          await dialog.getByRole('button', { name: 'Filter anwenden' }).click();
+          await expect(page).toHaveURL(/shiftDateFrom=2026-12-26/);
+          await panel.getByRole('button', { name: /Filter entfernen: Von/ }).click();
+          await expect(page).not.toHaveURL(/shiftDateFrom=/);
+          await button.click();
+        }
+        await page.keyboard.press('Escape');
+        await expect(button).toBeFocused();
+      }
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Bereitstellung' }).click();
     await expect(
       page
         .getByText(
@@ -757,6 +989,7 @@ test.describe('waste management plugin', () => {
     });
 
     await page.getByRole('tab', { name: 'Datentools' }).click();
+    await page.locator('summary').filter({ hasText: 'Fachdaten exportieren' }).click();
     await page.getByRole('checkbox', { name: 'Touren' }).click();
     await page.getByRole('button', { name: 'Export starten' }).click();
     expect(harness.requests.exportInputs).toEqual([
@@ -765,6 +998,10 @@ test.describe('waste management plugin', () => {
         targetFormat: 'application/zip',
       },
     ]);
+    await page
+      .locator('summary')
+      .filter({ hasText: /^Importe$/ })
+      .click();
     await page.getByRole('button', { name: /Tourzuordnungen nach Fraktionen/ }).click();
     await page.locator('input[type="file"]:visible').setInputFiles({
       name: 'tenant-a.csv',
@@ -776,7 +1013,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Vorschau prüfen' }).click();
     await expect(page.getByRole('button', { name: 'Import starten' })).toBeVisible();
     await page.getByRole('button', { name: 'Import starten' }).click();
-    await page.getByRole('button', { name: 'Erweiterte Systemfunktionen' }).click();
+    await page.locator('summary').filter({ hasText: 'Erweiterte Systemfunktionen' }).click();
     await page.getByLabel('Zielschema').fill('waste_ops_v2');
     await page.getByLabel('Anfordernde Version').fill('2026.05.10');
     await page.getByRole('button', { name: 'Migrationen starten' }).click();
@@ -790,8 +1027,16 @@ test.describe('waste management plugin', () => {
     await page.getByRole('tab', { name: 'Ausgabe' }).click();
     const outputPanel = page.getByRole('tabpanel', { name: 'Ausgabe' });
     await expect(outputPanel).toBeVisible();
+    const pdfDisclosure = outputPanel.locator('summary').filter({ hasText: 'PDF-Inhalte' });
+    await pdfDisclosure.click();
     await outputPanel.getByLabel('Branding-Grafik').fill('https://cdn.example/logo.svg');
     await outputPanel.getByLabel('Kontakt- und Freitextblock').fill('Service-Telefon 03395 123456');
+    await pdfDisclosure.click();
+    await expect(outputPanel.getByLabel('Kontakt- und Freitextblock')).toBeHidden();
+    await pdfDisclosure.click();
+    await expect(outputPanel.getByLabel('Kontakt- und Freitextblock')).toHaveValue(
+      'Service-Telefon 03395 123456'
+    );
     await outputPanel.getByRole('button', { name: 'PDF-Inhalte speichern' }).click();
     await expect(outputPanel.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
     expect(harness.requests.settingsUpdates.at(-1)).toMatchObject({
@@ -842,6 +1087,7 @@ test.describe('waste management plugin', () => {
 
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Bereitstellung' }).click();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_b');
     await expect(page.getByRole('textbox', { name: 'Schema' })).not.toHaveValue('waste_ops');
@@ -942,6 +1188,7 @@ test.describe('waste management plugin', () => {
 
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Eigene Turnusse' }).click();
 
     await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 10 Tage');
@@ -1002,9 +1249,9 @@ test.describe('waste management plugin', () => {
     await expect(clearLocation).toBeFocused();
     await clearLocation.press('Tab');
     await expect(page.getByRole('textbox', { name: 'Hinweis', exact: true })).toBeFocused();
-    await expect(page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true })
+    ).toHaveCount(0);
     await locationTrigger.press('Enter');
     await captureStudioDesignState(page, 'waste-location-search', 'main, [role=dialog]');
     await expect(
@@ -1046,6 +1293,7 @@ test.describe('waste management plugin', () => {
     ).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Eigene Turnusse' }).click();
     const editedPresetRow = page.getByRole('row', { name: /Ferien 10 Tage.*Alle 10 Tage/ });
     await editedPresetRow.getByRole('button', { name: 'Bearbeiten' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 12 Tage');
@@ -1061,6 +1309,7 @@ test.describe('waste management plugin', () => {
     ).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    await page.locator('summary').filter({ hasText: 'Eigene Turnusse' }).click();
     const presetRowToDelete = page.getByRole('row', { name: /Ferien 12 Tage.*Alle 12 Tage/ });
     await presetRowToDelete.getByRole('button', { name: 'Löschen' }).click();
     await page.locator('#waste-settings-custom-recurrence-fallback').selectOption({
@@ -1216,10 +1465,10 @@ test.describe('waste management plugin', () => {
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('combobox', { name: 'Zeige', exact: true }).selectOption('10');
-    await page.getByRole('button', { name: 'Filtern' }).click();
+    await page.getByRole('button', { name: 'Filter', exact: true }).click();
     const filterDialog = page.getByRole('dialog');
     await filterDialog.getByLabel('Status', { exact: true }).selectOption('draft');
-    await filterDialog.getByRole('button', { name: 'Anwenden' }).click();
+    await filterDialog.getByRole('button', { name: 'Filter anwenden' }).click();
     await page.getByRole('button', { name: 'Alle 11 gefilterten Touren auswählen' }).click();
     await expect(page.getByText('11 Touren ausgewählt')).toBeVisible();
 

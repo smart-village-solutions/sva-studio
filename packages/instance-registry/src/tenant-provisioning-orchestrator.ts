@@ -199,6 +199,7 @@ const persistStepFailure = (
     const stepKey = code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
     try {
       logger.warn('tenant_provisioning_step_exception', {
+        event_role: 'canonical',
         operation: 'create_instance',
         result: 'failed',
         request_id: current.requestId,

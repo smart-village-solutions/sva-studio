@@ -46,6 +46,11 @@ describe('resolveBreadcrumbItems', () => {
       { label: 'App' },
       { label: 'App-Texte' },
     ]);
+    expect(resolveBreadcrumbItems('/app-configuration')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'App' },
+      { label: 'App-Konfiguration' },
+    ]);
     expect(resolveBreadcrumbItems('/plugins/app-translations')).toEqual([
       { href: '/', label: 'Übersicht' },
       { label: 'App' },

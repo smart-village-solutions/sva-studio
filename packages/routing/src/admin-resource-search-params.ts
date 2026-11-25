@@ -1,3 +1,4 @@
+import { isIamContentCategoryId } from '@sva/core';
 import type {
   AdminResourceDefinition,
   AdminResourceListFilterCapability,
@@ -181,8 +182,14 @@ export const normalizeContentAdminResourceListSearch = (
     /^\d+$/.test(search.poiId.trim())
       ? search.poiId.trim()
       : '';
+  const rawCategoryId = resource.resourceId === 'content' ? search.categoryId : undefined;
+  const categoryId =
+    typeof rawCategoryId === 'number' || typeof rawCategoryId === 'boolean'
+      ? String(rawCategoryId)
+      : rawCategoryId;
   return {
     ...normalized,
+    ...(isIamContentCategoryId(categoryId) ? { categoryId } : {}),
     ...(contentType === '' ? {} : { type: contentType }),
     ...(languageCode === '' ? {} : { languageCode }),
     ...(poiId === '' ? {} : { poiId }),

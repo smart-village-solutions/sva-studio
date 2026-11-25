@@ -241,6 +241,7 @@ const mapSlimProjectionRow = (
   credentialSource,
   payload: {
     ...(item.languageCode ? { languageCode: item.languageCode } : {}),
+    ...(item.categoryIds?.length ? { mainserverCategoryIds: [...item.categoryIds] } : {}),
     ...(target.contentType === 'vouchers.voucher' && item.pointOfInterestId
       ? { pointOfInterestId: item.pointOfInterestId }
       : {}),

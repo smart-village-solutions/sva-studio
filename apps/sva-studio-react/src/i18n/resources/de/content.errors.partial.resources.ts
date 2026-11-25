@@ -1,5 +1,4 @@
 export const contentDEErrors = {
-  ownershipTransferTemporarilyDisabled: 'Inhaberübertragungen sind zum Schutz der Inhaltsdaten vorübergehend gesperrt.',
   forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
   csrfValidationFailed:
     'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',

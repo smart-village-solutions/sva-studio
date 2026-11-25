@@ -41,7 +41,7 @@ const logger = createSdkLogger({
   component: 'iam-instance-registry-tenant-provisioning',
   level: 'info',
 });
-const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
+const INGRESS_FAILURE_FALLBACK_CODE = 'tenant_provisioning_step_failed';
 
 const registryStep: StepHandler = async ({
   deps,
@@ -168,6 +168,7 @@ const ingressStep: StepHandler = async ({
   } catch (error) {
     try {
       logger.warn('tenant_ingress_publish_failed', {
+        event_role: 'boundary_diagnostic',
         operation: 'publish_tenant_ingress',
         result: 'failed',
         request_id: run.requestId,
@@ -176,8 +177,7 @@ const ingressStep: StepHandler = async ({
         run_id: run.id,
         step_key: 'ingress',
         error_type: readDiagnosticErrorType(error),
-        error_code: readDiagnosticErrorCode(error, INGRESS_FAILURE_CLASSIFICATION),
-        classification: INGRESS_FAILURE_CLASSIFICATION,
+        error_code: readDiagnosticErrorCode(error, INGRESS_FAILURE_FALLBACK_CODE),
         ...buildProvisioningFailureDiagnostics(error, { includeNodeSystemFields: true }),
       });
     } catch {

@@ -1,11 +1,7 @@
 import React from 'react';
 import { translatePluginKey } from '@sva/plugin-sdk';
 
-import type {
-  CategoryDataTypeOption,
-  CategoryManagementItem,
-  CategorySaveInput,
-} from './categories.types.js';
+import type { CategoryManagementItem, CategorySaveInput } from './categories.types.js';
 
 export type Translator = (
   key: string,
@@ -100,19 +96,6 @@ export const categoryDraft = (item: CategoryManagementItem): Draft => ({
   email: item.email ?? null,
   dataTypes: item.dataTypes,
 });
-
-export const selectableDataTypeOptions = (
-  options: readonly CategoryDataTypeOption[],
-  pt: Translator
-): readonly CategoryDataTypeOption[] => {
-  const legacy: readonly CategoryDataTypeOption[] = [
-    { value: 'event_record', label: pt('dataTypes.eventRecord') },
-    { value: 'news_item', label: pt('dataTypes.newsItem') },
-    { value: 'point_of_interest', label: pt('dataTypes.pointOfInterest') },
-    { value: 'tour', label: pt('dataTypes.tour') },
-  ];
-  return [...new Map([...options, ...legacy].map((option) => [option.value, option])).values()];
-};
 
 export const descendantsOf = (
   item: CategoryManagementItem,

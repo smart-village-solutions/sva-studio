@@ -1,9 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  Badge,
-  type StudioColumnDef,
-  type StudioDataTableLabels,
-} from '@sva/studio-ui-react';
+import { Badge, type StudioColumnDef, type StudioDataTableLabels } from '@sva/studio-ui-react';
 import { useMemo } from 'react';
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { WasteSchedulingMissingValue } from './waste-management.scheduling-list.parts.js';
@@ -25,6 +21,15 @@ export const useSchedulingTableLabels = () => {
   } satisfies StudioDataTableLabels;
 };
 
+const scopeLabel = (row: WasteSchedulingTableEntry, pt: ReturnType<typeof usePluginTranslation>) =>
+  pt(
+    row.kind === 'holiday'
+      ? 'scheduling.table.scopeHoliday'
+      : row.kind === 'global'
+        ? 'scheduling.table.scopeGlobal'
+        : 'scheduling.table.scopeTour'
+  );
+
 const renderScopeCell = (
   row: WasteSchedulingTableEntry,
   pt: ReturnType<typeof usePluginTranslation>
@@ -33,13 +38,7 @@ const renderScopeCell = (
     variant="outline"
     className="rounded-full border-border/70 bg-transparent px-2 py-0.5 text-[11px] font-medium"
   >
-    {pt(
-      row.kind === 'holiday'
-        ? 'scheduling.table.scopeHoliday'
-        : row.kind === 'global'
-          ? 'scheduling.table.scopeGlobal'
-          : 'scheduling.table.scopeTour'
-    )}
+    {scopeLabel(row, pt)}
   </Badge>
 );
 
@@ -60,20 +59,26 @@ const resolveContextMeta = (
           : '',
       ]);
 
+const holidayDescription = (
+  row: Extract<WasteSchedulingTableEntry, { kind: 'holiday' }>,
+  pt: ReturnType<typeof usePluginTranslation>
+) =>
+  joinSchedulingMetaItems([
+    row.rule.scope
+      ? `${pt('scheduling.holidayRules.scopeLabel')}: ${pt(`scheduling.holidayRules.scopeOptions.${row.rule.scope === 'holiday-only' ? 'holidayOnly' : 'fullWeek'}`)}`
+      : '',
+    row.rule.strategy
+      ? `${pt('scheduling.holidayRules.strategyLabel')}: ${pt(`scheduling.holidayRules.strategyOptions.${row.rule.strategy === 'advance' ? 'advance' : 'postpone'}`)}`
+      : '',
+    pt(`scheduling.holidayRules.conflictStatus.${row.rule.conflictStatus}`),
+  ]);
+
 const renderDescriptionCell = (
   row: WasteSchedulingTableEntry,
   pt: ReturnType<typeof usePluginTranslation>
 ) => {
   if (row.kind === 'holiday') {
-    const summary = joinSchedulingMetaItems([
-      row.rule.scope
-        ? `${pt('scheduling.holidayRules.scopeLabel')}: ${pt(`scheduling.holidayRules.scopeOptions.${row.rule.scope === 'holiday-only' ? 'holidayOnly' : 'fullWeek'}`)}`
-        : '',
-      row.rule.strategy
-        ? `${pt('scheduling.holidayRules.strategyLabel')}: ${pt(`scheduling.holidayRules.strategyOptions.${row.rule.strategy === 'advance' ? 'advance' : 'postpone'}`)}`
-        : '',
-      pt(`scheduling.holidayRules.conflictStatus.${row.rule.conflictStatus}`),
-    ]);
+    const summary = holidayDescription(row, pt);
 
     return summary ? (
       <WasteSchedulingTableMeta>{summary}</WasteSchedulingTableMeta>
@@ -102,6 +107,25 @@ const renderDescriptionCell = (
   );
 };
 
+const makeDescriptionColumn = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioColumnDef<WasteSchedulingTableEntry> => ({
+  id: 'description',
+  header: pt('scheduling.table.descriptionColumn'),
+  sortable: true,
+  sortLabel: pt('scheduling.table.descriptionColumn'),
+  sortValue: (row) =>
+    row.kind === 'holiday'
+      ? holidayDescription(row, pt)
+      : row.shift.description ||
+        (row.shift.reasonType
+          ? pt(`scheduling.reasonTypes.${row.shift.reasonType}`)
+          : row.shift.reasonKey),
+  className: 'min-w-[280px]',
+  headerClassName: 'min-w-[280px]',
+  cell: (row) => renderDescriptionCell(row, pt),
+});
+
 export const useSchedulingColumns = () => {
   const pt = usePluginTranslation('wasteManagement');
 
@@ -111,6 +135,9 @@ export const useSchedulingColumns = () => {
         {
           id: 'originalDate',
           header: pt('scheduling.table.originalDate'),
+          sortable: true,
+          sortLabel: pt('scheduling.table.originalDate'),
+          sortValue: (row) => row.originalDate,
           className: 'whitespace-nowrap',
           headerClassName: 'whitespace-nowrap',
           cell: (row) => (
@@ -122,6 +149,9 @@ export const useSchedulingColumns = () => {
         {
           id: 'actualDate',
           header: pt('scheduling.table.actualDate'),
+          sortable: true,
+          sortLabel: pt('scheduling.table.actualDate'),
+          sortValue: (row) => row.actualDate,
           className: 'whitespace-nowrap',
           headerClassName: 'whitespace-nowrap',
           cell: (row) =>
@@ -136,6 +166,9 @@ export const useSchedulingColumns = () => {
         {
           id: 'scope',
           header: pt('scheduling.table.scope'),
+          sortable: true,
+          sortLabel: pt('scheduling.table.scope'),
+          sortValue: (row) => scopeLabel(row, pt),
           className: 'w-[150px]',
           headerClassName: 'w-[150px]',
           cell: (row) => renderScopeCell(row, pt),
@@ -143,6 +176,9 @@ export const useSchedulingColumns = () => {
         {
           id: 'context',
           header: pt('scheduling.table.context'),
+          sortable: true,
+          sortLabel: pt('scheduling.table.context'),
+          sortValue: (row) => row.contextLabel,
           className: 'min-w-[220px]',
           headerClassName: 'min-w-[220px]',
           cell: (row) => {
@@ -156,13 +192,7 @@ export const useSchedulingColumns = () => {
             );
           },
         },
-        {
-          id: 'description',
-          header: pt('scheduling.table.descriptionColumn'),
-          className: 'min-w-[280px]',
-          headerClassName: 'min-w-[280px]',
-          cell: (row) => renderDescriptionCell(row, pt),
-        },
+        makeDescriptionColumn(pt),
       ] satisfies readonly StudioColumnDef<WasteSchedulingTableEntry>[],
     [pt]
   );

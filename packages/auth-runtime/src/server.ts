@@ -316,3 +316,4 @@ export { mediaUploadProcessingStudioJobRegistration } from './iam-media/upload-p
 export { mediaInventoryScanStudioJobRegistration } from './iam-media/inventory-scan-job.js';
 export * from './app-translations.server.js';
 export { consumeGeocodingBudget } from './shared/rate-limit.js';
+export { evaluateTenantPluginAccess } from './plugin-server-handlers/tenant-authorization.js';

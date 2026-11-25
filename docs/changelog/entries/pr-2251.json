@@ -1,0 +1,4 @@
+{
+  "prNumber": 2251,
+  "body": "Unter Anwendungen lassen sich JSON-Dateien und ihre Versionen für die App-Konfiguration auswählen. Die alternative Standortwahl und die Zeilenzahl der Service-Kacheltitel können direkt bearbeitet werden. Hat sich die gewählte Variante inzwischen geändert, zeigt Studio die betroffenen Werte zur Entscheidung an. Berechtigte können Varianten kopieren oder gezielt löschen. Eine Kopie ist verfügbar, wenn der Mainserver den Dateinamen unverändert übernimmt."
+}

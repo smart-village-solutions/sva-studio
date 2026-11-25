@@ -2,67 +2,22 @@ import { useEffect, useState } from 'react';
 import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  normalizeWasteManagementSearchParams,
   type WasteManagementMasterDataTabId,
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
-import { getWasteManagementNavigationContext, type useWasteManagementUiAccess } from './waste-management.ui-access.js';
+import {
+  getWasteManagementNavigationContext,
+  type useWasteManagementUiAccess,
+} from './waste-management.ui-access.js';
 
-const tabListStateKeys = {
-  fractions: ['q', 'fractionsStatus', 'fractionsSortBy', 'fractionsSortDirection'],
-  tours: [
-    'q',
-    'tourStatus',
-    'tourValidityPeriod',
-    'tourWasteFractionId',
-    'firstDateFrom',
-    'firstDateTo',
-    'endDateFrom',
-    'endDateTo',
-  ],
-  locations: [
-    'q',
-    'status',
-    'regionId',
-    'cityId',
-    'tourId',
-    'locationYear',
-    'locationTourStatus',
-    'locationSortMode',
-    'locationSortDirection',
-  ],
-  masterData: ['q', 'addressEntityType', 'addressParentId', 'addressSortBy', 'addressSortDirection'],
-  scheduling: ['q', 'shiftContext', 'tourId'],
-  tourAssignments: ['tourId'],
-  tools: ['q'],
-  output: [],
-  settings: [],
-} as const satisfies Record<WasteManagementTabId, readonly (keyof WasteManagementSearchParams)[]>;
+import {
+  captureWasteManagementTabListState,
+  toWasteManagementTabSearch,
+  resetWasteManagementTabListState,
+} from './waste-management.page.list-state.js';
 
-const captureWasteManagementTabListState = (
-  search: WasteManagementSearchParams
-): Partial<WasteManagementSearchParams> => ({
-  pageSize: search.pageSize,
-  ...Object.fromEntries(tabListStateKeys[search.tab].map((key) => [key, search[key]])),
-});
-
-const toWasteManagementTabSearch = (
-  tab: WasteManagementTabId,
-  listState?: Partial<WasteManagementSearchParams>
-): WasteManagementSearchParams => normalizeWasteManagementSearchParams({ ...listState, tab });
-
-const resetWasteManagementTabListState = (
-  search: WasteManagementSearchParams
-): WasteManagementSearchParams => ({
-  ...search,
-  ...captureWasteManagementTabListState(toWasteManagementTabSearch(search.tab)),
-  page: 1,
-});
-
-const toMasterDataTab = (
-  tab: WasteManagementTabId
-): WasteManagementMasterDataTabId | undefined => {
+const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
   if (tab === 'fractions' || tab === 'locations') {
     return tab;
   }
@@ -151,7 +106,10 @@ const getBrowserNavigation = () => {
   return browserNavigation;
 };
 
-const getDiscardedLocation = (memory: TabNavigationMemory | undefined, contextKey: string | null) =>
+const getDiscardedLocation = (
+  memory: TabNavigationMemory | undefined,
+  contextKey: string | null
+) =>
   memory?.contextKey && memory.contextKey !== contextKey
     ? memory.locationKey
     : memory?.discardedLocationKey;
@@ -204,7 +162,10 @@ const changeWasteManagementTab = (
 export const useWasteManagementTabNavigation = (
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams,
-  uiAccess: Pick<ReturnType<typeof useWasteManagementUiAccess>, 'contextKey' | 'canRead' | 'isResolved'>,
+  uiAccess: Pick<
+    ReturnType<typeof useWasteManagementUiAccess>,
+    'contextKey' | 'canRead' | 'isResolved'
+  >,
   locationKey: string
 ) => {
   const contextKey = uiAccess.canRead || !uiAccess.isResolved ? uiAccess.contextKey : null;
@@ -228,13 +189,18 @@ export const useWasteManagementTabNavigation = (
   return {
     search: activeSearch,
     changeTab: (tab: WasteManagementTabId) =>
-      changeWasteManagementTab(navigate, tab, activeSearch, uiAccess.canRead ? contextKey : null, locationKey),
+      changeWasteManagementTab(
+        navigate,
+        tab,
+        activeSearch,
+        uiAccess.canRead ? contextKey : null,
+        locationKey
+      ),
   };
 };
 
 export const useWasteManagementTabsAccess = (
-  uiAccess: ReturnType<typeof useWasteManagementUiAccess>,
-  tab: WasteManagementTabId
+  uiAccess: ReturnType<typeof useWasteManagementUiAccess>
 ) => {
   const activeAccess = uiAccess.canRead ? uiAccess : null;
   const [confirmedAccess, setConfirmedAccess] = useState(activeAccess);
@@ -245,13 +211,11 @@ export const useWasteManagementTabsAccess = (
     setConfirmedAccess(activeAccess);
   }
 
-  const retainTourEditor =
+  const retainTabs =
     !uiAccess.isResolved &&
-    tab === 'tours' &&
     uiAccess.contextKey !== null &&
-    uiAccess.contextKey === confirmedAccess?.contextKey &&
-    confirmedAccess.canManageTours;
-  const tabsAccess = activeAccess ?? (retainTourEditor ? confirmedAccess : null);
+    uiAccess.contextKey === confirmedAccess?.contextKey;
+  const tabsAccess = activeAccess ?? (retainTabs ? confirmedAccess : null);
 
   return { activeAccess, tabsAccess };
 };

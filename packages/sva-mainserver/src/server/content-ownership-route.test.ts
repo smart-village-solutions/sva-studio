@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   hasUnresolvedTransfer: vi.fn(),
   loadExternalContentReference: vi.fn(),
   loadIdentity: vi.fn(),
+  loadJournal: vi.fn(),
   listTargets: vi.fn(),
   recordObservation: vi.fn(),
   recordTransferOutcome: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   annotateMainserverMutationJournal: state.annotateJournal,
   hasUnresolvedMainserverOwnershipTransfer: state.hasUnresolvedTransfer,
   listMainserverOwnershipTargets: state.listTargets,
+  loadMainserverMutationJournal: state.loadJournal,
   loadExternalContentReferenceByContentId: state.loadExternalContentReference,
   recordMainserverDataProviderObservation: state.recordObservation,
   resolveActorInfo: state.resolveActorInfo,
@@ -74,7 +76,7 @@ import { dispatchSvaMainserverContentOwnershipRequest } from './content-ownershi
 import { SvaMainserverError } from './errors.js';
 
 const actor = {
-  instanceId: 'de-studio-sandbox',
+  instanceId: 'de-testkommune',
   keycloakSubject: 'kc-actor',
   actorAccountId: '11111111-1111-4111-8111-111111111111',
   actingPrincipalType: 'user',
@@ -82,7 +84,7 @@ const actor = {
   operationExternalId: 'operation-1',
   mutationPrincipalContext: {
     version: 1,
-    instanceId: 'de-studio-sandbox',
+    instanceId: 'de-testkommune',
     actorAccountId: '11111111-1111-4111-8111-111111111111',
     keycloakSubject: 'kc-actor',
     actingPrincipalType: 'user',
@@ -99,7 +101,7 @@ const target = {
   bindingId: 'binding-1',
   bindingVersion: 'binding-1:2026-08-27T09:00:00.000Z',
   connection: {
-    instanceId: 'de-studio-sandbox',
+    instanceId: 'de-testkommune',
     keycloakSubject: 'kc-actor',
     activeOrganizationId: '22222222-2222-4222-8222-222222222222',
     actingPrincipalType: 'organization' as const,
@@ -119,12 +121,13 @@ const useTargetResolution = (result: unknown) => {
 describe('Mainserver content ownership route', () => {
   beforeEach(() => {
     for (const mock of Object.values(state)) mock.mockReset();
-    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
-    state.sessionInstanceId.mockReturnValue('de-studio-sandbox');
+    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'production');
+    state.sessionInstanceId.mockReturnValue('de-testkommune');
     delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
     state.hasUnresolvedTransfer.mockResolvedValue(false);
+    state.loadJournal.mockResolvedValue(undefined);
     state.loadExternalContentReference.mockResolvedValue(undefined);
-    state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'de-studio-sandbox' } });
+    state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'de-testkommune' } });
     state.resolveMutationActor.mockResolvedValue(actor);
     state.resolveSource.mockResolvedValue({
       principal: {
@@ -176,39 +179,77 @@ describe('Mainserver content ownership route', () => {
 
   afterEach(() => vi.unstubAllEnvs());
 
-  it.each([
-    ['production', 'de-studio-sandbox', 'de-studio-sandbox'],
-    ['staging', 'other-tenant', 'other-tenant'],
-    ['staging', undefined, 'de-studio-sandbox'],
-    ['staging', 'de-studio-sandbox', 'other-tenant'],
-  ])(
-    'blocks transfer in %s with session %s and requested tenant %s before loading credentials',
-    async (environment, sessionInstanceId, requestedInstanceId) => {
-      vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', environment);
-      state.sessionInstanceId.mockReturnValue(sessionInstanceId);
-      state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: requestedInstanceId } });
+  it('reads transfer status only through the actor and principal scoped journal', async () => {
+    state.resolveActorInfo.mockResolvedValue({ actor });
+    state.loadJournal.mockResolvedValue({
+      actionId: 'content.transferOwnership',
+      providerOutcome: 'succeeded',
+      reconciliationStatus: 'reconciliation_required',
+      contentId: 'not-returned',
+    });
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request('https://studio.test/api/v1/mainserver/content-ownership/operations/operation-1', {
+        headers: { 'x-sva-acting-principal-type': 'user' },
+      })
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({
+      data: { providerOutcome: 'succeeded', reconciliationStatus: 'reconciliation_required' },
+    });
+    expect(state.loadJournal).toHaveBeenCalledWith({
+      instanceId: actor.instanceId,
+      operationExternalId: actor.operationExternalId,
+      readScope: { actorAccountId: actor.actorAccountId, activeOrganizationId: null, actingPrincipalType: 'user' },
+    });
+    expect(state.getNews).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
 
-      const response = await dispatchSvaMainserverContentOwnershipRequest(
-        new Request(
-          `https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer?instanceId=${requestedInstanceId}`,
-          {
-            method: 'POST',
-            body: JSON.stringify({ targetPrincipal: target.principal }),
-          }
-        )
-      );
+  it('does not expose journal entries for another action or actor', async () => {
+    state.resolveActorInfo.mockResolvedValue({ actor });
+    const read = () => dispatchSvaMainserverContentOwnershipRequest(
+      new Request('https://studio.test/api/v1/mainserver/content-ownership/operations/operation-1', {
+        headers: { 'x-sva-acting-principal-type': 'user' },
+      })
+    );
+    state.loadJournal.mockResolvedValueOnce({ actionId: 'news.update', providerOutcome: 'succeeded' });
+    expect((await read())?.status).toBe(404);
+    state.loadJournal.mockResolvedValueOnce(undefined);
+    expect((await read())?.status).toBe(404);
+  });
 
-      expect(response?.status).toBe(409);
-      await expect(response?.json()).resolves.toMatchObject({
-        error: 'content_transfer_temporarily_disabled',
-      });
-      expect(state.resolveMutationActor).not.toHaveBeenCalled();
-      expect(state.getNews).not.toHaveBeenCalled();
-      expect(state.loadIdentity).not.toHaveBeenCalled();
-      expect(state.annotateJournal).not.toHaveBeenCalled();
-      expect(state.transfer).not.toHaveBeenCalled();
-    }
-  );
+  it('stops a duplicate transfer before a second provider read or write', async () => {
+    state.loadJournal.mockResolvedValue({ actionId: 'content.transferOwnership', providerOutcome: 'succeeded' });
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request('https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer', {
+        method: 'POST',
+        body: JSON.stringify({ targetPrincipal: target.principal }),
+      })
+    );
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toMatchObject({ error: 'content_transfer_operation_already_started' });
+    expect(state.getNews).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('stops before accessing Mainserver when actor resolution denies a foreign instance', async () => {
+    const error = Response.json({ error: 'forbidden' }, { status: 403 });
+    state.resolveActorInfo.mockResolvedValue({ error });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer?instanceId=other-tenant',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response).toBe(error);
+    expect(state.resolveMutationActor).not.toHaveBeenCalled();
+    expect(state.getNews).not.toHaveBeenCalled();
+    expect(state.loadIdentity).not.toHaveBeenCalled();
+    expect(state.annotateJournal).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
 
   it('returns null for unrelated requests and rejects unsupported methods', async () => {
     await expect(
@@ -332,7 +373,7 @@ describe('Mainserver content ownership route', () => {
       })
     );
     expect(state.annotateJournal).toHaveBeenCalledWith({
-      instanceId: 'de-studio-sandbox',
+      instanceId: 'de-testkommune',
       operationExternalId: 'operation-1',
       expectedDataProviderId: 'provider-target',
       metadata: expect.objectContaining({
@@ -391,7 +432,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(200);
     expect(state.loadIdentity).toHaveBeenCalledWith(verificationCandidate.connection);
     expect(state.recordObservation).toHaveBeenCalledWith({
-      instanceId: 'de-studio-sandbox',
+      instanceId: 'de-testkommune',
       principalType: 'organization',
       principalId: target.principal.id,
       credentialFingerprint: target.connection.credentialFingerprint,
@@ -435,6 +476,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_target_verification_failed',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.recordObservation).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
     expect(state.finalize).toHaveBeenCalledWith(
@@ -469,6 +511,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_target_verification_failed',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.transfer).not.toHaveBeenCalled();
     expect(state.finalize).toHaveBeenCalledOnce();
   });
@@ -498,6 +541,40 @@ describe('Mainserver content ownership route', () => {
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['lock', state.withLock],
+    ['journal', state.loadJournal],
+    ['source read', state.getNews],
+  ] as const)('marks a failed %s as not applied before any provider write', async (stage, failure) => {
+    failure.mockRejectedValueOnce(new Error(`${stage} unavailable`));
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response?.status).toBe(500);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
+    expect(state.authorize).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('leaves failures after journaling eligible for reconciliation', async () => {
+    state.withTargetLock.mockRejectedValueOnce(new Error('target lock unavailable'));
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response?.status).toBe(500);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
+    expect(state.authorize).toHaveBeenCalledOnce();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
   it('blocks a second write while an earlier transfer needs reconciliation', async () => {
     state.hasUnresolvedTransfer.mockResolvedValueOnce(true);
 
@@ -516,6 +593,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     expect(state.authorize).not.toHaveBeenCalled();
     expect(state.finalize).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
@@ -565,7 +643,7 @@ describe('Mainserver content ownership route', () => {
 
     expect(response?.status).toBe(200);
     expect(reconcilePreviousTransfer).toHaveBeenCalledWith({
-      instanceId: 'de-studio-sandbox',
+      instanceId: 'de-testkommune',
       contentType: 'news.article',
       contentId: 'news-1',
       providerEntityId: 'news-1',
@@ -575,7 +653,7 @@ describe('Mainserver content ownership route', () => {
       state.authorize.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
     expect(state.hasUnresolvedTransfer).toHaveBeenCalledWith({
-      instanceId: 'de-studio-sandbox',
+      instanceId: 'de-testkommune',
       contentType: 'news.article',
       contentId: 'news-1',
     });
@@ -682,6 +760,7 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBeNull();
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'unknown',
@@ -1075,7 +1154,7 @@ describe('Mainserver content ownership route', () => {
       data: { contentId: 'project-source-1' },
     });
     expect(reconcilePreviousTransfer).toHaveBeenCalledWith({
-      instanceId: 'de-studio-sandbox',
+      instanceId: 'de-testkommune',
       contentType: 'projects.project',
       contentId: 'project-local-1',
       providerEntityId: 'project-source-1',

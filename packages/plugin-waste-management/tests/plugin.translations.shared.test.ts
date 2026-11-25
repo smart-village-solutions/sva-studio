@@ -534,20 +534,29 @@ describe('waste-management translation builders', () => {
     });
   });
 
-  it('defines localized labels for every registered Waste job phase', () => {
-    const dePhases = wasteManagementPluginTranslationsDETools.tools.progress.phases as Readonly<
-      Record<string, string>
-    >;
-    const enPhases = wasteManagementPluginTranslationsENTools.tools.progress.phases as Readonly<
-      Record<string, string>
-    >;
-    const registeredPhases = new Set(
-      createWasteManagementPluginJobTypes().flatMap((jobType) => jobType.progress.phaseKeys)
-    );
+  it('defines localized labels for every registered Waste job type and phase', () => {
+    const dePhases: Readonly<Record<string, string>> =
+      wasteManagementPluginTranslationsDETools.tools.progress.phases['waste-management'];
+    const enPhases: Readonly<Record<string, string>> =
+      wasteManagementPluginTranslationsENTools.tools.progress.phases['waste-management'];
+    const jobTypes = createWasteManagementPluginJobTypes();
+    const deJobTypes: Readonly<Record<string, string>> =
+      wasteManagementPluginTranslationsDETools.tools.progress.jobTypes;
+    const enJobTypes: Readonly<Record<string, string>> =
+      wasteManagementPluginTranslationsENTools.tools.progress.jobTypes;
+
+    for (const { jobTypeId } of jobTypes) {
+      const key = jobTypeId.replace('waste-management.', '');
+      expect(deJobTypes[key], `missing DE label for ${jobTypeId}`).toEqual(expect.any(String));
+      expect(enJobTypes[key], `missing EN label for ${jobTypeId}`).toEqual(expect.any(String));
+    }
+
+    const registeredPhases = new Set(jobTypes.flatMap((jobType) => jobType.progress.phaseKeys));
 
     for (const phase of registeredPhases) {
-      expect(dePhases[phase], `missing DE label for ${phase}`).toEqual(expect.any(String));
-      expect(enPhases[phase], `missing EN label for ${phase}`).toEqual(expect.any(String));
+      const key = phase.replace('waste-management.', '');
+      expect(dePhases[key], `missing DE label for ${phase}`).toEqual(expect.any(String));
+      expect(enPhases[key], `missing EN label for ${phase}`).toEqual(expect.any(String));
     }
   });
 });

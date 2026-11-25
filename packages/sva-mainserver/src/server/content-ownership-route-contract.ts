@@ -1,6 +1,5 @@
 import { resolveActorInfo, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
-import { errorJson } from './content-route-core.js';
 import {
   resolveMainserverMutationActor,
   type MainserverMutationActor,
@@ -11,7 +10,6 @@ import type {
   SvaMainserverProjectionContentType,
 } from '../types.js';
 import { PROJECTS_GENERIC_TYPE } from './projects-contract.js';
-import { isContentOwnershipTransferEnabled } from './service-internals/content-ownership-transfer.js';
 import {
   getSvaMainserverEvent,
   getSvaMainserverGenericItem,
@@ -36,6 +34,52 @@ export type ContentOwnershipRouteMatch = Readonly<{
 export type SupportedContentOwnershipRouteMatch = Omit<ContentOwnershipRouteMatch, 'contentType'> &
   Readonly<{ contentType: SupportedOwnershipContentType }>;
 
+const routePrefix = '/api/v1/mainserver/content-ownership/';
+const supportedContentTypes = new Set<ContentOwnershipRouteMatch['contentType']>([
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+  'generic-items.generic-item',
+  'faq.faq',
+  'cockpit-cards.cockpit-card',
+  'projects.project',
+  'surveys.survey',
+]);
+const isProjectionContentType = (
+  value: string
+): value is ContentOwnershipRouteMatch['contentType'] =>
+  supportedContentTypes.has(value as ContentOwnershipRouteMatch['contentType']);
+
+export const matchContentOwnershipRoute = (request: Request): ContentOwnershipRouteMatch | null => {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith(routePrefix)) return null;
+  const segments = pathname.slice(routePrefix.length).split('/');
+  if (segments.length !== 3) return null;
+  const [encodedContentType, encodedContentId, operation] = segments;
+  let contentType: string;
+  let contentId: string;
+  try {
+    contentType = decodeURIComponent(encodedContentType ?? '');
+    contentId = decodeURIComponent(encodedContentId ?? '');
+  } catch {
+    return null;
+  }
+  return isProjectionContentType(contentType) &&
+    contentId.length > 0 &&
+    (operation === 'authorization' || operation === 'targets' || operation === 'transfer')
+    ? { contentType, contentId, operation }
+    : null;
+};
+
+export const readTransferOperationId = (request: Request): string | undefined => {
+  if (request.method !== 'GET') return undefined;
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith(routePrefix)) return undefined;
+  return /^operations\/([A-Za-z0-9][A-Za-z0-9._:-]{7,127})$/.exec(
+    pathname.slice(routePrefix.length)
+  )?.[1];
+};
+
 export type OwnershipTransferAudit = Readonly<{
   coverage: 'studio_mutations';
   sourcePrincipalResolution: 'resolved' | 'unresolved' | 'failed';
@@ -48,26 +92,12 @@ export type OwnershipTransferAudit = Readonly<{
   targetBindingVersion: string;
 }>;
 
-const transferDisabledResponse = () =>
-  errorJson(
-    409,
-    'content_transfer_temporarily_disabled',
-    'Die Inhaberübertragung ist vorübergehend gesperrt.'
-  );
-
 export const resolveOwnershipRouteActor = async (
   request: Request,
-  ctx: AuthenticatedRequestContext,
-  operation: ContentOwnershipRouteMatch['operation']
+  ctx: AuthenticatedRequestContext
 ): Promise<MainserverMutationActor | Response> => {
-  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(ctx.user.instanceId)) {
-    return transferDisabledResponse();
-  }
   const resolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in resolution) return resolution.error;
-  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(resolution.actor.instanceId)) {
-    return transferDisabledResponse();
-  }
   return resolveMainserverMutationActor({
     request,
     ctx,

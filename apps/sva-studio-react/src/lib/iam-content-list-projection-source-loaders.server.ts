@@ -15,14 +15,13 @@ import {
   mapPoiItem,
   mapSurveyItem,
 } from './iam-content-list-mainserver.js';
-import type { MainserverContentType } from './iam-content-list-api.shared.js';
+import { MAINSERVER_PROJECTION_ITEM_LIMIT, type MainserverContentType } from './iam-content-list-api.shared.js';
 import type {
   ContentProjectionSyncTarget,
   MainserverProjectionRowInput,
 } from './iam-content-list-projection-model.server.js';
 import { studioMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.server.js';
 
-const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 export const GENERIC_ITEMS_CONTENT_TYPE = 'generic-items.generic-item' as const;
 export const registeredGenericItemContentTypes = new Set<string>(
   studioMainserverGenericTypeRegistry.values()
@@ -71,7 +70,7 @@ export const hasNextProjectionPage = (
     (continueAfterEmptyPage || result.data.length > 0) &&
     nextPage >= pageQuery.page &&
     result.pagination.hasNextPage &&
-    pageQuery.page * pageQuery.pageSize < MAX_SYNC_ITEMS_PER_TYPE
+    pageQuery.page * pageQuery.pageSize < MAINSERVER_PROJECTION_ITEM_LIMIT
   );
 };
 

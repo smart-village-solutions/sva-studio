@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { wasteManagementMasterDataContract } from '@sva/waste-management-contracts';
 import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
@@ -88,19 +88,44 @@ export const useWasteSettingsState = (pt: PluginTranslation) => {
   const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
   const [form, setForm] = useState<SettingsFormState>(createDefaultSettingsForm());
   const [error, setError] = useState<string | null>(null);
+  const persistedForm = useRef(form);
+  const requestVersion = useRef(0);
+
+  const applySettings = useCallback(
+    (response: WasteManagementSettingsRecord | null, keepEdits = false) => {
+      requestVersion.current += 1;
+      const previous = persistedForm.current;
+      const next = mapWasteSettingsToForm(response);
+      persistedForm.current = next;
+      setSettings(response);
+      setForm((current) =>
+        keepEdits
+          ? {
+              ...next,
+              ...Object.fromEntries(
+                (Object.keys(current) as (keyof SettingsFormState)[])
+                  .filter((key) => current[key] !== previous[key])
+                  .map((key) => [key, current[key]])
+              ),
+            }
+          : next
+      );
+    },
+    []
+  );
 
   useEffect(() => {
     let active = true;
+    const version = ++requestVersion.current;
 
     void getWasteManagementSettings()
       .then((response) => {
-        if (!active) return;
-        setSettings(response);
-        setForm(mapWasteSettingsToForm(response));
+        if (!active || version !== requestVersion.current) return;
+        applySettings(response, true);
         setError(null);
       })
       .catch((loadError: unknown) => {
-        if (!active) return;
+        if (!active || version !== requestVersion.current) return;
         setError(
           resolveApiErrorCode(loadError) === 'forbidden'
             ? ptRef.current('settings.messages.loadForbidden')
@@ -114,9 +139,9 @@ export const useWasteSettingsState = (pt: PluginTranslation) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [applySettings]);
 
-  return { error, form, loading, setForm, setSettings, settings };
+  return { applySettings, error, form, loading, setForm, settings };
 };
 
 export const persistWasteSettings = async (

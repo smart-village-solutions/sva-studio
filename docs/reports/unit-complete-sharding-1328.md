@@ -2,6 +2,13 @@
 
 Stand: 11. September 2026. Referenz: [Issue #1328](https://github.com/smart-village-solutions/sva-studio/issues/1328).
 
+> **Hinweis (25. November 2026):** Dieser Bericht dokumentiert den historischen
+> Stand. Seit [Issue #2118](https://github.com/smart-village-solutions/sva-studio/issues/2118)
+> verteilen sich die Restprojekte in der PR-CI auf alle vier Runner, weil die App
+> dort in eigenen App-Unit-Jobs läuft. Das hier beschriebene Layout mit einem für
+> die App reservierten Runner gilt nur noch ohne `CI_UNIT_APP_SEPARATE`. Aktueller
+> Vertrag: [Testing und Coverage](../development/testing-coverage.md#parallele-unit--und-coverage-ausführung).
+
 ## Vertrag und Entscheidung
 
 Vier Runner teilen die bestehende Restmenge: die App allein, übrige Projekte

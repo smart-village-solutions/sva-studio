@@ -1,4 +1,8 @@
-import type { WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/waste-management-contracts';
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useMemo, useState } from 'react';
 
@@ -13,15 +17,33 @@ import type {
 
 export const useWasteToursContentSorting = (
   tours: readonly WasteTourRecord[],
-  links: readonly WasteLocationTourLinkRecord[] | undefined
+  masterDataOverview: WasteManagementMasterDataOverview | null,
+  schedulingOverview: WasteManagementSchedulingOverview | null,
+  fractions: readonly { readonly id: string; readonly name: string }[]
 ) => {
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
-  const locationCountByTourId = useMemo(() => createLocationCountByTourId(links), [links]);
+  const locationCountByTourId = useMemo(
+    () => createLocationCountByTourId(masterDataOverview),
+    [masterDataOverview]
+  );
+  const fractionsById = useMemo(
+    () => new Map(fractions.map(({ id, name }) => [id, name])),
+    [fractions]
+  );
   const sortedTours = useMemo(
-    () => sortWasteTours({ tours, sortField, sortDirection, locationCountByTourId, pt }),
-    [locationCountByTourId, pt, sortDirection, sortField, tours]
+    () =>
+      sortWasteTours({
+        tours,
+        sortField,
+        sortDirection,
+        locationCountByTourId,
+        fractionsById,
+        schedulingOverview,
+        pt,
+      }),
+    [locationCountByTourId, fractionsById, schedulingOverview, pt, sortDirection, sortField, tours]
   );
   return { sortedTours, sortField, setSortField, sortDirection, setSortDirection } as const;
 };

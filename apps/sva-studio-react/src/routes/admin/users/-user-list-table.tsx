@@ -251,17 +251,20 @@ export const UserListToolbarStart = ({ usersApi }: { usersApi: UsersApiState }) 
 export const UserListToolbarEnd = ({
   canUpdateUsers,
   syncStatus,
+  isLoading,
   total,
   onSyncUsers,
 }: {
   canUpdateUsers: boolean;
   syncStatus: SyncStatusState;
+  isLoading: boolean;
   total: number;
   onSyncUsers: () => Promise<void>;
 }) => (
   <>
+    {/* Stays mounted but empty while loading, so no outdated count is shown or announced. */}
     <p role="status" className="text-xs text-muted-foreground">
-      {t('admin.users.messages.resultCount', { count: total })}
+      {isLoading ? null : t('admin.users.messages.resultCount', { count: total })}
     </p>
     {canUpdateUsers ? (
       <Button

@@ -7,6 +7,9 @@ import {
   WasteMasterDataLocationsTableToolbar,
 } from '../src/waste-management.master-data-locations-table.views.js';
 
+import { WasteMasterDataLocationsTableSection } from '../src/waste-management.master-data-locations-table.section.js';
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
+
 const linkSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@tanstack/react-router', () => ({
@@ -31,111 +34,233 @@ afterEach(() => {
   linkSpy.mockReset();
 });
 describe('waste-management master-data location table views', () => {
-  it('forwards filter controls and sorting actions', () => {
+  it('applies address and tour filters together with the global sorting', () => {
     const onOpenCreateLocation = vi.fn();
-    const onTourFilterChange = vi.fn();
-    const onLocationYearChange = vi.fn();
-    const onLocationTourStatusChange = vi.fn();
+    const onApplyFilters = vi.fn();
     const onToggleSelectAll = vi.fn();
-    const onSortModeChange = vi.fn();
-    const onSortDirectionChange = vi.fn();
     const onQueryChange = vi.fn();
-    const onResetFilters = vi.fn();
 
     render(
       <WasteMasterDataLocationsTableToolbar
-        search={{ q: '' } as never}
+        {...({} as Parameters<typeof WasteMasterDataLocationsTableToolbar>[0])}
+        search={{ q: '', status: 'all' } as never}
+        regions={[
+          { id: 'region-1', name: 'Nord', createdAt: '', updatedAt: '' },
+          { id: 'region-2', name: 'Süd', createdAt: '', updatedAt: '' },
+        ]}
+        cities={[
+          {
+            id: 'city-1',
+            name: 'Perleberg',
+            postalCode: '19348',
+            regionId: 'region-1',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ]}
+        streets={[
+          { id: 'street-1', cityId: 'city-1', name: 'Hauptstraße', createdAt: '', updatedAt: '' },
+        ]}
+        houseNumbers={[
+          { id: 'house-2', streetId: 'street-1', number: '2', createdAt: '', updatedAt: '' },
+        ]}
         onQueryChange={onQueryChange}
-        onResetFilters={onResetFilters}
+        onApplyFilters={onApplyFilters}
         selectedCollectionLocationsCount={1}
         availableTours={[
           {
             id: 'tour-1',
             name: 'Tour Nord',
             wasteFractionIds: [],
+            status: 'published',
             active: true,
             createdAt: '',
             updatedAt: '',
           },
         ]}
-        filtersOpen
-        locationYear={2027}
-        onLocationYearChange={onLocationYearChange}
-        locationTourStatus="draft"
-        onLocationTourStatusChange={onLocationTourStatusChange}
-        selectedTourId=""
         allFilteredLocationsSelected={false}
-        onOpenCreateRegion={vi.fn()}
-        onOpenCreateCity={vi.fn()}
-        onOpenCreateStreet={vi.fn()}
-        onOpenCreateHouseNumber={vi.fn()}
         onOpenCreateLocation={onOpenCreateLocation}
         onOpenBulkAssignments={vi.fn()}
-        onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={onToggleSelectAll}
         sortMode="address"
         sortDirection="asc"
-        onSortModeChange={onSortModeChange}
-        onSortDirectionChange={onSortDirectionChange}
         onRequestDeleteSelected={vi.fn()}
-        onToggleFiltersOpen={vi.fn()}
       />
     );
 
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createLocation' })
     );
-    expect(onOpenCreateLocation).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tour'), {
-      target: { value: 'tour-1' },
+    expect(onOpenCreateLocation).toHaveBeenCalledOnce();
+    const locationSearch = screen.getByRole('searchbox', {
+      name: 'masterData.locationsWorkspace.filters.locationSearch',
     });
-    expect(onTourFilterChange).toHaveBeenCalledWith('tour-1');
-    const locationSearch = screen.getByLabelText(
-      'masterData.locationsWorkspace.filters.locationSearch'
-    );
-    fireEvent.change(locationSearch, {
-      target: { value: 'Perleberg' },
-    });
+    fireEvent.change(locationSearch, { target: { value: 'Perleberg' } });
     fireEvent.blur(locationSearch);
     expect(onQueryChange).toHaveBeenCalledWith('Perleberg');
-    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tourYear'), {
-      target: { value: '2026' },
-    });
-    expect(onLocationYearChange).toHaveBeenCalledWith(2026);
-    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tourStatus'), {
-      target: { value: 'published' },
-    });
-    expect(onLocationTourStatusChange).toHaveBeenCalledWith('published');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.filters.resetFilters' })
-    );
-    expect(onResetFilters).toHaveBeenCalledOnce();
-
     fireEvent.click(
       screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
     );
     expect(onToggleSelectAll).toHaveBeenCalledWith(true);
-    fireEvent.click(screen.getByText('masterData.locationsWorkspace.sorting.includeRegion'));
-    expect(onSortModeChange).toHaveBeenCalledWith('addressWithRegion');
+
+    fireEvent.click(screen.getByRole('button', { name: 'filters.open' }));
     expect(
-      screen.getByRole('group', { name: 'masterData.locationsWorkspace.sorting.label' })
+      screen.getByRole('option', { name: '2 · Hauptstraße · Perleberg · 19348 · Nord' })
     ).toBeTruthy();
-    const directionButton = screen.getByRole('button', {
-      name: /masterData\.locationsWorkspace\.sorting\.directionLabel/,
-    });
-    expect(directionButton.getAttribute('type')).toBe('button');
-    fireEvent.click(directionButton);
-    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
+    for (const [label, value] of [
+      ['masterData.collectionLocations.fields.streetId', 'street-1'],
+      ['masterData.collectionLocations.fields.houseNumberId', 'house-2'],
+      ['masterData.collectionLocations.fields.regionId', 'region-1'],
+      ['masterData.locationsWorkspace.filters.tourYear', '2026'],
+      ['masterData.locationsWorkspace.filters.tourStatus', 'published'],
+      ['masterData.locationsWorkspace.filters.tour', 'tour-1'],
+      ['masterData.locationsWorkspace.sorting.label', 'addressWithRegion'],
+      ['filters.sortDirection', 'desc'],
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+    const region = screen.getByLabelText('masterData.collectionLocations.fields.regionId');
+    const street = screen.getByLabelText('masterData.collectionLocations.fields.streetId');
+    const houseNumber = screen.getByLabelText(
+      'masterData.collectionLocations.fields.houseNumberId'
+    );
+    expect(street).toHaveProperty('value', 'street-1');
+    expect(houseNumber).toHaveProperty('value', 'house-2');
+    fireEvent.change(region, { target: { value: 'region-2' } });
+    expect(street).toHaveProperty('value', '');
+    expect(houseNumber).toHaveProperty('value', '');
+    fireEvent.change(region, { target: { value: 'region-1' } });
+    fireEvent.change(street, { target: { value: 'street-1' } });
+    fireEvent.change(houseNumber, { target: { value: 'house-2' } });
+    expect(onApplyFilters).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
+    expect(onApplyFilters).toHaveBeenCalledOnce();
+    expect(onApplyFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationStreetId: 'street-1',
+        locationHouseNumberId: 'house-2',
+        tourId: 'tour-1',
+        locationYear: 2026,
+        locationTourStatus: 'published',
+        locationSortMode: 'addressWithRegion',
+        locationSortDirection: 'desc',
+      })
+    );
   });
 
-  it('renders plain server-ordered headers and forwards select-all', () => {
+  it('shows the applied route with the validity period of the selected record', () => {
+    const routes = [
+      { id: 'old', name: 'HM.2.2', firstDate: '2026-01-06', endDate: '2026-12-31' },
+      { id: 'next', name: 'HM.2.2', firstDate: '2027-01-05', endDate: '2027-12-31' },
+    ];
+    render(
+      <WasteMasterDataLocationsTableToolbar
+        {...({} as Parameters<typeof WasteMasterDataLocationsTableToolbar>[0])}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations', tourId: 'next' })}
+        regions={[]}
+        cities={[]}
+        streets={[]}
+        houseNumbers={[]}
+        availableTours={routes as never}
+        selectedCollectionLocationsCount={0}
+        allFilteredLocationsSelected={false}
+        sortMode="address"
+        sortDirection="asc"
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /HM\.2\.2.*05\.01\.2027.*31\.12\.2027/ })
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /HM\.2\.2.*2026/ })).toBeNull();
+  });
+
+  it('offers a reset for an empty filtered list and the create hint for an empty inventory', () => {
+    const onResetFilters = vi.fn();
+    const props = {
+      ...({} as Parameters<typeof WasteMasterDataLocationsTableSection>[0]),
+      collectionLocations: [],
+      selectedLocationIds: [],
+      onResetFilters,
+    };
+    const { rerender } = render(
+      <WasteMasterDataLocationsTableSection
+        {...props}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations', q: 'unmatched' })}
+      />
+    );
+    expect(screen.getByText('masterData.locationsWorkspace.emptyFilteredTitle')).toBeTruthy();
+    expect(screen.queryByText('masterData.locationsWorkspace.emptyBody')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
+    expect(onResetFilters).toHaveBeenCalledOnce();
+
+    rerender(
+      <WasteMasterDataLocationsTableSection
+        {...props}
+        search={normalizeWasteManagementSearchParams({ tab: 'locations' })}
+      />
+    );
+    expect(screen.getByText('masterData.locationsWorkspace.emptyBody')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'filters.reset' })).toBeNull();
+  });
+
+  it('keeps long route lists collapsed and preserves the route links on expansion', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={
+              {
+                id: 'location-1',
+                cityId: 'city-1',
+                cityName: 'Abbendorf',
+                active: true,
+                tours: Array.from({ length: 4 }, (_, i) => ({
+                  id: `tour-${i}`,
+                  name: `Tour ${i}`,
+                  firstDate: '2027-01-05',
+                })),
+              } as never
+            }
+            search={normalizeWasteManagementSearchParams({ tab: 'locations' })}
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              toursById: new Map(),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn()}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+    const summary = screen.getByText(/showTours.*4/, { selector: 'summary' });
+    const disclosure = summary.closest('details');
+    expect(disclosure?.open).toBe(false);
+    fireEvent.click(summary);
+    expect(disclosure?.open).toBe(true);
+    expect(screen.getByRole('link', { name: /Tour 3.*05\.01\.2027/ })).toBeTruthy();
+  });
+
+  it('requests single-column server ordering and forwards select-all', () => {
     const onToggleSelectAll = vi.fn();
+    const onSort = vi.fn();
 
     render(
       <table>
         <WasteMasterDataLocationsHeader
           allFilteredLocationsSelected={false}
           someFilteredLocationsSelected
+          sortMode="city"
+          sortDirection="asc"
+          onSort={onSort}
           onToggleSelectAll={onToggleSelectAll}
         />
       </table>
@@ -143,13 +268,24 @@ describe('waste-management master-data location table views', () => {
 
     fireEvent.click(screen.getByLabelText(/masterData\.locationsWorkspace\.table\.selectAllRows/));
     expect(onToggleSelectAll).toHaveBeenCalledWith(true);
-
-    expect(
-      screen.getByRole('columnheader', { name: 'masterData.locationsWorkspace.table.region' })
-    ).toBeTruthy();
-    expect(
-      screen.queryByRole('button', { name: /masterData\.locationsWorkspace\.table\.region/ })
-    ).toBeNull();
+    const city = screen.getByRole('columnheader', {
+      name: 'masterData.locationsWorkspace.table.city',
+    });
+    expect(city.getAttribute('aria-sort')).toBe('ascending');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.table.city' })
+    );
+    expect(onSort).toHaveBeenCalledWith({
+      locationSortMode: 'city',
+      locationSortDirection: 'desc',
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.table.houseNumbers' })
+    );
+    expect(onSort).toHaveBeenCalledWith({
+      locationSortMode: 'houseNumber',
+      locationSortDirection: 'asc',
+    });
   });
 
   it('renders fallback location values and forwards row actions', () => {

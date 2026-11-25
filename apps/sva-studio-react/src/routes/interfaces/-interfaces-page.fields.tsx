@@ -46,9 +46,11 @@ export const MainserverFields = ({
 
 export const S3Fields = ({
   draft,
+  hasStoredSecretAccessKey,
   onChange,
 }: {
   draft: Extract<InstanceInterfaceDraft, { type: 's3' }>;
+  hasStoredSecretAccessKey: boolean;
   onChange: (next: InstanceInterfaceDraft) => void;
 }) => (
   <>
@@ -103,6 +105,12 @@ export const S3Fields = ({
       <Input
         id="s3-secret-key"
         type="password"
+        aria-describedby={hasStoredSecretAccessKey ? 's3-secret-key-hint' : undefined}
+        placeholder={
+          hasStoredSecretAccessKey
+            ? t('interfaces.forms.s3.secretAccessKeyReplacementPlaceholder')
+            : undefined
+        }
         value={draft.config.secretAccessKey}
         onChange={(event) =>
           onChange({
@@ -111,6 +119,12 @@ export const S3Fields = ({
           })
         }
       />
+      {hasStoredSecretAccessKey ? (
+        <div id="s3-secret-key-hint" className="space-y-1 text-xs text-muted-foreground">
+          <p>{t('interfaces.forms.s3.secretAccessKeyConfiguredStatus')}</p>
+          <p>{t('interfaces.forms.s3.secretAccessKeyConfiguredHint')}</p>
+        </div>
+      ) : null}
     </div>
     <Label htmlFor="s3-path-style" className="flex items-center gap-3">
       <Checkbox

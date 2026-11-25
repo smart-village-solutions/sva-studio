@@ -100,7 +100,7 @@ export const getPluginRouteFactories = (
 
               if (!isPlatformRoute && pluginNamespace === 'app-translations') {
                 await enforceUiRouteAccessRequirements(
-                  { requiredModuleId: 'app' },
+                  { requiredModuleIds: ['app'] },
                   { context: userContext.options.context as RouteGuardContext }
                 );
               }

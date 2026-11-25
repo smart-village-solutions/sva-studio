@@ -80,7 +80,12 @@ describe('waste-management collection location handlers', () => {
   });
 
   it.each([
-    'sortMode=street',
+    'sortMode=unknown',
+    'streetId=not-a-uuid',
+    'houseNumberId=not-a-uuid',
+    'tourYear=1900',
+    'tourYear=2027&tourYear=2028',
+    'tourStatus=active',
     'sortDirection=sideways',
     'sortField=city',
     'sortMode=address&sortMode=addressWithRegion',
@@ -106,26 +111,30 @@ describe('waste-management collection location handlers', () => {
     });
   });
 
-  it.each(['regionId=not-a-uuid', 'cityId=not-a-uuid', 'tourId=not-a-uuid', 'q=%00'])(
-    'rejects invalid selection filters before querying: %s',
-    async (query) => {
-      const loadWasteCollectionLocationIds = vi.fn();
-      const response =
-        await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
-          new Request(
-            `https://studio.test/api/v1/waste-management/collection-locations/selection?${query}`
-          ),
-          actor,
-          { ...createDeps(), loadWasteCollectionLocationIds }
-        );
+  it.each([
+    'regionId=not-a-uuid',
+    'cityId=not-a-uuid',
+    'tourId=not-a-uuid',
+    'streetId=not-a-uuid',
+    'houseNumberId=not-a-uuid',
+    'q=%00',
+  ])('rejects invalid selection filters before querying: %s', async (query) => {
+    const loadWasteCollectionLocationIds = vi.fn();
+    const response =
+      await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
+        new Request(
+          `https://studio.test/api/v1/waste-management/collection-locations/selection?${query}`
+        ),
+        actor,
+        { ...createDeps(), loadWasteCollectionLocationIds }
+      );
 
-      expect(response.status).toBe(400);
-      expect(loadWasteCollectionLocationIds).not.toHaveBeenCalled();
-      await expect(response.json()).resolves.toMatchObject({
-        error: { code: 'invalid_request' },
-      });
-    }
-  );
+    expect(response.status).toBe(400);
+    expect(loadWasteCollectionLocationIds).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
+  });
 
   it('rejects the list read without waste-management.read', async () => {
     const loadWasteCollectionLocationPage = vi.fn();

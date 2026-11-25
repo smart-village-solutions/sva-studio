@@ -5,6 +5,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import {
   createListErrorResponse,
   MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+  MAINSERVER_PROJECTION_ITEM_LIMIT,
   normalizeApiErrorCode,
 } from './iam-content-list-api.shared.js';
 import type {
@@ -24,7 +25,6 @@ import { loadMainserverProjectionPage } from './iam-content-list-projection-sour
 import { runMainserverProjectionRoundRobin } from './mainserver-projection-refresh-coordinator.server.js';
 
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
-const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 export const contentProjectionLogger = createSdkLogger({
   component: 'iam-content-list-projection',
   level: 'info',
@@ -159,7 +159,7 @@ export const refreshMainserverProjectionBatch = (
       },
       async (target, pages) => {
         const targetKey = buildProjectionTargetKey(target);
-        const rows = pages.flat().slice(0, MAX_SYNC_ITEMS_PER_TYPE);
+        const rows = pages.flat().slice(0, MAINSERVER_PROJECTION_ITEM_LIMIT);
         accumulatedRows.set(targetKey, rows);
         const latestPage = pages.at(-1) ?? [];
         contentProjectionLogger.debug('mainserver_projection_page_loaded', {

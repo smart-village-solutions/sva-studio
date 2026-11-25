@@ -2,9 +2,14 @@ export type * from './types.js';
 export { isSvaMainserverGenericItemProjectionContentType } from './types.js';
 
 export {
-  appConfigurationSelectionSchema,
-  appConfigurationPreviewSchema,
-  type AppConfigurationSelection,
-  type AppConfigurationPreview,
-  type LoadedAppConfigurationPreview,
-} from './app-configuration-preview.js';
+  appConfigurationIdSchema,
+  appConfigurationSaveSchema,
+  appConfigurationVariantCommandSchema,
+  type AppConfigurationVariantCommand,
+  type AppConfigurationVariantResult,
+  type AppConfigurationRecord,
+  type AppConfigurationFields,
+  type AppConfigurationSave,
+  type AppConfigurationDocument,
+  type AppConfigurationSyncResult,
+} from './app-configuration.js';

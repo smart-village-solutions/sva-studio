@@ -1,4 +1,7 @@
-import { createTabCard, type WasteManagementTabCardCopy } from './plugin.translations.shared.base.js';
+import {
+  createTabCard,
+  type WasteManagementTabCardCopy,
+} from './plugin.translations.shared.base.js';
 
 type WasteManagementTabsCopy = Readonly<{
   ariaLabel: string;
@@ -39,6 +42,8 @@ type WasteManagementLocationsWorkspaceCopy = Readonly<{
   description: string;
   emptyTitle: string;
   emptyBody: string;
+  emptyFilteredTitle: string;
+  emptyFilteredBody: string;
   emptyRegions: string;
   emptyCities: string;
   emptyStreets: string;
@@ -157,9 +162,10 @@ type WasteManagementToolsCopy = Readonly<{
     percentage: string;
     rows: string;
     updatedAt: string;
-    phases: Readonly<Record<string, string>>;
+    phases: Readonly<{ 'waste-management': Readonly<Record<string, string>> }>;
     statuses: Readonly<Record<string, string>>;
     jobStatuses: Readonly<Record<string, string>>;
+    jobTypes: Readonly<Record<string, string>>;
     steps: Readonly<Record<string, string>>;
   }>;
 }>;
@@ -224,6 +230,8 @@ export const createWasteManagementLocationsWorkspaceTranslations = <
     description: copy.description,
     emptyTitle: copy.emptyTitle,
     emptyBody: copy.emptyBody,
+    emptyFilteredTitle: copy.emptyFilteredTitle,
+    emptyFilteredBody: copy.emptyFilteredBody,
     emptyRegions: copy.emptyRegions,
     emptyCities: copy.emptyCities,
     emptyStreets: copy.emptyStreets,
@@ -240,19 +248,4 @@ export const createWasteManagementToolsTranslations = <
   const TCopy extends WasteManagementToolsCopy,
 >(
   copy: TCopy
-) =>
-  ({
-    tools: {
-      exports: copy.exports,
-      imports: copy.imports,
-      migrations: copy.migrations,
-      seed: copy.seed,
-      postalCodes: copy.postalCodes,
-      sync: copy.sync,
-      reset: copy.reset,
-      actions: copy.actions,
-      messages: copy.messages,
-      meta: copy.meta,
-      progress: copy.progress,
-    },
-  }) as const;
+) => ({ tools: copy }) as const;

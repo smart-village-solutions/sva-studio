@@ -8,7 +8,7 @@ import {
 } from './ui-route-access-decision.js';
 
 export type UiRouteAccessRequirements = {
-  readonly requiredModuleId?: string;
+  readonly requiredModuleIds?: readonly string[];
   readonly requiredPermissions?: readonly string[];
 };
 
@@ -16,7 +16,7 @@ export const enforceUiRouteAccessRequirements = async (
   requirements: UiRouteAccessRequirements,
   beforeLoadOptions: { readonly context: RouteGuardContext }
 ): Promise<void> => {
-  if (!requirements.requiredModuleId && !requirements.requiredPermissions?.length) {
+  if (!requirements.requiredModuleIds?.length && !requirements.requiredPermissions?.length) {
     return;
   }
 
@@ -27,8 +27,7 @@ export const enforceUiRouteAccessRequirements = async (
   }
 
   if (
-    requirements.requiredModuleId &&
-    !user?.assignedModules?.includes(requirements.requiredModuleId)
+    requirements.requiredModuleIds?.some((moduleId) => !user?.assignedModules?.includes(moduleId))
   ) {
     throw redirect({ href: '/?error=auth.insufficientRole' });
   }

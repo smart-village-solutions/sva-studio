@@ -26,8 +26,6 @@ export {
   type MainserverPrincipalResolution,
 } from './mainserver-principal-control';
 
-type StudioAppRouteBindings = BaseAppRouteBindings;
-
 const ContentDetailRoutePage = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
@@ -48,14 +46,29 @@ const ContentDetailRoutePage = () => {
   );
 };
 
-const hostAppRouteBindings: StudioAppRouteBindings = {
+const LazyAppConfigurationEditor = React.lazy(() =>
+  import('../routes/app-configuration/-editor').then((module) => ({
+    default: module.AppConfigurationEditor,
+  }))
+);
+
+const AppConfigurationRoutePage = () => (
+  <React.Suspense
+    fallback={<StudioLoadingState>{t('interfaces.appConfiguration.loading')}</StudioLoadingState>}
+  >
+    <LazyAppConfigurationEditor />
+  </React.Suspense>
+);
+
+const hostAppRouteBindings = {
   ...coreAppRouteBindings,
   appTexts: () => <CatalogsPage />,
+  appConfiguration: AppConfigurationRoutePage,
   adminAppTranslations: () => <CatalogsPage platform />,
   content: ContentListRoutePage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,
-};
+} satisfies BaseAppRouteBindings;
 
 export const SearchPluginRoutePage = ({
   Page,
@@ -149,4 +162,4 @@ export const appRouteBindings = Object.assign(
   {},
   hostAppRouteBindings,
   contributedRouteComponents
-) as StudioAppRouteBindings & Readonly<Record<string, React.ComponentType>>;
+) as typeof hostAppRouteBindings & Readonly<Record<string, React.ComponentType>>;

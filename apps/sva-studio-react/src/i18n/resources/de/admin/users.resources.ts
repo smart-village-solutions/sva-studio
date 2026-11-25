@@ -151,6 +151,18 @@ export const usersAdminDEResources = {
       'Technische Konten sind von den automatischen Regeln zum Deaktivieren, Entfernen persönlicher Angaben und Löschen ausgenommen. Anmeldung, Rollen und Gruppen bleiben davon unberührt.',
     removeTechnicalAccountWarning:
       'Wenn Sie die Markierung entfernen, gelten für dieses Konto ab dem nächsten Prüflauf wieder die automatischen Löschregeln. Frühere Änderungen am Kontostatus werden dadurch nicht rückgängig gemacht.',
+    statusSection: {
+      title: 'Kontostatus',
+      inactiveHint:
+        'Inaktive Konten können sich nicht anmelden. Beim Speichern dieses Status werden bestehende Sitzungen beendet. Rollen und Gruppen bleiben erhalten.',
+    },
+    assignmentsSection: {
+      title: 'Rollen und Gruppen',
+      description: 'Diese Zuweisungen bestimmen, welche Rechte das Konto erhält.',
+    },
+    additionalSection: {
+      title: 'Weitere Angaben',
+    },
     rolesLabel: 'Rollen auswählen',
     groupsLabel: 'Gruppen auswählen',
     competenceLanguages: 'Kompetenzsprachen',

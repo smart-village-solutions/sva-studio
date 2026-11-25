@@ -38,6 +38,10 @@ Systemexporte schreiben alle enthaltenen Felder deterministisch aus. Technische 
 4. Optional zuerst einen Dry-Run ausführen. Er validiert Vertrag, Version, Pflichtwerte, Defaults und Referenzen und schreibt keine Fachdaten.
 5. Den Import starten. Einzelprofile und Pakete werden ohne fachlichen Teilerfolg geschrieben. Portable Schnittstelleneinstellungen werden vor dem Waste-Datenbank-Commit gespeichert; schlägt der Commit danach fehl, stellt das System die vorherige Schnittstellenkonfiguration wieder her.
 
+Unter **Datentools → Letzter Prozess** stehen die Bezeichnung des Vorgangs
+und sein Status. **Jobdetails öffnen** führt mit entsprechender Berechtigung
+zu den technischen Angaben.
+
 Portable Kalender- und Feiertagseinstellungen werden zusätzlich in der ausgewählten Schnittstellenkonfiguration aktualisiert. Binäre Branding-Artefakte werden nicht kopiert; lediglich ihre konfigurierte Referenz ist portabel.
 
 ## Paketgrenzen

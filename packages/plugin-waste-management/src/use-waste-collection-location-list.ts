@@ -20,11 +20,15 @@ const toFilter = (search: WasteManagementSearchParams): WasteCollectionLocationS
   status: search.status,
   regionId: search.regionId,
   cityId: search.cityId,
+  streetId: search.locationStreetId,
+  houseNumberId: search.locationHouseNumberId,
   tourId: search.tourId,
 });
 
 const toQuery = (search: WasteManagementSearchParams): WasteCollectionLocationQuery => ({
   ...toFilter(search),
+  tourYear: search.locationYear,
+  tourStatus: search.locationTourStatus,
   sortMode: search.locationSortMode,
   sortDirection: search.locationSortDirection,
   page: search.page,
@@ -67,6 +71,8 @@ const useFilteredLocationIdsLoader = (
     }
   }, [
     search.cityId,
+    search.locationStreetId,
+    search.locationHouseNumberId,
     search.q,
     search.regionId,
     search.status,
@@ -83,7 +89,7 @@ const useFilteredLocationIdsLoader = (
   return { clearFilteredLocationIds, loadFilteredLocationIds };
 };
 
-export const useWasteCollectionLocationList = (
+const useCollectionLocationPageLoader = (
   state: WasteMasterDataState,
   pt: Translate,
   search: WasteManagementSearchParams
@@ -92,12 +98,6 @@ export const useWasteCollectionLocationList = (
   const ptRef = useRef(pt);
   ptRef.current = pt;
   const { setCollectionLocationListError, setCollectionLocationPage } = state;
-  const { clearFilteredLocationIds, loadFilteredLocationIds } = useFilteredLocationIdsLoader(
-    state,
-    pt,
-    search
-  );
-
   const loadList = useCallback(async () => {
     if (!isActiveLocationList(search)) {
       requestSequence.current += 1;
@@ -122,8 +122,12 @@ export const useWasteCollectionLocationList = (
     }
   }, [
     search.cityId,
+    search.locationStreetId,
+    search.locationHouseNumberId,
     search.locationSortDirection,
     search.locationSortMode,
+    search.locationYear,
+    search.locationTourStatus,
     search.locationsView,
     search.masterDataTab,
     search.page,
@@ -137,10 +141,27 @@ export const useWasteCollectionLocationList = (
     setCollectionLocationListError,
   ]);
 
+  return loadList;
+};
+
+export const useWasteCollectionLocationList = (
+  state: WasteMasterDataState,
+  pt: Translate,
+  search: WasteManagementSearchParams
+) => {
+  const loadList = useCollectionLocationPageLoader(state, pt, search);
+  const { clearFilteredLocationIds, loadFilteredLocationIds } = useFilteredLocationIdsLoader(
+    state,
+    pt,
+    search
+  );
+
   useEffect(() => {
     clearFilteredLocationIds();
   }, [
     search.cityId,
+    search.locationStreetId,
+    search.locationHouseNumberId,
     search.locationsView,
     search.masterDataTab,
     search.q,

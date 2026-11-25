@@ -175,8 +175,8 @@ Fehlerpfad:
 19. Ein Benutzer mit `waste-management.master-data.manage` kann unter den erweiterten Systemfunktionen den Job `waste-management.enrich-postal-codes` starten. Die Runtime lädt nur Orte mit leerer Postleitzahl, verwendet eingebettete fünfstellige Werte oder bis zu drei deterministische Straßenstichproben und akzeptiert ausschließlich plausible deutsche Konsenstreffer.
 20. Provideraufrufe laufen seriell mit dem instanzbezogenen Rate-Limit. Mehrdeutige, unplausible und fehlende Treffer bleiben offen; unmittelbar vor dem Schreiben verhindert ein konditionales `UPDATE` das Überschreiben einer parallel gepflegten Postleitzahl.
 21. Beim Öffnen der Abholortliste normalisiert das Plugin Filter, Sortiermodus, Richtung, Seite und Seitengröße aus den typsicheren Search-Params und ruft `GET /api/v1/waste-management/collection-locations` auf. Unbekannte oder widersprüchliche Direktparameter werden vor dem Repository mit `400 invalid_request` abgewiesen.
-22. `@sva/auth-runtime` prüft `waste-management.read`, löst die aktive Tenant-Datenbank auf und übergibt ausschließlich den typisierten Query-Vertrag. Das Repository filtert zuerst, ermittelt Gesamtzahl und Seite in einer SQL-Anweisung und aggregiert Touren danach nur für die Seite. Die feste ICU-Collation und `ID asc` erzeugen über Seiten und Richtungswechsel eine stabile globale Reihenfolge.
-23. Parallel lädt das Plugin über `GET /api/v1/waste-management/collection-locations/selection` alle IDs desselben Filtervertrags. Auswahlzustand bleibt ID-basiert über Seiten und Sortierwechsel erhalten; das Abwählen aller gefilterten Einträge entfernt keine Auswahl außerhalb des aktuellen Filters.
+22. `@sva/auth-runtime` prüft `waste-management.read`, löst die aktive Tenant-Datenbank auf und übergibt ausschließlich den typisierten Query-Vertrag. Das Repository filtert zuerst und ermittelt Gesamtzahl und Seite in einer SQL-Anweisung. Bei Sortierung nach Touranzahl berechnet es die relevanten Zuordnungszahlen im gefilterten Bestand vor der Pagination. Die Namensprojektion der Touren bleibt auf die Seite beschränkt. Die feste ICU-Collation und `ID asc` erzeugen über Seiten und Richtungswechsel eine stabile globale Reihenfolge.
+23. Bei einer seitenübergreifenden Sammelauswahl lädt das Plugin bei Bedarf über `GET /api/v1/waste-management/collection-locations/selection` alle IDs desselben Filtervertrags. Auswahlzustand bleibt ID-basiert über Seiten und Sortierwechsel erhalten; das Abwählen aller gefilterten Einträge entfernt keine Auswahl außerhalb des aktuellen Filters.
 24. Filter-, Sortier- und Seitengrößenwechsel setzen die URL atomar auf Seite eins zurück. Reine Seitenwechsel erhalten Filter und Sortierung; verspätete Antworten älterer Requests überschreiben keinen neueren Zustand.
 25. Beim Seitenaufruf liest die autorisierte Statusroute die monotone Revision aus der externen Waste-Tenant-Datenbank sowie aktiven Lauf, letzten Versuch und letzten kompatiblen Erfolg aus dem zentralen Studio-Jobstore. Der externe Mainserver wird dabei nicht aufgerufen.
 26. Nur gleiche Quellrevision und gleiches Jahresfenster ergeben `clean`. Ohne belastbaren Vergleich bleibt der Zustand `unknown`; eine neuere Revision oder ein abweichendes Jahresfenster ergibt `pending`.
@@ -873,7 +873,7 @@ Fehlerpfad:
 ### Szenario 9: Admin-Flow User- und Rollenverwaltung
 
 1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/users`.
-2. Liste wird paginiert über `GET /api/v1/iam/users` geladen.
+2. Liste wird paginiert über `GET /api/v1/iam/users` geladen. Suche und Filter bleiben während laufender Anfragen bedienbar; überholen sich Anfragen, bestimmt ausschließlich die zuletzt gestartete Anfrage Ergebnisse, Fehler und Ladezustand. Nachladen nach Mutationen oder Keycloak-Sync verwendet stets die zu diesem Zeitpunkt aktuellen Filter.
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
 4. Von der Detailansicht aus können Admins zusätzlich Passwort-Einladungen erneut auslösen und Mainserver-Credentials über `POST /api/v1/iam/users/$userId/reprovision-mainserver` neu provisionieren.
 5. Die Benutzerliste leitet den technischen Mainserver-Credential-Status aus den Attributen der bereits geladenen Keycloak-Benutzerprojektion ab. Fehlende Application-ID, fehlendes Secret und vollständig fehlende Credentials werden getrennt ausgewiesen; kanonische und Legacy-Einzelwerte bilden kein vollständiges Mischpaar, ein nicht bestimmbarer Zustand bleibt neutral. Dadurch entstehen keine zusätzlichen Keycloak-Aufrufe pro Tabellenzeile und keine Credential-Werte gelangen in den Browser.
@@ -1346,6 +1346,12 @@ Fehlerpfad:
 4. Das Journal wird vor dem Provider-Write um erwartetes Ziel und technische Transfermetadaten ergänzt.
 5. Eine bestätigte Zielzuordnung aktualisiert Projektion und UI. Bei verlorenem Response entscheiden Target- und Source-Re-Read; fehlende eindeutige Evidenz erzeugt `reconciliation_required`.
 
+### Inhaltsübersicht mit Inhaberwechsel für mehrere Treffer
+
+Die Inhaltsprojektion wertet den Kategoriefilter im autorisierten Listenpfad vor der Seiteneinteilung aus. Die seitenübergreifende Auswahl konsumiert denselben Pfad und liefert bei vollständiger Projektion nur die zur Auswahl benötigten Referenzen. Vor der Ausführung friert die Oberfläche Menge und Ziel ein und verwendet pro Datensatz eine stabile Operations-ID aus dem bestätigten Auftrag.
+
+Für jeden Inhalt entscheidet der bestehende Einzeltransfer über aktuelle Sichtbarkeit, Transferberechtigung und Inhaber. Die Zielsuche liefert eine Bindung an den aktuellen Account-, Instanz- und Organisationskontext für die folgenden Requests. Der Einzeltransfer prüft eine bereits verwendete Operations-ID innerhalb der Inhaltssperre. Ein lesender Statusabruf liefert ausschließlich den Provider- und Abgleichzustand aus dem aufruferspezifisch eingeschränkten Journal. Die Oberfläche führt ausstehende Einträge sequenziell aus und verwendet nach einer Unterbrechung für bereits angestoßene Einträge nur den Statusabruf.
+
 ### Szenario 20: SSF-Runtime-Konfiguration laden
 
 Für V2 liest SSF vor der Mandantenauswahl
@@ -1588,6 +1594,10 @@ Vorbereitung liest Ort und sämtliche Gutscheine, prüft den gesamten Berechtigu
 ## UI-Revalidierung und Editor-Recovery
 
 Bei Fokus/Wiederaufnahme, erfolgreicher Session-Recovery und Identitäts-/Tenant-/Organisationswechsel invalidiert Studio die effektive Rechtegeneration und lädt den aktuellen Scope erneut. Client-Route-Guards verwenden danach denselben aufgelösten Snapshot wie Aktionen. Ein gewöhnlicher Ressourcen-`403` bleibt lokal; ein expliziter Snapshot-Stale-Code löst eine zusammengeführte Effective-Access-Invalidierung aus.
+
+Die CMS-Inhaltsliste zeigt während der Hintergrundabfrage derselben Liste weiter den vorhandenen Tabellenstand. Bei einem Filterwechsel lädt sie die neue Abfrage, und beim Verlassen der Ansicht endet das Polling. Die Zeilenauswahl übersteht eine vorübergehende Rechteprüfung und das Nachladen desselben Organisationskontexts. In einem geöffneten Mainserver-Editor meldet Studio die erneute Prüfung des Ressourcen-Principals für Screenreader, ohne das Formular zu verschieben.
+
+Das Abfallmodul reserviert während der Rechteprüfung den bisherigen Platz und blendet die Tabs samt Aktionen vorübergehend aus. Bei unverändertem Kontext und unveränderten Modulberechtigungen bleiben Suche, Einstellungen, Ausgabeentwurf und die Auswahl in den Dialogen für Tourstatus und Gültigkeit erhalten. Beim Nachladen übernehmen die Formulare den aktuellen Serverstand für unbearbeitete Felder. Eine erfolgreiche Speicherung in der Ausgabe hat Vorrang vor älteren Leseantworten. Der vorherige Fokus wird wiederhergestellt, wenn das Element noch vorhanden ist und der Fokus inzwischen auf keinem anderen Element liegt. Ein Kontext- oder Berechtigungswechsel verwirft den alten Tab-Zustand samt offenen Bestätigungen. Die Tourzuordnung fragt den ausgeblendeten Synchronisationsstatus nicht ab. Beim Wechsel zurück zur Liste zeigt Studio den Ladezustand bis zur ersten Antwort.
 
 Bei `stale_mainserver_context` verwirft das SDK das betroffene Context-Binding. Der Core-Content-, News- und Event-Editor sperrt die Detailansicht, liest Kontext und Detail nach ausdrücklicher Nutzeraktion neu, erhält ungespeicherte Eingaben und wiederholt die Schreiboperation nicht. Die erneute Mutation erfordert eine weitere ausdrückliche Nutzeraktion. Die lokale Principal-Readiness sperrt Create bei fehlenden oder nicht verifizierten Credentials, führt aber weder Probe noch Provisionierung aus.
 

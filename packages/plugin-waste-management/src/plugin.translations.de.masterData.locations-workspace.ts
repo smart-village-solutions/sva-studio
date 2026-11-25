@@ -6,7 +6,9 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
     description:
       'Arbeiten Sie wie im Newcms-Modus zentral an Abholpunkten, Tourfiltern und der geografischen Hierarchie.',
     emptyTitle: 'Keine Abholpunkte gefunden',
-    emptyBody: 'Passen Sie die Filter an oder legen Sie den ersten Abholpunkt an.',
+    emptyBody: 'Legen Sie den ersten Abholpunkt an.',
+    emptyFilteredTitle: 'Keine Abholpunkte für diese Suche oder Filterauswahl',
+    emptyFilteredBody: 'Passen Sie die Suche oder die Filter an.',
     emptyRegions: 'Noch keine Regionen angelegt.',
     emptyCities: 'Noch keine Orte angelegt.',
     emptyStreets: 'Noch keine Straßen angelegt.',
@@ -106,6 +108,7 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       actions: 'Aktionen',
       selectAllRows: 'Alle Zeilen in {{label}} auswählen',
       selectRow: 'Zeile {{rowId}} auswählen',
+      showTours: '{{count}} Touren anzeigen',
       noTours: 'Keine Touren',
       regionUnavailable: 'Keine Region',
       cityUnavailable: 'Kein Ort',

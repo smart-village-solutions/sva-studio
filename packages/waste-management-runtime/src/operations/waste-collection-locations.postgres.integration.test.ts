@@ -1,4 +1,4 @@
-import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
+import { createWasteMasterDataRepository } from '../repositories.js';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -207,6 +207,95 @@ describe('Waste collection-location projection against PostgreSQL', () => {
       page: 99,
     });
     expect(emptyPage).toMatchObject({ items: [], total: 12, pageCount: 2 });
+  });
+
+  it('uses identical street and house-number criteria for filtered results and selection IDs', async () => {
+    for (const [filter, total] of [
+      [{ streetId: ids.street2 }, 10],
+      [{ streetId: ids.street2, houseNumberId: ids.house2 }, 9],
+      [{ streetId: ids.street10, houseNumberId: ids.house2 }, 0],
+    ] as const) {
+      const result = await repository.listWasteCollectionLocationPage({ ...baseQuery, ...filter });
+      const selectedIds = await repository.listWasteCollectionLocationIds({
+        ...baseQuery,
+        ...filter,
+      });
+      expect(result.total).toBe(total);
+      expect(result.items.map(({ id }) => id).sort()).toEqual([...selectedIds].sort());
+    }
+  });
+
+  it('uses natural house-number order across pages and keeps absent numbers last', async () => {
+    const first = await repository.listWasteCollectionLocationPage({
+      ...baseQuery,
+      sortMode: 'houseNumber',
+    });
+    const next = await repository.listWasteCollectionLocationPage({
+      ...baseQuery,
+      sortMode: 'houseNumber',
+      page: 2,
+    });
+    const descending = await repository.listWasteCollectionLocationPage({
+      ...baseQuery,
+      sortMode: 'houseNumber',
+      sortDirection: 'desc',
+    });
+    expect(first.items.map((item) => item.houseNumber)).toEqual(['1', ...Array(9).fill('2')]);
+    expect(next.items.map((item) => item.houseNumber ?? null)).toEqual(['10', null]);
+    expect(descending.items[0]?.houseNumber).toBe('10');
+    expect(first.items.slice(1).map(({ id }) => id)).toEqual(
+      [1, 5, 6, 7, 8, 9, 10, 11, 12].map(locationId)
+    );
+  });
+
+  it('sorts assignments by the displayed year and tour status without narrowing the location list', async () => {
+    const tourExplicit = '50000000-0000-4000-8000-000000000002';
+    await client.query('BEGIN;');
+    try {
+      await client.query(
+        `UPDATE waste_tours SET status = 'published', first_date = '2026-01-01', end_date = '2026-12-31' WHERE id = $1`,
+        [ids.tour]
+      );
+      await client.query(
+        `INSERT INTO waste_tours (id, name, active, status, first_date, end_date, custom_dates)
+         VALUES ($1, 'Ausnahme', FALSE, 'draft', '2026-01-01', '2026-12-31', '[{"date":"2027-01-01"}]'::jsonb)`,
+        [tourExplicit]
+      );
+      await client.query(
+        `INSERT INTO waste_location_tour_links (location_id, tour_id) VALUES ($1, $2)`,
+        [locationId(12), tourExplicit]
+      );
+      const countSort = { ...baseQuery, sortMode: 'tourCount', sortDirection: 'desc' } as const;
+      const explicit = await repository.listWasteCollectionLocationPage({
+        ...countSort,
+        tourYear: 2027,
+        tourStatus: 'draft',
+      });
+      expect(explicit.total).toBe(12);
+      expect(explicit.items.slice(0, 2).map(({ id }) => id)).toEqual([
+        locationId(12),
+        locationId(1),
+      ]);
+      const regular = await repository.listWasteCollectionLocationPage({
+        ...countSort,
+        tourYear: 2026,
+        tourStatus: 'published',
+      });
+      expect(regular.items.slice(0, 3).map(({ id }) => id)).toEqual([
+        locationId(2),
+        locationId(4),
+        locationId(1),
+      ]);
+      const unscoped = await repository.listWasteCollectionLocationPage(countSort);
+      expect(unscoped.items.slice(0, 4).map(({ id }) => id)).toEqual([
+        locationId(2),
+        locationId(4),
+        locationId(12),
+        locationId(1),
+      ]);
+    } finally {
+      await client.query('ROLLBACK;');
+    }
   });
 
   it('extends, repeats and replaces pickup assignments while retaining shared locations', async () => {

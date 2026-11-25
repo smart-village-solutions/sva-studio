@@ -5,6 +5,8 @@ import { ContentOwnershipDialog } from './content-ownership-dialog.js';
 import { useContentOwnershipDialogState } from './content-ownership-dialog-state.js';
 import { principalTypeLabel, type ContentOwnershipPanelProps } from './content-ownership-types.js';
 
+export { ContentOwnershipDialog, useContentOwnershipDialogState };
+
 export type {
   ContentOwnershipPanelLabels,
   ContentOwnershipPanelOwner,

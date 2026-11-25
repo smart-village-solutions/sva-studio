@@ -218,7 +218,7 @@ export const WasteToursToolbarFilterFields = ({
   onDraftEndDateToChange,
 }: WasteToursToolbarFilterFieldsProps) => {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="grid gap-3 sm:grid-cols-2">
       <WasteToursToolbarBasicFilterFields
         fractions={fractions}
         draftQuery={draftQuery}

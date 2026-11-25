@@ -31,6 +31,7 @@ Die verbindlichen Entwicklungsrichtlinien stehen in [DEVELOPMENT_RULES.md](DEVEL
 - Server-Code nutzt den Logger aus `@sva/server-runtime`, nie `console.*`. Development-Console ist zulässig; Production bleibt OTEL-first ohne Console-Ausgabe.
 - Eingaben client- und serverseitig validieren und PII aus Logs fernhalten.
 - Design-System statt statischem Inline-CSS verwenden. Neue UI basiert auf shadcn/ui und erfüllt WCAG 2.1 AA; parallele Basis-Komponenten benötigen eine dokumentierte Architekturentscheidung.
+- App-Einstellungen aus den Folge-Issues zu #2180 im App-Zweig der Studio-Seitenleiste einbinden. Der genaue Unterpunkt steht im jeweiligen Issue. Das Plugin `application-workspace` ist die Kachelseite für Anwendungslinks. Der [gemeinsame Navigationsvertrag](openspec/changes/add-shared-app-configuration/specs/plugin-platform/spec.md) präzisiert den Einstieg.
 - Autorisierbare Actions immer als `<namespace>.<actionName>` modellieren; Plugins verwenden ausschließlich ihren eigenen Namespace.
 - Vor DB-/Migrationsänderungen `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` prüfen; nach Schemaänderungen beide aktualisieren.
 

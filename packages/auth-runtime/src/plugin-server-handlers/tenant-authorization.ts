@@ -1,5 +1,4 @@
 import { evaluateUiAccess, type EffectivePermission } from '@sva/iam-core';
-import type { PluginServerHandlerRegistryEntry } from '@sva/plugin-sdk';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { createApiError } from '../api-error.js';
@@ -24,9 +23,44 @@ const isCollectionCapablePermission = (permission: EffectivePermission): boolean
   permission.geoScope === undefined &&
   (permission.scope === undefined || Object.keys(permission.scope).length === 0);
 
+type TenantAccessEvaluation = Pick<
+  Parameters<typeof evaluateUiAccess>[0],
+  'requirement' | 'resourceCapability'
+> & {
+  instanceId: string;
+  organizationId?: string;
+  pluginId: string;
+  permissions: readonly EffectivePermission[];
+};
+
+export const evaluateTenantPluginAccess = ({
+  instanceId,
+  organizationId,
+  pluginId,
+  permissions,
+  ...access
+}: TenantAccessEvaluation) =>
+  evaluateUiAccess({
+    isAuthenticated: true,
+    ...access,
+    snapshot: {
+      status: 'ready',
+      generation: 0,
+      scope: {
+        kind: 'tenant',
+        authGeneration: 0,
+        instanceId,
+        organizationId: organizationId ?? null,
+        moduleAssignmentGeneration: 0,
+      },
+      assignedModules: [pluginId],
+      permissions,
+    },
+  });
+
 export type TenantAuthorizationInput = {
   readonly context: AuthenticatedRequestContext;
-  readonly descriptor: PluginServerHandlerRegistryEntry;
+  readonly descriptor: Parameters<typeof isDomainHandler>[0];
   readonly readTenantAccess: typeof readConfiguredPluginTenantAccess;
   readonly resolvePermissions: NonNullable<
     PluginServerHandlerDispatcherDependencies['resolvePermissions']
@@ -92,23 +126,13 @@ export const authorizeTenantHandler = async (
         actorAccountId: input.context.user.id,
       })
     : undefined;
-  const decision = evaluateUiAccess({
-    isAuthenticated: true,
+  const decision = evaluateTenantPluginAccess({
     requirement,
     ...(resourceCapability ? { resourceCapability } : {}),
-    snapshot: {
-      status: 'ready',
-      generation: 0,
-      scope: {
-        kind: 'tenant',
-        authGeneration: 0,
-        instanceId,
-        organizationId: input.context.activeOrganizationId ?? null,
-        moduleAssignmentGeneration: 0,
-      },
-      assignedModules: [input.descriptor.ownerPluginId],
-      permissions: effectivePermissions as readonly EffectivePermission[],
-    },
+    instanceId,
+    organizationId: input.context.activeOrganizationId,
+    pluginId: input.descriptor.ownerPluginId,
+    permissions: effectivePermissions,
   });
   return decision.status === 'allowed'
     ? null

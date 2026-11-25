@@ -1188,6 +1188,127 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
+  it('replaces the whole table with the loading state unless the toolbar is kept', () => {
+    render(
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={[{ id: 'a' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        toolbarStart={<Input aria-label="Suche" />}
+        footer={<p>Seite 1</p>}
+        isLoading
+      />
+    );
+
+    expect(screen.getByRole('status').textContent).toBe('Lädt.');
+    expect(screen.getByRole('status').parentElement?.getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
+    expect(screen.queryByText('Seite 1')).toBeNull();
+  });
+
+  it('keeps toolbar controls, focus and selection while rows reload when requested', () => {
+    const rows = [{ id: 'a' }, { id: 'b' }];
+    const renderTable = (isLoading: boolean) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={rows}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        bulkActions={[{ id: 'archive', label: 'Archivieren', onClick: vi.fn() }]}
+        toolbarStart={<Input aria-label="Suche" />}
+        footer={<p>Seite 1</p>}
+        isLoading={isLoading}
+        keepToolbarWhileLoading
+      />
+    );
+    const { container, rerender } = render(renderTable(false));
+    const status = container.querySelector('[aria-live="polite"]');
+    const search = screen.getByRole<HTMLInputElement>('textbox', { name: 'Suche' });
+    fireEvent.click(screen.getByLabelText('News a auswählen'));
+    search.focus();
+    fireEvent.change(search, { target: { value: 'Ma' } });
+
+    expect(status?.textContent).toBe('');
+    expect(screen.queryByRole('status')).toBeNull();
+
+    rerender(renderTable(true));
+
+    expect(screen.getByRole('textbox', { name: 'Suche' })).toBe(search);
+    expect(document.activeElement).toBe(search);
+    expect(search.value).toBe('Ma');
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status?.textContent).toBe('Lädt.');
+    const busyResultArea = container.querySelector('[aria-busy="true"]');
+    expect(busyResultArea).not.toBeNull();
+    expect(busyResultArea?.contains(search)).toBe(false);
+    expect(busyResultArea?.contains(status)).toBe(false);
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
+      true
+    );
+    expect(screen.getByText('Seite 1')).toBeTruthy();
+
+    rerender(renderTable(false));
+
+    expect(document.activeElement).toBe(search);
+    expect(status?.textContent).toBe('');
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('table', { name: 'News' })).toBeTruthy();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('News a auswählen').checked).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Archivieren' }).disabled).toBe(
+      false
+    );
+  });
+
+  it('makes custom-rendered bulk actions inert while rows reload with a kept toolbar', () => {
+    const renderTable = (isLoading: boolean) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={[{ id: 'a' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        bulkActions={[
+          {
+            id: 'custom',
+            label: 'Custom',
+            render: <button type="button">Sonderaktion</button>,
+            onClick: vi.fn(),
+          },
+        ]}
+        isLoading={isLoading}
+        keepToolbarWhileLoading
+      />
+    );
+    const { rerender } = render(renderTable(false));
+    fireEvent.click(screen.getByLabelText('News a auswählen'));
+    const customAction = screen.getByRole('button', { name: 'Sonderaktion' });
+
+    expect(customAction.closest('[inert]')).toBeNull();
+
+    rerender(renderTable(true));
+
+    // Same node (not remounted), but no longer operable while the selection's rows are hidden.
+    expect(screen.getByText('Sonderaktion')).toBe(customAction);
+    expect(customAction.closest('[inert]')).not.toBeNull();
+
+    rerender(renderTable(false));
+
+    expect(screen.getByRole('button', { name: 'Sonderaktion' })).toBe(customAction);
+    expect(customAction.closest('[inert]')).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('News a auswählen').checked).toBe(true);
+  });
+
   it('sorts strings with a fixed locale and a deterministic tie-breaker', () => {
     const localeCompareSpy = vi
       .spyOn(String.prototype, 'localeCompare')

@@ -6,6 +6,9 @@ export const WasteMasterDataLocationsTableSection = ({
   search,
   onQueryChange,
   onResetFilters,
+  onApplyFilters,
+  tools,
+  toolContent,
   cities,
   streets,
   houseNumbers,
@@ -14,23 +17,19 @@ export const WasteMasterDataLocationsTableSection = ({
   selectedLocationIds,
   allFilteredLocationsSelected,
   selectedCollectionLocationsCount,
+  hiddenSelectedLocationsCount,
+  matchingSelectedLocationsCount,
   availableTours,
   locationYear,
-  onLocationYearChange,
   locationTourStatus,
-  onLocationTourStatusChange,
   page,
   pageSize,
   sortMode,
   sortDirection,
   pageCount,
   totalItems,
-  selectedTourId,
   onPageChange,
   onPageSizeChange,
-  onSortModeChange,
-  onSortDirectionChange,
-  onTourFilterChange,
   onToggleSelectAll,
   onToggleLocation,
   onOpenCreateRegion,
@@ -51,6 +50,9 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'search'
   | 'onQueryChange'
   | 'onResetFilters'
+  | 'onApplyFilters'
+  | 'tools'
+  | 'toolContent'
   | 'cities'
   | 'streets'
   | 'houseNumbers'
@@ -59,19 +61,15 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'selectedLocationIds'
   | 'allFilteredLocationsSelected'
   | 'selectedCollectionLocationsCount'
+  | 'hiddenSelectedLocationsCount'
+  | 'matchingSelectedLocationsCount'
   | 'availableTours'
   | 'locationYear'
-  | 'onLocationYearChange'
   | 'locationTourStatus'
-  | 'onLocationTourStatusChange'
-  | 'selectedTourId'
   | 'onPageChange'
   | 'onPageSizeChange'
   | 'sortMode'
   | 'sortDirection'
-  | 'onSortModeChange'
-  | 'onSortDirectionChange'
-  | 'onTourFilterChange'
   | 'onToggleSelectAll'
   | 'onToggleLocation'
   | 'onOpenCreateRegion'
@@ -96,6 +94,9 @@ export const WasteMasterDataLocationsTableSection = ({
     search={search}
     onQueryChange={onQueryChange}
     onResetFilters={onResetFilters}
+    onApplyFilters={onApplyFilters}
+    tools={tools}
+    toolContent={toolContent}
     regions={regions}
     cities={cities}
     streets={streets}
@@ -105,23 +106,19 @@ export const WasteMasterDataLocationsTableSection = ({
     selectedLocationIds={selectedLocationIds}
     allFilteredLocationsSelected={allFilteredLocationsSelected}
     selectedCollectionLocationsCount={selectedCollectionLocationsCount}
+    hiddenSelectedLocationsCount={hiddenSelectedLocationsCount}
+    matchingSelectedLocationsCount={matchingSelectedLocationsCount}
     availableTours={availableTours}
     locationYear={locationYear}
-    onLocationYearChange={onLocationYearChange}
     locationTourStatus={locationTourStatus}
-    onLocationTourStatusChange={onLocationTourStatusChange}
     page={page}
     pageSize={pageSize}
     sortMode={sortMode}
     sortDirection={sortDirection}
     pageCount={pageCount}
     totalItems={totalItems}
-    selectedTourId={selectedTourId}
     onPageChange={onPageChange}
     onPageSizeChange={onPageSizeChange}
-    onSortModeChange={onSortModeChange}
-    onSortDirectionChange={onSortDirectionChange}
-    onTourFilterChange={onTourFilterChange}
     onToggleSelectAll={onToggleSelectAll}
     onToggleLocation={onToggleLocation}
     onOpenCreateRegion={onOpenCreateRegion}

@@ -23,10 +23,6 @@ import {
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 import { createInterfaceColumns } from './-interfaces-page.columns';
 
-const LazyAppConfigurationPreview = React.lazy(() =>
-  import('./-app-configuration-preview').then((mod) => ({ default: mod.AppConfigurationPreview }))
-);
-
 const renderInterfaceRowActions = (
   row: InstanceInterface,
   setEditState: React.Dispatch<React.SetStateAction<EditState>>,
@@ -70,7 +66,6 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     : t('interfaces.edit.title');
 
 export const InterfacesPage = () => {
-  const [showAppConfiguration, setShowAppConfiguration] = React.useState(false);
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
   const {
     deepLChecking,
@@ -134,23 +129,7 @@ export const InterfacesPage = () => {
             <span className="font-medium">{instanceId}</span>
           </p>
         ) : null}
-        <Button
-          type="button"
-          variant="secondary"
-          className="self-start"
-          aria-controls="app-configuration-preview"
-          aria-expanded={showAppConfiguration}
-          disabled={showAppConfiguration}
-          onClick={() => setShowAppConfiguration(true)}
-        >
-          {t('interfaces.appConfiguration.open')}
-        </Button>
       </header>
-      {showAppConfiguration ? (
-        <React.Suspense fallback={<p role="status">{t('interfaces.appConfiguration.loading')}</p>}>
-          <LazyAppConfigurationPreview />
-        </React.Suspense>
-      ) : null}
 
       {errorMessage && !showBlockingLoadError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
@@ -249,6 +228,11 @@ export const InterfacesPage = () => {
               }
               deepLChecking={deepLChecking}
               onCheckDeepL={() => void onCheckDeepL()}
+              hasStoredS3SecretAccessKey={
+                editState.mode === 'edit' &&
+                editState.entry.type === 's3' &&
+                editState.entry.secretAccessKeyConfigured
+              }
               hasStoredMapApiKey={
                 editState.mode === 'edit' &&
                 editState.entry.type === 'mapGeocoding' &&

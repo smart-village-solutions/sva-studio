@@ -162,6 +162,7 @@ export const mapPoiItemDetail = (
         : {}),
       active: parsed.data.active !== false,
       ...(category ? { categoryName: category.name } : {}),
+      ...(category?.id ? { categoryId: category.id } : {}),
       ...(parsed.data.payload !== undefined && parsed.data.payload !== null
         ? { payload: parsed.data.payload }
         : {}),

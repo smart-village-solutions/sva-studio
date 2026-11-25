@@ -16,6 +16,9 @@ export type IamContentCredentialSource = 'organization' | 'user';
 export const iamContentAuthorizationModes = ['credential_visible_compatibility', 'exact'] as const;
 export type IamContentAuthorizationMode = (typeof iamContentAuthorizationModes)[number];
 
+export const isIamContentCategoryId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length <= 128 && value.trim().length > 0 && !/\p{Cc}/u.test(value);
+
 export type IamContentListItem = {
   readonly id: string;
   readonly contentType: string;
@@ -59,6 +62,7 @@ export type IamContentListQuery = {
   readonly type?: string;
   readonly languageCode?: string;
   readonly poiId?: string;
+  readonly categoryId?: string;
   readonly visibleTypes?: readonly string[];
   readonly status?: IamContentStatus;
   readonly sortBy: IamContentListSortField;

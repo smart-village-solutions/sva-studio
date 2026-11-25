@@ -483,6 +483,14 @@
       }
     },
     {
+      "id": "mobile-app.configuration",
+      "path": "/app-configuration",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "mobile-app.texts",
       "path": "/app-texts",
       "pageType": "overview",

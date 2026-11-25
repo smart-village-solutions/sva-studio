@@ -1,6 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioDataTable, type StudioBulkAction } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioDataTable,
+  type StudioDataTableSorting,
+  type StudioBulkAction,
+} from '@sva/studio-ui-react';
 
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -42,6 +47,32 @@ type WasteSchedulingShiftsTableProps = {
   readonly toolbar?: WastePanelTableTopBarProps;
 };
 
+const useSortedSchedulingShifts = (
+  entries: readonly WasteSchedulingTableEntry[],
+  columns: ReturnType<typeof useSchedulingColumns>,
+  sorting: Extract<StudioDataTableSorting, { mode: 'external' }>['state']
+) =>
+  useMemo(() => {
+    const [sort] = sorting;
+    const column = columns.find((item) => item.id === sort?.id);
+    if (!sort || !column?.sortable) return entries;
+    return [...entries].sort((left, right) => {
+      const a = column.sortValue(left);
+      const b = column.sortValue(right);
+      if (Boolean(a) !== Boolean(b)) return a ? -1 : 1;
+      const comparison = String(a ?? '').localeCompare(String(b ?? ''), 'de', {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return (
+        (sort.desc ? -comparison : comparison) ||
+        left.kind.localeCompare(right.kind) ||
+        left.sortLabel.localeCompare(right.sortLabel) ||
+        left.id.localeCompare(right.id)
+      );
+    });
+  }, [columns, entries, sorting]);
+
 export const WasteSchedulingShiftsTable = ({
   entries,
   search,
@@ -65,10 +96,11 @@ export const WasteSchedulingShiftsTable = ({
   const clearSelectionRef = useRef<() => void>(() => undefined);
   const labels = useSchedulingTableLabels();
   const columns = useSchedulingColumns();
-  const pagedRows = useMemo(
-    () => createPagedItems({ items: entries, page, pageSize }),
-    [entries, page, pageSize]
-  );
+  const [sorting, setSorting] = useState<
+    Extract<StudioDataTableSorting, { mode: 'external' }>['state']
+  >([{ id: 'originalDate', desc: false }]);
+  const sortedRows = useSortedSchedulingShifts(entries, columns, sorting);
+  const pagedRows = createPagedItems({ items: sortedRows, page, pageSize });
   const bulkActions = useMemo<readonly StudioBulkAction<WasteSchedulingTableEntry>[]>(
     () => [
       {
@@ -102,7 +134,21 @@ export const WasteSchedulingShiftsTable = ({
         }
       />
       <StudioDataTable
-        sorting={{ mode: 'disabled' }}
+        sorting={{
+          mode: 'external',
+          state: sorting,
+          onChange: (next) => {
+            setSorting(next);
+            if (page !== 1) onPageChange(1);
+          },
+          labels: {
+            field: pt('filters.sortField'),
+            direction: pt('filters.sortDirection'),
+            none: pt('filters.any'),
+            ascending: pt('masterData.locationsWorkspace.sorting.ascending'),
+            descending: pt('masterData.locationsWorkspace.sorting.descending'),
+          },
+        }}
         ariaLabel={pt('scheduling.table.ariaLabel')}
         caption={pt('scheduling.table.caption')}
         labels={labels}

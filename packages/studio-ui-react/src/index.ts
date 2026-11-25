@@ -6,12 +6,7 @@ export {
   type StudioEditorLeaveActions,
   useStudioEditorSuspended,
 } from './studio-editor-leave-guard.js';
-export {
-  ContentOwnershipPanel,
-  type ContentOwnershipPanelLabels,
-  type ContentOwnershipPanelOwner,
-  type ContentOwnershipPanelProps,
-} from './content-ownership-panel.js';
+export * from './content-ownership-panel.js';
 export {
   ContentOwnershipPanelSlot,
   ContentOwnershipSlotsProvider,

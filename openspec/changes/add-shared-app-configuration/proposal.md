@@ -6,7 +6,7 @@ Die App-Konfigurationseditoren benötigen einen gemeinsamen, verlustfreien Mains
 
 ## Freigabe und Status
 
-Der Gesamtentwurf bleibt freigegeben. Als gesonderter, vom Nutzer bestätigter Lieferabschnitt entsteht jetzt eine Vorschau auf der bestehenden Host-Seite „Schnittstellen“: vorhandene Konfiguration laden, die beiden vereinbarten Felder lokal bearbeiten und Änderungen vergleichen. Es gibt keinen Mainserver-Write, keine persistierten Entwürfe und keine Variantenanlage oder Löschung. Der vorhandene Zugriff `integration.manage` schützt diesen gemeinsamen Host-Verbraucher; fachliche Plugin-Konfigurationsrechte und vollständige Variantenverwaltung bleiben im späteren Gesamtumfang offen.
+Der Gesamtentwurf bleibt freigegeben. Der erste schreibende Lieferabschnitt nutzt die Seite **Anwendungen → App → App-Konfiguration** für die JSON-Dateiliste, die exakte Versionswahl und den feldbezogenen Abgleich der zwei Felder aus „Allgemein“ und „Design“. Die Variantenaktionen nutzen denselben Abgleich. Die Neuanlage ist auf Namen begrenzt, die der Mainserver unverändert übernimmt. Weitere Fachformulare folgen getrennt.
 
 ## What Changes
 
@@ -15,16 +15,16 @@ Der Gesamtentwurf bleibt freigegeben. Als gesonderter, vom Nutzer bestätigter L
 - Der Redakteur wählt bestehende und unversionierte Varianten, legt neue Versionen als vollständige Kopie einer gewählten Variante an und löscht gezielt Varianten.
 - Eigene Konfigurationsrechte je Plugin; zusätzliches übergreifendes Recht für das Anlegen und Löschen ganzer Dokumentvarianten.
 - Speichern nach Änderungsvorschau unmittelbar im Mainserver; keine dauerhaften Studio-Entwürfe oder separate Veröffentlichung.
-- Erster Lieferabschnitt: je eine kleine Feldgruppe aus „Allgemein“ und „Design“ auf `globalSettings`, einschließlich Versionsverwaltung und Readback. Als belegte erste Felder sind `settings.locationService.showAlternativeLocationButton` und `appDesignSystem.serviceTiles.numberOfLines` vorgesehen.
+- Erster Lieferabschnitt: je eine kleine Feldgruppe aus „Allgemein“ und „Design“ auf `globalSettings`, mit exakter Versionsauswahl und Readback. Als belegte erste Felder sind `settings.locationService.showAlternativeLocationButton` und `appDesignSystem.serviceTiles.numberOfLines` vorgesehen.
 
 ## Grenzen
 
 - GraphQL bleibt der Integrationsweg zum Mainserver; Admin-REST, zusätzliche Admin-Sessions und DB-Direktzugriffe sind ausgeschlossen.
-- Keine Änderung am Mainserver oder an der App. [SVA-1787](https://tpwd.atlassian.net/browse/SVA-1787) ist eine separate Verbesserungsidee und keine Lieferabhängigkeit.
-- Das Risiko externer Änderungen zwischen Fresh Read und Write ist ausdrücklich akzeptiert. Studio verspricht keinen atomaren Überschreibeschutz.
+- Keine Änderung am Mainserver oder an der App. [SVA-1787](https://tpwd.atlassian.net/browse/SVA-1787), [SVA-1788](https://tpwd.atlassian.net/browse/SVA-1788), [SVA-1789](https://tpwd.atlassian.net/browse/SVA-1789) und [SVA-1792](https://tpwd.atlassian.net/browse/SVA-1792) sind abgenommen und liefern den vorhandenen GraphQL-Vertrag.
+- Für Updates bestehender Varianten prüft der Mainserver die erwartete Revision atomar.
 - Keine automatische Neuanlage aufgrund einer leeren Fallback-Antwort, keine stillen Namensänderungen, kein DB-Direktzugriff und keine automatische Rechteerhöhung.
 - Keine weiteren Modulformulare, automatische Altlastenbereinigung, zweite Konfigurationspersistenz oder neuer Sync-Dienst. Parser-/Duplikatfälle werden nicht als eigener Bereinigungsauftrag aufgenommen.
-- Der Vorschau-Lieferabschnitt ergänzt den bereits gelieferten Retry-Schutz um Laden und lokale Bearbeitung ohne Mainserver-Write. Schreibende Host-/Plugin-Anbindung und vollständige Variantenverwaltung bleiben offen. Merge, Deployment und produktive Konfigurationswrites sind nicht beauftragt.
+- Der erste schreibende Lieferabschnitt integriert die Dateiliste und exakte Versionswahl, den Feldabgleich für `globalSettings` und den abgesicherten Mainserver-Write mit Readback auf der Seite **Anwendungen → App → App-Konfiguration**. Die vollständige Variantenverwaltung bleibt offen.
 
 ## Impact
 

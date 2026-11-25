@@ -1,13 +1,12 @@
 import {
   validateCsrf,
-  withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
 } from '@sva/auth-runtime/server';
 import type { IamContentOwnerPrincipal } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverOwnershipTransferContent } from '../types.js';
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
 import {
   loadOwnershipItem,
   type OwnershipTransferAudit,
@@ -16,6 +15,7 @@ import {
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
 import {
+  runUnstartedOwnershipTransfer,
   reconcileOrBlockOwnershipTransfer,
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-reconciliation.js';
@@ -54,9 +54,7 @@ const finalizeUnclearTransfer = async (input: {
 }): Promise<Response | null> => {
   const errorCode = input.error instanceof SvaMainserverError ? input.error.code : undefined;
   const providerRejected = errorCode === 'content_transfer_provider_rejected';
-  const writeNotSent =
-    errorCode === 'content_transfer_temporarily_disabled' ||
-    errorCode === 'content_transfer_write_unavailable';
+  const writeNotSent = errorCode === 'content_transfer_write_unavailable';
   if (!providerRejected && !writeNotSent && (await targetConfirmsTransfer(input))) {
     try {
       await finalizeMainserverMutation({
@@ -167,10 +165,11 @@ const executeLockedTransfer = async (input: {
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
+  markJournalMayExist: () => void;
   reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
   const observation = await observeTransferSource(input);
-  if (!observation.ok) return observation.response;
+  if (!observation.ok) return withMutationNotApplied(observation.response);
   const sourceDataProviderId = observation.dataProviderId;
   const reconciliationBlock = await reconcileOrBlockOwnershipTransfer({
     actor: input.actor,
@@ -179,17 +178,16 @@ const executeLockedTransfer = async (input: {
     providerEntityId: input.content.id,
     currentDataProviderId: sourceDataProviderId,
     currentOperationExternalId: input.actor.operationExternalId,
-    ...(input.reconcilePreviousTransfer
-      ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
-      : {}),
+    reconcilePreviousTransfer: input.reconcilePreviousTransfer,
   });
-  if (reconciliationBlock) return reconciliationBlock;
+  if (reconciliationBlock) return withMutationNotApplied(reconciliationBlock);
+  input.markJournalMayExist();
   const source = await authorizeObservedTransferSource({
     actor: input.actor,
     route: input.route,
     observation,
   });
-  if (!source.ok) return source.response;
+  if (!source.ok) return withMutationNotApplied(source.response);
   const targetResolution = await resolveTargetForMutation({
     actor: input.actor,
     contentType: input.route.contentType,
@@ -292,17 +290,14 @@ export const handleContentOwnershipTransfer = async (
   if (csrfError) return csrfError;
   const principal = await parseOwnershipTargetPrincipal(request);
   if (isResponse(principal)) return principal;
-  return withMainserverContentOwnershipLock({
-    instanceId: actor.instanceId,
-    contentType: route.contentType,
-    contentId: route.contentId,
-    execute: () =>
-      executeLockedTransfer({
-        actor,
-        route,
-        content,
-        principal,
-        ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
-      }),
-  });
+  return runUnstartedOwnershipTransfer(actor, route, (markJournalMayExist) =>
+    executeLockedTransfer({
+      actor,
+      route,
+      content,
+      principal,
+      markJournalMayExist,
+      ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
+    })
+  );
 };

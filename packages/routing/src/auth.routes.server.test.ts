@@ -1380,6 +1380,15 @@ describe('auth.routes.server', () => {
     );
   });
 
+  it('rejects invalid handler maps with the affected route path in the error', () => {
+    expect(() => wrapHandlersWithJsonErrorBoundary(null as never, '/auth/login')).toThrow(
+      'invalid_auth_route_handlers:/auth/login'
+    );
+    expect(() => wrapHandlersWithJsonErrorBoundary('GET' as never)).toThrow(
+      'invalid_auth_route_handlers:unknown-route'
+    );
+  });
+
   it('builds server route factories with wrapped handlers for declared auth paths', async () => {
     const rootRoute = { id: 'root' } as never;
     const dataExportIndex = authRoutePaths.indexOf('/iam/me/data-export');

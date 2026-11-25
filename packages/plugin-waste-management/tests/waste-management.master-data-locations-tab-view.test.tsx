@@ -26,7 +26,18 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   usePluginTranslation: () => (key: string) => key,
 }));
 vi.mock('../src/waste-management.master-data-locations-workspace.paged.js', () => ({
-  WasteMasterDataPagedLocationsTable: () => <div>location-table</div>,
+  WasteMasterDataPagedLocationsTable: ({
+    tools,
+    toolContent,
+  }: {
+    tools: React.ReactNode;
+    toolContent: React.ReactNode;
+  }) => (
+    <div>
+      {tools}
+      {toolContent}location-table
+    </div>
+  ),
 }));
 vi.mock('../src/waste-management.master-data-location-form-content.js', () => ({
   WasteMasterDataLocationFormContent: ({ onCancel }: { onCancel: () => void }) => (
@@ -89,6 +100,7 @@ describe('location coverage edit navigation', () => {
     const { rerender } = render(
       <WasteMasterDataLocationsTabView controller={controller} search={search} />
     );
+    fireEvent.click(screen.getByRole('button', { name: 'filters.coverage' }));
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.fraction'), {
       target: { value: 'paper' },
     });

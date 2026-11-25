@@ -46,13 +46,16 @@ export function StudioDataTable<TData extends RowData>({
   emptyState,
   loadingState,
   isLoading = false,
+  keepToolbarWhileLoading = false,
   getRowId,
   selectionMode = 'multiple',
+  selection,
   canSelectRow,
   sorting: sortingConfig,
 }: StudioDataTableProps<TData>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [localRowSelection, setLocalRowSelection] = React.useState<RowSelectionState>({});
+  const rowSelection = selection?.state ?? localRowSelection;
   const selectedRowCount = Object.keys(rowSelection).length;
   const controlledSorting = sortingConfig.mode === 'disabled' ? undefined : sortingConfig.state;
   const sorting =
@@ -114,12 +117,14 @@ export function StudioDataTable<TData extends RowData>({
   }, [hasRows, isLoading]);
 
   React.useEffect(() => {
+    if (isLoading) return;
+
     const availableRowIds = new Set(data.map((row) => getRowId(row)));
     const selectableRowIds = new Set(
       data.filter((row) => (canSelectRow ? canSelectRow(row) : true)).map((row) => getRowId(row))
     );
 
-    setRowSelection((current) => {
+    setLocalRowSelection((current) => {
       let changed = false;
       const next: RowSelectionState = {};
 
@@ -133,11 +138,12 @@ export function StudioDataTable<TData extends RowData>({
 
       return changed ? next : current;
     });
-  }, [canSelectRow, data, getRowId, selectableScopeKey, selectionScopeKey]);
+  }, [canSelectRow, data, getRowId, isLoading, selectableScopeKey, selectionScopeKey]);
 
   const clearSelection = React.useCallback(() => {
-    setRowSelection({});
-  }, []);
+    if (selection) selection.onChange({});
+    else setLocalRowSelection({});
+  }, [selection]);
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((current: SortingState) => SortingState)) => {
@@ -178,7 +184,10 @@ export function StudioDataTable<TData extends RowData>({
         ? (row) => (canSelectRow ? canSelectRow(row.original) : true)
         : false,
     onSortingChange: handleSortingChange,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: (updater) => {
+      if (selection) selection.onChange(typeof updater === 'function' ? updater(rowSelection) : updater);
+      else setLocalRowSelection(updater);
+    },
     state: {
       sorting,
       rowSelection,
@@ -190,6 +199,7 @@ export function StudioDataTable<TData extends RowData>({
       bulkActions={bulkActions}
       selectedRows={selectedRows}
       clearSelection={clearSelection}
+      isLoading={isLoading}
       toolbarStart={toolbarStart}
       toolbarCenter={toolbarCenter}
       toolbarEnd={toolbarEnd}
@@ -206,7 +216,7 @@ export function StudioDataTable<TData extends RowData>({
   const footerContent = footer ? (
     <div className="border-t border-border px-4 py-4">{footer}</div>
   ) : null;
-  if (isLoading) {
+  if (isLoading && !keepToolbarWhileLoading) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-shell" aria-busy="true">
         <div className="p-6 text-sm text-muted-foreground" role="status" aria-live="polite">
@@ -221,6 +231,8 @@ export function StudioDataTable<TData extends RowData>({
       table={table}
       containerRef={containerRef}
       hasRows={hasRows}
+      isLoading={isLoading}
+      loadingState={loadingState ?? labels.loading}
       emptyState={emptyState}
       ariaLabel={ariaLabel}
       caption={caption}

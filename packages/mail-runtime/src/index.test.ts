@@ -109,6 +109,47 @@ describe('mail runtime', () => {
     expect(createTransport).not.toHaveBeenCalled();
   });
 
+  it('refuses a socket requested after an SMTP send was aborted', async () => {
+    const controller = new AbortController();
+    const socketCallback = vi.fn();
+    const createTransport = vi.fn((options: Record<string, unknown>) => ({
+      sendMail: async () => {
+        controller.abort();
+        const getSocket = options.getSocket as (
+          options: unknown,
+          callback: (error: Error | null) => void
+        ) => void;
+        getSocket({}, socketCallback);
+        return {};
+      },
+    }));
+    const dispatch = createNodemailerMailDispatcher({ createTransport });
+
+    await expect(
+      dispatch({
+        instanceId: 'instance-1',
+        transport: {
+          transportId: 'smtp',
+          displayName: 'Fixture',
+          transportType: 'smtp',
+          host: '127.0.0.1',
+          port: 587,
+          securityMode: 'none',
+          authMode: 'none',
+          enabled: true,
+        },
+        message: {
+          from: { email: 'sender@example.invalid' },
+          to: [{ email: 'recipient@example.invalid' }],
+          subject: 'Test',
+          text: 'Test',
+        },
+        signal: controller.signal,
+      })
+    ).rejects.toThrow('mail_dispatch_aborted');
+    expect(socketCallback).toHaveBeenCalledExactlyOnceWith(new Error('mail_dispatch_aborted'));
+  });
+
   it.each(['none', 'tls'] as const)('closes the local SMTP socket on abort in %s mode', async (securityMode) => {
     const server = createServer();
     server.listen(0, '127.0.0.1');

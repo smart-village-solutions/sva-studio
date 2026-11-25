@@ -27,14 +27,18 @@ const createTour = (overrides: Partial<WasteTourRecord>): WasteTourRecord => ({
 });
 
 describe('waste-management tours content helpers', () => {
-  it('counts locations per tour id and treats missing links as empty', () => {
-    expect(createLocationCountByTourId(undefined)).toEqual(new Map());
+  it('counts displayed locations for tours and skips unresolved records', () => {
+    expect(createLocationCountByTourId(null)).toEqual(new Map());
     expect(
-      createLocationCountByTourId([
-        { tourId: 'tour-1' },
-        { tourId: 'tour-2' },
-        { tourId: 'tour-1' },
-      ])
+      createLocationCountByTourId({
+        collectionLocations: [{ id: 'one' }, { id: 'two' }, { id: 'three' }],
+        locationTourLinks: [
+          { tourId: 'tour-1', locationId: 'one' },
+          { tourId: 'tour-2', locationId: 'two' },
+          { tourId: 'tour-1', locationId: 'three' },
+          { tourId: 'tour-2', locationId: 'unavailable' },
+        ],
+      })
     ).toEqual(
       new Map([
         ['tour-1', 2],
@@ -69,7 +73,7 @@ describe('waste-management tours content helpers', () => {
         locationCountByTourId,
         pt,
       }).map((tour) => tour.id)
-    ).toEqual(['tour-1', 'tour-2', 'tour-3']);
+    ).toEqual(['tour-2', 'tour-3', 'tour-1']);
 
     expect(
       sortWasteTours({

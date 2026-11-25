@@ -1,7 +1,14 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const allPermissionActions = [
+  'categories.read',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
+] as const;
 
 const state = vi.hoisted(() => ({
   list: vi.fn(),
@@ -77,6 +84,15 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.fields.email': 'E-Mail',
     'categories.fields.dataTypes': 'Datentypen',
     'categories.fields.active': 'Aktiv',
+    'categories.fields.id': 'ID',
+    'categories.fields.createdAt': 'Erstellt am',
+    'categories.fields.updatedAt': 'Aktualisiert am',
+    'categories.dataTypes.eventRecord': 'Veranstaltungen',
+    'categories.dataTypes.newsItem': 'Neuigkeiten',
+    'categories.dataTypes.pointOfInterest': 'Orte',
+    'categories.dataTypes.tour': 'Touren',
+    'categories.detailsDialog.description': 'Schreibgeschützte Angaben',
+    'categories.actions.close': 'Schließen',
     'categories.values.active': 'Aktiv',
     'categories.values.inactive': 'Inaktiv',
     'categories.values.notAvailable': '—',
@@ -125,6 +141,11 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.cascadeDialog.title': 'Statusänderung bestätigen',
     'categories.cascadeDialog.confirm': 'Status ändern',
   };
+  if (key === 'categories.values.unavailableType')
+    return `${variables?.value ?? ''} (nicht mehr verfügbar)`;
+  if (key === 'categories.detailsDialog.title') return `Details zu „${variables?.name ?? ''}“`;
+  if (key === 'categories.detailsDialog.trigger')
+    return `${variables?.name ?? ''} – Details anzeigen`;
   if (key === 'categories.table.countLabel') return `${variables?.count ?? 0} Kategorien`;
   if (key === 'categories.deleteDialog.description') return `${variables?.target ?? ''} löschen?`;
   if (key === 'categories.cascadeDialog.description')
@@ -145,6 +166,7 @@ describe('CategoriesPage', () => {
     state.list.mockReset().mockResolvedValue(categories);
     state.save.mockReset();
     state.remove.mockReset();
+    state.access.permissionActions = [...allPermissionActions];
     registerPluginTranslationResolver(label);
   });
 
@@ -310,7 +332,12 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     expect(state.save).not.toHaveBeenCalled();
-    expect(screen.getByRole('alertdialog', { name: 'Statusänderung bestätigen' })).toBeTruthy();
+    const confirmation = screen.getByRole('alertdialog', { name: 'Statusänderung bestätigen' });
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('alertdialog', { name: 'Statusänderung bestätigen' })).toBeNull();
+    expect(state.save).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Status ändern' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
   });
@@ -469,5 +496,106 @@ describe('CategoriesPage', () => {
 
     expect(await screen.findByText('Gespeichert, aber Neuladen fehlgeschlagen.')).toBeTruthy();
     expect(screen.getByText('Kategorien konnten nicht geladen werden.')).toBeTruthy();
+  });
+
+  it('labels registered and legacy data types and keeps unknown identifiers visible', async () => {
+    state.list.mockResolvedValue([
+      { ...categories[0], dataTypes: ['job_listing', 'news_item', 'retired_type'] },
+    ]);
+    render(
+      <CategoriesPage dataTypeOptions={[{ value: 'job_listing', label: 'Stellenangebote' }]} />
+    );
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    expect(
+      screen.getAllByText('Stellenangebote, Neuigkeiten, retired_type (nicht mehr verfügbar)')
+        .length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/news_item/u)).toBeNull();
+  });
+
+  it('keeps an unknown stored data type selectable and round-trips it on update', async () => {
+    state.list.mockResolvedValue([{ ...categories[0], dataTypes: ['retired_type'] }]);
+    state.save.mockResolvedValue({
+      category: categories[0],
+      affectedDescendantIds: [],
+      errors: [],
+    });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
+
+    const option = screen.getByRole('option', { name: 'retired_type (nicht mehr verfügbar)' });
+    expect((option as HTMLOptionElement).selected).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() =>
+      expect(state.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: expect.objectContaining({ dataTypes: ['retired_type'] }),
+        })
+      )
+    );
+  });
+
+  it('shows read-only category metadata with locale-formatted timestamps', async () => {
+    state.list.mockResolvedValue([
+      {
+        ...categories[0],
+        iconName: 'town-hall',
+        email: 'team@example.org',
+        createdAt: '2026-01-02T03:04:05Z',
+        updatedAt: '2026-07-08T09:10:11Z',
+      },
+    ]);
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Service – Details anzeigen' })[0]!);
+
+    const dialog = screen.getByRole('dialog', { name: 'Details zu „Service“' });
+    for (const [term, value] of [
+      ['ID', 'cat-root'],
+      ['Icon', 'town-hall'],
+      ['E-Mail', 'team@example.org'],
+      ['Erstellt am', '02.01.2026, 04:04'],
+      ['Aktualisiert am', '08.07.2026, 11:10'],
+    ])
+      expect(within(dialog).getByText(term).nextElementSibling?.textContent).toBe(value);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Schließen' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('uses the unavailable label for absent category metadata', async () => {
+    state.list.mockResolvedValue([categories[1]]);
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bürgerbüro – Details anzeigen' })[0]!);
+
+    const dialog = screen.getByRole('dialog', { name: 'Details zu „Bürgerbüro“' });
+    for (const term of ['Icon', 'E-Mail', 'Erstellt am', 'Aktualisiert am'])
+      expect(within(dialog).getByText(term).nextElementSibling?.textContent).toBe('—');
+  });
+
+  it('lets read-only users open details and close them by keyboard with focus return', async () => {
+    state.access.permissionActions = ['categories.read'];
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    expect(screen.queryByRole('button', { name: 'Kategorie anlegen' })).toBeNull();
+    for (const name of ['Bearbeiten', 'Neue Unterkategorie', 'Löschen'])
+      expect(screen.getAllByRole('button', { name })[0]?.hasAttribute('disabled')).toBe(true);
+
+    const details = screen.getAllByRole('button', { name: 'Service – Details anzeigen' })[0]!;
+    expect(details.hasAttribute('disabled')).toBe(false);
+    expect(details.getAttribute('aria-haspopup')).toBe('dialog');
+    fireEvent.click(details);
+    const dialog = screen.getByRole('dialog', { name: 'Details zu „Service“' });
+    expect(within(dialog).queryByRole('textbox')).toBeNull();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(details);
+    expect(state.save).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
   });
 });

@@ -41,39 +41,42 @@ export const WasteEmailReminderConfigurationSection = ({
   const sectionProps = { patch, translate, value };
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
-      <section className="space-y-5 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{translate('output.emailReminder.title')}</h3>
+      <details className="rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
+        <summary className="cursor-pointer rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {translate('output.emailReminder.title')}
+        </summary>
+        <div className="mt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
             {translate('output.emailReminder.description')}
           </p>
-        </div>
-        <ActivationAndTransportSection
-          {...sectionProps}
-          hasMailTransportOptions={hasMailTransportOptions}
-          transportOptions={transportOptions}
-        />
-        <LegalSection {...sectionProps} />
-        <DoiSection {...sectionProps} />
-        <ReminderSection {...sectionProps} />
-        <UnsubscribeSection {...sectionProps} />
-        <GuardrailsSection {...sectionProps} />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {translate('output.emailReminder.meta.runtimeHint')}
-          </p>
-          <StudioSaveButton
-            type="submit"
-            status={saveStatus}
-            disabled={(value.enabled || value.publicSignupEnabled) && !hasMailTransportOptions}
-            labels={{
-              idle: translate('output.emailReminder.actions.save'),
-              saving: translate('output.emailReminder.actions.saving'),
-              saved: translate('output.emailReminder.actions.saved'),
-            }}
+
+          <ActivationAndTransportSection
+            {...sectionProps}
+            hasMailTransportOptions={hasMailTransportOptions}
+            transportOptions={transportOptions}
           />
+          <LegalSection {...sectionProps} />
+          <DoiSection {...sectionProps} />
+          <ReminderSection {...sectionProps} />
+          <UnsubscribeSection {...sectionProps} />
+          <GuardrailsSection {...sectionProps} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              {translate('output.emailReminder.meta.runtimeHint')}
+            </p>
+            <StudioSaveButton
+              type="submit"
+              status={saveStatus}
+              disabled={(value.enabled || value.publicSignupEnabled) && !hasMailTransportOptions}
+              labels={{
+                idle: translate('output.emailReminder.actions.save'),
+                saving: translate('output.emailReminder.actions.saving'),
+                saved: translate('output.emailReminder.actions.saved'),
+              }}
+            />
+          </div>
         </div>
-      </section>
+      </details>
     </form>
   );
 };

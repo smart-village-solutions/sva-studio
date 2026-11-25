@@ -7,6 +7,7 @@ import {
   assertSeparateAppUnitEvidence,
   type CiFeedbackEvidence,
 } from './ci-feedback-evidence.ts';
+import { APP_PROJECT } from './affected-unit-plan.ts';
 import { selectRemainingUnitProjects, unitShardId } from './unit-shards.ts';
 
 export interface AggregateCiFeedbackOptions {
@@ -140,7 +141,7 @@ const assertUnitPlan = (
   };
   if (separateApp) assertSeparateAppUnitEvidence(acceptedEvidence, projectsByShard);
   const nonAppProjects = (projects: readonly string[]): string[] =>
-    separateApp ? projects.filter((project) => project !== 'sva-studio-react') : [...projects];
+    separateApp ? projects.filter((project) => project !== APP_PROJECT) : [...projects];
   assertExactProjects('unit-direct', nonAppProjects(directEvidence.plan.directProjects));
   if (remainingIds.length === 1 && remainingIds[0] === 'unit-remaining') {
     assertExactProjects('unit-remaining', nonAppProjects(directEvidence.plan.remainingProjects));
@@ -156,7 +157,7 @@ const assertUnitPlan = (
     }
     assertExactProjects(
       shardId,
-      nonAppProjects(selectRemainingUnitProjects(directEvidence.plan.remainingProjects, shard))
+      selectRemainingUnitProjects(directEvidence.plan.remainingProjects, shard, separateApp)
     );
   }
 };

@@ -1,3 +1,4 @@
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -539,6 +540,28 @@ describe('waste-management scheduling shared helpers', () => {
         tourId: 'tour-x',
         settingsTab: 'source',
       })
+    ).toEqual([]);
+    expect(
+      filterSchedulingTableEntries(
+        entries,
+        normalizeWasteManagementSearchParams({
+          tab: 'scheduling',
+          shiftContext: 'global',
+          tourId: 'tour-1',
+          shiftDateFrom: '2026-12-26',
+          shiftDateTo: '2026-12-26',
+        })
+      )
+    ).toEqual([expect.objectContaining({ id: 'global-1', actualDate: '2026-12-27' })]);
+    expect(
+      filterSchedulingTableEntries(
+        entries,
+        normalizeWasteManagementSearchParams({
+          tab: 'scheduling',
+          shiftDateFrom: '2026-12-27',
+          shiftDateTo: '2026-12-27',
+        })
+      )
     ).toEqual([]);
     expect(
       findSchedulingTableEntry({

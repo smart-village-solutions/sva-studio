@@ -99,22 +99,9 @@ export const WasteManagementTabContent = ({
     <WasteTabPanelActionsProvider
       render={(actions) => (
         <div className="space-y-4">
-          <section
-            aria-label={pt(`tabs.${tabKey}.title`)}
-            className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
-          >
-            <div className="space-y-1">
-              <h2 className="text-base font-semibold text-foreground">
-                {pt(`tabs.${tabKey}.title`)}
-              </h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {pt(`tabs.${tabKey}.body`)}
-              </p>
-            </div>
-            {actions ? (
-              <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{actions}</div>
-            ) : null}
-          </section>
+          {actions ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
+          ) : null}
           {content[tabId] ?? (
             <StudioEmptyState>
               <div className="space-y-2 text-left">

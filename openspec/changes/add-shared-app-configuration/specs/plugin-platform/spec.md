@@ -1,5 +1,16 @@
 ## ADDED Requirements
 
+### Requirement: App-Einstellungen sind im App-Zweig der Studio-Seitenleiste erreichbar
+
+Bei den mit #2180 verknüpften App-Einstellungs-Issues bezeichnet **Anwendungen → App** die Zwischenüberschrift **Anwendungen** und das Untermenü **App** in der Studio-Seitenleiste. Der Editor MUST am konkreten Unterpunkt erreichbar sein, den das jeweilige Issue nennt. Das Plugin `application-workspace` betreibt die Kachelseite für Links zu anderen Anwendungen. Die fachliche Zuständigkeit des jeweiligen Plugins gilt unabhängig vom gemeinsamen Ort in der Navigation.
+
+#### Scenario: App-Einstellungen aus dem jeweiligen Menüpunkt öffnen
+
+- **GIVEN** die benötigten Module sind aktiv und ein Mandantennutzer besitzt die erforderlichen Konfigurationsrechte
+- **WHEN** der Nutzer in der Studio-Seitenleiste **Anwendungen → App** aufklappt
+- **THEN** erreicht er querschnittliche Einstellungen am vorgesehenen Unterpunkt, beispielsweise **Allgemein** oder **Design**
+- **AND** erreicht er modulspezifische Einstellungen unter **Module → [Modulname]**, beispielsweise **Module → Abfall**
+
 ### Requirement: App-Konfigurationsplugins verwenden den gemeinsamen Host-Vertrag
 
 App-Konfigurationsplugins MUST den gemeinsamen hostgeführten Abgleich in `@sva/sva-mainserver` über öffentliche SDK-/Host-Verträge nutzen. Plugins MUST ihre fachlichen Felder und Validierungen verantworten; sie MUST NOT eigene GraphQL-, Credential-, Retry-, Merge- oder Readback-Verfahren für diese Konfiguration implementieren. Der Host MUST Plugin-Identität, Aktivierung, namespaced Actions und Feldzuständigkeit serverseitig validieren. Ein gemeinsamer Container MUST NOT pauschal sämtliche Nachfahren einem Plugin zuordnen.

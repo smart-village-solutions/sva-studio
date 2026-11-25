@@ -15,7 +15,13 @@ Reihenfolge:
 3. Hausnummer
 4. technische ID als stabiler Gleichstandsauflöser
 
-Mit **Region berücksichtigen** wird die Region als erstes Kriterium ergänzt.
+Im Dialog **Filter** ergänzt die Adressreihenfolge mit Region dieses erste Kriterium.
+Die einzelnen Spalten Region, Ort, Straße, Hausnummer, Touren und Status sind
+über die Tabellenköpfe und die Feldauswahl im Dialog sortierbar. Die Spalte
+Touren sortiert nach der Zahl der angezeigten Zuordnungen einschließlich null. Bis zu drei
+Touren sind je Abholpunkt direkt sichtbar. Längere Listen lassen sich über
+die angezeigte Anzahl aufklappen. Dort stehen die Touren mit ihren
+Gültigkeitszeiträumen und Verknüpfungen zu den Tourdetails.
 Die gemeinsame Richtung gilt für alle fachlichen Kriterien. Die technische ID
 bleibt immer aufsteigend, damit ein Datensatz beim Blättern nicht zwischen
 Seiten wandert. Fehlende Region, Straße oder Hausnummer stehen in beiden
@@ -28,8 +34,11 @@ Studio-Instanz verglichen.
 
 ## Filter, Seiten und URL-Zustand
 
-Suche, Status, Region, Ort und Tour werden vor Sortierung und Pagination auf den
-Gesamtbestand angewendet. Änderungen an einem Filter, an der Sortierung oder an
+Suche, Aktivitätsstatus, Region, Ort, Straße, Hausnummer und konkrete Tour
+werden vor der Sortierung auf den Gesamtbestand angewendet. Jahr und
+Tourstatus bestimmen die angezeigten und bei der Sortierung gezählten
+Zuordnungen. Ein Abholpunkt ohne passende Zuordnung bleibt in der Liste,
+solange keine konkrete Tour oder ein anderes Kriterium ihn ausschließt. Änderungen an einem Filter, an der Sortierung oder an
 der Seitengröße springen auf Seite eins zurück. Ein reiner Seitenwechsel behält
 alle anderen Einstellungen bei.
 
@@ -50,15 +59,25 @@ ausdrücklich in der geöffneten URL gesetzten Filter.
 
 ## Tabellenköpfe im Abfallmodul
 
-Suche, Filter und **Filter zurücksetzen** stehen links, Listenaktionen rechts.
-Aktive Filter stehen in einer Zeile unter den Bedienelementen. Auf schmalen
-Ansichten werden die Bedienelemente umgebrochen.
+Die sechs Listen beginnen mit Suche oder Filter und den fachlichen Aktionen.
+Der mittig geöffnete Dialog bearbeitet einen Entwurf. **Filter anwenden**
+übernimmt ihn. **Abbrechen** und Escape lassen die Treffer unverändert.
+Angewandte Kriterien stehen unter der Bedienleiste und lassen sich einzeln
+entfernen. Sammelaktionen für markierte Einträge stehen bei der Auswahl. Der
+aktive Tourfilter der Abholpunktliste zeigt auch den Gültigkeitszeitraum.
+Bei einer Suche oder Filterauswahl ohne Treffer lässt sich der Listenfilter
+direkt im Leerzustand zurücksetzen.
 
-Dieses Muster gilt für Touren, Abholpunkte, Abfallarten, Stammdaten,
-Ausweichtermine, Tour-Einsätze, beide Richtungen der Tour-Zuordnung, den
-Datentools-Verlauf und das E-Mail-Monitoring. Auswahl und Speichern richten sich
-nach der jeweiligen Liste. In der Zuordnungsdetailseite steht die Aktion zum
-Speichern des gesamten Formulars am Seitenende.
+Abfallarten sind auch über das PDF-Kürzel auffindbar. In den Stammdaten steuert
+der Datentyp die Elternauswahl. Ausweichtermine lassen sich zusätzlich nach Typ,
+Tour und Zeitraum des ursprünglichen Abholtermins filtern. Bei Tour-Einsätzen
+steht die Tour als Filter bereit. Eine verknüpfte Tour bleibt über **Zur Tour**
+erreichbar. Die Listen sind nach ihren Fachspalten sortierbar.
+
+Die Fraktionsprüfung öffnet sich in der Abholpunktliste über
+**Fraktionszuordnung prüfen**. Ausgabe, Datentools und Einstellungen gruppieren
+die Arbeit in aufklappbare Abschnitte. Beim Schließen bleiben Eingaben und
+Prozessfortschritt erhalten.
 
 ## Auswahl über mehrere Seiten
 

@@ -53,6 +53,7 @@ export type SvaMainserverProjectionListItem = Readonly<{
   active?: boolean;
   status?: string;
   languageCode?: string;
+  categoryIds?: readonly string[];
   pointOfInterestId?: string;
   dataProvider?: Readonly<{ id?: string; name?: string }>;
 }>;

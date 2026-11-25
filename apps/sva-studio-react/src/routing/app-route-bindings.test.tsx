@@ -98,6 +98,10 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
   ),
 }));
 
+vi.mock('../routes/app-configuration/-editor', () => ({
+  AppConfigurationEditor: () => <h1>App-Konfiguration</h1>,
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   useBlocker: () => ({ status: 'idle', proceed: undefined, reset: undefined }),
   useParams: () => routeState.params,
@@ -650,7 +654,9 @@ vi.mock('@sva/plugin-faq', () => ({
   FaqEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="faq-edit-page" data-principal-value={principalControl?.value} />
   ),
-  FaqListPage: () => <div data-testid="faq-list-page" />,
+  FaqListPage: (props: Record<string, unknown>) => (
+    <div data-testid="faq-list-page" data-prop-keys={Object.keys(props).join(',')} />
+  ),
 }));
 
 vi.mock('@sva/plugin-cockpit-cards', () => ({
@@ -805,6 +811,7 @@ describe('appRouteBindings', () => {
     for (const [url, binding] of urlsAndBindings) {
       expect(binding, url).toBe(NotFound);
     }
+    expect(ssfBindings).not.toHaveProperty('appConfiguration');
     expect(routeState.getContent).not.toHaveBeenCalled();
     expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
   });
@@ -815,6 +822,13 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('instance');
     view.rerender(<appRouteBindings.adminAppTranslations />);
     expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('platform');
+  });
+
+  it('opens the App-Konfiguration editor directly on its own Studio route', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.appConfiguration />);
+
+    expect(await screen.findByRole('heading', { name: 'App-Konfiguration' })).toBeTruthy();
   });
 
   it('wraps plugin editor contributions with host principal context in the SSF profile', async () => {
@@ -908,6 +922,22 @@ describe('appRouteBindings', () => {
     }
   );
 
+  it('keeps the CMS news list mounted across an organization context reload', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.search = { type: 'news.article' };
+    const view = render(<appRouteBindings.content />);
+    const list = screen.getByTestId('content-list-page');
+
+    routeState.organizationContextIsLoading = true;
+    view.rerender(<appRouteBindings.content />);
+    expect(screen.getByText('Author context loading')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBe(list);
+
+    routeState.organizationContextIsLoading = false;
+    view.rerender(<appRouteBindings.content />);
+    expect(screen.getByTestId('content-list-page')).toBe(list);
+  });
+
   it('unmounts categories while the organization context changes', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
     routeState.organizationContext.activeOrganizationId = 'organization-1';
@@ -935,6 +965,60 @@ describe('appRouteBindings', () => {
     routeState.organizationContextError = null;
     view.rerender(<appRouteBindings.categories />);
     expect(screen.getByTestId('categories-page')).toBeTruthy();
+  });
+
+  it('mounts plugin list bindings without injecting the editor host context', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const { studioRoutePlugins: ssfRoutePlugins } = await import('./app-route-bindings.ssf');
+    const SsfFaqList = ssfRoutePlugins
+      .find((plugin) => plugin.id === 'faq')
+      ?.viewBindings?.find((binding) => binding.bindingKey === 'faqList')
+      ?.component as ComponentType;
+
+    for (const FaqList of [appRouteBindings.faqList, SsfFaqList]) {
+      render(<FaqList />);
+      expect(screen.getByTestId('faq-list-page').getAttribute('data-prop-keys')).toBe('');
+      cleanup();
+    }
+  });
+
+  it('gives every host fallback list its own route component so switching lists remounts', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const fallbackLists = (
+      ['newsList', 'eventsList', 'genericItemsList', 'poiList', 'surveysList'] as const
+    ).map((bindingKey) => appRouteBindings[bindingKey]);
+
+    expect(new Set(fallbackLists).size).toBe(fallbackLists.length);
+  });
+
+  it('renders plugin and host fallback lists in personal and organization contexts', async () => {
+    routeState.authUser = { id: 'user-1', displayName: 'Philipp Wilimzig' };
+    const organization = {
+      organizationId: 'org-2',
+      organizationKey: 'org-2',
+      displayName: 'Redaktion Musterhausen',
+      organizationType: 'municipality' as const,
+      contentAuthorPolicy: 'org_or_personal' as const,
+      isActive: true,
+      isDefaultContext: true,
+    };
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    for (const [activeOrganizationId, expectedPrincipal] of [
+      [undefined, 'user'],
+      ['org-2', 'organization'],
+    ] as const) {
+      routeState.organizationContext = { activeOrganizationId, organizations: [organization] };
+
+      render(<appRouteBindings.faqList />);
+      render(<appRouteBindings.newsList />);
+
+      expect(screen.getByTestId('faq-list-page')).toBeTruthy();
+      expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBe(
+        expectedPrincipal
+      );
+      cleanup();
+    }
   });
 
   it('renders the concrete modules binding instead of the system placeholder', async () => {
@@ -1354,6 +1438,22 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.queryByText('Resource principal loading')).toBeNull();
+  });
+
+  it('keeps the news editor in place while its resource access is rechecked', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.newsDetail />);
+    const editor = await screen.findByTestId('news-edit-page');
+
+    routeState.getContent.mockReturnValueOnce(new Promise(() => undefined));
+    routeState.organizationContextIsLoading = true;
+    view.rerender(<appRouteBindings.newsDetail />);
+
+    expect(screen.getByTestId('news-edit-page')).toBe(editor);
+    expect(editor.closest('fieldset')?.disabled).toBe(true);
+    expect(screen.getByText('Resource principal loading').classList.contains('sr-only')).toBe(true);
   });
 
   it('enables the ownership panel only after server-side transfer authorization', async () => {

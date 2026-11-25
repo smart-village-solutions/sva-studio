@@ -153,6 +153,7 @@ describe('WasteToursContent sorting and delete flows', () => {
         fractions={[] as never}
         masterDataOverview={
           {
+            collectionLocations: [{ id: 'location-1' }, { id: 'location-2' }, { id: 'location-3' }],
             locationTourLinks: [
               { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
               { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },

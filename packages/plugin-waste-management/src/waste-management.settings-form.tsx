@@ -29,14 +29,14 @@ type WasteSettingsFormProps = {
   readonly onSubmit: () => void;
 };
 
-export const WasteSettingsForm = ({
-  form,
-  settings,
-  saving,
-  saveStatus,
-  onChange,
-  onSubmit,
-}: Readonly<WasteSettingsFormProps>) => {
+const openInvalidSettingsSection = (event: React.FormEvent<HTMLFormElement>) => {
+  if (!(event.target instanceof HTMLElement)) return;
+  const section = event.target.closest('details');
+  if (section) section.open = true;
+};
+
+export const WasteSettingsForm = (props: Readonly<WasteSettingsFormProps>) => {
+  const { form, settings, saving, saveStatus, onChange, onSubmit } = props;
   const pt = usePluginTranslation('wasteManagement');
   const [holidayOverwriteDialogOpen, setHolidayOverwriteDialogOpen] = useState(false);
   const lastSuccessfulHolidaySyncAt = formatUpdatedAt(settings?.lastSuccessfulHolidaySyncAt);
@@ -59,7 +59,11 @@ export const WasteSettingsForm = ({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form
+      className="space-y-4"
+      onSubmit={handleSubmit}
+      onInvalidCapture={openInvalidSettingsSection}
+    >
       <WasteTechnicalConfigurationSection form={form} onChange={onChange} />
       <WasteSettingsCustomRecurrenceSection
         items={form.customRecurrencePresets}
@@ -76,7 +80,12 @@ export const WasteSettingsForm = ({
           lastSuccessfulHolidaySyncAt={lastSuccessfulHolidaySyncAt}
           onChange={onChange}
         />
-        <WasteCalendarWebUrlSection form={form} saving={saving} onChange={onChange} />
+        <WasteCalendarWebUrlSection
+          form={form}
+          saving={saving}
+          onChange={onChange}
+          savedCalendarWebUrl={settings?.calendarWebUrl}
+        />
         <WasteDisruptionNotificationsSection form={form} saving={saving} onChange={onChange} />
         <WasteInterfaceSelectionSection
           form={form}
@@ -85,17 +94,15 @@ export const WasteSettingsForm = ({
           onChange={onChange}
         />
       </div>
-      <div>
-        <StudioSaveButton
-          type="submit"
-          status={saveStatus}
-          labels={{
-            idle: pt('settings.actions.save'),
-            saving: pt('settings.actions.saving'),
-            saved: pt('settings.actions.saved'),
-          }}
-        />
-      </div>
+      <StudioSaveButton
+        type="submit"
+        status={saveStatus}
+        labels={{
+          idle: pt('settings.actions.save'),
+          saving: pt('settings.actions.saving'),
+          saved: pt('settings.actions.saved'),
+        }}
+      />
       <StudioConfirmDialog
         open={holidayOverwriteDialogOpen}
         title={pt('settings.messages.holidayStateOverwriteWarningTitle')}

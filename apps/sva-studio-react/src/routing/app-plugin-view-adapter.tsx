@@ -64,7 +64,7 @@ const PluginContentView = ({
   pluginId: string;
   binding: PluginViewBinding;
   contentType: string;
-  viewKind: 'list' | 'detail' | 'editor';
+  viewKind: 'detail' | 'editor';
 }>) => {
   const { user } = useAuth();
   const mutationCapabilities = useMainserverMutationCapabilities();
@@ -77,7 +77,6 @@ const PluginContentView = ({
     />
   );
 
-  if (viewKind === 'list') return makePage();
   if (viewKind === 'detail') {
     return (
       <ContentEditorLeaveBoundary>
@@ -155,8 +154,11 @@ export const createHostOwnedPluginView = (
   const matchedView = Object.entries(resource?.contentUi?.bindings ?? {}).find(
     ([, view]) => view?.bindingKey === binding.bindingKey
   );
-  if (!resource?.contentUi?.contentType || !matchedView) return () => <Component />;
-  const viewKind = matchedView[0] as 'list' | 'detail' | 'editor';
+  const viewKind = matchedView?.[0] as 'list' | 'detail' | 'editor' | undefined;
+  // Lists skip the editor-oriented host context. The per-binding wrapper keeps each list route a
+  // distinct component, so switching between lists that share a page still remounts it.
+  if (!resource?.contentUi?.contentType || !viewKind || viewKind === 'list')
+    return () => <Component />;
   return () => (
     <PluginContentView
       Page={Component}

@@ -44,6 +44,12 @@ const buildCollectionLocationFilter = (
   if (filter.cityId?.trim()) {
     conditions.push(`location.city_id = ${addValue(filter.cityId.trim())}::uuid`);
   }
+  if (filter.streetId) {
+    conditions.push(`location.street_id = ${addValue(filter.streetId)}::uuid`);
+  }
+  if (filter.houseNumberId) {
+    conditions.push(`location.house_number_id = ${addValue(filter.houseNumberId)}::uuid`);
+  }
   if (filter.tourId?.trim()) {
     const parameter = addValue(filter.tourId.trim());
     conditions.push(`EXISTS (
@@ -79,20 +85,67 @@ LEFT JOIN waste_regions AS region ON region.id = location.region_id
 LEFT JOIN waste_streets AS street ON street.id = location.street_id
 LEFT JOIN waste_house_numbers AS house_number ON house_number.id = location.house_number_id`;
 
+const sortColumns = {
+  address: ['city_sort_name', 'street_name', 'house_number'],
+  addressWithRegion: ['region_name', 'city_sort_name', 'street_name', 'house_number'],
+  region: ['region_name'],
+  city: ['city_sort_name'],
+  street: ['street_name'],
+  houseNumber: ['house_number'],
+  tourCount: ['tour_count'],
+  status: ['active'],
+} satisfies Record<WasteCollectionLocationQuery['sortMode'], readonly string[]>;
+
+const buildTourCounts = (query: WasteCollectionLocationQuery, values: SqlPrimitive[]): string => {
+  if (query.sortMode !== 'tourCount') return '';
+  const bind = (value: SqlPrimitive) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+  const predicates: string[] = [];
+  if (query.tourYear !== undefined) {
+    const start = bind(`${query.tourYear}-01-01`);
+    const end = bind(`${query.tourYear}-12-31`);
+    predicates.push(`(
+      ((tour.first_date IS NULL OR tour.first_date <= ${end}::date)
+       AND (tour.end_date IS NULL OR tour.end_date >= ${start}::date))
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(tour.custom_dates) = 'array' THEN tour.custom_dates ELSE '[]'::jsonb END
+        ) AS custom
+        WHERE custom->>'date' BETWEEN ${start}::text AND ${end}::text
+      )
+    )`);
+  }
+  if (query.tourStatus) predicates.push(`tour.status = ${bind(query.tourStatus)}`);
+  const where = predicates.length ? `WHERE ${predicates.join(' AND ')}` : '';
+  return `, tour_counts AS (
+  SELECT link.location_id, COUNT(*) AS tour_count
+  FROM filtered
+  JOIN waste_location_tour_links AS link ON link.location_id = filtered.id::uuid
+  JOIN waste_tours AS tour ON tour.id = link.tour_id
+  ${where}
+  GROUP BY link.location_id
+), ranked AS (
+  SELECT filtered.*, COALESCE(tour_counts.tour_count, 0) AS tour_count
+  FROM filtered
+  LEFT JOIN tour_counts ON tour_counts.location_id = filtered.id::uuid
+)`;
+};
+
 const buildCollectionLocationOrder = (
   query: Pick<WasteCollectionLocationQuery, 'sortMode' | 'sortDirection'>,
   prefix = ''
 ): string => {
   const direction = query.sortDirection === 'desc' ? 'DESC' : 'ASC';
   const expression = (name: string) => `${prefix}${name}`;
-  const criteria =
-    query.sortMode === 'addressWithRegion'
-      ? ['region_name', 'city_sort_name', 'street_name', 'house_number']
-      : ['city_sort_name', 'street_name', 'house_number'];
+  const criteria: readonly string[] = sortColumns[query.sortMode];
   return [
-    ...criteria.map(
-      (name) => `${expression(name)} COLLATE public.sva_de_numeric ${direction} NULLS LAST`
-    ),
+    ...criteria.map((name) => {
+      if (name === 'active') return `CASE WHEN ${expression(name)} THEN 0 ELSE 1 END ${direction}`;
+      if (name === 'tour_count') return `${expression(name)} ${direction}`;
+      return `${expression(name)} COLLATE public.sva_de_numeric ${direction} NULLS LAST`;
+    }),
     `${expression('id')} ASC`,
   ].join(',\n  ');
 };
@@ -102,6 +155,8 @@ export const buildCollectionLocationPageStatement = (
 ): SqlStatement => {
   const values: SqlPrimitive[] = [];
   const where = buildCollectionLocationFilter(query, values);
+  const tourCounts = buildTourCounts(query, values);
+  const pageSource = query.sortMode === 'tourCount' ? 'ranked' : 'filtered';
   values.push(query.pageSize, (query.page - 1) * query.pageSize);
   const order = buildCollectionLocationOrder(query);
   const pageOrder = buildCollectionLocationOrder(query, 'page.');
@@ -112,13 +167,13 @@ WITH filtered AS (
   SELECT${collectionLocationProjection}
   ${collectionLocationJoins}
   ${where}
-),
+)${tourCounts},
 total AS (
   SELECT COUNT(*)::text AS total_count FROM filtered
 ),
 page AS (
   SELECT *
-  FROM filtered
+  FROM ${pageSource}
   ORDER BY ${order}
   LIMIT $${values.length - 1}
   OFFSET $${values.length}

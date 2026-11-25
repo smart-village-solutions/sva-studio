@@ -386,6 +386,37 @@ describe('installed plugin build inputs', () => {
     expect(fingerprint()).not.toBe(withCopy);
   });
 
+  it('fingerprints directory symlinks retargeted between already visited directories', () => {
+    const { appRoot, packageRoot } = createFixture({
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    for (const [name, label] of [
+      ['a', 'A'],
+      ['b', 'B'],
+    ]) {
+      mkdirSync(join(packageRoot, name));
+      writeFileSync(join(packageRoot, name, 'module.js'), `export const label = "${label}";`);
+    }
+    writeFileSync(
+      join(packageRoot, 'dist', 'calendar-view.js'),
+      'export { label } from "./link/module.js";'
+    );
+    const link = join(packageRoot, 'dist', 'link');
+    symlinkSync(join(packageRoot, 'a'), link);
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+
+    rmSync(link);
+    symlinkSync(join(packageRoot, 'b'), link);
+    expect(fingerprint()).not.toBe(initial);
+
+    rmSync(link);
+    symlinkSync(join(packageRoot, 'a'), link);
+    expect(fingerprint()).toBe(initial);
+  });
+
   it('fingerprints entry files the manifest places in excluded directories', () => {
     const { appRoot, packageRoot } = createFixture({
       browserPath: './.build/calendar-view.js',

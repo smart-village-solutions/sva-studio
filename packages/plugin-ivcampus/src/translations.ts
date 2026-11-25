@@ -1,0 +1,36 @@
+export const ivCampusTranslations = {
+  de: {
+    ivcampus: {
+      description: 'Studio-Redaktion aus ivCampus öffnen.',
+      settings: 'ivCampus-Widget',
+      readSettings: 'Widget-Adresse abrufen',
+      widgetUrl: 'Widget-URL für die Einreichung bei ivCampus',
+      copy: 'URL kopieren',
+      copied: 'Widget-URL kopiert.',
+      pilotOnly: 'Das Widget wird für die Studio-Sandbox erprobt.',
+      copyFailed: 'Bitte kopieren Sie die Adresse aus dem Feld.',
+      title: 'App-Redaktion',
+      news: 'Neue News',
+      event: 'Neues Event',
+      openingFailed: 'Studio konnte nicht in einem neuen Tab geöffnet werden.',
+      unavailable: 'Die Kachel ist in diesem Fenster nicht verfügbar.',
+    },
+  },
+  en: {
+    ivcampus: {
+      description: 'Open Studio editorial tasks from ivCampus.',
+      settings: 'ivCampus widget',
+      readSettings: 'Read widget address',
+      widgetUrl: 'Widget URL for submission to ivCampus',
+      copy: 'Copy URL',
+      copied: 'Widget URL copied.',
+      pilotOnly: 'The widget is being piloted in Studio Sandbox.',
+      copyFailed: 'Copy the address from the field.',
+      title: 'App editorial',
+      news: 'New news item',
+      event: 'New event',
+      openingFailed: 'Studio could not be opened in a new tab.',
+      unavailable: 'The widget is unavailable in this window.',
+    },
+  },
+};

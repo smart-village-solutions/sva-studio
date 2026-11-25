@@ -12,6 +12,7 @@ import { pluginJobsTranslations } from '../../packages/plugin-jobs/src/plugin.tr
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 import { pluginProjectsTranslations } from '../../packages/plugin-projects/src/plugin.translations';
+import { ivCampusTranslations } from '../../packages/plugin-ivcampus/src/translations';
 import { searchTranslations } from '../../packages/plugin-search/src/plugin.translations';
 import { pluginSurveysTranslations } from '../../packages/plugin-surveys/src/plugin.translations';
 import { pluginConstructionSitesTranslations } from '../../packages/plugin-construction-sites/src/plugin.translations';
@@ -37,6 +38,7 @@ export const SOURCE_ROOTS = [
   'packages/plugin-projects/src',
   'packages/plugin-surveys/src',
   'packages/plugin-search/src',
+  'packages/plugin-ivcampus/src',
   'packages/plugin-waste-management/src',
 ] as const;
 
@@ -54,6 +56,7 @@ const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'packages/plugin-projects/src', namespace: 'projects' },
   { relativeRoot: 'packages/plugin-surveys/src', namespace: 'surveys' },
   { relativeRoot: 'packages/plugin-search/src', namespace: 'search' },
+  { relativeRoot: 'packages/plugin-ivcampus/src', namespace: 'ivcampus' },
   { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
 ] as const;
 
@@ -68,6 +71,7 @@ const pluginTranslationResources = [
   pluginProjectsTranslations,
   pluginSurveysTranslations,
   searchTranslations,
+  ivCampusTranslations,
   pluginVouchersTranslations,
   pluginConstructionSitesTranslations,
   pluginJobsTranslations,

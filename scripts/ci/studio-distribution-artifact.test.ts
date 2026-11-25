@@ -437,6 +437,7 @@ describe('studio-distribution-artifact', () => {
         'events',
         'faq',
         'generic-items',
+        'ivcampus',
         'jobs',
         'news',
         'poi',
@@ -496,6 +497,7 @@ describe('studio-distribution-artifact', () => {
     for (const packageName of [
       'plugin-ssf',
       'plugin-news',
+      'plugin-ivcampus',
       'plugin-waste-management',
       'waste-management-contracts',
       'waste-management-runtime',
@@ -522,6 +524,7 @@ describe('studio-distribution-artifact', () => {
     expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'plugin-ssf'))).toBe(true);
     for (const packageName of [
       'plugin-news',
+      'plugin-ivcampus',
       'plugin-waste-management',
       'waste-management-contracts',
       'waste-management-runtime',
@@ -562,6 +565,7 @@ describe('studio-distribution-artifact', () => {
         'plugin-events',
         'plugin-faq',
         'plugin-generic-items',
+        'plugin-ivcampus',
         'plugin-jobs',
         'plugin-news',
         'plugin-poi',

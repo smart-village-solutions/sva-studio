@@ -295,6 +295,13 @@ describe('verify-studio-image-contract', () => {
     }
   );
 
+  it('verifies a custom image containing the ivCampus plugin', () => {
+    const input = validInput('custom', ['news', 'ivcampus']);
+    expect(JSON.parse(verify(input))).toMatchObject({
+      distribution: 'custom',
+    });
+  });
+
   it('accepts a custom digest only with its normalized set fingerprint and exact package inventory', () => {
     const input = validInput('custom');
     expect(JSON.parse(verify(input))).toMatchObject({

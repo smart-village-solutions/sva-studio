@@ -36,6 +36,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `plugin-projects`            | Library | `packages/plugin-projects/`            | Redaktionelle Verwaltung von Projektinhalten                                               |
 | `plugin-sdk`                 | Library | `packages/plugin-sdk/`                 | Frameworkfreie Plugin-/Host-Verträge einschließlich Pagination, Geocoding und Content-Media |
 | `plugin-search`              | Library | `packages/plugin-search/`              | Such-Plugin und Header-Integration                                                          |
+| `plugin-ivcampus`            | Library | `packages/plugin-ivcampus/`            | Pilot-Widget für den Einstieg in die Studio-Redaktion                          |
 | `plugin-ssf`                 | Library | `packages/plugin-ssf/`                 | SSF-Plugin mit Browser- und Serverintegration                                               |
 | `plugin-surveys`             | Library | `packages/plugin-surveys/`             | Redaktionelle Verwaltung von Umfragen                                                       |
 | `plugin-waste-management`    | Library | `packages/plugin-waste-management/`    | Administrative Pflege des Abfallkalenders                                                   |

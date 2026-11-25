@@ -48,6 +48,11 @@ describe('server plugin catalog', () => {
     const registry = studioServerPluginCatalogReport.snapshot.registry;
     expect(registry.pluginRegistry.has('app-translations')).toBe(true);
     expect(registry.pluginRegistry.get('search')?.routes[0]?.path).toBe('/plugins/search');
+    expect(registry.pluginRegistry.get('ivcampus')).toMatchObject({
+      navigation: [],
+      settings: { routeId: 'ivcampus.settings' },
+      routes: [{ path: '/plugins/ivcampus/settings' }],
+    });
     expect(registry.pluginServerHandlerRegistry.get('search.query')?.path).toBe(
       '/api/v1/plugins/search/query'
     );

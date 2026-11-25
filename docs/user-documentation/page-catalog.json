@@ -447,6 +447,15 @@
       }
     },
     {
+      "id": "ivcampus.settings",
+      "path": "/plugins/ivcampus/settings",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ivcampus"
+      }
+    },
+    {
       "id": "jobs.content.create",
       "path": "/admin/jobs/new",
       "pageType": "create",

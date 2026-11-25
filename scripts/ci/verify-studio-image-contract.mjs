@@ -16,6 +16,7 @@ const regularPlugins = [
   'events',
   'faq',
   'generic-items',
+  'ivcampus',
   'jobs',
   'news',
   'poi',
@@ -44,6 +45,7 @@ const workspacePluginIds = [
   'ssf',
   'waste-management',
   'search',
+  'ivcampus',
 ];
 const packagedRegularPlugins = regularPlugins.filter((id) => id !== 'waste-management');
 const excludedWorkspacePackages = {

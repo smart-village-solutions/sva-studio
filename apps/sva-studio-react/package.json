@@ -40,6 +40,7 @@
     "@sva/plugin-events": "workspace:*",
     "@sva/plugin-faq": "workspace:*",
     "@sva/plugin-generic-items": "workspace:*",
+    "@sva/plugin-ivcampus": "workspace:*",
     "@sva/plugin-jobs": "workspace:*",
     "@sva/plugin-news": "workspace:*",
     "@sva/plugin-poi": "workspace:*",

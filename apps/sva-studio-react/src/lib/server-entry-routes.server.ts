@@ -12,6 +12,12 @@ const lazyDispatcher = (
 
 export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   {
+    label: 'ivCampus widget',
+    getDispatcher: lazyDispatcher(() =>
+      import('./ivcampus-widget.server').then((module) => module.dispatchIvCampusWidgetRequest)
+    ),
+  },
+  {
     label: 'instance provisioner control plane',
     getDispatcher: lazyDispatcher(() =>
       import('./instance-provisioner-proxy.server').then(

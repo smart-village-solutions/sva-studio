@@ -1,3 +1,4 @@
+import { ivCampusWidgetRoutePath } from './server-entry-types';
 import type { PluginWorkerBootstrapLogger } from './plugin-worker-bootstrap-logging.server';
 
 const safeRouteSegments = new Set([
@@ -144,8 +145,7 @@ const applyResponseSecurityHeaders = (request: Request, response: Response): Res
   if (headers.get('content-type')?.includes('text/html')) {
     // The existing local Builder profile is an intentional preview iframe consumer.
     const builderPreview =
-      process.env.NODE_ENV !== 'production' &&
-      process.env.SVA_RUNTIME_PROFILE === 'local-builder';
+      process.env.NODE_ENV !== 'production' && process.env.SVA_RUNTIME_PROFILE === 'local-builder';
     if (!headers.has('content-security-policy'))
       headers.set(
         'content-security-policy',
@@ -153,7 +153,13 @@ const applyResponseSecurityHeaders = (request: Request, response: Response): Res
           ? "frame-ancestors 'self' https://builder.io https://*.builder.io"
           : "frame-ancestors 'self'"
       );
-    if (!builderPreview && !headers.has('x-frame-options'))
+    const isIvCampusWidget =
+      new URL(request.url).pathname === ivCampusWidgetRoutePath &&
+      response.status === 200 &&
+      /(?:^|; )frame-ancestors https:\/\/[^\s;]+$/.test(
+        headers.get('content-security-policy') ?? ''
+      );
+    if (!builderPreview && !isIvCampusWidget && !headers.has('x-frame-options'))
       headers.set('x-frame-options', 'SAMEORIGIN');
   }
   try {

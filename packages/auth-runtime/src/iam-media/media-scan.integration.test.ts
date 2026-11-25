@@ -440,24 +440,54 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       },
       30000
     );
-    // One content-save draft initialized and retried through the real HTTP handler (#1952).
+    // One content-save draft initialized, retried and completed through the real HTTP handlers
+    // (#1952). Only the job queue is replaced: it claims the session and runs real processing.
     const createContentSaveDraft = (body: Uint8Array) => {
       const operationId = crypto.randomUUID();
       const draftId = crypto.randomUUID();
-      const { records, finalized, run } = createUploadRecords();
+      const ctx = { user: { id: 'actor', instanceId: 'tenant-a' } } as never;
+      const { records, finalized, failed, run } = createUploadRecords();
+      let processed: Awaited<ReturnType<typeof run>> | undefined;
       const service = {
         getContentSaveOperation: async () => ({ id: operationId, status: 'uploading' }),
         getProvisionalAssetByDraft: async () => records.asset ?? null,
-        getUploadSessionByAssetId: async () => records.session ?? null,
+        getUploadSessionByAssetId: async (instanceId: string, assetId: string) =>
+          records.session?.instanceId === instanceId && records.session.assetId === assetId
+            ? records.session
+            : null,
+        getUploadSessionById: async (instanceId: string, id: string) =>
+          records.session?.instanceId === instanceId && records.session.id === id
+            ? records.session
+            : null,
+        getAssetById: async (instanceId: string, id: string) =>
+          records.asset?.instanceId === instanceId && records.asset.id === id
+            ? records.asset
+            : null,
         upsertAsset: async (asset: MediaAssetRecord) => {
           records.asset = asset;
         },
         upsertUploadSession: async (session: MediaUploadSessionRecord) => {
           records.session = session;
         },
-        refreshPendingUploadSession: async (input: { storageKey: string; expiresAt: string }) => {
-          if (records.session?.status !== 'pending') return false;
-          records.session = { ...records.session, ...input };
+        // Mirrors the repository: only the addressed pending session receives a new intake.
+        refreshPendingUploadSession: async (input: {
+          instanceId: string;
+          sessionId: string;
+          storageKey: string;
+          expiresAt: string;
+        }) => {
+          const session = records.session;
+          if (
+            session?.instanceId !== input.instanceId ||
+            session.id !== input.sessionId ||
+            session.status !== 'pending'
+          )
+            return false;
+          records.session = {
+            ...session,
+            storageKey: input.storageKey,
+            expiresAt: input.expiresAt,
+          };
           return true;
         },
       };
@@ -472,6 +502,11 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         createId: () => crypto.randomUUID(),
         now: () => new Date().toISOString(),
         emitAuditEvent: async () => undefined,
+        scheduleUploadProcessing: async () => {
+          records.session = { ...present(records.session), status: 'uploaded' };
+          processed = await run();
+          return 'queued';
+        },
       });
       const initializeUpload = async () => {
         const response = await handlers.initializeUpload(
@@ -487,22 +522,34 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
               draftId,
             }),
           }),
-          { user: { id: 'actor', instanceId: 'tenant-a' } } as never
+          ctx
         );
         await putUpload((await response.json()).data, body);
         return { status: response.status, storageKey: present(records.session).storageKey };
       };
+      const completeUpload = async () => {
+        const response = await handlers.completeUpload(
+          new Request(
+            `http://localhost/api/v1/iam/media/upload-sessions/${present(records.session).id}/complete?instanceId=tenant-a`,
+            { method: 'POST' }
+          ),
+          ctx
+        );
+        return { status: response.status, processed };
+      };
       return {
         initializeUpload,
+        completeUpload,
         finalized,
+        failed,
         getAsset: () => present(records.asset),
-        process: () => {
-          // Completion marks the session uploaded before the worker claims it.
-          records.session = { ...present(records.session), status: 'uploaded' };
-          return run();
-        },
       };
     };
+    const listPublicKeys = async (prefix: string) =>
+      (
+        (await s3.send(new ListObjectsV2Command({ Bucket: 'studio-public', Prefix: prefix })))
+          .Contents ?? []
+      ).map((object) => object.Key);
     const withScanSwitch = async <T>(enabled: boolean, work: () => Promise<T>) => {
       vi.stubEnv('MEDIA_SCAN_ENABLED', String(enabled));
       try {
@@ -519,37 +566,49 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         expect(initialized.status).toBe(201);
         expect(initialized.storageKey).toMatch(/^\.quarantine\/tenant-a\//);
 
+        const assetId = draft.getAsset().id;
         const retried = await withScanSwitch(scanAtRetry, draft.initializeUpload);
         expect(retried).toEqual({ status: 200, storageKey: initialized.storageKey });
         expect((await fetch(`${endpoint}/studio-intake/${retried.storageKey}`)).status).toBe(403);
-        expect((await fetch(`${endpoint}/studio-public/${retried.storageKey}`)).ok).toBe(false);
+        // A downgraded retry would have written the bytes to the public originals path.
+        expect(await listPublicKeys(`tenant-a/originals/${assetId}`)).toEqual([]);
 
-        expect((await withScanSwitch(scanAtRetry, draft.process)).ok).toBe(true);
+        const completed = await withScanSwitch(scanAtRetry, draft.completeUpload);
+        expect(completed.status).toBe(202);
+        expect(completed.processed?.ok).toBe(true);
+        expect(draft.finalized).toHaveBeenCalledOnce();
         expect(draft.getAsset().technical.scanStatus).toBe('clean');
         expect(draft.getAsset().storageKey).toMatch(/^tenant-a\/variants\//);
+        expect(await listPublicKeys(`tenant-a/originals/${assetId}`)).toEqual([]);
       },
       30000
     );
     it('blocks infected bytes uploaded through a retried quarantine draft after the scan switch is disabled', async () => {
       const draft = createContentSaveDraft(eicar);
       const initialized = await withScanSwitch(true, draft.initializeUpload);
+      const assetId = draft.getAsset().id;
       const retried = await withScanSwitch(false, draft.initializeUpload);
       expect(retried.storageKey).toBe(initialized.storageKey);
-      await withScanSwitch(false, async () =>
-        expect(await draft.process()).toEqual({
-          ok: false,
-          status: 422,
-          errorCode: 'media_scan_infected',
-        })
-      );
+
+      const completed = await withScanSwitch(false, draft.completeUpload);
+      expect(completed.status).toBe(202);
+      expect(completed.processed).toEqual({
+        ok: false,
+        status: 422,
+        errorCode: 'media_scan_infected',
+      });
       expect(draft.finalized).not.toHaveBeenCalled();
-      const listed = await s3.send(
-        new ListObjectsV2Command({
-          Bucket: 'studio-public',
-          Prefix: `tenant-a/variants/${draft.getAsset().id}/`,
+      expect(draft.failed).toHaveBeenCalledOnce();
+      expect(draft.failed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorCode: 'media_scan_infected',
+          uploadSession: expect.objectContaining({ storageKey: initialized.storageKey }),
         })
       );
-      expect(listed.Contents ?? []).toHaveLength(0);
+      // Intake deletion belongs to the job cleanup; until then the bytes stay private.
+      expect((await fetch(`${endpoint}/studio-intake/${retried.storageKey}`)).status).toBe(403);
+      expect(await listPublicKeys(`tenant-a/originals/${assetId}`)).toEqual([]);
+      expect(await listPublicKeys(`tenant-a/variants/${assetId}/`)).toEqual([]);
     }, 30000);
     it('keeps an initially public content-save draft on its existing public path when retried', async () => {
       const draft = createContentSaveDraft(original);
@@ -557,7 +616,9 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       expect(initialized.storageKey).toMatch(/^tenant-a\/originals\//);
       const retried = await withScanSwitch(false, draft.initializeUpload);
       expect(retried).toEqual({ status: 200, storageKey: initialized.storageKey });
-      expect((await withScanSwitch(false, draft.process)).ok).toBe(true);
+      const completed = await withScanSwitch(false, draft.completeUpload);
+      expect(completed.status).toBe(202);
+      expect(completed.processed?.ok).toBe(true);
       expect(draft.getAsset().technical.scanStatus).toBeUndefined();
     }, 30000);
     it('keeps protected originals and variants private and delivers only through signed URLs', async () => {
@@ -586,13 +647,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       });
       expect(upload.finalized).not.toHaveBeenCalled();
       expect(upload.getAsset().technical.scanStatus).toBeUndefined();
-      const listed = await s3.send(
-        new ListObjectsV2Command({
-          Bucket: 'studio-public',
-          Prefix: `tenant-a/variants/${upload.getAsset().id}/`,
-        })
-      );
-      expect(listed.Contents ?? []).toHaveLength(0);
+      expect(await listPublicKeys(`tenant-a/variants/${upload.getAsset().id}/`)).toEqual([]);
     }, 30000);
     it('reports existing clean and infected S3 files without changing their bytes or delivery', async () => {
       const files = [

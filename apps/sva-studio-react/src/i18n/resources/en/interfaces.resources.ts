@@ -187,6 +187,9 @@ export const interfacesENResources = {
       bucket: 'Bucket',
       accessKeyId: 'Access key ID',
       secretAccessKey: 'Secret access key',
+      secretAccessKeyReplacementPlaceholder: 'Enter a new secret access key',
+      secretAccessKeyConfiguredStatus: 'A secret access key is already stored.',
+      secretAccessKeyConfiguredHint: 'Leave this field blank to keep the existing key.',
       forcePathStyle: 'Force path-style URLs',
       notImplemented:
         'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',

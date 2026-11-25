@@ -327,6 +327,8 @@ describe('InterfacesPage', () => {
     fireEvent.click(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
+    expect(screen.queryByText('Ein geheimer Zugangsschlüssel ist bereits hinterlegt.')).toBeNull();
+
     const textboxes = screen.getAllByRole('textbox');
     fireEvent.change(textboxes[0]!, { target: { value: 'Medien-S3' } });
     fireEvent.change(textboxes[1]!, { target: { value: 'https://s3.example' } });
@@ -948,7 +950,9 @@ describe('InterfacesPage', () => {
   });
 
   it('updates an existing s3 interface through the generic endpoint with its existing id', async () => {
-    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([mainserverEntry, { ...s3Entry, secretAccessKeyConfigured: true }])
+    );
     state.upsertInterface.mockResolvedValue({
       ...s3Entry,
       name: 'Uploads aktualisiert',
@@ -962,10 +966,17 @@ describe('InterfacesPage', () => {
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[1]!);
+    const secretField = screen.getByLabelText<HTMLInputElement>('Secret Access Key');
+    expect(secretField.value).toBe('');
+    expect(secretField.getAttribute('aria-describedby')).toBe('s3-secret-key-hint');
+    expect(screen.getByText('Ein geheimer Zugangsschlüssel ist bereits hinterlegt.')).toBeTruthy();
+    expect(
+      screen.getByText('Lassen Sie das Feld leer, um den hinterlegten Schlüssel beizubehalten.')
+    ).toBeTruthy();
     fireEvent.change(screen.getByDisplayValue('Uploads'), {
       target: { value: 'Uploads aktualisiert' },
     });
-    fireEvent.change(document.getElementById('s3-secret-key')!, {
+    fireEvent.change(secretField, {
       target: { value: 'rotated-secret' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));

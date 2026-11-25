@@ -86,6 +86,7 @@ export type InstanceInterfaceMainserver = InstanceInterfaceBase &
 export type InstanceInterfaceS3 = InstanceInterfaceBase &
   Readonly<{
     type: 's3';
+    secretAccessKeyConfigured?: boolean;
     config: InstanceInterfaceS3Config;
   }>;
 

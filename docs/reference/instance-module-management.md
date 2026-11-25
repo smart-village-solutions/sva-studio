@@ -52,7 +52,8 @@ unter `SVA_IVCAMPUS_PILOT_ORIGIN` die konkrete HTTPS-Origin des einbettenden Cam
 hinterlegt, beispielsweise `https://campus.example`. Raum-URLs mit Pfad sind
 dafür ungeeignet. Die öffentliche Widget-Route liefert nur auf dem
 Staging-Sandbox-Host und bei zugewiesenem Modul ein Dokument aus. Sie enthält
-ausschließlich die Links zum Anlegen von Meldungen und Veranstaltungen. Die
+ausschließlich zwei native HTML-Schaltflächen zum Anlegen von Meldungen und
+Veranstaltungen. Darstellung und Tastaturbedienung stammen vom Browser. Die
 Studio-Anmeldung und Berechtigungsprüfung finden im jeweils geöffneten Tab statt.
 
 Für die manuelle [Einreichung bei ivCampus](https://github.com/ivicos-GmbH/widget-sdk#dein-widget-einreichen)

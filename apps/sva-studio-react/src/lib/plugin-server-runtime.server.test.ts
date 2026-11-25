@@ -55,6 +55,22 @@ describe('plugin server runtime loader', () => {
     ssfRuntimeMocks.resolveSsfDatabasePool.mockReturnValue(null);
   });
 
+  it('initializes the full Studio catalog including the ivCampus server entry', async () => {
+    const { studioServerPluginSnapshot } = await vi.importActual<
+      typeof import('./plugin-catalog.server.js')
+    >('./plugin-catalog.server.js');
+    expect(studioServerPluginSnapshot.pluginSources.map(({ pluginId }) => pluginId)).toContain(
+      'ivcampus'
+    );
+
+    const handlers = await createPluginServerExecutionHandlersFromSnapshot({
+      pluginSources: studioServerPluginSnapshot.pluginSources,
+    });
+    expect(handlers['application-workspace.list']).toBeTypeOf('function');
+    expect(handlers['search.query']).toBeTypeOf('function');
+    expect(Object.keys(handlers).some((id) => id.startsWith('ivcampus.'))).toBe(false);
+  });
+
   it('loads executable bindings only from declared server entries', async () => {
     const handler: PluginServerExecutionHandler = () => new Response('ok');
     const loadServerModule = vi.fn().mockResolvedValue({
@@ -177,9 +193,21 @@ it.each(['workspace', 'installed-distribution'] as const)(
 it('injects the host-owned workspace capability without a static plugin dependency', async () => {
   const factory = vi.fn(() => ({ 'application-workspace.list': () => new Response('ok') }));
   const handlers = await createPluginServerExecutionHandlersFromSnapshot({
-    pluginSources: [{ ...source('application-workspace'), sourceType: 'installed-distribution', sourceRef: '@sva/plugin-application-workspace' }],
+    pluginSources: [
+      {
+        ...source('application-workspace'),
+        sourceType: 'installed-distribution',
+        sourceRef: '@sva/plugin-application-workspace',
+      },
+    ],
     loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }),
   });
-  expect(factory).toHaveBeenCalledWith(expect.objectContaining({ read: expect.any(Function), save: expect.any(Function), isIconName: expect.any(Function) }));
+  expect(factory).toHaveBeenCalledWith(
+    expect.objectContaining({
+      read: expect.any(Function),
+      save: expect.any(Function),
+      isIconName: expect.any(Function),
+    })
+  );
   expect(handlers['application-workspace.list']).toBeTypeOf('function');
 });

@@ -1,8 +1,15 @@
 import { randomBytes } from 'node:crypto';
 
+import type { PluginServerExecutionHandler } from '@sva/plugin-sdk';
+
 import { ivCampusTranslations } from './translations.js';
 
 export { ivCampusPilotStudioOrigin, ivCampusWidgetPath } from './widget-path.js';
+
+// Widget delivery uses the host's dedicated HTTP route. The catalog still initializes this server entry.
+export const createPluginServerHandlers = (): Readonly<
+  Record<string, PluginServerExecutionHandler>
+> => ({});
 
 // ivCampus documents the wire protocol for widgets without a browser bundle.
 // https://github.com/ivicos-GmbH/widget-sdk#das-protokoll-falls-du-dieses-sdk-nicht-verwendest
@@ -96,21 +103,10 @@ export function createIvCampusWidgetResponse(request: Request, origin: string): 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${translate('title')}</title>
-<style nonce="${nonce}">
-  :root { color-scheme: light; font-family: system-ui, sans-serif; color: #192c3a; }
-  body { margin: 0; background: #f5f8fa; }
-  main { display: grid; gap: .65rem; padding: 1rem; }
-  button { font: inherit; font-weight: 600; text-align: left; min-height: 44px; padding: .65rem .75rem;
-    border: 1px solid #1c536c; border-radius: .4rem; background: #fff; color: #153e51; cursor: pointer; }
-  button:enabled:hover { background: #e5f1f5; }
-  button:focus-visible { outline: 3px solid #196186; outline-offset: 2px; }
-  button:disabled { opacity: .65; cursor: default; }
-  p { margin: 0; font-size: .9rem; }
-</style>
 <main aria-label="${translate('title')}" data-host-origin="${escapeHtml(origin)}"
   data-opening-failed="${translate('openingFailed')}" data-unavailable="${translate('unavailable')}">
-  <button type="button" data-path="/admin/news/new" disabled>${translate('news')}</button>
-  <button type="button" data-path="/admin/events/new" disabled>${translate('event')}</button>
+  <p><button type="button" data-path="/admin/news/new" disabled>${translate('news')}</button></p>
+  <p><button type="button" data-path="/admin/events/new" disabled>${translate('event')}</button></p>
   <p role="status"></p>
 </main>
 <script nonce="${nonce}">${widgetScript}</script>
@@ -119,7 +115,7 @@ export function createIvCampusWidgetResponse(request: Request, origin: string): 
       headers: {
         'cache-control': 'no-store',
         'content-type': 'text/html; charset=utf-8',
-        'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; base-uri 'none'; form-action 'none'; frame-ancestors ${origin}`,
+        'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; base-uri 'none'; form-action 'none'; frame-ancestors ${origin}`,
         'referrer-policy': 'no-referrer',
       },
     }

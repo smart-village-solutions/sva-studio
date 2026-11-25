@@ -1,4 +1,5 @@
 import { runInNewContext } from 'node:vm';
+import { Window } from 'happy-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dispatchIvCampusWidgetRequest } from './ivcampus-widget.server';
@@ -55,7 +56,13 @@ describe('ivCampus widget route', () => {
   it('activates the links after the configured parent completes the handshake', async () => {
     const response = await dispatchIvCampusWidgetRequest(new Request(sandbox + path));
     if (!response) throw new Error('Widget response missing');
-    const script = (await response.text()).match(/<script[^>]*>([\s\S]+?)<\/script>/)?.[1];
+    const parserWindow = new Window();
+    const document = new parserWindow.DOMParser().parseFromString(
+      await response.text(),
+      'text/html'
+    );
+    const script = document.querySelector('script')?.textContent;
+    await parserWindow.happyDOM.close();
     if (!script) throw new Error('Widget script missing');
     const campus = 'https://campus.example';
     const postMessage = vi.fn();

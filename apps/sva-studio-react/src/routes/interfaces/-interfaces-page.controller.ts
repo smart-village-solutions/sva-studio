@@ -13,6 +13,7 @@ import {
 } from '../../lib/interfaces-api';
 import {
   createEmptyInstanceInterfaceDraft,
+  meilisearchInterfaceDraftSchema,
   type InstanceInterface,
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
@@ -57,6 +58,13 @@ export type EditState =
   | { mode: 'edit'; entry: InstanceInterface; draft: InstanceInterfaceDraft };
 
 export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft => {
+  if (entry.type === 'meilisearch')
+    return {
+      type: 'meilisearch',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: { ...entry.config, apiKey: '' },
+    };
   if (entry.type === 'deepl')
     return {
       type: 'deepl',
@@ -125,6 +133,7 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
 
   if (message.startsWith('deepl_') || message === 'interface_conflict')
     return t(`interfaces.deepl.errors.${message}`);
+  if (message.startsWith('meilisearch_')) return t(`interfaces.meilisearch.errors.${message}`);
   switch (message) {
     case 'invalid_interfaces_payload':
       return t('interfaces.messages.loadError');
@@ -270,6 +279,8 @@ export const useInterfacesPageController = () => {
     const operationId = saveFeedback.beginSaving();
     try {
       const draft = editState.draft;
+      if (draft.type === 'meilisearch' && !meilisearchInterfaceDraftSchema.safeParse(draft).success)
+        throw new Error('meilisearch_invalid_config');
       let savedEntry: InstanceInterface | null = null;
       if (draft.type === 'mainserver') {
         await saveMainserverRef.current({

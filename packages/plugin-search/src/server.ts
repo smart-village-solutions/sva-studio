@@ -4,12 +4,31 @@ import type {
 } from '@sva/plugin-sdk';
 import { executeSearch } from './search-engine.js';
 import {
+  parseSearchQuery,
   readSearchQuery,
+  searchModels,
   type SearchCandidate,
   type SearchQuery,
   type SearchResolution,
 } from './search-contract.js';
-import { readCandidatePage, type SearchConnection } from './search-meili.server.js';
+import {
+  readCandidatePage,
+  type SearchConnection,
+  type SearchFetcher,
+} from './search-meili.server.js';
+export type { SearchConnection } from './search-meili.server.js';
+
+export const checkSearchConnection = async (
+  connection: SearchConnection,
+  fetcher: SearchFetcher
+) => {
+  const probe = parseSearchQuery({});
+  await Promise.all(
+    searchModels.map((model) =>
+      readCandidatePage(connection, probe, model, 0, fetcher, 0)
+    )
+  );
+};
 
 export type SearchUserContext = Extract<
   PluginServerHandlerExecutionContext,
@@ -17,6 +36,11 @@ export type SearchUserContext = Extract<
 >;
 export type SearchHost = Readonly<{
   loadGraphqlUrl: (instanceId: string) => Promise<string | null>;
+  loadInterfaceConnection?: (
+    instanceId: string,
+    graphqlUrl: string
+  ) => Promise<SearchConnection | null | undefined>;
+  fetchSearch?: SearchFetcher;
   resolve: (
     context: SearchUserContext,
     query: SearchQuery,
@@ -101,7 +125,9 @@ export const createPluginServerHandlers = (
     try {
       const graphqlUrl = await host.loadGraphqlUrl(context.actor.instanceId);
       if (!graphqlUrl) return json({ error: 'search_not_configured' }, 503);
-      const connection = readSearchConnection(context.actor.instanceId, graphqlUrl, process.env);
+      const configured = await host.loadInterfaceConnection?.(instanceId, graphqlUrl);
+      if (configured === null) return json({ error: 'search_not_configured' }, 503);
+      const connection = configured ?? readSearchConnection(instanceId, graphqlUrl, process.env);
       const stamp = await host.contextStamp(context);
       if (!stamp) return json({ error: 'search_context_changed' }, 409);
       const locale = context.request.headers.get('Accept-Language')?.toLowerCase().startsWith('en')
@@ -110,11 +136,14 @@ export const createPluginServerHandlers = (
       const data = await executeSearch(
         query,
         {
-          readPage: (model, offset) => readCandidatePage(connection, query, model, offset),
+          readPage: (model, offset) =>
+            readCandidatePage(connection, query, model, offset, host.fetchSearch),
           resolve: (candidate) => host.resolve(context, query, candidate),
           isCurrent: async () =>
             (await host.contextStamp(context)) === stamp &&
-            (await host.loadGraphqlUrl(instanceId)) === graphqlUrl,
+            (await host.loadGraphqlUrl(instanceId)) === graphqlUrl &&
+            JSON.stringify(await host.loadInterfaceConnection?.(instanceId, graphqlUrl)) ===
+              JSON.stringify(configured),
         },
         locale
       );

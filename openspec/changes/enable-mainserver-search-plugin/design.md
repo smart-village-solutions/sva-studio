@@ -86,6 +86,15 @@ Die Funktion wird zunächst in Dev mit getrenntem, eingeschränktem Suchzugang e
 
 Als erster Testmandant ist Sandbox mit Mainserver Staging vorgesehen. Die Auswahl autorisiert noch keine Konfiguration, Schlüsselanlage oder Bereitstellung.
 
+### Zielbild für die Verwaltung als Schnittstelle
+
+Der Entwurf für den produktiven Ausbau verwendet die bestehende Studio-Ansicht **Schnittstellen** und die zentrale External-Interface-Registry. Die Suche stellt den Typ **Meilisearch** bereit. Sobald `search` für den Tenant wirksam aktiv ist, können Berechtigte mit `integration.manage` eine Schnittstelle dieses Typs einrichten. Es gibt höchstens eine aktive Suchanbindung pro Tenant. Der Host bindet sie an die aktive Mainserver-GraphQL-Verbindung. Nach Moduldeaktivierung oder Wechsel der Mainserver-Verbindung darf der Suchhandler die zuvor gespeicherte Verbindung nicht mehr verwenden.
+
+Die UI pflegt den HTTPS-Such-Origin, die Indexumgebung und die bestätigte Quellenzuordnung. Der Tenant-Zugang wird über den vorhandenen verschlüsselten Schnittstellenspeicher verwaltet. Die UI zeigt beim Auslesen nur, ob ein Schlüssel hinterlegt ist. Der Verbindungstest nutzt die vorgesehenen Suchindizes. Der Host verwendet für den Verbindungstest und für reguläre Suchanfragen denselben geschützten ausgehenden HTTPS-Pfad. Der Browser darf Ziel und Quellenregeln eines einzelnen Suchrequests nicht bestimmen. Die bestehenden Mainserver-Detailrechte gelten weiterhin für jeden Treffer.
+
+Bad Belzig verwendet seinen dedizierten Origin mit einem eingeschränkten Suchschlüssel. Für den gemeinsamen SaaS-Origin wird je Tenant ein bereits auf seine eigenen und zulässigen globalen Quellen begrenztes Meilisearch-Tenant-Token eingetragen. Ein breit gültiger Schlüssel zum Signieren von SaaS-Tokens gehört nicht in eine Tenant-Schnittstelle. Die für Prignitz bestätigten Modellfilter und die bestätigten Release-Origins bleiben Eingaben für die Einrichtung.
+
+Die lokal erprobten zusätzlichen Environment-Variablen werden für diesen Ausbau nicht veröffentlicht. Für die bestehenden Suchzugänge in Sandbox und Guben erfolgt die Umstellung erst, wenn ihre Schnittstellen eingerichtet und mit angemeldeten Benutzern geprüft sind. Ein befristeter Übergang darf ausschließlich diese bereits eingerichteten Zugänge abdecken. Der Wechsel entfernt anschließend den bisherigen Environment-Pfad. Der Nachweis umfasst Typverfügbarkeit bei Modulstatuswechseln, Rechte auf Listen- und Schreibpfaden, verschlüsselte Speicherung, die Bindung an Verbindung und Tenant sowie ausbleibende Anfragen mit deaktivierter, gelöschter oder veralteter Schnittstelle.
 
 ## Bestätigte UX-Anpassung vom 8. November 2026
 

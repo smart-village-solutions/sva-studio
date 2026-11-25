@@ -1,6 +1,30 @@
 import type { SearchModel, SearchQuery } from './search-contract.js';
 import type { CandidatePage, SearchSource } from './search-engine.js';
 export type SearchConnection = SearchSource & Readonly<{ url: string; key: string }>;
+export type SearchFetcher = (url: URL, init: RequestInit) => Promise<Response>;
+
+const readSearchResponse = async (response: Response): Promise<unknown> => {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('invalid_search_response');
+  const decoder = new TextDecoder();
+  let content = '';
+  let bytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 1024 * 1024) {
+        await reader.cancel();
+        throw new Error('invalid_search_response');
+      }
+      content += decoder.decode(value, { stream: true });
+    }
+    return JSON.parse(content + decoder.decode()) as unknown;
+  } finally {
+    reader.releaseLock();
+  }
+};
 const parseCandidate = (hit: unknown, model: SearchModel) => {
   if (
     !hit ||
@@ -33,7 +57,8 @@ export const readCandidatePage = async (
   query: SearchQuery,
   model: SearchModel,
   offset: number,
-  fetcher: typeof fetch = fetch
+  fetcher: SearchFetcher = fetch,
+  limit: 0 | typeof batchSize = batchSize
 ): Promise<CandidatePage> => {
   const filter = [
     `(${connection.municipalityIds.map((id) => `municipality_id = ${id}`).join(' OR ')})`,
@@ -49,13 +74,16 @@ export const readCandidatePage = async (
         q: query.q,
         filter,
         attributesToRetrieve: ['id', 'data_provider_id', 'categories'],
-        limit: batchSize,
+        limit,
         offset,
       }),
     }
   );
-  if (!response.ok) throw new Error('search_upstream_unavailable');
-  const raw: unknown = await response.json();
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error('search_upstream_unavailable');
+  }
+  const raw = await readSearchResponse(response);
   if (
     !raw ||
     typeof raw !== 'object' ||

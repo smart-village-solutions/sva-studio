@@ -14,7 +14,11 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
-import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
+import {
+  hasLegacyMeilisearchSource,
+  instanceInterfaceTypeMeta,
+  type InstanceInterface,
+} from '../../lib/instance-interfaces';
 import {
   draftFromEntry,
   type EditState,
@@ -54,9 +58,11 @@ const renderInterfaceRowActions = (
         )}
       </Button>
     ) : null}
-    <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
-      {t('interfaces.edit.deleteAction')}
-    </Button>
+    {row.type !== 'meilisearch' || !hasLegacyMeilisearchSource(row.instanceId) ? (
+      <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
+        {t('interfaces.edit.deleteAction')}
+      </Button>
+    ) : null}
   </>
 );
 
@@ -221,6 +227,11 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
+              hasStoredMeilisearchKey={
+                editState.mode === 'edit' &&
+                editState.entry.type === 'meilisearch' &&
+                editState.entry.apiKeyConfigured
+              }
               deepLEntry={
                 editState.mode === 'edit' && editState.entry.type === 'deepl'
                   ? editState.entry

@@ -69,6 +69,32 @@ export const interfacesENResources = {
     unsupportedHelp:
       'An existing value or its parent object has a different type. The preview does not change the stored configuration.',
   },
+  meilisearch: {
+    origin: 'Search service HTTPS address',
+    environment: 'Index environment',
+    production: 'Production',
+    staging: 'Staging',
+    development: 'Development',
+    test: 'Test',
+    municipalityIds: 'Municipality IDs (comma-separated)',
+    key: 'Search key or tenant token',
+    keyStored: 'A search credential is stored',
+    errors: {
+      meilisearch_requires_search_module:
+        'The search module must be active to configure this interface.',
+      meilisearch_invalid_config:
+        'Check the HTTPS address, index environment and municipality IDs.',
+      meilisearch_requires_tenant_token:
+        'The shared search service requires a token scoped to this tenant.',
+      meilisearch_incomplete:
+        'An active Mainserver connection and a search credential are required.',
+      meilisearch_connection_failed:
+        'The search indices could not be queried with this credential.',
+      meilisearch_already_configured: 'This tenant already has a Meilisearch interface.',
+      meilisearch_disable_before_cutover:
+        'Disable the interface. Deletion is available after the transition.',
+    },
+  },
   deepl: {
     refreshFailed:
       'The check finished, but the latest interface settings could not be loaded. Please retry.',
@@ -143,6 +169,10 @@ export const interfacesENResources = {
     countLabel: '{{count}} interfaces',
   },
   types: {
+    meilisearch: {
+      label: 'Meilisearch',
+      description: 'Connects the search module to the Mainserver search index.',
+    },
     deepl: {
       label: 'DeepL',
       description: 'Manage the translation account and available languages for this instance.',

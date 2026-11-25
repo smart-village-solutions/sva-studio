@@ -35,6 +35,7 @@ import {
 } from './interfaces-api-list';
 import {
   deepLInterfaceDraftSchema,
+  meilisearchInterfaceDraftSchema,
   type InstanceInterface,
   type InstanceInterfaceDraft,
 } from './instance-interfaces';
@@ -46,7 +47,7 @@ const requireModuleForInterface = async (
   draft: InstanceInterfaceDraft,
   instanceId: string
 ): Promise<void> => {
-  if (draft.type !== 'supabase' && draft.type !== 'deepl') {
+  if (draft.type !== 'supabase' && draft.type !== 'deepl' && draft.type !== 'meilisearch') {
     return;
   }
 
@@ -55,7 +56,9 @@ const requireModuleForInterface = async (
     throw new Error(
       draft.type === 'deepl'
         ? 'deepl_requires_multilingual_module'
-        : 'supabase_requires_waste_management_module'
+        : draft.type === 'meilisearch'
+          ? 'meilisearch_requires_search_module'
+          : 'supabase_requires_waste_management_module'
     );
   }
 };
@@ -96,6 +99,11 @@ export const upsertInstanceInterfaceForRequest = async (
 ): Promise<InstanceInterface> => {
   if (data.draft.type === 'deepl' && !deepLInterfaceDraftSchema.safeParse(data.draft).success)
     throw new Error('invalid_config');
+  if (data.draft.type === 'meilisearch') {
+    const parsed = meilisearchInterfaceDraftSchema.safeParse(data.draft);
+    if (!parsed.success) throw new Error('meilisearch_invalid_config');
+    data = { ...data, draft: parsed.data };
+  }
   if (data.draft.type === 'mainserver') {
     throw new Error('mainserver_interfaces_use_dedicated_endpoint');
   }

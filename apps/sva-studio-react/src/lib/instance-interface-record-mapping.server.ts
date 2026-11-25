@@ -11,7 +11,9 @@ import type {
   InstanceInterfacePostgresql,
   InstanceInterfaceMailTransport,
   InstanceInterfaceMapGeocoding,
+  InstanceInterfaceMeilisearch,
 } from './instance-interfaces';
+import { meilisearchPublicConfigSchema } from './instance-interfaces';
 import { readDeepLSettings, mailTransportContract } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
@@ -60,6 +62,7 @@ export type StoredDeepL = Omit<
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
 >;
 export type StoredEntry =
+  | Omit<InstanceInterfaceMeilisearch, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
   | StoredDeepL
   | StoredS3
   | StoredSupabase
@@ -112,7 +115,14 @@ export const parseSecretConfig = (
 
 export const mapStoredTypeToKey = (
   type: StoredInterfaceType
-): 's3' | 'supabase' | 'postgresql' | 'mail_transport' | 'map_geocoding' | 'deepl' =>
+):
+  | 's3'
+  | 'supabase'
+  | 'postgresql'
+  | 'mail_transport'
+  | 'map_geocoding'
+  | 'deepl'
+  | 'meilisearch' =>
   type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
 const coerceOptionalText = (value: unknown): string => (typeof value === 'string' ? value : '');
@@ -131,6 +141,24 @@ export const mapRecordToStoredEntry = (
 ): PersistedStoredEntry | null => {
   const createdAt = record.createdAt ?? nowIso();
   const updatedAt = record.updatedAt ?? createdAt;
+
+  if (record.typeKey === 'meilisearch') {
+    const config = meilisearchPublicConfigSchema.safeParse(record.publicConfig);
+    if (!config.success) return null;
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'meilisearch',
+      name: record.displayName,
+      enabled: record.enabled,
+      config: config.data,
+      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+    };
+  }
 
   if (record.typeKey === 'deepl') {
     const config = readDeepLSettings(record.publicConfig);

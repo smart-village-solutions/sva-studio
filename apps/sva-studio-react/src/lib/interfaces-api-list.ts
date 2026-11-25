@@ -5,6 +5,7 @@ import type {
   InstanceInterface,
   InstanceInterfaceDeepL,
   InstanceInterfaceMapGeocoding,
+  InstanceInterfaceMeilisearch,
   InstanceInterfaceMailTransport,
   InstanceInterfacePostgresql,
   InstanceInterfaceS3,
@@ -37,6 +38,7 @@ export const resolveAvailableInterfaceTypes = async (
     ...DEFAULT_AVAILABLE_INTERFACE_TYPES,
     ...(assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID) ? ['supabase' as const] : []),
     ...(assignedModules.includes('app-translations') ? ['deepl' as const] : []),
+    ...(assignedModules.includes('search') ? ['meilisearch' as const] : []),
   ];
 };
 
@@ -50,6 +52,7 @@ export const projectStoredEntry = async (
   instanceId: string,
   entry:
     | Omit<InstanceInterfaceDeepL, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<InstanceInterfaceMeilisearch, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfacePostgresql, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
@@ -159,7 +162,9 @@ export const listInstanceInterfaces = async (
         entries: [
           ...(mainserverEntry ? [mainserverEntry] : []),
           ...projected.filter(
-            (entry) => entry.type !== 'deepl' || availableTypes.includes('deepl')
+            (entry) =>
+              (entry.type !== 'deepl' && entry.type !== 'meilisearch') ||
+              availableTypes.includes(entry.type)
           ),
         ],
       };

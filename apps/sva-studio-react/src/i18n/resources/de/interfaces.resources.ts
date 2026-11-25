@@ -70,6 +70,31 @@ export const interfacesDEResources = {
     unsupportedHelp:
       'Ein vorhandener Wert oder sein übergeordnetes Objekt hat einen anderen Typ. Die Vorschau verändert diesen Bestand nicht.',
   },
+  meilisearch: {
+    origin: 'HTTPS-Adresse des Suchdienstes',
+    environment: 'Indexumgebung',
+    production: 'Produktion',
+    staging: 'Staging',
+    development: 'Entwicklung',
+    test: 'Test',
+    municipalityIds: 'Gemeinde-IDs (durch Kommas getrennt)',
+    key: 'Suchschlüssel oder Tenant-Token',
+    keyStored: 'Ein Suchzugang ist hinterlegt',
+    errors: {
+      meilisearch_requires_search_module: 'Die Schnittstelle erfordert ein aktives Suchmodul.',
+      meilisearch_invalid_config: 'Prüfe die HTTPS-Adresse, Indexumgebung und Gemeinde-IDs.',
+      meilisearch_requires_tenant_token:
+        'Der gemeinsame Suchdienst erfordert ein auf diesen Tenant begrenztes Token.',
+      meilisearch_incomplete:
+        'Für die Aktivierung sind ein Suchzugang und ein aktiver Mainserver erforderlich.',
+      meilisearch_connection_failed:
+        'Die Suchindizes konnten mit diesem Zugang nicht abgefragt werden.',
+      meilisearch_already_configured:
+        'Für diesen Tenant gibt es bereits eine Meilisearch-Schnittstelle.',
+      meilisearch_disable_before_cutover:
+        'Deaktiviere die Schnittstelle. Löschen ist nach Abschluss der Umstellung verfügbar.',
+    },
+  },
   deepl: {
     refreshFailed:
       'Prüfung beendet, aber der aktuelle Schnittstellenstand konnte nicht geladen werden. Bitte erneut versuchen.',
@@ -225,6 +250,10 @@ export const interfacesDEResources = {
     countLabel: '{{count}} Schnittstelle(n)',
   },
   types: {
+    meilisearch: {
+      label: 'Meilisearch',
+      description: 'Verbindet das Suchmodul mit dem Mainserver-Suchindex.',
+    },
     deepl: {
       label: 'DeepL',
       description: 'Übersetzungszugang und verfügbare Sprachen dieser Instanz verwalten.',

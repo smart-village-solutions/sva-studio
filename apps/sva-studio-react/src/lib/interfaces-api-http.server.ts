@@ -1,4 +1,4 @@
-import { deepLInterfaceDraftSchema } from './instance-interfaces';
+import { deepLInterfaceDraftSchema, meilisearchInterfaceDraftSchema } from './instance-interfaces';
 import { mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
@@ -98,6 +98,7 @@ const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
       deepLInterfaceDraftSchema,
+      meilisearchInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
       postgresqlDraft,
@@ -121,6 +122,7 @@ const readInterfaceId = (pathname: string): string | null => {
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   deepl: ['apiKey'],
+  meilisearch: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],
   postgresql: ['databaseUrl'],
@@ -154,9 +156,20 @@ const responseStatusFor = (error: unknown): number => {
   if (explicit >= 400) return explicit;
   const message = error instanceof Error ? error.message : '';
   if (message === 'unauthorized') return 401;
-  if (message === 'forbidden' || message === 'permission_missing') return 403;
+  if (
+    message === 'forbidden' ||
+    message === 'permission_missing' ||
+    message === 'meilisearch_requires_search_module'
+  )
+    return 403;
   if (message === 'interface_not_found') return 404;
-  if (message.includes('conflict')) return 409;
+  if (
+    message.includes('conflict') ||
+    message === 'meilisearch_already_configured' ||
+    message === 'meilisearch_disable_before_cutover'
+  )
+    return 409;
+  if (message.startsWith('meilisearch_')) return 400;
   if (isClientValidationErrorMessage(message)) return 400;
   return 500;
 };

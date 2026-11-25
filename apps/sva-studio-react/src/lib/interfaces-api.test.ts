@@ -375,6 +375,41 @@ describe('interfaces app adapter', () => {
     });
   });
 
+  it('offers Meilisearch only when Search is effectively enabled', async () => {
+    const { resolveAvailableInterfaceTypes } = await import('./interfaces-api-list');
+    state.loadInstanceById
+      .mockResolvedValueOnce({ assignedModules: ['search'] })
+      .mockResolvedValueOnce({ assignedModules: ['news'] });
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).toContain('meilisearch');
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).not.toContain('meilisearch');
+  });
+
+  it('rejects a direct Meilisearch write while Search is inactive', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.loadInstanceById.mockResolvedValue({ assignedModules: [] });
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(
+      upsertInstanceInterfaceForRequest({
+        draft: {
+          type: 'meilisearch',
+          name: 'Meilisearch',
+          enabled: true,
+          config: {
+            origin: 'https://search.example',
+            environment: 'production',
+            municipalityIds: '1',
+            apiKey: 'test-key',
+          },
+        },
+      })
+    ).rejects.toThrow('meilisearch_requires_search_module');
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+  });
+
   it('fails closed to default interface types when assigned modules are missing at runtime', async () => {
     setAuthenticatedUserContext({
       id: 'subject-1',

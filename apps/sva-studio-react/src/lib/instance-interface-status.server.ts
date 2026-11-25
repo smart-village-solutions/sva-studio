@@ -52,6 +52,7 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
       ...storedHealthDetails(persistedEntry),
     };
   }
+  if (entry.type === 'meilisearch') return { status: 'unknown', checkedAt };
 
   if (entry.type === 'deepl') return { status: 'unknown', checkedAt };
 

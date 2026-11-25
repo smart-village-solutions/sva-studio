@@ -4,6 +4,11 @@ import {
   withAuthenticatedUser,
 } from '@sva/auth-runtime/server';
 import { convertRichTextHtmlToPlainText } from '@sva/core';
+import {
+  loadDefaultExternalInterfaceRecord,
+  loadInstanceById,
+} from '@sva/data-repositories/server';
+import { fetchPublicHttps } from '@sva/server-runtime';
 import type { SearchHost, SearchUserContext } from '@sva/plugin-search/server';
 import type {
   SearchCandidate,
@@ -13,6 +18,11 @@ import type {
 } from '@sva/plugin-search/search-contract';
 import { studioServerPluginSnapshot } from './plugin-catalog.server.js';
 import { studioMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.server.js';
+import {
+  hasLegacyMeilisearchSource,
+  meilisearchPublicConfigSchema,
+} from './instance-interfaces.js';
+import { parseSecretConfig } from './instance-interface-record-mapping.server.js';
 
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -236,6 +246,33 @@ export const searchMainserverHost: SearchHost = {
     const config = await loadSvaMainserverSettings(instanceId);
     return config?.enabled ? config.graphqlBaseUrl : null;
   },
+  loadInterfaceConnection: async (instanceId, graphqlUrl) => {
+    const [instance, entry] = await Promise.all([
+      loadInstanceById(instanceId),
+      loadDefaultExternalInterfaceRecord(instanceId, 'meilisearch'),
+    ]);
+    if (!instance?.assignedModules.includes('search')) return null;
+    if (!entry) return hasLegacyMeilisearchSource(instanceId) ? undefined : null;
+    if (
+      entry.ownerKind !== 'host' ||
+      !entry.enabled ||
+      entry.visibleStatus !== 'ok' ||
+      entry.publicConfig.graphqlBaseUrl !== graphqlUrl
+    )
+      return null;
+    const config = meilisearchPublicConfigSchema.safeParse(entry.publicConfig);
+    if (!config.success) return null;
+    const key = parseSecretConfig(entry.secretConfigCiphertext, entry.id).apiKey;
+    return key
+      ? {
+          url: config.data.origin,
+          key,
+          environment: config.data.environment,
+          municipalityIds: config.data.municipalityIds.split(',').map(Number),
+        }
+      : null;
+  },
+  fetchSearch: fetchPublicHttps,
   resolve: resolveSearchCandidate,
   contextStamp,
 };

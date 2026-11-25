@@ -45,7 +45,8 @@ const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType
   value === 'supabase' ||
   value === 'postgresql' ||
   value === 'mailTransport' ||
-  value === 'mapGeocoding';
+  value === 'mapGeocoding' ||
+  value === 'meilisearch';
 
 export const isListInstanceInterfacesResponse = (
   value: unknown

@@ -440,4 +440,6 @@ Die App ergänzt fehlende MIME-/Referrer-/Framing-Header. Die Script-CSP bleibt 
 
 ## Suchplugin und vorhandene Meilisearch-Instanz
 
+Neue Suchanbindungen werden als Tenant-Schnittstelle eingerichtet. Der Host löst den verschlüsselten Zugang für dieselbe Instanz und Mainserver-Verbindung auf, die der Suchrequest verwendet. Der bestehende Deployment-Zugang bleibt während der Umstellung auf Sandbox und Guben begrenzt. [Einrichtung im Mainserver-Runbook](../development/runbook-sva-mainserver.md#suchplugin-einrichten)
+
 Das Suchplugin verwendet die vorhandene Meilisearch-Instanz ausschließlich vom Studio-Server aus. `MEILI_URL`, der geschützte `MEILI_SEARCH_KEY` und die instanzbezogene Zuordnung `MEILI_SOURCES` werden serverseitig zugeführt. Der Quellvertrag bindet Gemeindeumfang und Indexumgebung an die konfigurierte Mainserver-Verbindung. Ein Master Key ist kein Anwendungsschlüssel. Diese Erweiterung erzeugt keinen neuen Dienst oder Deploymentpfad; Einrichtungsregeln stehen im [Mainserver-Runbook](../development/runbook-sva-mainserver.md#suchplugin-einrichten).

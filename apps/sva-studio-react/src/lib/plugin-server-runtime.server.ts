@@ -34,6 +34,7 @@ import {
 
 type PluginServerModuleExports = Readonly<{
   createPluginServerHandlers?: PluginServerHandlerModuleFactory;
+  checkSearchConnection?: typeof import('@sva/plugin-search/server').checkSearchConnection;
 }>;
 
 type StudioPluginServerSource = Readonly<{
@@ -83,6 +84,16 @@ const resolveServerModule = (source: StudioPluginServerSource) =>
     source.sourceRef,
     getServerModuleCandidates(source.manifest.entryPoints.server ?? '', source.sourceType)
   ) as Promise<PluginServerModuleExports | undefined>;
+
+export const checkStudioSearchConnection: typeof import('@sva/plugin-search/server').checkSearchConnection =
+  async (connection, fetcher) => {
+    const source = studioServerPluginSnapshot.pluginSources.find(
+      ({ pluginId }) => pluginId === 'search'
+    );
+    const check = source && (await resolveServerModule(source))?.checkSearchConnection;
+    if (!check) throw new Error('meilisearch_requires_search_module');
+    await check(connection, fetcher);
+  };
 
 type WastePluginServerCapabilities = Omit<
   WasteServerContextHost,

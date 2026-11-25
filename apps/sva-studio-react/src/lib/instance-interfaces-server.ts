@@ -4,11 +4,12 @@ import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
+  loadInstanceById,
   saveExternalInterfaceRecord,
   saveDeepLInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { createSdkLogger } from '@sva/server-runtime';
-import type { InstanceInterfaceDraft } from './instance-interfaces';
+import { hasLegacyMeilisearchSource, type InstanceInterfaceDraft } from './instance-interfaces';
 import type { StoredEntry } from './instance-interface-record-mapping.server.js';
 import {
   mapRecordToStoredEntry,
@@ -114,6 +115,12 @@ export const deleteStoredInterface = async (instanceId: string, id: string): Pro
   }
   if (record.ownerKind === 'plugin') {
     throw new Error('plugin_managed_interface_read_only');
+  }
+  if (record.typeKey === 'meilisearch') {
+    if (!(await loadInstanceById(instanceId))?.assignedModules.includes('search'))
+      throw new Error('meilisearch_requires_search_module');
+    if (hasLegacyMeilisearchSource(instanceId))
+      throw new Error('meilisearch_disable_before_cutover');
   }
 
   return deleteExternalInterfaceRecord(instanceId, id);

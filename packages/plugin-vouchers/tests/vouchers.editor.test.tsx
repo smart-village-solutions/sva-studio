@@ -56,6 +56,10 @@ vi.mock('../src/vouchers.api.js', () => ({
     data: [
       { id: 'cat', name: 'Kultur' },
       { id: 'cat-2', name: 'Freizeit' },
+      { id: 'cat-3', name: 'Bildung' },
+      { id: 'cat-4', name: 'Sport' },
+      { id: 'cat-5', name: 'Umwelt' },
+      { id: 'cat-6', name: 'Verwaltung' },
     ],
   }),
   listVoucherLocations: state.locations,
@@ -822,7 +826,12 @@ it('loads every location page automatically and offers alphabetical searchable c
       pagination: { hasNextPage: true },
     })
     .mockResolvedValueOnce({
-      data: [{ id: '2', name: 'Bürgerhaus' }],
+      data: [
+        { id: '2', name: 'Bürgerhaus' },
+        { id: '4', name: 'Apotheke' },
+        { id: '5', name: 'Rathaus' },
+        { id: '6', name: 'Sporthalle' },
+      ],
       pagination: { hasNextPage: false },
     });
   render(<VoucherEditor />);
@@ -835,7 +844,7 @@ it('loads every location page automatically and offers alphabetical searchable c
     within(await screen.findByRole('listbox', { name: labels.fields.location }))
       .getAllByRole('option')
       .map((option) => option.textContent)
-  ).toEqual(['Ärztehaus', 'Bürgerhaus', 'Zoo']);
+  ).toEqual(['Apotheke', 'Ärztehaus', 'Bürgerhaus', 'Rathaus', 'Sporthalle', 'Zoo']);
   const search = screen.getByRole('combobox', { name: labels.fields.locationSearch });
   fireEvent.change(search, { target: { value: 'bürger' } });
   expect(

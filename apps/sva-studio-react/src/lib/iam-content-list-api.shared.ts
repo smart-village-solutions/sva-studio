@@ -2,6 +2,7 @@ import type { ApiErrorCode, ApiErrorResponse, IamContentListQuery } from '@sva/c
 import {
   iamContentListSortDirections,
   iamContentListSortFields,
+  isIamContentCategoryId,
   isIamContentStatus,
 } from '@sva/core';
 
@@ -28,6 +29,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
 
 const MAIN_SERVER_CONTENT_TYPES = new Set<string>(DEFAULT_MAINSERVER_VISIBLE_TYPES);
 export const MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE = 100;
+export const MAINSERVER_PROJECTION_ITEM_LIMIT = 5_000;
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
 export type MainserverContentType = (typeof DEFAULT_MAINSERVER_VISIBLE_TYPES)[number];
 
@@ -74,6 +76,14 @@ export const normalizeApiErrorCode = (value: unknown): ApiErrorCode =>
     ? (value as ApiErrorCode)
     : 'internal_error';
 
+const readCategoryId = (url: URL): string | undefined => {
+  const categoryId = url.searchParams.get('categoryId') ?? undefined;
+  if (categoryId !== undefined && !isIamContentCategoryId(categoryId)) {
+    throw new InvalidContentListQueryError();
+  }
+  return categoryId;
+};
+
 export const readContentListQuery = (request: Request): IamContentListQuery => {
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
@@ -89,6 +99,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
       : undefined;
   const poiId =
     typeValue === 'vouchers.voucher' ? url.searchParams.get('poiId')?.trim() : undefined;
+  const categoryId = readCategoryId(url);
   const statusValue = url.searchParams.get('status')?.trim();
   const sortByValue = url.searchParams.get('sortBy')?.trim();
   const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
@@ -117,6 +128,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
     ...(languageCode ? { languageCode } : {}),
     ...(poiId && /^\d+$/.test(poiId) ? { poiId } : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(isIamContentStatus(statusValue) ? { status: statusValue } : {}),
     ...(visibleTypes.length > 0
       ? { visibleTypes }

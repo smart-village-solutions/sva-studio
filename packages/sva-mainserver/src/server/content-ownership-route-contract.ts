@@ -34,6 +34,52 @@ export type ContentOwnershipRouteMatch = Readonly<{
 export type SupportedContentOwnershipRouteMatch = Omit<ContentOwnershipRouteMatch, 'contentType'> &
   Readonly<{ contentType: SupportedOwnershipContentType }>;
 
+const routePrefix = '/api/v1/mainserver/content-ownership/';
+const supportedContentTypes = new Set<ContentOwnershipRouteMatch['contentType']>([
+  'news.article',
+  'events.event-record',
+  'poi.point-of-interest',
+  'generic-items.generic-item',
+  'faq.faq',
+  'cockpit-cards.cockpit-card',
+  'projects.project',
+  'surveys.survey',
+]);
+const isProjectionContentType = (
+  value: string
+): value is ContentOwnershipRouteMatch['contentType'] =>
+  supportedContentTypes.has(value as ContentOwnershipRouteMatch['contentType']);
+
+export const matchContentOwnershipRoute = (request: Request): ContentOwnershipRouteMatch | null => {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith(routePrefix)) return null;
+  const segments = pathname.slice(routePrefix.length).split('/');
+  if (segments.length !== 3) return null;
+  const [encodedContentType, encodedContentId, operation] = segments;
+  let contentType: string;
+  let contentId: string;
+  try {
+    contentType = decodeURIComponent(encodedContentType ?? '');
+    contentId = decodeURIComponent(encodedContentId ?? '');
+  } catch {
+    return null;
+  }
+  return isProjectionContentType(contentType) &&
+    contentId.length > 0 &&
+    (operation === 'authorization' || operation === 'targets' || operation === 'transfer')
+    ? { contentType, contentId, operation }
+    : null;
+};
+
+export const readTransferOperationId = (request: Request): string | undefined => {
+  if (request.method !== 'GET') return undefined;
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith(routePrefix)) return undefined;
+  return /^operations\/([A-Za-z0-9][A-Za-z0-9._:-]{7,127})$/.exec(
+    pathname.slice(routePrefix.length)
+  )?.[1];
+};
+
 export type OwnershipTransferAudit = Readonly<{
   coverage: 'studio_mutations';
   sourcePrincipalResolution: 'resolved' | 'unresolved' | 'failed';

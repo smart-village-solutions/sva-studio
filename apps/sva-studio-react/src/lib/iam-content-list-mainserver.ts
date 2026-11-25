@@ -1,73 +1,63 @@
 import type { ContentJsonValue, IamContentAccessSummary, IamContentListItem } from '@sva/core';
-import type { EffectivePermission } from '@sva/iam-core';
 
 type MainserverDataProvider = Readonly<{
   id?: string;
   name?: string;
 }>;
 
-type MainserverNewsItem = Readonly<{
+type MainserverCategorizedItem = Readonly<{
   id: string;
   contentType: string;
+  categories?: readonly Readonly<{ id?: string; name?: string }>[];
+  visible?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  dataProvider?: MainserverDataProvider;
+}>;
+
+type MainserverNewsItem = MainserverCategorizedItem & Readonly<{
   title?: string;
   contentBlocks?: readonly Readonly<{ title?: string }>[];
   author: string;
   payload?: unknown;
-  visible?: boolean;
-  createdAt: string;
-  updatedAt: string;
   publishedAt?: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverEventItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverEventItem = MainserverCategorizedItem & Readonly<{
   title?: string;
   description?: string;
   categoryName?: string;
+  categoryId?: string;
   dates?: unknown;
   addresses?: unknown;
   contacts?: unknown;
   urls?: unknown;
   tags?: unknown;
   pointOfInterestId?: string;
-  visible?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverPoiItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverPoiItem = MainserverCategorizedItem & Readonly<{
   name?: string;
   description?: string;
   mobileDescription?: string;
   active?: boolean;
-  visible?: boolean;
   categoryName?: string;
+  categoryId?: string;
   payload?: unknown;
   addresses?: unknown;
   contact?: unknown;
   openingHours?: unknown;
   webUrls?: unknown;
   tags?: unknown;
-  createdAt: string;
-  updatedAt: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
-type MainserverGenericItem = Readonly<{
-  id: string;
-  contentType: string;
+type MainserverGenericItem = MainserverCategorizedItem & Readonly<{
   title?: string;
   genericType?: string;
   pointOfInterestId?: string;
   author?: string;
   keywords?: string;
   payload?: unknown;
-  categories?: unknown;
   contacts?: unknown;
   webUrls?: unknown;
   addresses?: unknown;
@@ -78,11 +68,7 @@ type MainserverGenericItem = Readonly<{
   dates?: unknown;
   accessibilityInformations?: unknown;
   priceInformations?: unknown;
-  visible?: boolean;
-  createdAt: string;
-  updatedAt: string;
   publishedAt?: string;
-  dataProvider?: MainserverDataProvider;
 }>;
 
 type MainserverSurveyLocalizedText = Readonly<Record<string, string>>;
@@ -143,6 +129,14 @@ const resolveLocalizedText = (
 const toContentJsonValue = (value: unknown): ContentJsonValue =>
   JSON.parse(JSON.stringify(value ?? null)) as ContentJsonValue;
 
+const directCategoryIds = (
+  categories: MainserverNewsItem['categories'],
+  primaryCategoryId?: string
+): string[] =>
+  [...new Set([primaryCategoryId, ...(categories ?? []).map(({ id }) => id)])].filter(
+    (id): id is string => Boolean(id)
+  );
+
 const deriveNamespacedAction = (
   contentType: string,
   action: 'create' | 'update'
@@ -151,7 +145,7 @@ const deriveNamespacedAction = (
   return namespace ? `${namespace}.${action}` : null;
 };
 
-type PermissionView = Pick<EffectivePermission, 'action'>;
+type PermissionView = Readonly<{ action: string }>;
 
 const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
   permissions.some((permission) => permission.action === action);
@@ -195,6 +189,19 @@ const mapDataProviderProjection = (
   ...(dataProvider?.name ? { sourceDataProviderName: dataProvider.name } : {}),
 });
 
+const mapNewsProjectionPayload = (item: MainserverNewsItem): ContentJsonValue => {
+  const payload =
+    item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
+      ? item.payload
+      : undefined;
+  if (!payload && !item.categories?.length) return toContentJsonValue(item.payload);
+  return toContentJsonValue({
+    ...payload,
+    ...(item.categories?.length ? { categories: item.categories } : {}),
+    mainserverCategoryIds: directCategoryIds(item.categories),
+  });
+};
+
 export const mapNewsItem = (
   item: MainserverNewsItem,
   instanceId: string,
@@ -211,7 +218,7 @@ export const mapNewsItem = (
   authorDisplayMode: 'organization',
   author: item.author,
   ...mapDataProviderProjection(item.dataProvider),
-  payload: toContentJsonValue(item.payload),
+  payload: mapNewsProjectionPayload(item),
   status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:news:${item.id}`,
@@ -238,6 +245,9 @@ export const mapEventItem = (
   payload: toContentJsonValue({
     description: item.description,
     categoryName: item.categoryName,
+    categoryId: item.categoryId,
+    mainserverCategoryIds: directCategoryIds(item.categories, item.categoryId),
+    categories: item.categories,
     dates: item.dates,
     addresses: item.addresses,
     contacts: item.contacts,
@@ -272,6 +282,9 @@ export const mapPoiItem = (
     mobileDescription: item.mobileDescription,
     active: item.active,
     categoryName: item.categoryName,
+    categoryId: item.categoryId,
+    mainserverCategoryIds: directCategoryIds(item.categories, item.categoryId),
+    categories: item.categories,
     payload: item.payload,
     addresses: item.addresses,
     contact: item.contact,
@@ -306,6 +319,7 @@ export const mapGenericItem = (
     ...(item.pointOfInterestId ? { pointOfInterestId: item.pointOfInterestId } : {}),
     keywords: item.keywords,
     payload: item.payload,
+    mainserverCategoryIds: directCategoryIds(item.categories),
     categories: item.categories,
     contacts: item.contacts,
     webUrls: item.webUrls,

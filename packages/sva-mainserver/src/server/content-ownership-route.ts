@@ -7,9 +7,13 @@ import {
   type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
 
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
+import { withMainserverContextBinding } from './content-route-context.js';
+import { readTransferOperation } from './content-ownership-transfer-reconciliation.js';
 import {
   loadOwnershipItem,
+  matchContentOwnershipRoute,
+  readTransferOperationId,
   matchesOwnershipContentType,
   resolveOwnershipRouteActor,
   toOwnershipTransferContent,
@@ -30,43 +34,7 @@ import {
 import { projectSourceReferenceInput } from './projects-route-transport.js';
 import { getSvaMainserverSurvey } from './service.js';
 
-const routePrefix = '/api/v1/mainserver/content-ownership/';
 const MAX_OWNERSHIP_TARGET_SEARCH_LENGTH = 200;
-const supportedContentTypes = new Set<ContentOwnershipRouteMatch['contentType']>([
-  'news.article',
-  'events.event-record',
-  'poi.point-of-interest',
-  'generic-items.generic-item',
-  'faq.faq',
-  'cockpit-cards.cockpit-card',
-  'projects.project',
-  'surveys.survey',
-]);
-const isProjectionContentType = (
-  value: string
-): value is ContentOwnershipRouteMatch['contentType'] =>
-  supportedContentTypes.has(value as ContentOwnershipRouteMatch['contentType']);
-
-const matchRoute = (request: Request): ContentOwnershipRouteMatch | null => {
-  const pathname = new URL(request.url).pathname;
-  if (!pathname.startsWith(routePrefix)) return null;
-  const segments = pathname.slice(routePrefix.length).split('/');
-  if (segments.length !== 3) return null;
-  const [encodedContentType, encodedContentId, operation] = segments;
-  let contentType: string;
-  let contentId: string;
-  try {
-    contentType = decodeURIComponent(encodedContentType ?? '');
-    contentId = decodeURIComponent(encodedContentId ?? '');
-  } catch {
-    return null;
-  }
-  return isProjectionContentType(contentType) &&
-    contentId.length > 0 &&
-    (operation === 'authorization' || operation === 'targets' || operation === 'transfer')
-    ? { contentType, contentId, operation }
-    : null;
-};
 
 const handleTargets = async (
   request: Request,
@@ -100,8 +68,12 @@ const handleTargets = async (
     page,
     pageSize,
     ...(search ? { search } : {}),
-    ...(source.principal ? { currentOwner: source.principal } : {}),
-    currentDataProviderId: source.dataProviderId,
+    ...(url.searchParams.get('selection') === 'batch'
+      ? {}
+      : {
+          ...(source.principal ? { currentOwner: source.principal } : {}),
+          currentDataProviderId: source.dataProviderId,
+        }),
   });
   return json({
     data: result.items,
@@ -223,7 +195,9 @@ const dispatchAuthenticated = async (
     );
   }
   const actor = await resolveOwnershipRouteActor(request, ctx);
-  if (isResponse(actor)) return actor;
+  if (isResponse(actor)) {
+    return route.operation === 'transfer' ? withMutationNotApplied(actor) : actor;
+  }
   if (route.contentType === 'surveys.survey') {
     try {
       return await handleSurveyAuthorization(route, actor);
@@ -288,7 +262,13 @@ export const dispatchSvaMainserverContentOwnershipRequest = async (
     reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
   }> = {}
 ): Promise<Response | null> => {
-  const route = matchRoute(request);
+  const operationId = readTransferOperationId(request);
+  if (operationId) {
+    return withAuthenticatedUser(request, (ctx) =>
+      readTransferOperation(request, ctx, operationId)
+    );
+  }
+  const route = matchContentOwnershipRoute(request);
   if (!route) return null;
   const methodAllowed =
     ((route.operation === 'authorization' || route.operation === 'targets') &&
@@ -296,7 +276,15 @@ export const dispatchSvaMainserverContentOwnershipRequest = async (
     (route.operation === 'transfer' && request.method === 'POST');
   if (!methodAllowed)
     return errorJson(405, 'method_not_allowed', 'HTTP-Methode wird nicht unterstützt.');
-  return withAuthenticatedUser(request, (ctx) =>
-    dispatchAuthenticated(request, route, ctx, options.reconcilePreviousTransfer)
-  );
+  return withAuthenticatedUser(request, async (ctx) => {
+    const response = await dispatchAuthenticated(
+      request,
+      route,
+      ctx,
+      options.reconcilePreviousTransfer
+    );
+    return route.operation === 'targets' && response.ok
+      ? withMainserverContextBinding(response, ctx)
+      : response;
+  });
 };

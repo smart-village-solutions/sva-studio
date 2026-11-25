@@ -85,6 +85,10 @@ export type StudioDataTableProps<TData> = Readonly<{
   isLoading?: boolean;
   getRowId: (row: TData) => string;
   selectionMode?: 'none' | 'multiple';
+  selection?: Readonly<{
+    state: Record<string, true>;
+    onChange: (selection: Record<string, true>) => void;
+  }>;
   canSelectRow?: (row: TData) => boolean;
   sorting: StudioDataTableSorting;
 }>;

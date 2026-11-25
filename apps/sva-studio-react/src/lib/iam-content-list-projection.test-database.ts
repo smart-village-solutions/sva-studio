@@ -163,6 +163,16 @@ const applyProjectionFilters = (
     const poiId = readNullableString(values?.[Number.parseInt(poiIdMatch[1] ?? '0', 10) - 1]);
     rows = rows.filter((row) => readNullableString(row.payload_json.pointOfInterestId) === poiId);
   }
+  const categoryMatch = text.match(/'mainserverCategoryIds'\) \? \$(\d+)/);
+  if (categoryMatch) {
+    const categoryId = readNullableString(values?.[Number(categoryMatch[1]) - 1]);
+    rows = rows.filter(
+      (row) =>
+        row.source_system === 'mainserver' &&
+        Array.isArray(row.payload_json.mainserverCategoryIds) &&
+        row.payload_json.mainserverCategoryIds.includes(categoryId)
+    );
+  }
   const languageCodeMatch = text.match(/payload_json ->> 'languageCode'\)\) = \$(\d+)/);
   if (languageCodeMatch) {
     const index = Number.parseInt(languageCodeMatch[1] ?? '0', 10) - 1;

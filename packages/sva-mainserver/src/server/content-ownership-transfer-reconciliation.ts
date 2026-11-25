@@ -1,8 +1,16 @@
-import { hasUnresolvedMainserverOwnershipTransfer } from '@sva/auth-runtime/server';
+import {
+  hasUnresolvedMainserverOwnershipTransfer,
+  loadMainserverMutationJournal,
+  resolveActorInfo,
+  withMainserverContentOwnershipLock,
+  type AuthenticatedRequestContext,
+} from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { errorJson } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
+import { readActingPrincipalType } from './content-route-context.js';
 import type { SupportedContentOwnershipRouteMatch } from './content-ownership-route-contract.js';
+import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
 import type { MainserverMutationActor } from './mutation-principal.js';
 
 const logger = createSdkLogger({
@@ -62,4 +70,78 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
     'content_transfer_reconciliation_required',
     'Ein früherer Transfer muss zuerst abgeglichen werden.'
   );
+};
+
+export const runUnstartedOwnershipTransfer = async (
+  actor: MainserverMutationActor,
+  route: SupportedContentOwnershipRouteMatch,
+  execute: (markJournalMayExist: () => void) => Promise<Response>
+): Promise<Response> => {
+  let journalMayExist = false;
+  try {
+    return await withMainserverContentOwnershipLock({
+      instanceId: actor.instanceId,
+      contentType: route.contentType,
+      contentId: route.contentId,
+      execute: async () => {
+        const previousOperation = await loadMainserverMutationJournal({
+          instanceId: actor.instanceId,
+          operationExternalId: actor.operationExternalId,
+        });
+        if (previousOperation) {
+          journalMayExist = true;
+          return errorJson(
+            409,
+            'content_transfer_operation_already_started',
+            'Diese Übertragung wurde bereits gestartet.'
+          );
+        }
+        return execute(() => {
+          journalMayExist = true;
+        });
+      },
+    });
+  } catch (error) {
+    if (journalMayExist) throw error;
+    return withMutationNotApplied(
+      ownershipRouteFailureResponse(error, actor, route, 'Die Inhaberübertragung ist fehlgeschlagen.')
+    );
+  }
+};
+
+export const readTransferOperation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  operationId: string
+): Promise<Response> => {
+  const principal = readActingPrincipalType(request);
+  if (isResponse(principal)) return principal;
+  if (!principal)
+    return errorJson(400, 'acting_principal_type_required', 'Mutationsprincipal erforderlich.');
+  const actor = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actor) return actor.error;
+  const { actorAccountId, instanceId } = actor.actor;
+  if (!actorAccountId || instanceId !== ctx.user.instanceId) {
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  }
+  const entry = await loadMainserverMutationJournal({
+    instanceId,
+    operationExternalId: operationId,
+    readScope: {
+      actorAccountId,
+      activeOrganizationId: ctx.activeOrganizationId ?? null,
+      actingPrincipalType: principal,
+    },
+  }).catch(() => null);
+  if (entry === null)
+    return errorJson(503, 'database_unavailable', 'Transferstatus nicht verfügbar.');
+  if (entry?.actionId !== 'content.transferOwnership') {
+    return errorJson(404, 'operation_not_found', 'Übertragung nicht gefunden.');
+  }
+  return json({
+    data: {
+      providerOutcome: entry.providerOutcome,
+      reconciliationStatus: entry.reconciliationStatus,
+    },
+  });
 };

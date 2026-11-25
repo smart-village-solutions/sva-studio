@@ -1,10 +1,11 @@
 import type { IamContentListItem, IamContentListQuery } from '@sva/core';
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
-import { getWorkspaceContext } from '@sva/server-runtime';
 
 import {
   createListErrorResponse,
   isMainserverContentType,
+  MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+  MAINSERVER_PROJECTION_ITEM_LIMIT,
   normalizeApiErrorCode,
   type MainserverContentType,
 } from './iam-content-list-api.shared.js';
@@ -26,20 +27,29 @@ import {
 } from './iam-content-list-projection-sync.server.js';
 import { buildProjectionReadVisibilityRules } from './iam-content-list-visibility.js';
 
-const createEmptyProjectionListResponse = (query: IamContentListQuery): Response =>
+const createEmptyProjectionListResponse = (
+  query: IamContentListQuery,
+  requestId?: string
+): Response =>
   new Response(
     JSON.stringify({
       data: [],
       pagination: { page: query.page, pageSize: query.pageSize, total: 0 },
-      ...(getWorkspaceContext().requestId ? { requestId: getWorkspaceContext().requestId } : {}),
+      ...(requestId ? { requestId } : {}),
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );
+
+// Page progress also detects the cutoff when rows were deduplicated before persisting.
+const reachedSelectionLimit = (state: ContentProjectionSyncState): boolean =>
+  state.availableCount >= MAINSERVER_PROJECTION_ITEM_LIMIT ||
+  state.completedPage * MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE >= MAINSERVER_PROJECTION_ITEM_LIMIT;
 
 const createProjectionListResponse = (input: {
   readonly query: IamContentListQuery;
   readonly items: readonly IamContentListItem[];
   readonly total: number;
+  readonly requestId?: string;
   readonly syncStates: readonly ContentProjectionSyncState[];
 }): Response => {
   const isTotalFinal = input.syncStates.every((syncState) => syncState.isTotalFinal);
@@ -52,6 +62,9 @@ const createProjectionListResponse = (input: {
             hasStaleMainserverContent: input.syncStates.some((state) => state.isStale),
             hasBlockingSyncGap: input.syncStates.some((state) => !state.hasSnapshot),
             hasRunningMainserverSync: input.syncStates.some((state) => state.isSyncRunning),
+            ...(input.syncStates.some(reachedSelectionLimit)
+              ? { selectionLimit: MAINSERVER_PROJECTION_ITEM_LIMIT }
+              : {}),
             availableCount: input.total,
             ...(isTotalFinal ? { totalCount: input.total } : {}),
             isTotalFinal,
@@ -62,7 +75,7 @@ const createProjectionListResponse = (input: {
       data: input.items,
       pagination: { page: input.query.page, pageSize: input.query.pageSize, total: input.total },
       ...metadata,
-      ...(getWorkspaceContext().requestId ? { requestId: getWorkspaceContext().requestId } : {}),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );
@@ -70,26 +83,38 @@ const createProjectionListResponse = (input: {
 
 export const listProjectedContents = async (
   ctx: AuthenticatedRequestContext,
-  query: IamContentListQuery
+  query: IamContentListQuery,
+  selection?: 'all'
 ): Promise<Response> => {
+  const { getWorkspaceContext } = await import('@sva/server-runtime');
+  const { requestId } = getWorkspaceContext();
   const instanceId = ctx.user.instanceId;
   if (!instanceId) {
     return createListErrorResponse(
       400,
       'invalid_instance_id',
       'Kein Instanzkontext für diese Inhalte vorhanden.',
-      getWorkspaceContext().requestId
+      requestId
     );
   }
 
   const requestedTypes = resolveEffectiveTypes(query);
   const effectiveTypes =
     requestedTypes.length > 0 ? requestedTypes : await loadProjectedContentTypes(instanceId);
-  if (query.type && effectiveTypes.length === 0) return createEmptyProjectionListResponse(query);
+  if (query.type && effectiveTypes.length === 0)
+    return createEmptyProjectionListResponse(query, requestId);
 
   const typeAuthorization = await authorizeRequestedTypes(ctx, effectiveTypes);
   if (typeAuthorization instanceof Response) return typeAuthorization;
 
+  if (
+    selection &&
+    !typeAuthorization.permissions.some(
+      (permission) => permission.action === 'content.transferOwnership'
+    )
+  ) {
+    return createListErrorResponse(403, 'forbidden', 'Keine Berechtigung zur Inhaberübertragung.');
+  }
   const mainserverTypes = typeAuthorization.allowedTypes.filter(isMainserverContentType);
   const initialVisibilityRules = buildProjectionReadVisibilityRules(
     typeAuthorization.allowedTypes,
@@ -123,7 +148,7 @@ export const listProjectedContents = async (
         ? normalizeApiErrorCode(blockingSyncGap.lastErrorCode)
         : 'database_unavailable',
       'Für mindestens einen angefragten Mainserver-Inhaltstyp liegt noch kein synchronisierter Snapshot vor.',
-      getWorkspaceContext().requestId
+      requestId
     );
   }
 
@@ -140,13 +165,39 @@ export const listProjectedContents = async (
     loadableAllowedTypes,
     typeAuthorization.permissions
   );
+  if (selection && responseSyncStates.some(reachedSelectionLimit)) {
+    return createListErrorResponse(
+      409,
+      'conflict',
+      'Die Obergrenze der Inhaltsliste ist erreicht. Eine Gesamtauswahl ist nicht verfügbar.',
+      requestId
+    );
+  }
+  if (selection && responseSyncStates.some((state) => !state.hasSnapshot || !state.isTotalFinal)) {
+    return createListErrorResponse(409, 'conflict', 'Die Inhaltsliste ist noch nicht vollständig.');
+  }
   const { items, total } = await loadProjectionPage(
     instanceId,
     query,
     visibilityRules,
     actorAccountResult,
-    ctx.activeOrganizationId
+    ctx.activeOrganizationId,
+    selection
   );
+  if (selection) {
+    return Response.json(
+      {
+        data: items.map(({ id, contentType, title, historyRef, credentialSource }) => ({
+          id,
+          contentType,
+          title,
+          historyRef,
+          credentialSource,
+        })),
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
   return createProjectionListResponse({
     query,
     items: enrichProjectionItemsWithAccess(
@@ -158,5 +209,6 @@ export const listProjectedContents = async (
     ),
     total,
     syncStates: responseSyncStates,
+    requestId,
   });
 };

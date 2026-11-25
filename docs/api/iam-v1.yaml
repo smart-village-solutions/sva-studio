@@ -1686,6 +1686,23 @@ paths:
             type: string
           description: Filtert auf einen konkreten Inhaltstyp.
         - in: query
+          name: categoryId
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          description: Filtert vor der Seiteneinteilung nach der direkt zugeordneten Mainserver-Kategorie.
+        - in: query
+          name: selection
+          required: false
+          schema:
+            type: string
+            enum: [all]
+          description: >
+            Liefert bei vorhandener Transferberechtigung alle sichtbaren Treffer der Filter als
+            Auswahlreferenzen. Die Parameter page und pageSize gelten für die reguläre Listenansicht.
+        - in: query
           name: status
           required: false
           schema:
@@ -1721,6 +1738,13 @@ paths:
           description: >
             Inhaltsliste inklusive optionaler Projektions-Metadaten für Mainserver-Typen,
             zum Beispiel Freshness-, Fehler- und Laufstatus des Hintergrund-Syncs.
+            Bei selection=all liefert data je Treffer ausschließlich id, contentType, title,
+            historyRef und gegebenenfalls credentialSource.
+        '409':
+          description: >-
+            Die Gesamtauswahl benötigt einen vollständigen Listenstand unterhalb des
+            Projektionslimits. Die Listenmetadaten enthalten selectionLimit, wenn das
+            Limit für einen angefragten Inhaltstyp erreicht ist.
         '503':
           description: >
             Kein verwertbarer Snapshot für mindestens einen angefragten Mainserver-Typ

@@ -167,6 +167,7 @@ export const ContentListPage = ({
       ...(routeState.type === 'vouchers.voucher' && routeState.poiId
         ? { poiId: routeState.poiId }
         : {}),
+      ...(routeState.categoryId ? { categoryId: routeState.categoryId } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes,
       sortBy: resolveContentSortField(routeSortField),
@@ -177,6 +178,7 @@ export const ContentListPage = ({
       routeSortField,
       routeState.page,
       routeState.pageSize,
+      routeState.categoryId,
       routeState.languageCode,
       routeState.poiId,
       routeState.status,
@@ -333,6 +335,7 @@ export const ContentListPage = ({
       ) : null}
 
       <ContentListTable
+        query={contentListQuery}
         contentsApi={contentsApi}
         contentAccessApi={contentAccessApi}
         authSessionPending={authSessionPending}

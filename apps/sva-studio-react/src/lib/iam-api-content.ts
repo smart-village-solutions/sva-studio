@@ -12,6 +12,7 @@ import type {
 import { IAM_HEADERS, patchJson, postJson, requestJson } from './iam-http-client';
 
 import type {
+  ContentSelectionItem,
   CreateContentPayload,
   IamContentListResponse,
   MainserverAuthoringDiagnostics,
@@ -20,7 +21,7 @@ import type {
   UpdateContentPayload,
 } from './iam-api-content-types';
 
-export const listContents = async (query: IamContentListQuery): Promise<IamContentListResponse> => {
+const createContentListParams = (query: IamContentListQuery): URLSearchParams => {
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
@@ -40,6 +41,7 @@ export const listContents = async (query: IamContentListQuery): Promise<IamConte
   if (query.type === 'vouchers.voucher' && query.poiId) {
     params.set('poiId', query.poiId);
   }
+  if (query.categoryId) params.set('categoryId', query.categoryId);
   if (query.status) {
     params.set('status', query.status);
   }
@@ -47,7 +49,16 @@ export const listContents = async (query: IamContentListQuery): Promise<IamConte
     params.append('visibleType', contentType);
   }
 
-  return requestJson<IamContentListResponse>(`/api/v1/iam/contents?${params.toString()}`);
+  return params;
+};
+
+export const listContents = (query: IamContentListQuery): Promise<IamContentListResponse> =>
+  requestJson<IamContentListResponse>(`/api/v1/iam/contents?${createContentListParams(query)}`);
+
+export const listContentSelection = (query: IamContentListQuery): Promise<{ data: readonly ContentSelectionItem[] }> => {
+  const params = createContentListParams(query);
+  params.set('selection', 'all');
+  return requestJson(`/api/v1/iam/contents?${params}`);
 };
 
 export const refreshProjectedContents = async (

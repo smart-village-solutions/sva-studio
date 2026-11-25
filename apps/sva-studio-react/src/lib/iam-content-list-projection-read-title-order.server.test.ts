@@ -52,7 +52,7 @@ const localContentRow = (id: string, title: string) => ({
   source_entity_type: 'iam.contents',
 });
 
-const markProjected = (contentType: string, count: number) => {
+const markProjected = (contentType: string, count: number, isTotalFinal = true) => {
   fixture.syncStates.set(contentType, {
     last_started_at: null,
     last_succeeded_at: new Date().toISOString(),
@@ -60,6 +60,7 @@ const markProjected = (contentType: string, count: number) => {
     last_error_code: null,
     last_error_message: null,
     projected_count: count,
+    is_total_final: isTotalFinal,
   });
 };
 
@@ -114,6 +115,74 @@ const listTitlePages = async (contentType: string, titles: readonly string[]) =>
 
 describe('content projection title order', () => {
   registerProjectionFixture();
+
+  it('filters exact category membership before pagination and freezes the complete authorized selection', async () => {
+    const contentType = 'events.event-record';
+    fixture.projectionRows = [
+      { ...projectionRow(contentType, 'other-id', 'A', 'Studio'), payload_json: { mainserverCategoryIds: ['20'] } },
+      { ...projectionRow(contentType, 'legacy-name', 'B', 'Studio'), payload_json: { categoryName: 'Kultur', categoryId: '10', categories: [{ id: '10' }] } },
+      { ...projectionRow(contentType, 'main-category', 'C', 'Studio'), payload_json: { mainserverCategoryIds: ['10'] } },
+      { ...projectionRow(contentType, 'member', 'D', 'Studio'), payload_json: { mainserverCategoryIds: ['10'] } },
+      { ...projectionRow(contentType, 'other-tenant', 'E', 'Studio'), instance_id: 'de-fremd', payload_json: { mainserverCategoryIds: ['10'] } },
+    ];
+    markProjected(contentType, 4);
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        readPermission(contentType),
+        { action: 'content.transferOwnership', resourceType: 'content' },
+      ],
+    });
+
+    const query = { type: contentType, categoryId: '10', page: 1, pageSize: 1, sortBy: 'title', sortDirection: 'asc' } as const;
+    const page = await listProjectedContents(ctx, query);
+    expect(page.status).toBe(200);
+    expect(await page.json()).toMatchObject({
+      data: [{ id: 'main-category' }],
+      pagination: { total: 2, pageSize: 1 },
+    });
+
+    const selection = await listProjectedContents(ctx, query, 'all');
+    expect(selection.status).toBe(200);
+    const { data } = await selection.json();
+    expect(data.map(({ id }: { id: string }) => id)).toEqual(['main-category', 'member']);
+    expect(data[0]).not.toHaveProperty('payload');
+
+    markProjected(contentType, 4, false);
+    expect((await listProjectedContents(ctx, query)).status).toBe(200);
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
+  });
+
+  it('reports the projection limit and rejects all-selection even when the sync ended successfully', async () => {
+    const contentType = 'events.event-record';
+    fixture.projectionRows = [projectionRow(contentType, 'event-1', 'Veranstaltung', 'Studio')];
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        readPermission(contentType),
+        { action: 'content.transferOwnership', resourceType: 'content' },
+      ],
+    });
+    const query = { type: contentType, page: 1, pageSize: 25, sortBy: 'title', sortDirection: 'asc' } as const;
+
+    markProjected(contentType, 4_999);
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(200);
+
+    markProjected(contentType, 5_000);
+    const page = await listProjectedContents(ctx, query);
+    expect(page.status).toBe(200);
+    await expect(page.json()).resolves.toMatchObject({
+      data: [{ id: 'event-1' }],
+      metadata: { selectionLimit: 5_000 },
+    });
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
+
+    markProjected(contentType, 4_999);
+    const syncState = fixture.syncStates.get(contentType);
+    if (!syncState) throw new Error('Expected a synchronized projection');
+    fixture.syncStates.set(contentType, { ...syncState, completed_page: 50 });
+    expect((await listProjectedContents(ctx, query, 'all')).status).toBe(409);
+  });
 
   it('sorts imported and Studio-created events by German title order before pagination', async () => {
     const pages = await listTitlePages('events.event-record', [

@@ -1346,6 +1346,12 @@ Fehlerpfad:
 4. Das Journal wird vor dem Provider-Write um erwartetes Ziel und technische Transfermetadaten ergänzt.
 5. Eine bestätigte Zielzuordnung aktualisiert Projektion und UI. Bei verlorenem Response entscheiden Target- und Source-Re-Read; fehlende eindeutige Evidenz erzeugt `reconciliation_required`.
 
+### Inhaltsübersicht mit Inhaberwechsel für mehrere Treffer
+
+Die Inhaltsprojektion wertet den Kategoriefilter im autorisierten Listenpfad vor der Seiteneinteilung aus. Die seitenübergreifende Auswahl konsumiert denselben Pfad und liefert bei vollständiger Projektion nur die zur Auswahl benötigten Referenzen. Vor der Ausführung friert die Oberfläche Menge und Ziel ein und verwendet pro Datensatz eine stabile Operations-ID aus dem bestätigten Auftrag.
+
+Für jeden Inhalt entscheidet der bestehende Einzeltransfer über aktuelle Sichtbarkeit, Transferberechtigung und Inhaber. Die Zielsuche liefert eine Bindung an den aktuellen Account-, Instanz- und Organisationskontext für die folgenden Requests. Der Einzeltransfer prüft eine bereits verwendete Operations-ID innerhalb der Inhaltssperre. Ein lesender Statusabruf liefert ausschließlich den Provider- und Abgleichzustand aus dem aufruferspezifisch eingeschränkten Journal. Die Oberfläche führt ausstehende Einträge sequenziell aus und verwendet nach einer Unterbrechung für bereits angestoßene Einträge nur den Statusabruf.
+
 ### Szenario 20: SSF-Runtime-Konfiguration laden
 
 Für V2 liest SSF vor der Mandantenauswahl

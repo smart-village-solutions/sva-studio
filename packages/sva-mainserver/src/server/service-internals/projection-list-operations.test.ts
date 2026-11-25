@@ -30,6 +30,7 @@ describe('projection list operations', () => {
         {
           id: 'news-1',
           title: '',
+          categories: [{ id: '10', children: [{ id: '11' }] }, { id: '10' }, { name: 'Ohne ID' }],
           contentBlocks: [{ title: 'Headline aus dem ersten Inhaltsblock' }],
           createdAt: '2026-01-01T00:00:00Z',
           updatedAt: '2026-01-02T00:00:00Z',
@@ -48,13 +49,18 @@ describe('projection list operations', () => {
     );
 
     expect(result.data).toEqual([
-      expect.objectContaining({ id: 'news-1', title: 'Headline aus dem ersten Inhaltsblock' }),
+      expect.objectContaining({
+        id: 'news-1',
+        title: 'Headline aus dem ersten Inhaltsblock',
+        categoryIds: ['10'],
+      }),
       expect.objectContaining({ id: 'news-2', title: 'news-2' }),
     ]);
     expect(result.skippedInvalidCount).toBe(1);
     const request = execute.mock.calls[0]?.[0] as { document: string; variables: unknown };
     expect(request.variables).toEqual({ limit: 101, skip: 0, order: 'updatedAt_DESC' });
     expect(request.document).toMatch(/contentBlocks\s*\{\s*title\s*\}/);
+    expect(request.document).toMatch(/categories\s*\{\s*id\s*\}/);
     expect(request.document).not.toMatch(/\b(payload|media|addresses)\b/);
   });
 

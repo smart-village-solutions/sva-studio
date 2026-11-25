@@ -28,6 +28,14 @@ Die serverseitige Typmatrix begrenzt die Übertragung auf unterstützte Inhaltst
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
+## Mehrere Inhalte übertragen
+
+In der Studio-Inhaltsübersicht lässt sich die Liste nach einer direkt zugeordneten Mainserver-Kategorie filtern. Die Kategorieauswahl setzt die Leseberechtigung für Kategorien voraus. Unterkategorien sind separat auswählbar. Studio übernimmt die IDs tatsächlicher Kategoriezuordnungen aus der Mainserver-Liste und prüft sie vor der Seiteneinteilung. Bei älteren Listenständen stehen die IDs nach der nächsten Inhaltssynchronisierung zur Verfügung. Kategorienamen und freie Zusatzfelder ändern die Treffermenge nicht.
+
+Wer über die Transferberechtigung verfügt, kann **Inhalte zur Übertragung auswählen** öffnen. Die Auswahl bleibt beim Blättern erhalten. **Treffer auf allen Seiten auswählen** erfasst die gefilterte Liste über alle Seiten für unterstützte Inhaltstypen mit einem passenden Mainserver-Zugang. Studio prüft beim Transfer die Berechtigung für jeden Inhalt. Bei einem unvollständigen Listenstand oder wenn das Listenlimit von 5.000 Einträgen pro Inhaltstyp erreicht ist, bleibt die Auswahl auf einzelne sichtbare Inhalte beschränkt. Studio zeigt den Grund an. Einzelne Treffer lassen sich abwählen. Eine Änderung der Filter setzt die Auswahl zurück. Bei **Auswahl übertragen** werden die ausgewählten Inhalte festgeschrieben. Nach der Zielauswahl bestätigt der Benutzer die Übertragung.
+
+Studio zeigt das Ergebnis je Inhalt an. **Im Abgleich** umfasst unbestätigte Transfers und bestätigte Mainserver-Transfers mit offenem Studio-Nachlauf. **Status aktualisieren** liest das Transferjournal. **Ergebnis schließen** blendet einen offenen Auftrag aus. Mit **Offenen Auftrag anzeigen** lässt er sich wieder öffnen. Nach einem Neuladen im selben Browser-Tab kann **Auftrag fortsetzen** die noch nicht begonnenen Übertragungen ausführen. Bereits angestoßene Übertragungen werden anhand des Journals geprüft. Findet Studio dort keinen Eintrag, kann der Benutzer den Einzeltransfer mit derselben Vorgangs-ID fortsetzen. Der Server prüft die ID unter derselben Inhaltssperre, bevor er einen Transfer ausführt. Die auftragsbezogene Auswahl ist an das Browser-Tab, den Account, die Instanz und den Organisationskontext gebunden.
+
 ## Unterstützte Typen
 
 | Typ                                             | Anzeige im Studio | Transfer im Studio |

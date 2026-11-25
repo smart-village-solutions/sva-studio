@@ -73,6 +73,8 @@ describe('iam content list mainserver mapping', () => {
           contentType: 'poi.point-of-interest',
           name: '',
           description: 'Ort',
+          categoryId: '15',
+          categories: [{ id: '16', name: 'Freizeit' }],
           active: true,
           payload: { legacy: true },
           addresses: [],
@@ -88,6 +90,8 @@ describe('iam content list mainserver mapping', () => {
       historyRef: 'mainserver:poi:poi-1',
       payload: {
         description: 'Ort',
+        categoryId: '15',
+        categories: [{ id: '16', name: 'Freizeit' }],
         active: true,
         payload: { legacy: true },
         addresses: [],

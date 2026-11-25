@@ -3,7 +3,7 @@ import { readNormalizedRouteState, updateRouteState } from './-content-list-rout
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
 import { deleteMainserverItem } from './-content-list-row-actions';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -138,6 +138,19 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       detailPath: '/admin/projects/$contentId',
     },
   ] as const,
+}));
+
+const listSelectionMock = vi.hoisted(() => vi.fn());
+const listCategoriesMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../lib/iam-api-content', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/iam-api-content')>()),
+  listContentSelection: listSelectionMock,
+}));
+
+vi.mock('@sva/plugin-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-categories')>()),
+  listCategories: listCategoriesMock,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -287,6 +300,8 @@ describe('ContentListPage', () => {
     navigateMock.mockReset();
     searchState = {};
     locationState = {};
+    listCategoriesMock.mockReset();
+    listCategoriesMock.mockResolvedValue([{ id: '21', name: 'Kultur' }, { id: '22', name: 'Kultur' }]);
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -359,6 +374,8 @@ describe('ContentListPage', () => {
 
   afterEach(() => {
     cleanup();
+    window.sessionStorage.clear();
+    vi.unstubAllGlobals();
     resetMergedI18nResources();
     resetTranslatorCache();
   });
@@ -1225,6 +1242,213 @@ describe('ContentListPage', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('explains when content can be read but category options cannot', async () => {
+    listCategoriesMock.mockRejectedValueOnce(Object.assign(new Error('forbidden'), { code: 'forbidden' }));
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+
+    expect(await screen.findByText(/Leseberechtigung für Kategorien/)).toBeTruthy();
+    const trigger = screen.getByLabelText<HTMLButtonElement>('Kategorie', { selector: 'button' });
+    expect(trigger.disabled).toBe(true);
+    expect(useContentsMock).toHaveBeenCalledWith(DEFAULT_QUERY, { enabled: true });
+  });
+
+  it('shows distinct labels for categories with the same name', async () => {
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+
+    const trigger = screen.getByLabelText<HTMLButtonElement>('Kategorie', { selector: 'button' });
+    await waitFor(() => expect(trigger.disabled).toBe(false));
+    fireEvent.click(trigger);
+    expect(screen.getByRole('checkbox', { name: 'Kultur (ID 21)' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Kultur (ID 22)' })).toBeTruthy();
+  });
+
+  it('explains the limit and lets users transfer a visible item individually', async () => {
+    useContentAccessMock.mockReturnValue({
+      access: { canCreate: false },
+      permissionActions: ['news.read', 'content.transferOwnership'],
+      isLoading: false,
+      error: null,
+    });
+    useContentsMock.mockReturnValue(createContentsApiResult({
+      contents: [{
+        id: '1', contentType: 'news.article', title: 'Artikel 1',
+        historyRef: 'mainserver:news:1', credentialSource: 'user',
+        status: 'draft', payload: {}, author: 'Redaktion',
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+      }],
+      metadata: {
+        mainserverSyncStates: [],
+        isTotalFinal: true,
+        selectionLimit: 5_000,
+      },
+    }));
+
+    render(<ContentListPage enabledMainserverMutationActions={['content.transferOwnership']} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+
+    const selectAll = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Treffer auf allen Seiten auswählen',
+    });
+    expect(selectAll.disabled).toBe(true);
+    expect(screen.getByText(/Listenlimit von 5\.000 Inhalten pro Typ ist erreicht/)).toBeTruthy();
+    const row = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:1 auswählen' })[0];
+    if (!row) throw new Error('Expected an individual selection checkbox');
+    fireEvent.click(row);
+    expect(screen.getByText('Ausgewählt: 1')).toBeTruthy();
+
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/operations/')) {
+        return Response.json({ data: { providerOutcome: 'succeeded', reconciliationStatus: 'complete' } });
+      }
+      if (url.endsWith('/transfer')) return Response.json({});
+      const data = url.includes('type=organization')
+        ? [{ principal: { type: 'organization', id: 'target' }, displayName: 'Redaktion' }]
+        : [];
+      return Response.json(
+        { data, pagination: { total: data.length } },
+        { headers: { 'X-SVA-Context-Binding': 'v1.test' } }
+      );
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Auswahl übertragen' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Inhalte übertragen' }));
+    fireEvent.click(dialog.getByRole('combobox', { name: /Neuer Inhaber/ }));
+    fireEvent.click(await dialog.findByRole('option', { name: /Redaktion/ }));
+    fireEvent.click(dialog.getByRole('checkbox', { name: /Ich bestätige die Übertragung/ }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Jetzt übertragen' }));
+
+    const result = await screen.findByRole('heading', { name: 'Ergebnis der Übertragung' });
+    expect(await screen.findByText('Übertragen', { selector: 'li span' })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(result));
+  });
+
+  it('keeps a closed unfinished job and refreshes the current list after it resumes', async () => {
+    useContentAccessMock.mockReturnValue({
+      access: { canCreate: false },
+      permissionActions: ['news.read', 'content.transferOwnership'],
+      isLoading: false,
+      error: null,
+    });
+    const { id, instanceId } = useAuthMock().user;
+    const storageKey = `studio.content-transfer.v1:${JSON.stringify([instanceId, id, 'org-1'])}`;
+    window.sessionStorage.setItem(storageKey, JSON.stringify({
+      binding: 'v1.test',
+      target: { type: 'organization', id: 'target' },
+      operations: [{
+        item: {
+          id: '1', contentType: 'news.article', title: 'Artikel 1',
+          historyRef: 'mainserver:news:1', principal: 'user',
+        },
+        operationId: '56cdbc0d-bb6e-4cbd-956c-a716dbef35c0',
+        status: 'queued',
+      }],
+    }));
+    const oldRefetch = vi.fn(async () => undefined);
+    const currentRefetch = vi.fn(async () => undefined);
+    let complete: (response: Response) => void = () => undefined;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => {
+      complete = resolve;
+    })));
+    useContentsMock.mockReturnValue(createContentsApiResult({ refetch: oldRefetch }));
+    const renderPage = () => (
+      <ContentListPage enabledMainserverMutationActions={['content.transferOwnership']} />
+    );
+    const view = render(renderPage());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ergebnis schließen' }));
+    expect(screen.queryByRole('heading', { name: 'Ergebnis der Übertragung' })).toBeNull();
+    expect(window.sessionStorage.getItem(storageKey)).toContain('"status":"queued"');
+    fireEvent.click(screen.getByRole('button', { name: 'Offenen Auftrag anzeigen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Auftrag fortsetzen' }));
+
+    searchState = { page: 2, categoryId: '21' };
+    useContentsMock.mockReturnValue(createContentsApiResult({ refetch: currentRefetch }));
+    view.rerender(renderPage());
+    await act(async () => complete(Response.json({ error: 'forbidden' }, { status: 403 })));
+
+    expect(screen.getByText('Abgelehnt')).toBeTruthy();
+    expect(currentRefetch).toHaveBeenCalledOnce();
+    expect(oldRefetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Ergebnis schließen' }));
+    expect(window.sessionStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it('preserves transfer selections across pages, then excludes a row from all filtered hits', async () => {
+    useContentAccessMock.mockReturnValue({
+      access: { canCreate: false },
+      permissionActions: ['news.read', 'content.transferOwnership'],
+      isLoading: false,
+      error: null,
+    });
+    const item = (id: string) => ({
+      id, contentType: 'news.article', title: `Artikel ${id}`,
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-21T11:00:00.000Z',
+      historyRef: `mainserver:news:${id}`,
+      author: 'Redaktion', credentialSource: 'user', payload: {}, status: 'draft',
+    });
+    const setPage = (page: number, categoryId = 'category/1') => {
+      searchState = { page, pageSize: 1, categoryId };
+      useContentsMock.mockReturnValue(createContentsApiResult({
+        contents: [item(String(page))],
+        pagination: { page, pageSize: 1, total: 3 },
+      }));
+    };
+    listSelectionMock.mockResolvedValue({ data: ['1', '2', '3'].map(item) });
+    setPage(1);
+    const renderPage = () => (
+      <ContentListPage enabledMainserverMutationActions={['content.transferOwnership']} />
+    );
+    const view = render(renderPage());
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    const row1 = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:1 auswählen' })[0];
+    if (!row1) throw new Error('Missing transfer checkbox for row 1');
+    fireEvent.click(row1);
+    expect(screen.getByText('Ausgewählt: 1')).toBeTruthy();
+
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      Response.json({ data: [], pagination: { total: 0 } })
+    ));
+    const reviewButton = screen.getByRole('button', { name: 'Auswahl übertragen' });
+    fireEvent.click(reviewButton);
+    const dialog = screen.getByRole('dialog', { name: 'Inhalte übertragen' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+    await waitFor(() => expect(document.activeElement).toBe(reviewButton));
+
+    setPage(2);
+    view.rerender(renderPage());
+    expect(screen.getByText('Ausgewählt: 1')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Treffer auf allen Seiten auswählen' }));
+    await waitFor(() => expect(screen.getByText('Ausgewählt: 3')).toBeTruthy());
+    expect(listSelectionMock).toHaveBeenCalledWith(expect.objectContaining({ categoryId: 'category/1' }));
+    const row2 = screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile news.article:2 auswählen' })[0];
+    if (!row2) throw new Error('Missing transfer checkbox for row 2');
+    fireEvent.click(row2);
+    expect(screen.getByText('Ausgewählt: 2')).toBeTruthy();
+
+    setPage(1, '22');
+    view.rerender(renderPage());
+    expect(screen.queryByText('Ausgewählt: 2')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' })).toBeTruthy();
+
+    // Returning to a previous filter must still discard its original in-flight request.
+    let resolveSelection: (result: { data: ReturnType<typeof item>[] }) => void = () => undefined;
+    listSelectionMock.mockReturnValueOnce(new Promise((resolve) => { resolveSelection = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Treffer auf allen Seiten auswählen' }));
+    setPage(1, '21');
+    view.rerender(renderPage());
+    setPage(1, '22');
+    view.rerender(renderPage());
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte zur Übertragung auswählen' }));
+    await act(async () => resolveSelection({ data: [item('3')] }));
+    expect(screen.getByText('Ausgewählt: 0')).toBeTruthy();
+  });
+
   it('hydrates host list controls from route search state and updates canonical params', () => {
     searchState = {
       filters: { status: 'archived' },
@@ -1794,7 +2018,7 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
-    let dialog = screen.getByRole('alertdialog', {
+    const dialog = screen.getByRole('alertdialog', {
       name: 'Ausgewählte Inhalte endgültig löschen?',
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));

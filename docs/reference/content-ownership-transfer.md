@@ -28,7 +28,7 @@ Die serverseitige Typmatrix begrenzt die Übertragung auf unterstützte Inhaltst
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
-Der Transfer-Nachlauf prüft die Leseberechtigung des ausführenden Kontos anhand des bestätigten neuen Inhabers. Bei weiter bestehendem Zugriff liest Studio den betroffenen Datensatz mit den Zugangsdaten des bisherigen Kontexts und aktualisiert dessen Listeneintrag zusammen mit dem Eintrag des Empfängers. Bei entfallenem Zugriff entfernt Studio die bisherige Kopie. Bei einem technischen Fehler bleibt der Nachlauf im Journal zur Prüfung offen. Dafür ist kein vollständiger Neuabgleich des Inhaltstyps erforderlich.
+Der Transfer-Nachlauf prüft die Leseberechtigung des ausführenden Kontos anhand des bestätigten neuen Inhabers. Bei weiter bestehendem Zugriff liest Studio den betroffenen Datensatz mit den Zugangsdaten des bisherigen Kontexts und aktualisiert dessen Listeneintrag zusammen mit dem Eintrag des Empfängers. Bei entfallenem Zugriff entfernt Studio die bisherige Kopie. Bei einem technischen Fehler bleibt der Nachlauf im Journal zur Prüfung offen. Ein Wiederanlauf verwendet den dort gespeicherten ursprünglichen Konto- und Credential-Kontext. Dafür ist kein vollständiger Neuabgleich des Inhaltstyps erforderlich.
 
 ## Mehrere Inhalte übertragen
 

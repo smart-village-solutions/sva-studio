@@ -271,6 +271,12 @@ describe('Mainserver mutation journal', () => {
           expected_data_provider_id: 'provider-target',
           target_principal_type: 'organization',
           target_principal_id: '22222222-2222-4222-8222-222222222222',
+          actor_account_id: '11111111-1111-4111-8111-111111111111',
+          keycloak_subject: 'kc-original',
+          display_name_ciphertext: null,
+          active_organization_id: '33333333-3333-4333-8333-333333333333',
+          acting_principal_type: 'organization',
+          credential_fingerprint: 'c'.repeat(64),
         },
       ],
     });
@@ -286,6 +292,15 @@ describe('Mainserver mutation journal', () => {
       {
         operationExternalId: 'operation-1',
         expectedDataProviderId: 'provider-target',
+        actor: {
+          instanceId: 'de-musterhausen',
+          actorAccountId: '11111111-1111-4111-8111-111111111111',
+          keycloakSubject: 'kc-original',
+          actorDisplayName: 'kc-original',
+          activeOrganizationId: '33333333-3333-4333-8333-333333333333',
+          actingPrincipalType: 'organization',
+          credentialFingerprint: 'c'.repeat(64),
+        },
         targetPrincipal: {
           type: 'organization',
           id: '22222222-2222-4222-8222-222222222222',
@@ -301,6 +316,21 @@ describe('Mainserver mutation journal', () => {
       "provider_outcome IN ('pending', 'unknown', 'succeeded')"
     );
     expect(state.query.mock.calls[0]?.[0]).not.toContain('UPDATE');
+  });
+
+  it('keeps reconciliation open when the journal actor cannot be recovered', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ actor_account_id: 'removed-account', keycloak_subject: null }],
+    });
+
+    await expect(
+      loadRecoverableMainserverOwnershipTransfers({
+        instanceId: 'de-musterhausen',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        currentDataProviderId: 'provider-target',
+      })
+    ).rejects.toThrow('content_transfer_original_actor_context_unavailable');
   });
 
   it('marks a confirmed provider result for local reconciliation', async () => {

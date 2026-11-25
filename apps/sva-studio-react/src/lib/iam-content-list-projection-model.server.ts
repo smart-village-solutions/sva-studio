@@ -169,6 +169,11 @@ export type MainserverProjectionRowInput = Pick<
     sourceEntityId: string;
   }>;
 
+export type TransferActorProjection = Readonly<{
+  target: ContentProjectionSyncTarget;
+  row: MainserverProjectionRowInput;
+}>;
+
 export type ProjectionDbClient = Readonly<{
   query: <TRow = Record<string, unknown>>(
     text: string,

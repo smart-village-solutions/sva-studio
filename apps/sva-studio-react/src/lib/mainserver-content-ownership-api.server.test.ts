@@ -32,6 +32,16 @@ vi.mock('./mainserver-projection-refresh.server.js', () => ({
 
 import { dispatchMainserverContentOwnershipRequest } from './mainserver-content-ownership-api.server.js';
 
+const originalActor = {
+  instanceId: 'instance-1',
+  keycloakSubject: 'kc-original',
+  actorAccountId: '33333333-3333-4333-8333-333333333333',
+  actorDisplayName: 'Ursprüngliche Person',
+  activeOrganizationId: '44444444-4444-4444-8444-444444444444',
+  actingPrincipalType: 'organization',
+  credentialFingerprint: 'c'.repeat(64),
+} as const;
+
 describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -273,6 +283,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-target',
         targetPrincipal: {
           type: 'organization',
@@ -310,6 +321,15 @@ describe('mainserver content ownership API projection follow-up', () => {
     expect(state.refreshProjection).toHaveBeenCalledWith(
       expect.objectContaining({
         mutationRef: 'operation-previous',
+        auditActorAccountId: originalActor.actorAccountId,
+        actorDisplayName: originalActor.actorDisplayName,
+        transferActorReadContext: {
+          keycloakSubject: originalActor.keycloakSubject,
+          actorAccountId: originalActor.actorAccountId,
+          organizationId: originalActor.activeOrganizationId,
+          actingPrincipalType: originalActor.actingPrincipalType,
+          credentialFingerprint: originalActor.credentialFingerprint,
+        },
         preserveExistingContentState: true,
         ownershipPrincipal: {
           type: 'organization',
@@ -329,6 +349,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-target',
         targetPrincipal: {
           type: 'organization',
@@ -369,6 +390,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        actor: originalActor,
         expectedDataProviderId: 'provider-recorded',
         targetPrincipal: {
           type: 'organization',

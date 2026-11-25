@@ -5,6 +5,7 @@ import {
   type ContentProjectionSyncTarget,
   type MainserverProjectionRowInput,
   type ProjectionDbClient,
+  type TransferActorProjection,
 } from './iam-content-list-projection-model.server.js';
 import { reconcilePersistedMainserverProjectionRows } from './iam-content-list-projection-reconciliation.server.js';
 import {
@@ -116,17 +117,8 @@ export const upsertSingleMainserverProjectionRow = async (
   actorAccountId: string | undefined,
   row: MainserverProjectionRowInput,
   refreshRunId: string,
-  actorProjection?: Readonly<{
-    target: ContentProjectionSyncTarget;
-    row: MainserverProjectionRowInput;
-  }>
+  actorProjection?: TransferActorProjection
 ): Promise<void> => {
-  const projectionPayloadJson = buildMainserverProjectionPayloadJson(
-    [row],
-    actorAccountId,
-    buildProjectionTargetKey(target)
-  );
-
   await withInstanceScopedDb(target.instanceId, async (client) => {
     await lockMainserverProjectionType(client, target);
     const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
@@ -153,7 +145,11 @@ export const upsertSingleMainserverProjectionRow = async (
         code: 'projection_refresh_superseded',
       });
     }
-    await upsertMainserverProjectionRows(client, target, projectionPayloadJson);
+    await upsertMainserverProjectionRows(
+      client,
+      target,
+      buildMainserverProjectionPayloadJson([row], actorAccountId, buildProjectionTargetKey(target))
+    );
     await deleteTransferredProjectionRowsFromOtherScopes(client, target, row);
     if (
       actorProjection &&

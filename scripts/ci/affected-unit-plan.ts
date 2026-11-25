@@ -9,7 +9,7 @@ export interface AppUnitExecutionPlan {
   slices: AppUnitSlice[];
 }
 
-const APP_PROJECT = 'sva-studio-react';
+export const APP_PROJECT = 'sva-studio-react';
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
 const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
 const APP_SERVER_PATTERNS = [

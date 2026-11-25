@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {
+  APP_PROJECT,
   buildAppUnitJobCommand,
   isAppUnitJobSelected,
   resolveAppUnitJob,
@@ -33,21 +34,30 @@ export const parseUnitShard = (value: string): UnitShard => {
 export const unitShardId = ({ index, count }: UnitShard): string =>
   `unit-remaining-${index}-of-${count}`;
 
+const takeRoundRobin = (projects: readonly string[], slot: number, slots: number): string[] =>
+  projects.filter((_project, index) => index % slots === slot);
+
+/**
+ * Selects the remaining projects for one shard. Gate and aggregator must pass
+ * the same `separateApp` mode so execution and expected scope stay identical.
+ * With separate App jobs the App is executed elsewhere, so every shard
+ * receives non-App work; otherwise shard 1 stays reserved for the App.
+ */
 export const selectRemainingUnitProjects = (
   projects: readonly string[],
-  shard: UnitShard
+  shard: UnitShard,
+  separateApp: boolean
 ): string[] => {
   // Validate programmatic callers as well as CLI input.
   parseUnitShard(`${shard.index}/${shard.count}`);
   const sorted = [...new Set(projects)].sort();
+  const nonApp = sorted.filter((project) => project !== APP_PROJECT);
+  if (separateApp) return takeRoundRobin(nonApp, shard.index - 1, shard.count);
   if (shard.count === 1) return sorted;
   // The app is the longest target in the measured full fallback. Isolate it
   // without changing its test selection, command or Nx cache key.
-  const app = 'sva-studio-react';
-  if (shard.index === 1) return sorted.filter((project) => project === app);
-  return sorted
-    .filter((project) => project !== app)
-    .filter((_project, index) => index % (shard.count - 1) === shard.index - 2);
+  if (shard.index === 1) return sorted.filter((project) => project === APP_PROJECT);
+  return takeRoundRobin(nonApp, shard.index - 2, shard.count - 1);
 };
 
 const executeAppUnitJob = (appJob: string): ReturnType<typeof runCiCommand> => {

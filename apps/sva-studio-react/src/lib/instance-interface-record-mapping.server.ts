@@ -157,6 +157,7 @@ export const mapRecordToStoredEntry = (
       type: 's3',
       name: record.displayName,
       enabled: record.enabled,
+      secretAccessKeyConfigured: Boolean(record.secretConfigCiphertext),
       config: {
         endpoint: coerceText(record.publicConfig.endpoint),
         region: coerceText(record.publicConfig.region),

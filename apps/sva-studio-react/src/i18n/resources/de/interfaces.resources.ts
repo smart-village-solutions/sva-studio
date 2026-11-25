@@ -284,6 +284,10 @@ export const interfacesDEResources = {
       bucket: 'Bucket',
       accessKeyId: 'Access Key ID',
       secretAccessKey: 'Secret Access Key',
+      secretAccessKeyReplacementPlaceholder: 'Neuen geheimen Zugangsschlüssel eingeben',
+      secretAccessKeyConfiguredStatus: 'Ein geheimer Zugangsschlüssel ist bereits hinterlegt.',
+      secretAccessKeyConfiguredHint:
+        'Lassen Sie das Feld leer, um den hinterlegten Schlüssel beizubehalten.',
       forcePathStyle: 'Path-Style-URLs erzwingen',
       notImplemented:
         'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',

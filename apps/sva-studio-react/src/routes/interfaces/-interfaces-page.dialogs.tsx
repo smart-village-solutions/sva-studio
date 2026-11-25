@@ -109,6 +109,7 @@ export const TypePickerDialog = ({
 
 type InterfaceFormProps = Readonly<{
   draft: InstanceInterfaceDraft;
+  hasStoredS3SecretAccessKey?: boolean;
   hasStoredMapApiKey?: boolean;
   deepLEntry?: InstanceInterfaceDeepL;
   deepLChecking?: boolean;
@@ -133,6 +134,7 @@ const deepLRequiresSave = (
 
 export const InterfaceForm = ({
   draft,
+  hasStoredS3SecretAccessKey = false,
   hasStoredMapApiKey = false,
   deepLEntry,
   deepLChecking = false,
@@ -175,7 +177,11 @@ export const InterfaceForm = ({
       ) : draft.type === 'mainserver' ? (
         <MainserverFields draft={draft} onChange={onChange} />
       ) : draft.type === 's3' ? (
-        <S3Fields draft={draft} onChange={onChange} />
+        <S3Fields
+          draft={draft}
+          hasStoredSecretAccessKey={hasStoredS3SecretAccessKey}
+          onChange={onChange}
+        />
       ) : draft.type === 'mapGeocoding' ? (
         <MapGeocodingFields
           draft={draft}

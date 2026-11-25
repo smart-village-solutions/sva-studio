@@ -228,6 +228,11 @@ export const InterfacesPage = () => {
               }
               deepLChecking={deepLChecking}
               onCheckDeepL={() => void onCheckDeepL()}
+              hasStoredS3SecretAccessKey={
+                editState.mode === 'edit' &&
+                editState.entry.type === 's3' &&
+                editState.entry.secretAccessKeyConfigured
+              }
               hasStoredMapApiKey={
                 editState.mode === 'edit' &&
                 editState.entry.type === 'mapGeocoding' &&

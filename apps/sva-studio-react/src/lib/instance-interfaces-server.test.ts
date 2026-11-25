@@ -266,6 +266,7 @@ describe('instance-interfaces-server', () => {
         id: 's3-1',
         type: 's3',
         name: 'Uploads',
+        secretAccessKeyConfigured: true,
         config: expect.objectContaining({
           endpoint: 'https://s3.example',
           bucket: 'uploads',
@@ -273,10 +274,12 @@ describe('instance-interfaces-server', () => {
         }),
       }),
     ]);
+    const [entry] = await listStoredInterfaces('de-test');
+    expect(entry).not.toHaveProperty('secretConfigCiphertext');
+    expect(entry?.config).not.toHaveProperty('secretAccessKey');
     await expect(getStoredInterface('de-test', 'missing')).resolves.toBeNull();
     await expect(deleteStoredInterface('de-test', 'missing')).resolves.toBe(false);
 
-    const [entry] = await listStoredInterfaces('de-test');
     expect(checkStoredInterfaceHealth(entry!)).toEqual(
       expect.objectContaining({
         status: 'connected',

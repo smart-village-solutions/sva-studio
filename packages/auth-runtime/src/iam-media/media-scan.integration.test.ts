@@ -27,6 +27,15 @@ const docker = (...args: string[]) =>
 const endpointPort = (name: string, port: number) =>
   Number(docker('port', name, `${port}/tcp`).split(':').at(-1));
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// Standard antivirus test signature; harmless by design and detected by every scanner.
+const eicar = Buffer.from(
+  'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=',
+  'base64'
+);
+const present = <T>(value: T | undefined): T => {
+  if (value === undefined) throw new Error('Expected upload record is missing.');
+  return value;
+};
 const credentials = {
   accessKeyId: 'studio-media-test-access',
   secretAccessKey: 'studio-media-test-secret',
@@ -208,6 +217,41 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       expect(check).not.toThrow();
     });
 
+    // In-memory rows for one upload; storage, scanner and processing stay real.
+    const createUploadRecords = () => {
+      const records: { asset?: MediaAssetRecord; session?: MediaUploadSessionRecord } = {};
+      const finalized = vi.fn(async (input) => {
+        records.asset = input.asset;
+        records.session = input.uploadSession;
+        return 'finalized' as const;
+      });
+      const failed = vi.fn(async () => 'failed' as const);
+      const run = (port = storage) =>
+        createMediaUploadProcessingService({
+          service: {
+            getAssetById: async () => records.asset ?? null,
+            getUploadSessionById: async () => records.session ?? null,
+          },
+          storagePort: port,
+          createId: () => crypto.randomUUID(),
+          finalizeUpload: finalized,
+          failUpload: failed,
+        }).completeUpload({
+          instanceId: 'tenant-a',
+          uploadSessionId: present(records.session).id,
+          claimToken: 'claim-1',
+        });
+      return { records, finalized, failed, run };
+    };
+
+    const putUpload = async (
+      upload: { uploadUrl: string; headers?: Record<string, string> },
+      body: Uint8Array
+    ) =>
+      expect(
+        (await fetch(upload.uploadUrl, { method: 'PUT', headers: upload.headers, body })).ok
+      ).toBe(true);
+
     const initialize = async (body: Uint8Array, visibility: 'public' | 'protected' = 'public') => {
       const id = crypto.randomUUID();
       const upload = await storage.prepareUpload({
@@ -218,10 +262,9 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         mimeType: 'image/jpeg',
         byteSize: body.length,
       });
-      expect(
-        (await fetch(upload.uploadUrl, { method: 'PUT', headers: upload.headers, body })).ok
-      ).toBe(true);
-      let asset: MediaAssetRecord = {
+      await putUpload(upload, body);
+      const { records, finalized, failed, run } = createUploadRecords();
+      records.asset = {
         id,
         instanceId: 'tenant-a',
         storageKey: upload.storageKey,
@@ -234,7 +277,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         metadata: {},
         technical: {},
       };
-      let session: MediaUploadSessionRecord = {
+      records.session = {
         id,
         assetId: id,
         instanceId: 'tenant-a',
@@ -243,50 +286,25 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         byteSize: body.length,
         status: 'uploaded',
       };
-      const finalized = vi.fn(async (input) => {
-        asset = input.asset;
-        session = input.uploadSession;
-        return 'finalized' as const;
-      });
-      const failed = vi.fn(async () => 'failed' as const);
       return {
         upload,
         finalized,
         failed,
-        getAsset: () => asset,
-        run: (port = storage) =>
-          createMediaUploadProcessingService({
-            service: { getAssetById: async () => asset, getUploadSessionById: async () => session },
-            storagePort: port,
-            createId: () => crypto.randomUUID(),
-            finalizeUpload: finalized,
-            failUpload: failed,
-          }).completeUpload({ instanceId: 'tenant-a', uploadSessionId: id, claimToken: 'claim-1' }),
+        getAsset: () => present(records.asset),
+        run,
       };
     };
     it('denies anonymous intake reads and publishes only the bytes that were scanned', async () => {
       const upload = await initialize(original);
       const source = `${endpoint}/studio-intake/${upload.upload.storageKey}`;
       expect((await fetch(source)).status).toBe(403);
-      const eicar = Buffer.from(
-        'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=',
-        'base64'
-      );
       const overwritten = Buffer.alloc(original.length);
       eicar.copy(overwritten);
       const result = await upload.run({
         ...storage,
         readObject: async (input) => {
           const read = await storage.readObject(input);
-          expect(
-            (
-              await fetch(upload.upload.uploadUrl, {
-                method: 'PUT',
-                headers: upload.upload.headers,
-                body: overwritten,
-              })
-            ).ok
-          ).toBe(true);
+          await putUpload(upload.upload, overwritten);
           return read;
         },
       });
@@ -422,27 +440,125 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       },
       30000
     );
-    it('keeps an established quarantine scan when retrying after the scan switch is disabled', async () => {
-      const upload = await initialize(original);
-      vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    // One content-save draft initialized and retried through the real HTTP handler (#1952).
+    const createContentSaveDraft = (body: Uint8Array) => {
+      const operationId = crypto.randomUUID();
+      const draftId = crypto.randomUUID();
+      const { records, finalized, run } = createUploadRecords();
+      const service = {
+        getContentSaveOperation: async () => ({ id: operationId, status: 'uploading' }),
+        getProvisionalAssetByDraft: async () => records.asset ?? null,
+        getUploadSessionByAssetId: async () => records.session ?? null,
+        upsertAsset: async (asset: MediaAssetRecord) => {
+          records.asset = asset;
+        },
+        upsertUploadSession: async (session: MediaUploadSessionRecord) => {
+          records.session = session;
+        },
+        refreshPendingUploadSession: async (input: { storageKey: string; expiresAt: string }) => {
+          if (records.session?.status !== 'pending') return false;
+          records.session = { ...records.session, ...input };
+          return true;
+        },
+      };
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instance, work) => work(service as never),
+        storagePort: storage,
+        authorizeAction: async () => ({
+          ok: true,
+          actor: { instanceId: 'tenant-a', keycloakSubject: 'actor' },
+          permissions: [],
+        }),
+        createId: () => crypto.randomUUID(),
+        now: () => new Date().toISOString(),
+        emitAuditEvent: async () => undefined,
+      });
+      const initializeUpload = async () => {
+        const response = await handlers.initializeUpload(
+          new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+            method: 'POST',
+            body: JSON.stringify({
+              instanceId: 'tenant-a',
+              mimeType: 'image/jpeg',
+              byteSize: body.length,
+              visibility: 'public',
+              uploadContext: 'content-save',
+              contentSaveOperationId: operationId,
+              draftId,
+            }),
+          }),
+          { user: { id: 'actor', instanceId: 'tenant-a' } } as never
+        );
+        await putUpload((await response.json()).data, body);
+        return { status: response.status, storageKey: present(records.session).storageKey };
+      };
+      return {
+        initializeUpload,
+        finalized,
+        getAsset: () => present(records.asset),
+        process: () => {
+          // Completion marks the session uploaded before the worker claims it.
+          records.session = { ...present(records.session), status: 'uploaded' };
+          return run();
+        },
+      };
+    };
+    const withScanSwitch = async <T>(enabled: boolean, work: () => Promise<T>) => {
+      vi.stubEnv('MEDIA_SCAN_ENABLED', String(enabled));
       try {
-        const retried = await storage.prepareUpload({
-          instanceId: 'tenant-a',
-          assetId: upload.getAsset().id,
-          uploadSessionId: upload.getAsset().id,
-          mediaType: 'image',
-          mimeType: 'image/jpeg',
-          byteSize: original.length,
-          privateInput: true,
-          requireScan: true,
-        });
-        expect(retried.storageKey).toBe(upload.upload.storageKey);
-        expect((await fetch(`${endpoint}/studio-intake/${retried.storageKey}`)).status).toBe(403);
-        expect((await upload.run()).ok).toBe(true);
-        expect(upload.getAsset().technical.scanStatus).toBe('clean');
+        return await work();
       } finally {
         vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
       }
+    };
+    it.each([false, true])(
+      'retries a quarantined content-save draft privately and scans it before publishing (scan switch at retry: %s)',
+      async (scanAtRetry) => {
+        const draft = createContentSaveDraft(original);
+        const initialized = await withScanSwitch(true, draft.initializeUpload);
+        expect(initialized.status).toBe(201);
+        expect(initialized.storageKey).toMatch(/^\.quarantine\/tenant-a\//);
+
+        const retried = await withScanSwitch(scanAtRetry, draft.initializeUpload);
+        expect(retried).toEqual({ status: 200, storageKey: initialized.storageKey });
+        expect((await fetch(`${endpoint}/studio-intake/${retried.storageKey}`)).status).toBe(403);
+        expect((await fetch(`${endpoint}/studio-public/${retried.storageKey}`)).ok).toBe(false);
+
+        expect((await withScanSwitch(scanAtRetry, draft.process)).ok).toBe(true);
+        expect(draft.getAsset().technical.scanStatus).toBe('clean');
+        expect(draft.getAsset().storageKey).toMatch(/^tenant-a\/variants\//);
+      },
+      30000
+    );
+    it('blocks infected bytes uploaded through a retried quarantine draft after the scan switch is disabled', async () => {
+      const draft = createContentSaveDraft(eicar);
+      const initialized = await withScanSwitch(true, draft.initializeUpload);
+      const retried = await withScanSwitch(false, draft.initializeUpload);
+      expect(retried.storageKey).toBe(initialized.storageKey);
+      await withScanSwitch(false, async () =>
+        expect(await draft.process()).toEqual({
+          ok: false,
+          status: 422,
+          errorCode: 'media_scan_infected',
+        })
+      );
+      expect(draft.finalized).not.toHaveBeenCalled();
+      const listed = await s3.send(
+        new ListObjectsV2Command({
+          Bucket: 'studio-public',
+          Prefix: `tenant-a/variants/${draft.getAsset().id}/`,
+        })
+      );
+      expect(listed.Contents ?? []).toHaveLength(0);
+    }, 30000);
+    it('keeps an initially public content-save draft on its existing public path when retried', async () => {
+      const draft = createContentSaveDraft(original);
+      const initialized = await withScanSwitch(false, draft.initializeUpload);
+      expect(initialized.storageKey).toMatch(/^tenant-a\/originals\//);
+      const retried = await withScanSwitch(false, draft.initializeUpload);
+      expect(retried).toEqual({ status: 200, storageKey: initialized.storageKey });
+      expect((await withScanSwitch(false, draft.process)).ok).toBe(true);
+      expect(draft.getAsset().technical.scanStatus).toBeUndefined();
     }, 30000);
     it('keeps protected originals and variants private and delivers only through signed URLs', async () => {
       const upload = await initialize(original, 'protected');
@@ -462,10 +578,6 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       expect(Buffer.from(await response.arrayBuffer())).toEqual(original);
     }, 30000);
     it('blocks EICAR before persistence or quota finalization', async () => {
-      const eicar = Buffer.from(
-        'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=',
-        'base64'
-      );
       const upload = await initialize(eicar);
       expect(await upload.run()).toEqual({
         ok: false,
@@ -483,10 +595,6 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       expect(listed.Contents ?? []).toHaveLength(0);
     }, 30000);
     it('reports existing clean and infected S3 files without changing their bytes or delivery', async () => {
-      const eicar = Buffer.from(
-        'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=',
-        'base64'
-      );
       const files = [
         ['tenant-a/inventory/clean.jpg', original],
         ['tenant-a/inventory/found.txt', eicar],

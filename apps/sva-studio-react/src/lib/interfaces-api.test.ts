@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   loadSvaMainserverSettings: vi.fn(),
   listStoredInterfaces: vi.fn(),
   loadInstanceById: vi.fn(),
+  loadDefaultExternalInterfaceRecord: vi.fn(),
+  withRootInstanceInterfaceRegistryAccess: vi.fn(),
   loadExternalInterfaceRecordById: vi.fn(),
   sendMailTransportTest: vi.fn(),
   checkDeepLLanguages: vi.fn(),
@@ -55,6 +57,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
+  withRootInstanceInterfaceRegistryAccess: state.withRootInstanceInterfaceRegistryAccess,
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
   validateCsrf: state.validateCsrf,
   checkDeepLLanguages: state.checkDeepLLanguages,
@@ -68,6 +71,7 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: state.loadInstanceById,
+  loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
 }));
 
@@ -116,6 +120,8 @@ describe('interfaces app adapter', () => {
     state.loadSvaMainserverInterfacesOverview.mockReset();
     state.listStoredInterfaces.mockReset();
     state.loadInstanceById.mockReset();
+    state.loadDefaultExternalInterfaceRecord.mockReset();
+    state.withRootInstanceInterfaceRegistryAccess.mockReset();
     state.loadExternalInterfaceRecordById.mockReset();
     state.sendMailTransportTest.mockReset();
     state.upsertStoredInterface.mockReset();
@@ -373,6 +379,114 @@ describe('interfaces app adapter', () => {
       availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding'],
       entries: [],
     });
+  });
+
+  it('uses the Root update action and stores Meilisearch for the tenant from the route', async () => {
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const recordSave = vi.fn();
+    state.withRootInstanceInterfaceRegistryAccess.mockImplementation(async (_request, _action, work) =>
+      work({ recordSave })
+    );
+    state.loadInstanceById.mockResolvedValue({ status: 'active', assignedModules: ['search'] });
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({ id: 'meili-existing' });
+    const draft = {
+      type: 'meilisearch', name: 'Meilisearch', enabled: true,
+      config: { origin: 'https://search.example', environment: 'production', municipalityIds: '1', apiKey: 'write-only' },
+    };
+    state.upsertStoredInterface.mockResolvedValue({
+      id: 'meili-existing', ...draft, apiKeyConfigured: true,
+    });
+    const request = new Request('https://studio.example/api/v1/iam/instances/tenant-a/meilisearch-interface', {
+      method: 'PUT', body: JSON.stringify(draft),
+    });
+    const response = await dispatchInterfacesApiRequest(request);
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get('cache-control')).toBe('private, no-store');
+    expect(await response?.text()).not.toContain('write-only');
+    expect(state.withRootInstanceInterfaceRegistryAccess).toHaveBeenCalledWith(
+      request, 'instance.update', expect.any(Function), 'meilisearch_interface'
+    );
+    expect(state.upsertStoredInterface).toHaveBeenCalledWith('tenant-a', draft, 'meili-existing');
+    expect(recordSave).toHaveBeenCalledWith('tenant-a', true);
+  });
+
+  it('reads an existing Meilisearch interface from Root without returning its key', async () => {
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    state.withRootInstanceInterfaceRegistryAccess.mockImplementation(async (_request, _action, work) =>
+      work({ recordSave: vi.fn() })
+    );
+    state.loadInstanceById.mockResolvedValue({ status: 'active', assignedModules: ['search'] });
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'meili-existing', instanceId: 'tenant-a', typeKey: 'meilisearch', ownerKind: 'host',
+      displayName: 'Meilisearch', enabled: true, visibleStatus: 'ok', secretConfigCiphertext: 'secret-ciphertext',
+      publicConfig: { origin: 'https://search.example', environment: 'production', municipalityIds: '1' },
+    });
+    const request = new Request('https://studio.example/api/v1/iam/instances/tenant-a/meilisearch-interface');
+    const response = await dispatchInterfacesApiRequest(request);
+    expect(response?.status).toBe(200);
+    const payload = await response?.json();
+    expect(payload).toMatchObject({ data: { id: 'meili-existing', instanceId: 'tenant-a', apiKeyConfigured: true } });
+    expect(JSON.stringify(payload)).not.toContain('secret-ciphertext');
+    expect(state.withRootInstanceInterfaceRegistryAccess).toHaveBeenCalledWith(
+      request, 'instance.read', expect.any(Function), 'meilisearch_interface'
+    );
+  });
+
+  it('rejects inactive modules, injected tenant IDs and service tokens on the Root route', async () => {
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    state.withRootInstanceInterfaceRegistryAccess.mockImplementation(async (_request, _action, work) =>
+      work({ recordSave: vi.fn() })
+    );
+    const path = 'https://studio.example/api/v1/iam/instances/tenant-a/meilisearch-interface';
+    state.loadInstanceById.mockResolvedValueOnce({ status: 'active', assignedModules: [] });
+    expect((await dispatchInterfacesApiRequest(new Request(path)))?.status).toBe(403);
+    state.loadInstanceById.mockResolvedValueOnce({ status: 'active', assignedModules: ['search'] });
+    const response = await dispatchInterfacesApiRequest(new Request(path, {
+      method: 'PUT',
+      body: JSON.stringify({
+        instanceId: 'tenant-b', type: 'meilisearch', name: 'Meilisearch', enabled: true,
+        config: { origin: 'https://search.example', environment: 'production', municipalityIds: '1', apiKey: 'test-key' },
+      }),
+    }));
+    expect(response?.status).toBe(400);
+    expect((await dispatchInterfacesApiRequest(new Request(path, { headers: { authorization: 'Bearer test' } })))?.status).toBe(401);
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+    expect(state.withRootInstanceInterfaceRegistryAccess).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers Meilisearch only when Search is effectively enabled', async () => {
+    const { resolveAvailableInterfaceTypes } = await import('./interfaces-api-list');
+    state.loadInstanceById
+      .mockResolvedValueOnce({ assignedModules: ['search'] })
+      .mockResolvedValueOnce({ assignedModules: ['news'] });
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).toContain('meilisearch');
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).not.toContain('meilisearch');
+  });
+
+  it('rejects a direct Meilisearch write while Search is inactive', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.loadInstanceById.mockResolvedValue({ assignedModules: [] });
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(
+      upsertInstanceInterfaceForRequest({
+        draft: {
+          type: 'meilisearch',
+          name: 'Meilisearch',
+          enabled: true,
+          config: {
+            origin: 'https://search.example',
+            environment: 'production',
+            municipalityIds: '1',
+            apiKey: 'test-key',
+          },
+        },
+      })
+    ).rejects.toThrow('meilisearch_requires_search_module');
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
   });
 
   it('fails closed to default interface types when assigned modules are missing at runtime', async () => {

@@ -555,6 +555,19 @@ Für den Credential-Commit werden die vorhandenen Instanz- und Benutzerrevisions
 
 ## Suchplugin einrichten
 
+### Einrichtung im Studio
+
+Bei aktivem Suchmodul können Benutzer mit `integration.manage` unter **Schnittstellen** den Typ **Meilisearch** hinzufügen. Die Schnittstelle enthält einen HTTPS-Origin, die Indexumgebung, die kommagetrennten Gemeinde-IDs und einen eingeschränkten Suchzugang. Studio bindet sie beim Speichern an die aktive Mainserver-Verbindung, prüft den Zugriff auf alle vier Modellindizes und speichert den Suchzugang verschlüsselt. Die Suche übernimmt die Einstellung ohne Deployment. Bei einem Wechsel der Mainserver-Verbindung muss die Suchschnittstelle erneut bestätigt werden.
+
+- **Gemeinsamer SaaS-Suchdienst:** `https://search.common.smart-village.app` mit einem vorab auf den Tenant und seine freigegebenen globalen Quellen begrenzten Meilisearch-Tenant-Token. Für Prignitz gelten die IDs `45,40`. Die globale ID `40` darf im Token nur für Veranstaltungen und Orte des Anbieters `176` im Landkreis Prignitz zugelassen sein.
+- **Release-Stack:** den bestätigten dedizierten Such-Origin, die lokale Gemeinde-ID und einen auf die Suchindizes beschränkten API-Schlüssel verwenden. Bad Belzig nutzt `https://search.bad-belzig.smart-village.app` und die lokale Gemeinde-ID `1`.
+
+### Einrichtung in der Root-Instanz
+
+Root-Admins öffnen **Instanzen → Einstellungen** für den gewünschten aktiven Tenant. Bei aktivem Suchmodul erscheint dort dieselbe Meilisearch-Konfiguration wie unter **Schnittstellen**. Root liest und speichert den Zustand des ausgewählten Tenants mit `instance.read` beziehungsweise `instance.update`. Schlüssel werden bei der Anzeige ausgelassen. Aktivieren, Aktualisieren und Deaktivieren verwenden denselben Verbindungspfad und dieselbe Registry wie die Tenant-Ansicht.
+
+### Befristeter Übergang für Sandbox und Guben
+
 Das bestehende optionale Studio-Plugin `search` verwendet `GET /api/v1/plugins/search/query`. Seine Route und der Header-Einstieg benötigen die reguläre Modulaktivierung und `search.read`. Das einzige Suchfeld befindet sich im Header; die Ergebnisse nutzen die bestehende `StudioDataTable` mit Filtern und serverseitiger Sortierung vor dem Paging. Der Leseprincipal wird mit der vorhandenen automatischen Credential-Auflösung gewählt, nicht durch einen zusätzlichen Kontowechsel. Der ausgewählte Principal bleibt für den Request gebunden; nach einer Ablehnung wird kein alternativer Zugang ausprobiert. Die fachlichen Leserechte werden anschließend weiterhin über die bestehenden Mainserver-Detailzugriffe geprüft; die Suche legt keine neuen Mainserver-Datensätze, Indizes oder Schlüssel an.
 
 Die serverseitige Laufzeit benötigt folgende ausdrücklich konfigurierte Werte:

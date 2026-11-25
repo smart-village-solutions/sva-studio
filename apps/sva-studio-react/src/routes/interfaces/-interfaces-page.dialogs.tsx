@@ -110,6 +110,7 @@ export const TypePickerDialog = ({
 type InterfaceFormProps = Readonly<{
   draft: InstanceInterfaceDraft;
   hasStoredS3SecretAccessKey?: boolean;
+  hasStoredMeilisearchKey?: boolean;
   hasStoredMapApiKey?: boolean;
   deepLEntry?: InstanceInterfaceDeepL;
   deepLChecking?: boolean;
@@ -121,6 +122,79 @@ type InterfaceFormProps = Readonly<{
   onSubmit: () => void;
   onRetry?: () => void;
 }>;
+
+const MeilisearchFields = ({
+  draft,
+  hasStoredKey,
+  onChange,
+}: {
+  draft: Extract<InstanceInterfaceDraft, { type: 'meilisearch' }>;
+  hasStoredKey: boolean;
+  onChange: InterfaceFormProps['onChange'];
+}) => {
+  const update = (patch: Partial<typeof draft.config>) =>
+    onChange({ ...draft, config: { ...draft.config, ...patch } });
+  return (
+    <>
+      <div className="grid gap-2">
+        <Label htmlFor="meilisearch-origin">{t('interfaces.meilisearch.origin')}</Label>
+        <Input
+          id="meilisearch-origin"
+          type="url"
+          required
+          value={draft.config.origin}
+          onChange={(event) => update({ origin: event.currentTarget.value })}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="meilisearch-environment">{t('interfaces.meilisearch.environment')}</Label>
+        <select
+          id="meilisearch-environment"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={draft.config.environment}
+          onChange={(event) => {
+            const selected = event.currentTarget.value;
+            if (
+              selected === 'production' ||
+              selected === 'staging' ||
+              selected === 'development' ||
+              selected === 'test'
+            )
+              update({ environment: selected });
+          }}
+        >
+          <option value="production">{t('interfaces.meilisearch.production')}</option>
+          <option value="staging">{t('interfaces.meilisearch.staging')}</option>
+          <option value="development">{t('interfaces.meilisearch.development')}</option>
+          <option value="test">{t('interfaces.meilisearch.test')}</option>
+        </select>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="meilisearch-municipalities">
+          {t('interfaces.meilisearch.municipalityIds')}
+        </Label>
+        <Input
+          id="meilisearch-municipalities"
+          required
+          value={draft.config.municipalityIds}
+          onChange={(event) => update({ municipalityIds: event.currentTarget.value })}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="meilisearch-key">{t('interfaces.meilisearch.key')}</Label>
+        <Input
+          id="meilisearch-key"
+          type="password"
+          autoComplete="new-password"
+          required={draft.enabled && !hasStoredKey}
+          value={draft.config.apiKey}
+          placeholder={hasStoredKey ? t('interfaces.meilisearch.keyStored') : undefined}
+          onChange={(event) => update({ apiKey: event.currentTarget.value })}
+        />
+      </div>
+    </>
+  );
+};
 
 const deepLRequiresSave = (
   draft: InstanceInterfaceDraft,
@@ -135,6 +209,7 @@ const deepLRequiresSave = (
 export const InterfaceForm = ({
   draft,
   hasStoredS3SecretAccessKey = false,
+  hasStoredMeilisearchKey = false,
   hasStoredMapApiKey = false,
   deepLEntry,
   deepLChecking = false,
@@ -172,6 +247,12 @@ export const InterfaceForm = ({
           draft={draft}
           entry={deepLEntry}
           checking={deepLChecking}
+          onChange={onChange}
+        />
+      ) : draft.type === 'meilisearch' ? (
+        <MeilisearchFields
+          draft={draft}
+          hasStoredKey={hasStoredMeilisearchKey}
           onChange={onChange}
         />
       ) : draft.type === 'mainserver' ? (

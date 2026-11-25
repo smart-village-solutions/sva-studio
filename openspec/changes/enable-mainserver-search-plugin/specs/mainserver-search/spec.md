@@ -25,6 +25,28 @@ Das System SHALL die bereits öffentlich indexierten Mainserver-Inhalte innerhal
 - **WHEN** zwei Quellmodelle dieselbe numerische ID liefern
 - **THEN** bleiben beide Kandidaten anhand Verbindung, Umgebung, Quellmodell und ID unterscheidbar
 
+#### Scenario: Meilisearch wird als Tenant-Schnittstelle eingerichtet
+
+- **WHEN** das Suchmodul für einen Tenant wirksam aktiv ist und der Benutzer `integration.manage` besitzt
+- **THEN** kann der Benutzer die Suchanbindung unter **Schnittstellen** bearbeiten
+- **AND** bindet der Host den verschlüsselten Zugang, HTTPS-Origin, Indexumgebung und Gemeindeumfang an die aktuelle Mainserver-Verbindung
+- **AND** validiert der Host den Zugriff auf die vorgesehenen Suchindizes
+
+#### Scenario: Root-Admin verwaltet die Meilisearch-Schnittstelle eines Tenants
+
+- **WHEN** ein berechtigter Root-Admin die Einstellungen eines aktiven Tenants mit aktivem Suchmodul öffnet
+- **THEN** kann er dessen Meilisearch-Schnittstelle lesen, einrichten, ändern und deaktivieren
+- **AND** prüft der Server Root-Host, Instanzberechtigung und CSRF für Änderungen
+- **AND** stammt die Zielinstanz aus dem Pfad und die Schnittstelle bleibt an die Mainserver-Verbindung dieses Tenants gebunden
+- **AND** enthält die Antwort weder gespeicherte noch eingereichte Zugangsdaten
+
+#### Scenario: Eine konfigurierte Suchanbindung wird ungültig
+
+- **WHEN** die Meilisearch-Schnittstelle deaktiviert oder entfernt wird oder sich die Mainserver-Verbindung ändert
+- **THEN** verwendet der Suchhandler diese Verbindung nicht mehr
+- **AND** bleiben Treffer auf die bestehende Mainserver-Detailautorisierung beschränkt
+- **AND** bleibt der befristete Konfigurationsübergang für Sandbox und Guben nach einer Deaktivierung gesperrt
+
 #### Scenario: GenericItem benötigt fachliche Zuordnung
 
 - **WHEN** ein Suchkandidat aus dem GenericItem-Index stammt

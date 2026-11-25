@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
 import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
+import { MeilisearchInterfaceCard } from './-meilisearch-interface-card';
+import * as iamHttp from '../../../lib/iam-http-client';
 
 import type { ConfigurationSectionProps } from './-instance-detail-view-shared';
 
@@ -507,5 +509,39 @@ describe('instance detail split sections', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[0] as HTMLButtonElement);
 
     expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-current');
+  });
+});
+
+describe('Root Meilisearch card', () => {
+  it('saves against the selected tenant and clears the key after saving', async () => {
+    const endpoint = '/api/v1/iam/instances/tenant-a/meilisearch-interface';
+    const get = vi.spyOn(iamHttp, 'requestJson').mockResolvedValue({ data: null });
+    const put = vi.spyOn(iamHttp, 'putJson').mockResolvedValue({
+      data: {
+        type: 'meilisearch', name: 'Meilisearch', enabled: true, apiKeyConfigured: true,
+        config: { origin: 'https://search.example', environment: 'production', municipalityIds: '1' },
+      },
+    });
+    try {
+      render(<MeilisearchInterfaceCard instanceId="tenant-a" />);
+      fireEvent.change(await screen.findByLabelText('HTTPS-Adresse des Suchdienstes'), {
+        target: { value: 'https://search.example' },
+      });
+      fireEvent.change(screen.getByLabelText('Gemeinde-IDs (durch Kommas getrennt)'), {
+        target: { value: '1' },
+      });
+      const key = screen.getByLabelText('Suchschlüssel oder Tenant-Token') as HTMLInputElement;
+      fireEvent.change(key, { target: { value: 'write-only' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+      await waitFor(() => expect(key.value).toBe(''));
+      expect(get).toHaveBeenCalledWith(endpoint);
+      expect(put).toHaveBeenCalledWith(endpoint, expect.objectContaining({
+        type: 'meilisearch', config: expect.objectContaining({ apiKey: 'write-only' }),
+      }));
+    } finally {
+      cleanup();
+      get.mockRestore();
+      put.mockRestore();
+    }
   });
 });

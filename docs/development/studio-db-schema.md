@@ -50,6 +50,7 @@ Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038`
 - die additive Permission-Erweiterung aus `0051_iam_permission_gate_backfill.sql` und `0052_iam_experimental_shell_permission.sql`
 - das Upgrade-Follow-up `0053_iam_legacy_standard_role_grant_cleanup.sql`, das historisch geseedete Standard-Grant-Reste auf früheren tenantlokalen Bootstrap-Rollen entfernt, ohne das relationale Schema zu verändern
 - der External-Interface-Katalog mit `iam.external_interface_types` und `iam.instance_external_interfaces`
+  enthält ab Migration `0122_instance_meilisearch_interface` den Typ `meilisearch`. Ein partieller Unique-Index erlaubt eine gespeicherte Meilisearch-Schnittstelle pro Tenant. Die bestehende RLS-Isolation und der verschlüsselte Secret-Speicher gelten auch für diesen Typ.
 - die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
 - die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
 - die Content-Lifecycle-Spalten `deletion_lifecycle_state` und `deletion_lifecycle_changed_at` auf `iam.contents`

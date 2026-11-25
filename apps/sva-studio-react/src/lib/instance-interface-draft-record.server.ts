@@ -4,7 +4,8 @@ import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
 } from '@sva/data-repositories/server';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, fetchPublicHttps } from '@sva/server-runtime';
+import { loadSvaMainserverSettings } from '@sva/sva-mainserver/server';
 import type { InstanceInterfaceDraft } from './instance-interfaces';
 import {
   parseSecretConfig,
@@ -169,11 +170,88 @@ const hasSecretInput = (draft: Parameters<typeof buildRecordFromDraft>[0]['draft
           ? draft.config.password.length > 0
           : draft.config.apiKey.length > 0;
 
+const buildMeilisearchRecord = async (input: {
+  instanceId: string;
+  interfaceId: string;
+  draft: Extract<InstanceInterfaceDraft, { type: 'meilisearch' }>;
+  existing: ExternalInterfaceRecord | null;
+  previousSecrets: Record<string, string>;
+}): Promise<ExternalInterfaceRecord> => {
+  const { instanceId, interfaceId, draft, existing, previousSecrets } = input;
+  const { origin: rawOrigin, environment, municipalityIds, apiKey } = draft.config;
+  const origin = new URL(rawOrigin).origin;
+  const key = apiKey || (existing?.baseUrl === origin ? previousSecrets.apiKey : undefined);
+  const mainserver = await loadSvaMainserverSettings(instanceId);
+  if (draft.enabled && (!key || !mainserver?.enabled)) throw new Error('meilisearch_incomplete');
+  if (
+    key &&
+    origin === 'https://search.common.smart-village.app' &&
+    !/^[\w-]+\.[\w-]+\.[\w-]+$/.test(key)
+  )
+    throw new Error('meilisearch_requires_tenant_token');
+  const secretConfigCiphertext = buildSecretCiphertext({
+    interfaceId,
+    secretConfig: key ? { apiKey: key } : {},
+  });
+  if (key && !secretConfigCiphertext) throw new Error('meilisearch_incomplete');
+  if (draft.enabled && key) {
+    try {
+      const { checkStudioSearchConnection } = await import('./plugin-server-runtime.server.js');
+      await checkStudioSearchConnection(
+        {
+          url: origin,
+          key,
+          environment,
+          municipalityIds: municipalityIds.split(',').map(Number),
+        },
+        fetchPublicHttps
+      );
+    } catch {
+      throw new Error('meilisearch_connection_failed');
+    }
+  }
+  return {
+    id: interfaceId,
+    instanceId,
+    typeKey: 'meilisearch',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: draft.name,
+    alias: 'meilisearch',
+    enabled: draft.enabled,
+    isDefault: true,
+    category: 'api',
+    baseUrl: origin,
+    authMode: 'api_key',
+    publicConfig: {
+      origin,
+      environment,
+      municipalityIds,
+      graphqlBaseUrl: mainserver?.graphqlBaseUrl,
+    },
+    secretConfigCiphertext,
+    statusCheckKind: 'meilisearch',
+    visibleStatus: draft.enabled ? 'ok' : 'disabled',
+    lastCheckedAt: draft.enabled ? new Date().toISOString() : undefined,
+    lastCheckStatus: draft.enabled ? 'succeeded' : undefined,
+    createdAt: existing?.createdAt,
+  };
+};
+
 export const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<
     InstanceInterfaceDraft,
-    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' | 'deepl' }
+    {
+      type:
+        | 's3'
+        | 'supabase'
+        | 'postgresql'
+        | 'mailTransport'
+        | 'mapGeocoding'
+        | 'deepl'
+        | 'meilisearch';
+    }
   >;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
@@ -252,6 +330,10 @@ export const buildRecordFromDraft = async (input: {
   } as const;
 
   if (input.draft.type === 'deepl') return buildDeepLRecord({ ...sharedInput, draft: input.draft });
+  if (input.draft.type === 'meilisearch') {
+    if (defaultRecord && !existing) throw new Error('meilisearch_already_configured');
+    return buildMeilisearchRecord({ ...sharedInput, draft: input.draft });
+  }
 
   return input.draft.type === 's3'
     ? buildS3Record({ ...sharedInput, draft: input.draft })

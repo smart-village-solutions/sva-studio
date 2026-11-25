@@ -1,3 +1,4 @@
+import { meilisearchInterfaceDraftSchema } from '../../lib/instance-interface-meilisearch';
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
 import { useStudioSaveFeedback } from '@sva/studio-ui-react';
@@ -57,6 +58,13 @@ export type EditState =
   | { mode: 'edit'; entry: InstanceInterface; draft: InstanceInterfaceDraft };
 
 export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft => {
+  if (entry.type === 'meilisearch')
+    return {
+      type: 'meilisearch',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: { ...entry.config, apiKey: '' },
+    };
   if (entry.type === 'deepl')
     return {
       type: 'deepl',
@@ -125,6 +133,7 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
 
   if (message.startsWith('deepl_') || message === 'interface_conflict')
     return t(`interfaces.deepl.errors.${message}`);
+  if (message.startsWith('meilisearch_')) return t(`interfaces.meilisearch.errors.${message}`);
   switch (message) {
     case 'invalid_interfaces_payload':
       return t('interfaces.messages.loadError');
@@ -162,13 +171,18 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
 export const buildUpsertPayload = (
   instanceId: string,
   editState: Extract<EditState, { mode: 'create' | 'edit' }>
-) => ({
-  instanceId,
-  draft: editState.draft,
-  ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
-    ? { existingId: editState.entry.id }
-    : {}),
-});
+) => {
+  const { draft } = editState;
+  if (draft.type === 'meilisearch' && !meilisearchInterfaceDraftSchema.safeParse(draft).success)
+    throw new Error('meilisearch_invalid_config');
+  return {
+    instanceId,
+    draft,
+    ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
+      ? { existingId: editState.entry.id }
+      : {}),
+  };
+};
 
 const useServerFnRefs = () => {
   const checkDeepL = useServerFn(checkDeepLInterfaceServerFn);

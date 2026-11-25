@@ -3578,6 +3578,13 @@ CREATE INDEX idx_instance_keycloak_provisioning_steps_run_created ON iam.instanc
 
 
 --
+-- Name: idx_instance_meilisearch_interface; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_meilisearch_interface ON iam.instance_external_interfaces USING btree (instance_id) WHERE (type_key = 'meilisearch'::text);
+
+
+--
 -- Name: idx_instance_modules_instance_created; Type: INDEX; Schema: iam; Owner: -
 --
 

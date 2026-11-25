@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import {
+  emptyMeilisearchDraft,
+  type MeilisearchInterfaceFields,
+  type meilisearchInterfaceDraftSchema,
+} from './instance-interface-meilisearch';
+import {
   APP_TRANSLATION_MAX_LOCALES,
   appTranslationLanguage,
   isAppTranslationLocale,
@@ -7,7 +12,14 @@ import {
 import type { DeepLSettings, MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 
 export type InstanceInterfaceType =
-  'deepl' | 'mainserver' | 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding';
+  | 'deepl'
+  | 'mainserver'
+  | 's3'
+  | 'supabase'
+  | 'postgresql'
+  | 'mailTransport'
+  | 'mapGeocoding'
+  | 'meilisearch';
 
 export type InstanceInterfaceStatus = 'connected' | 'error' | 'disabled' | 'unknown';
 
@@ -120,6 +132,7 @@ export type InstanceInterfaceDeepL = InstanceInterfaceBase &
 
 export type InstanceInterface =
   | InstanceInterfaceDeepL
+  | (InstanceInterfaceBase & MeilisearchInterfaceFields)
   | InstanceInterfaceMainserver
   | InstanceInterfaceS3
   | InstanceInterfaceSupabase
@@ -128,6 +141,7 @@ export type InstanceInterface =
   | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
+  | z.infer<typeof meilisearchInterfaceDraftSchema>
   | {
       type: 'deepl';
       name: string;
@@ -181,6 +195,10 @@ export const instanceInterfaceTypeMeta: Record<
     titleKey: 'interfaces.types.deepl.label',
     descriptionKey: 'interfaces.types.deepl.description',
   },
+  meilisearch: {
+    titleKey: 'interfaces.types.meilisearch.label',
+    descriptionKey: 'interfaces.types.meilisearch.description',
+  },
   mainserver: {
     titleKey: 'interfaces.types.mainserver.label',
     descriptionKey: 'interfaces.types.mainserver.description',
@@ -210,6 +228,7 @@ export const instanceInterfaceTypeMeta: Record<
 export const createEmptyInstanceInterfaceDraft = (
   type: InstanceInterfaceType
 ): InstanceInterfaceDraft => {
+  if (type === 'meilisearch') return emptyMeilisearchDraft();
   if (type === 'deepl')
     return {
       type: 'deepl',

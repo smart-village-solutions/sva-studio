@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   saveExternalInterfaceRecord: vi.fn(),
   saveDeepLInterfaceRecord: vi.fn(),
   deleteExternalInterfaceRecord: vi.fn(),
+  checkStudioSearchConnection: vi.fn(),
+  loadSvaMainserverSettings: vi.fn(),
   protectField: vi.fn((value: string | undefined, aad: string) =>
     value ? `${aad}:${value}` : null
   ),
@@ -18,6 +20,13 @@ const state = vi.hoisted(() => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock('@sva/sva-mainserver/server', () => ({
+  loadSvaMainserverSettings: state.loadSvaMainserverSettings,
+}));
+vi.mock('./plugin-server-runtime.server.js', () => ({
+  checkStudioSearchConnection: state.checkStudioSearchConnection,
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
@@ -36,6 +45,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
+  fetchPublicHttps: vi.fn(),
   buildExternalInterfaceSecretConfigAad: (interfaceId: string) =>
     `iam.instance_external_interfaces.secret_config:${interfaceId}`,
   createSdkLogger: () => state.logger,
@@ -62,6 +72,55 @@ const createMapGeocodingDraft = () => ({
 });
 
 describe('instance-interfaces-server', () => {
+  it('verifies the search indices before storing a tenant-bound and encrypted Meilisearch connection', async () => {
+    const graphqlBaseUrl = 'https://mainserver.example/graphql';
+    const origin = 'https://search.example';
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+    state.loadSvaMainserverSettings.mockResolvedValue({ enabled: true, graphqlBaseUrl });
+    state.checkStudioSearchConnection.mockResolvedValue(undefined);
+    state.saveExternalInterfaceRecord.mockImplementationOnce(async (record) => {
+      state.loadExternalInterfaceRecordById.mockResolvedValueOnce(record);
+    });
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+    const result = await upsertStoredInterface('tenant-a', {
+      type: 'meilisearch',
+      enabled: true,
+      name: 'Meilisearch',
+      config: {
+        origin,
+        environment: 'production',
+        municipalityIds: '1',
+        apiKey: 'example-write-only-key',
+      },
+    });
+    expect(state.checkStudioSearchConnection).toHaveBeenCalledWith(
+      {
+        url: origin,
+        environment: 'production',
+        municipalityIds: [1],
+        key: 'example-write-only-key',
+      },
+      expect.anything()
+    );
+    expect(state.protectField).toHaveBeenCalledWith(
+      JSON.stringify({ apiKey: 'example-write-only-key' }),
+      expect.stringContaining(result.id)
+    );
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        typeKey: 'meilisearch',
+        instanceId: 'tenant-a',
+        visibleStatus: 'ok',
+        publicConfig: { origin, environment: 'production', municipalityIds: '1', graphqlBaseUrl },
+      })
+    );
+    expect(result).toMatchObject({
+      type: 'meilisearch',
+      apiKeyConfigured: true,
+      config: { origin },
+    });
+    expect(JSON.stringify(result)).not.toContain('example-write-only-key');
+  });
   beforeEach(() => {
     vi.resetModules();
     state.listExternalInterfaceRecords.mockReset();

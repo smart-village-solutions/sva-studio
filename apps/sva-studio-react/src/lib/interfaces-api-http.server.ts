@@ -1,5 +1,6 @@
+import { meilisearchInterfaceDraftSchema } from './instance-interface-meilisearch.js';
 import { deepLInterfaceDraftSchema } from './instance-interfaces';
-import { mailTransportContract } from '@sva/core';
+import { isValidInstanceId, mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
 import { z } from 'zod';
@@ -98,6 +99,7 @@ const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
       deepLInterfaceDraftSchema,
+      meilisearchInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
       postgresqlDraft,
@@ -121,6 +123,7 @@ const readInterfaceId = (pathname: string): string | null => {
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   deepl: ['apiKey'],
+  meilisearch: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],
   postgresql: ['databaseUrl'],
@@ -154,9 +157,20 @@ const responseStatusFor = (error: unknown): number => {
   if (explicit >= 400) return explicit;
   const message = error instanceof Error ? error.message : '';
   if (message === 'unauthorized') return 401;
-  if (message === 'forbidden' || message === 'permission_missing') return 403;
+  if (
+    message === 'forbidden' ||
+    message === 'permission_missing' ||
+    message === 'meilisearch_requires_search_module'
+  )
+    return 403;
   if (message === 'interface_not_found') return 404;
-  if (message.includes('conflict')) return 409;
+  if (
+    message.includes('conflict') ||
+    message === 'meilisearch_already_configured' ||
+    message === 'meilisearch_disable_before_cutover'
+  )
+    return 409;
+  if (message.startsWith('meilisearch_')) return 400;
   if (isClientValidationErrorMessage(message)) return 400;
   return 500;
 };
@@ -219,8 +233,69 @@ const handleDelete = async (request: Request, id: string): Promise<Response> => 
   }
 };
 
+const rootMeilisearchPath = /^\/api\/v1\/iam\/instances\/([^/]+)\/meilisearch-interface$/u;
+
+const updateRootMeilisearch = async (request: Request, instanceId: string, existingId?: string) => {
+  const parsed = meilisearchInterfaceDraftSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return null;
+  const { upsertStoredInterface } = await import('./instance-interfaces-server.js');
+  return upsertStoredInterface(instanceId, parsed.data, existingId);
+};
+
+const withRootMeilisearch = async (request: Request, instanceId: string): Promise<Response> => {
+  if (!isValidInstanceId(instanceId))
+    return Response.json({ error: { code: 'invalid_instance_id' } }, { status: 400 });
+  if (request.method !== 'GET' && request.method !== 'PUT')
+    return new Response(null, { status: 405, headers: { allow: 'GET, PUT' } });
+  // This route belongs to the Root UI. Existing service grants do not confer this capability.
+  if (request.headers.has('authorization'))
+    return Response.json({ error: { code: 'unauthorized' } }, { status: 401 });
+
+  const { withRootInstanceInterfaceRegistryAccess } = await import('@sva/auth-runtime/server');
+  return withRootInstanceInterfaceRegistryAccess(
+    request,
+    request.method === 'PUT' ? 'instance.update' : 'instance.read',
+    async (access) => {
+      try {
+        const { loadDefaultExternalInterfaceRecord, loadInstanceById } =
+          await import('@sva/data-repositories/server');
+        const instance = await loadInstanceById(instanceId);
+        if (instance?.status !== 'active')
+          return Response.json({ error: { code: 'instance_not_found' } }, { status: 404 });
+        if (!instance.assignedModules.includes('search'))
+          throw new Error('meilisearch_requires_search_module');
+
+        const existing = await loadDefaultExternalInterfaceRecord(instanceId, 'meilisearch');
+        const { mapRecordToStoredEntry } =
+          await import('./instance-interface-record-mapping.server.js');
+        const { projectStoredEntry } = await import('./interfaces-api-list.js');
+        const entry =
+          request.method === 'GET'
+            ? existing?.ownerKind === 'host'
+              ? mapRecordToStoredEntry(existing)
+              : null
+            : await updateRootMeilisearch(request, instanceId, existing?.id);
+
+        if (request.method === 'PUT') {
+          if (!entry) return Response.json({ error: { code: 'invalid_request' } }, { status: 400 });
+          await access.recordSave(instanceId, entry.enabled);
+        }
+        return Response.json(
+          { data: entry ? withoutSecrets(await projectStoredEntry(instanceId, entry)) : null },
+          { headers: { 'Cache-Control': 'private, no-store' } }
+        );
+      } catch (error) {
+        return errorResponse(request, error);
+      }
+    },
+    'meilisearch_interface'
+  );
+};
+
 export const dispatchInterfacesApiRequest = async (request: Request): Promise<Response | null> => {
   const { pathname } = new URL(request.url);
+  const meilisearchInstanceId = rootMeilisearchPath.exec(pathname)?.[1];
+  if (meilisearchInstanceId) return withRootMeilisearch(request, meilisearchInstanceId);
   if (
     pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
     /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)

@@ -44,6 +44,47 @@ const run = async (input = context(), patch: Partial<SearchHost> = {}) => {
   return handler(input);
 };
 describe('search HTTP boundary', () => {
+  it('prefers the stored tenant interface and never falls back after it is disabled', async () => {
+    const fetchSearch = vi
+      .fn<NonNullable<SearchHost['fetchSearch']>>()
+      .mockImplementation(async () => Response.json({ hits: [] }));
+    const registryConnection = {
+      url: 'https://release.example',
+      key: 'tenant-key',
+      environment: 'production',
+      municipalityIds: [1],
+    } as const;
+    const loadInterfaceConnection = vi
+      .fn<NonNullable<SearchHost['loadInterfaceConnection']>>()
+      .mockResolvedValue(registryConnection);
+    expect((await run(context(), { loadInterfaceConnection, fetchSearch })).status).toBe(200);
+    expect(fetchSearch).toHaveBeenCalledTimes(4);
+    expect(fetchSearch.mock.calls[0]?.[0].origin).toBe(registryConnection.url);
+    expect(new Headers(fetchSearch.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe(
+      'Bearer tenant-key'
+    );
+    fetchSearch.mockClear();
+    loadInterfaceConnection.mockResolvedValue(null);
+    expect(await (await run(context(), { loadInterfaceConnection, fetchSearch })).json()).toEqual({
+      error: 'search_not_configured',
+    });
+    expect(fetchSearch).not.toHaveBeenCalled();
+  });
+
+  it('discards results if the interface changes while the request is running', async () => {
+    const connection = {
+      url: 'https://release.example',
+      key: 'tenant-key',
+      environment: 'production',
+      municipalityIds: [1],
+    } as const;
+    const loadInterfaceConnection = vi
+      .fn()
+      .mockResolvedValueOnce(connection)
+      .mockResolvedValue(null);
+    const fetchSearch = vi.fn(async () => Response.json({ hits: [] }));
+    expect((await run(context(), { loadInterfaceConnection, fetchSearch })).status).toBe(409);
+  });
   it.each([
     ['de', ['news.article', 'events.event-record']],
     ['en', ['events.event-record', 'news.article']],

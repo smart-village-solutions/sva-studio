@@ -1,3 +1,4 @@
+import { hasLegacyMeilisearchSource } from '../../lib/instance-interface-meilisearch';
 import React from 'react';
 
 import {
@@ -14,7 +15,10 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
-import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
+import {
+  instanceInterfaceTypeMeta,
+  type InstanceInterface,
+} from '../../lib/instance-interfaces';
 import {
   draftFromEntry,
   type EditState,
@@ -54,9 +58,11 @@ const renderInterfaceRowActions = (
         )}
       </Button>
     ) : null}
-    <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
-      {t('interfaces.edit.deleteAction')}
-    </Button>
+    {row.type !== 'meilisearch' || !hasLegacyMeilisearchSource(row.instanceId) ? (
+      <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
+        {t('interfaces.edit.deleteAction')}
+      </Button>
+    ) : null}
   </>
 );
 
@@ -64,6 +70,9 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
   editState.mode === 'create'
     ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
     : t('interfaces.edit.title');
+
+const hasStoredMeilisearchKey = (editState: EditState): boolean =>
+  editState.mode === 'edit' && editState.entry.type === 'meilisearch' && editState.entry.apiKeyConfigured;
 
 export const InterfacesPage = () => {
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
@@ -221,6 +230,7 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
+              hasStoredMeilisearchKey={hasStoredMeilisearchKey(editState)}
               deepLEntry={
                 editState.mode === 'edit' && editState.entry.type === 'deepl'
                   ? editState.entry

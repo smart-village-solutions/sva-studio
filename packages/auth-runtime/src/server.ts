@@ -123,6 +123,7 @@ export {
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export {
   withRootMainserverRegistryAccess,
+  withRootInstanceInterfaceRegistryAccess,
   type RootMainserverRegistryAccess,
 } from './iam-instance-registry/server.js';
 export { listActiveInstanceIdsForWorker } from './iam-instance-registry/repository.js';
@@ -134,8 +135,7 @@ export {
 export { createSsfRuntimePluginServiceAccess } from './ssf-runtime-plugin-service.js';
 export { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-projection-tenant.js';
 export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
-export { withInstanceScopedDb } from './iam-account-management/shared.js';
-export { resolveActorAccountId } from './iam-account-management/shared.js';
+export { withInstanceScopedDb, resolveActorAccountId } from './iam-account-management/shared.js';
 export { resolveActorAccountIdWithProvision } from './iam-account-management/shared-actor-resolution-helpers.js';
 export { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 export {

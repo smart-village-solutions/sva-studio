@@ -130,10 +130,11 @@ export type RootMainserverRegistryAccess = {
   readonly recordSave: (instanceId: string, enabled: boolean) => Promise<void>;
 };
 
-export const withRootMainserverRegistryAccess = (
+export const withRootInstanceInterfaceRegistryAccess = (
   request: Request,
   actionId: 'instance.list' | 'instance.read' | 'instance.update',
-  work: (access: RootMainserverRegistryAccess) => Promise<Response>
+  work: (access: RootMainserverRegistryAccess) => Promise<Response>,
+  area: 'mainserver_interface' | 'meilisearch_interface' = 'mainserver_interface'
 ): Promise<Response> =>
   withAuthenticatedRegistryHandler(request, actionId, async (authorizedRequest, ctx) => {
     const accessError = ensurePlatformAccess(authorizedRequest, ctx);
@@ -156,11 +157,13 @@ export const withRootMainserverRegistryAccess = (
             eventType: 'instance_reconfigured',
             actorId: ctx.user.id,
             requestId: buildLogContext('platform').request_id,
-            details: { area: 'mainserver_interface', enabled },
+            details: { area, enabled },
           })
         ),
     });
   });
+
+export const withRootMainserverRegistryAccess = withRootInstanceInterfaceRegistryAccess;
 
 export const instanceRegistryHandlers = {
   serverEmailVerificationTemplate: async (request: Request): Promise<Response> =>

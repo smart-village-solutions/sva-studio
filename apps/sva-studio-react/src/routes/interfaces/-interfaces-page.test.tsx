@@ -161,7 +161,7 @@ const mapGeocodingEntry = {
 const createListResponse = (
   entries: readonly unknown[],
   availableTypes: readonly (
-    'deepl' | 'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding'
+    'deepl' | 'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding' | 'meilisearch'
   )[] = ['mainserver', 's3', 'supabase', 'mailTransport', 'mapGeocoding']
 ) => ({
   instanceId: 'de-musterhausen',
@@ -799,6 +799,18 @@ describe('InterfacesPage', () => {
     expect((screen.getByRole('radio', { name: /Supabase/i }) as HTMLInputElement).checked).toBe(
       true
     );
+  });
+
+  it('opens the Meilisearch fields from the tenant interface picker', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry], ['mainserver', 'meilisearch']));
+    render(<InterfacesPage />);
+    await screen.findByText('1 Schnittstelle(n)');
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Meilisearch' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    expect(screen.getByLabelText('HTTPS-Adresse des Suchdienstes').getAttribute('type')).toBe('url');
+    expect(screen.getByLabelText('Gemeinde-IDs (durch Kommas getrennt)')).toBeTruthy();
+    expect(screen.getByLabelText('Suchschlüssel oder Tenant-Token').getAttribute('type')).toBe('password');
   });
 
   it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {

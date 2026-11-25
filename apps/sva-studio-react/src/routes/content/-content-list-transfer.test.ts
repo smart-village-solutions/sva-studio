@@ -115,7 +115,8 @@ describe('batch ownership transfer', () => {
   it('distinguishes an earlier transfer blocking the write from an uncertain current write', async () => {
     const { initial, commit, read } = setup();
     const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (init?.method !== 'POST') return Response.json({ error: 'operation_not_found' }, { status: 404 });
+      if (init?.method !== 'POST')
+        return Response.json({ error: 'database_unavailable' }, { status: 503 });
       const id = String(input).split('/').at(-2);
       return Response.json(
         { error: 'content_transfer_reconciliation_required' },
@@ -132,6 +133,36 @@ describe('batch ownership transfer', () => {
     expect(fetch.mock.calls.map(([input]) => String(input))).not.toContain(
       '/api/v1/mainserver/content-ownership/operations/operation-1'
     );
+  });
+
+  it('lets the user resume a missing operation with its original ID after a transport failure', async () => {
+    const { initial, commit, read } = setup();
+    const sent: Array<string | null> = [];
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push(new Headers(init.headers).get('x-sva-operation-id'));
+        if (sent.length === 1) throw new TypeError('Network error');
+        return Response.json({}, { status: 200 });
+      }
+      expect(String(input)).toContain('/operations/operation-1');
+      return sent.length === 1
+        ? Response.json({ error: 'operation_not_found' }, { status: 404 })
+        : Response.json({
+            data: { providerOutcome: 'succeeded', reconciliationStatus: 'complete' },
+          });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const job = { ...initial, operations: initial.operations.slice(0, 1) };
+    const signal = new AbortController().signal;
+
+    await runTransferJob(job, true, signal, commit);
+    expect(read().operations[0]?.status).toBe('queued');
+    await runTransferJob(read(), false, signal, commit);
+    expect(sent).toEqual(['operation-1']);
+
+    await runTransferJob(read(), true, signal, commit);
+    expect(sent).toEqual(['operation-1', 'operation-1']);
+    expect(read().operations[0]?.status).toBe('succeeded');
   });
 
   it('uses the journal outcome after a target verification error', async () => {

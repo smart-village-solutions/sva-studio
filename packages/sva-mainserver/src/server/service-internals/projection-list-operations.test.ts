@@ -30,7 +30,7 @@ describe('projection list operations', () => {
         {
           id: 'news-1',
           title: '',
-          categories: [{ id: '10' }, { id: '10' }, { name: 'Ohne ID' }],
+          categories: [{ id: '10', children: [{ id: '11' }] }, { id: '10' }, { name: 'Ohne ID' }],
           contentBlocks: [{ title: 'Headline aus dem ersten Inhaltsblock' }],
           createdAt: '2026-01-01T00:00:00Z',
           updatedAt: '2026-01-02T00:00:00Z',

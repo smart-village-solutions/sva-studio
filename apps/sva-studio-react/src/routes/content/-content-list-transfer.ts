@@ -133,8 +133,10 @@ export const readTransferStatus = async (
       return 'rejected';
     if (data.providerOutcome === 'succeeded' && data.reconciliationStatus === 'complete')
       return 'succeeded';
-  } catch {
-    // A missing or unreachable journal entry cannot prove that a sent request was rejected.
+  } catch (error) {
+    // Resume explicitly with the same ID. The server checks that ID under the content lock.
+    if (error instanceof MainserverApiError && error.code === 'operation_not_found')
+      return 'queued';
   }
   return 'reconciling';
 };
@@ -198,7 +200,7 @@ export const runTransferJob = async (
   for (const [index, operation] of initial.operations.entries()) {
     if (signal.aborted) break;
     if (operation.status === 'queued' && executeQueued) {
-      // Persist the uncertain state before sending, so reload never replays this operation.
+      // Persist the uncertain state before sending, so reload checks the journal first.
       saveStatus(index, 'reconciling');
       const status = await executeTransferOperation(job, operation, signal);
       if (!signal.aborted) saveStatus(index, status);

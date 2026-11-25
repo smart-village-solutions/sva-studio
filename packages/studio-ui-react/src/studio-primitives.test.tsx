@@ -1268,6 +1268,47 @@ describe('studio-ui-react primitives', () => {
     );
   });
 
+  it('makes custom-rendered bulk actions inert while rows reload with a kept toolbar', () => {
+    const renderTable = (isLoading: boolean) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={[{ id: 'a' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        bulkActions={[
+          {
+            id: 'custom',
+            label: 'Custom',
+            render: <button type="button">Sonderaktion</button>,
+            onClick: vi.fn(),
+          },
+        ]}
+        isLoading={isLoading}
+        keepToolbarWhileLoading
+      />
+    );
+    const { rerender } = render(renderTable(false));
+    fireEvent.click(screen.getByLabelText('News a auswählen'));
+    const customAction = screen.getByRole('button', { name: 'Sonderaktion' });
+
+    expect(customAction.closest('[inert]')).toBeNull();
+
+    rerender(renderTable(true));
+
+    // Same node (not remounted), but no longer operable while the selection's rows are hidden.
+    expect(screen.getByText('Sonderaktion')).toBe(customAction);
+    expect(customAction.closest('[inert]')).not.toBeNull();
+
+    rerender(renderTable(false));
+
+    expect(screen.getByRole('button', { name: 'Sonderaktion' })).toBe(customAction);
+    expect(customAction.closest('[inert]')).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('News a auswählen').checked).toBe(true);
+  });
+
   it('sorts strings with a fixed locale and a deterministic tie-breaker', () => {
     const localeCompareSpy = vi
       .spyOn(String.prototype, 'localeCompare')

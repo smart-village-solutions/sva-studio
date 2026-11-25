@@ -9,6 +9,7 @@ import type {
   StudioColumnDef,
   StudioDataTableSorting,
 } from './studio-data-table-types.js';
+import { cn } from './utils.js';
 
 type StudioDataTableToolbarProps<TData> = Readonly<{
   bulkActions: readonly StudioBulkAction<TData>[];
@@ -40,7 +41,16 @@ export function StudioDataTableToolbar<TData>({
   const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarCenter || toolbarEnd;
   const bulkActionsContent = bulkActions.map((action) =>
     action.render ? (
-      <React.Fragment key={action.id}>{action.render}</React.Fragment>
+      // Custom content cannot be disabled generically. While loading, its rows are hidden but the
+      // selection is kept, so the wrapper makes it inert. The wrapper is always rendered, so the
+      // custom node is not remounted and the toolbar layout does not shift.
+      <div
+        key={action.id}
+        className={cn('contents', isLoading && '*:opacity-50')}
+        inert={isLoading || undefined}
+      >
+        {action.render}
+      </div>
     ) : (
       <Button
         key={action.id}

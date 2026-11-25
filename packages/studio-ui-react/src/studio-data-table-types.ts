@@ -85,7 +85,8 @@ export type StudioDataTableProps<TData> = Readonly<{
   isLoading?: boolean;
   /**
    * Keeps the toolbar and footer mounted while `isLoading` is set, so search fields and filters
-   * keep their value and focus; only the result area shows the loading state. Enable this only
+   * keep their value and focus; only the result area shows the loading state. Bulk actions are
+   * disabled meanwhile (custom-rendered ones are made inert), the selection is kept. Enable this only
    * when the data source ignores outdated responses, because users can now start new requests
    * while one is still running.
    */

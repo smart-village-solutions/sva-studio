@@ -220,6 +220,8 @@ describe('remaining Unit shards', () => {
   ];
   const options = { base: 'base', head: 'head' };
   beforeEach(() => {
+    // CI runs these tests inside jobs that set the mode; keep the inline layout as baseline.
+    vi.stubEnv('CI_UNIT_APP_SEPARATE', undefined);
     vi.mocked(execFileSync).mockReturnValue(JSON.stringify(projects));
     vi.mocked(resolveChangedFiles).mockReturnValue(['packages/core/src/index.ts']);
     vi.mocked(loadNxProjectRoots).mockReturnValue(
@@ -231,6 +233,7 @@ describe('remaining Unit shards', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     vi.resetAllMocks();
   });
@@ -240,31 +243,89 @@ describe('remaining Unit shards', () => {
     (value) => expect(() => parseUnitShard(value)).toThrow(/Unit-Shard/u)
   );
 
+  const selectAllShards = (input: readonly string[], separateApp: boolean, count = 4): string[][] =>
+    Array.from({ length: count }, (_value, offset) =>
+      selectRemainingUnitProjects(input, { index: offset + 1, count }, separateApp)
+    );
+
   it.each([[], ['core'], projects, [...projects, 'core']])(
     'partitions every project exactly once independently of input ordering: %j',
     (...input) => {
-      const selected = [1, 2, 3, 4].map((index) =>
-        selectRemainingUnitProjects(input, { index, count: 4 })
-      );
+      const selected = selectAllShards(input, false);
       expect(selected.flat().sort()).toEqual([...new Set(input)].sort());
-      expect(selected).toEqual(
-        [1, 2, 3, 4].map((index) =>
-          selectRemainingUnitProjects([...input].reverse(), { index, count: 4 })
-        )
-      );
+      expect(selected).toEqual(selectAllShards([...input].reverse(), false));
       expect(selected[0]).toEqual(input.includes('sva-studio-react') ? ['sva-studio-react'] : []);
     }
   );
 
   it('supports a single shard with the complete project set', () => {
-    expect(selectRemainingUnitProjects(projects, { index: 1, count: 1 })).toEqual(
+    expect(selectRemainingUnitProjects(projects, { index: 1, count: 1 }, false)).toEqual(
       [...projects].sort()
     );
   });
 
-  it.each(['affected', 'unmapped', 'invalid-base', 'graph-failure'])(
-    'executes the exact unsharded Nx command set for %s scope',
-    (scope) => {
+  describe('with separate App jobs', () => {
+    const nonAppProjects = projects.filter((project) => project !== 'sva-studio-react').sort();
+
+    it.each([
+      ['containing the App', projects],
+      ['without the App', nonAppProjects],
+    ])('gives every runner non-App work for a plan %s', (_name, input) => {
+      const selected = selectAllShards(input, true);
+      expect(selected.every((shardProjects) => shardProjects.length > 0)).toBe(true);
+      expect(selected.flat().sort()).toEqual(nonAppProjects);
+      expect(selected).toEqual(selectAllShards([...input].reverse(), true));
+    });
+
+    it.each([[], ['sva-studio-react'], ['core'], ['sva-studio-react', 'core', 'data', 'core']])(
+      'keeps small scopes complete and disjoint: %j',
+      (...input) => {
+        const expected = [...new Set(input)].filter((project) => project !== 'sva-studio-react');
+        for (const count of [1, 4]) {
+          const selected = selectAllShards(input, true, count).flat();
+          expect(selected.sort()).toEqual(expected.sort());
+          expect(new Set(selected).size).toBe(selected.length);
+        }
+      }
+    );
+
+    it.each([
+      { index: 0, count: 4 },
+      { index: 5, count: 4 },
+      { index: 1, count: 0 },
+      { index: 1.5, count: 4 },
+    ])('rejects invalid programmatic shard %j', (shard) => {
+      expect(() => selectRemainingUnitProjects(projects, shard, true)).toThrow(/Unit-Shard/u);
+    });
+
+    it.each(['affected', 'unmapped'])(
+      'runs non-App targets on all four remaining runners for %s scope',
+      (scope) => {
+        vi.stubEnv('CI_UNIT_APP_SEPARATE', '1');
+        if (scope === 'unmapped') vi.mocked(resolveChangedFiles).mockReturnValue(['unknown.ts']);
+        const commandsByShard = [1, 2, 3, 4].map((index) => {
+          vi.mocked(runCiCommand).mockClear();
+          runAffectedUnitGate(options, undefined, undefined, 'remaining', { index, count: 4 });
+          return vi.mocked(runCiCommand).mock.calls.map(([command]) => command);
+        });
+        expect(commandsByShard.every((commands) => commands.length > 0)).toBe(true);
+        expect(commandsByShard.flat().some((command) => command.includes('sva-studio-react'))).toBe(
+          false
+        );
+        expect(new Set(commandsByShard.flat()).size).toBe(commandsByShard.flat().length);
+      }
+    );
+  });
+
+  it.each(
+    ['affected', 'unmapped', 'invalid-base', 'graph-failure'].flatMap((scope) => [
+      [scope, undefined],
+      [scope, '1'],
+    ])
+  )(
+    'executes the exact unsharded Nx command set for %s scope with separate App=%s',
+    (scope, separate) => {
+      vi.stubEnv('CI_UNIT_APP_SEPARATE', separate);
       if (scope === 'unmapped') vi.mocked(resolveChangedFiles).mockReturnValue(['unknown.ts']);
       if (scope === 'invalid-base')
         vi.mocked(resolveChangedFiles).mockImplementation(() => {

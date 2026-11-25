@@ -5,6 +5,7 @@ import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cl
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import {
+  APP_PROJECT,
   buildAppUnitCommand,
   resolveAppUnitExecutionPlan,
   planAppUnitExecution,
@@ -33,7 +34,6 @@ export interface DurationEntry {
   retryCount?: number;
 }
 
-const APP_PROJECT = 'sva-studio-react';
 export const buildUnitProjectCommand = (project: string): string =>
   `env -u NO_COLOR pnpm nx run ${project}:test:unit --nxBail --output-style=stream`;
 
@@ -72,7 +72,7 @@ export const runAffectedUnitGate = (
     (project) => project !== APP_PROJECT
   );
   const remainingProjects = shard
-    ? selectRemainingUnitProjects(changedProjectPlan.remainingProjects, shard)
+    ? selectRemainingUnitProjects(changedProjectPlan.remainingProjects, shard, separateApp)
     : changedProjectPlan.remainingProjects;
   const remainingNonAppProjects = remainingProjects.filter((project) => project !== APP_PROJECT);
 
@@ -259,7 +259,7 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
 
 export const runResidualUnitGate = (): void => {
   for (const project of loadResidualUnitProjects()) {
-    if (process.env.CI_UNIT_APP_SEPARATE === '1' && project === 'sva-studio-react') continue;
+    if (process.env.CI_UNIT_APP_SEPARATE === '1' && project === APP_PROJECT) continue;
     runCiCommand(buildUnitProjectCommand(project));
   }
 };

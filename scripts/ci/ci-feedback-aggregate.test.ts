@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { appUnitJobs } from './affected-unit-plan.ts';
+import {
+  appUnitJobs,
+  resolveAppUnitExecutionPlan,
+  type AppUnitExecutionPlan,
+} from './affected-unit-plan.ts';
 import { aggregateCiFeedback } from './ci-feedback-aggregate.ts';
 import { buildCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import type { ChangedProjectPlan } from './changed-project-plan.ts';
@@ -21,6 +25,7 @@ const writeEvidence = (
     baseSha?: string;
     status?: 'failed' | 'passed' | 'skipped';
     plan?: ChangedProjectPlan;
+    appPlan?: AppUnitExecutionPlan;
   } = {}
 ): string => {
   const evidence = buildCiFeedbackEvidence({
@@ -38,6 +43,7 @@ const writeEvidence = (
       remainingProjects: ['routing'],
       unmappedFiles: [],
     },
+    appPlan: options.appPlan,
     phases: projects.map((project) => ({
       label: `${shardId}:${project}`,
       projects: [project],
@@ -49,6 +55,44 @@ const writeEvidence = (
   const filePath = path.join(directory, `unit-${shardId}-${Math.random()}.json`);
   fs.writeFileSync(filePath, JSON.stringify(evidence));
   return filePath;
+};
+
+const aggregateAppPlan: AppUnitExecutionPlan = {
+  mode: 'aggregate',
+  reason: 'app-in-remaining-scope',
+  slices: [],
+};
+
+/** Writes passed evidence for all seven App jobs executing the complete App suite. */
+const writeAggregateAppEvidence = (
+  directory: string,
+  plan: ChangedProjectPlan,
+  options: {
+    baseSha?: string;
+    scopeMode?: 'affected' | 'full';
+    appPlan?: AppUnitExecutionPlan;
+  } = {}
+): void => {
+  const appPlan = options.appPlan ?? aggregateAppPlan;
+  if (appPlan.mode !== 'aggregate') throw new Error('Fixture requires an aggregate App plan.');
+  for (const job of appUnitJobs) {
+    const file = writeEvidence(directory, `unit-app-${job}`, ['sva-studio-react'], {
+      plan,
+      baseSha: options.baseSha,
+      appPlan,
+    });
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    value.scopeMode = options.scopeMode ?? value.scopeMode;
+    value.phases = [{ label: `unit:app:${job}`, projects: ['sva-studio-react'], durationMs: 1 }];
+    value.appManifest = {
+      expectedFiles: job.startsWith('routes-')
+        ? ['routes-1', 'routes-2', 'routes-3', 'routes-4']
+        : [job],
+      files: [job],
+      tests: [{ file: job, name: 'scenario', status: 'passed' }],
+    };
+    fs.writeFileSync(file, JSON.stringify(value));
+  }
 };
 
 afterEach(() => {
@@ -97,7 +141,7 @@ describe('ci-feedback-aggregate', () => {
     writeEvidence(directory, 'unit-direct', scope.directProjects, { plan: scope }),
     ...[1, 2, 3, 4].map((index) => {
       const shard = { index, count: 4 };
-      const projects = selectRemainingUnitProjects(scope.remainingProjects, shard);
+      const projects = selectRemainingUnitProjects(scope.remainingProjects, shard, false);
       return writeEvidence(directory, unitShardId(shard), projects, {
         plan: scope,
         status: projects.length === 0 ? 'skipped' : 'passed',
@@ -380,24 +424,7 @@ describe('full Main App Unit aggregation', () => {
       unmappedFiles: [],
     };
     const expectedShards = appUnitJobs.map((job) => `unit-app-${job}`);
-    for (const job of appUnitJobs) {
-      const file = writeEvidence(directory, `unit-app-${job}`, ['sva-studio-react'], {
-        plan,
-        baseSha: 'head',
-      });
-      const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-      value.scopeMode = 'full';
-      value.appPlan = { mode: 'aggregate', reason: 'app-in-remaining-scope', slices: [] };
-      value.phases = [{ label: `unit:app:${job}`, projects: ['sva-studio-react'], durationMs: 1 }];
-      value.appManifest = {
-        expectedFiles: job.startsWith('routes-')
-          ? ['routes-1', 'routes-2', 'routes-3', 'routes-4']
-          : [job],
-        files: [job],
-        tests: [{ file: job, name: 'scenario', status: 'passed' }],
-      };
-      fs.writeFileSync(file, JSON.stringify(value));
-    }
+    writeAggregateAppEvidence(directory, plan, { baseSha: 'head', scopeMode: 'full' });
     return {
       gate: 'unit' as const,
       headSha: 'head',
@@ -468,5 +495,107 @@ describe('full Main App Unit aggregation', () => {
   });
   it('requires the workflow base to equal its head', () => {
     expect(() => aggregateCiFeedback({ ...arrange(), baseSha: 'other' })).toThrow();
+  });
+});
+
+describe('remaining Unit shards with separate App jobs', () => {
+  const remainingIds = [1, 2, 3, 4].map((index) => unitShardId({ index, count: 4 }));
+  const expectedShards = [
+    'unit-direct',
+    ...remainingIds,
+    ...appUnitJobs.map((job) => `unit-app-${job}`),
+  ];
+  const nonAppRemaining = ['data', 'plugin-news', 'routing', 'tooling-testing'];
+  const scopes: Record<string, ChangedProjectPlan> = {
+    'App in remaining plan': {
+      mode: 'changed-first',
+      reason: 'directly-changed-projects-first',
+      directProjects: ['core'],
+      remainingProjects: ['sva-studio-react', ...nonAppRemaining],
+      unmappedFiles: [],
+    },
+    'App outside remaining plan': {
+      mode: 'changed-first',
+      reason: 'directly-changed-projects-first',
+      directProjects: ['core', 'sva-studio-react'],
+      remainingProjects: nonAppRemaining,
+      unmappedFiles: [],
+    },
+  };
+  const separateSelection = (plan: ChangedProjectPlan, index: number): string[] =>
+    selectRemainingUnitProjects(plan.remainingProjects, { index, count: 4 }, true);
+  const arrange = (
+    plan: ChangedProjectPlan,
+    select: (plan: ChangedProjectPlan, index: number) => string[] = separateSelection
+  ): { directory: string; files: string[] } => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'separate-app-remaining-'));
+    directories.push(directory);
+    // Derive the App plan exactly as the gate does for this scope.
+    const appPlan = resolveAppUnitExecutionPlan(
+      ['packages/core/src/index.ts', 'apps/sva-studio-react/package.json'],
+      ['core', 'sva-studio-react', ...nonAppRemaining],
+      plan,
+      true
+    );
+    writeEvidence(directory, 'unit-direct', ['core'], { plan, appPlan });
+    const files = remainingIds.map((shardId, offset) => {
+      const projects = select(plan, offset + 1);
+      return writeEvidence(directory, shardId, projects, {
+        plan,
+        appPlan,
+        status: projects.length === 0 ? 'skipped' : 'passed',
+      });
+    });
+    writeAggregateAppEvidence(directory, plan, { appPlan });
+    return { directory, files };
+  };
+  const aggregate = (directory: string) =>
+    aggregateCiFeedback({
+      gate: 'unit',
+      headSha: 'head',
+      baseSha: 'base',
+      expectedShards,
+      evidenceDirectory: directory,
+    });
+
+  it.each(Object.keys(scopes))('accepts non-App work on all four remaining runners: %s', (name) => {
+    const plan = scopes[name];
+    expect(remainingIds.map((_id, offset) => separateSelection(plan, offset + 1))).toEqual(
+      nonAppRemaining.map((project) => [project])
+    );
+    expect(aggregate(arrange(plan).directory).shards).toEqual([...expectedShards].sort());
+  });
+
+  it.each(Object.keys(scopes))('rejects the former App-reserved layout: %s', (name) => {
+    const appReserved = (plan: ChangedProjectPlan, index: number): string[] =>
+      selectRemainingUnitProjects(plan.remainingProjects, { index, count: 4 }, false).filter(
+        (project) => project !== 'sva-studio-react'
+      );
+    expect(() => aggregate(arrange(scopes[name], appReserved).directory)).toThrow(/unvollständig/u);
+  });
+
+  it.each([
+    ['missing', /fehlt/u],
+    ['duplicate', /doppelt/u],
+    ['stale-head', /gehört zu old/u],
+    ['foreign-base', /anderen Base/u],
+    ['moved-project', /unvollständig/u],
+    ['app-in-remaining-shard', /unvollständig/u],
+  ])('fails closed for %s remaining evidence', (scenario, error) => {
+    const { directory, files } = arrange(scopes['App in remaining plan']);
+    const target = files[0];
+    const evidence = JSON.parse(fs.readFileSync(target, 'utf8'));
+    if (scenario === 'missing') fs.rmSync(target);
+    else if (scenario === 'duplicate')
+      fs.copyFileSync(target, path.join(directory, 'unit-unit-duplicate.json'));
+    else {
+      if (scenario === 'stale-head') evidence.headSha = 'old';
+      if (scenario === 'foreign-base') evidence.baseSha = 'foreign';
+      if (scenario === 'moved-project') evidence.phases[0].projects = ['plugin-news'];
+      if (scenario === 'app-in-remaining-shard')
+        evidence.phases.push({ label: 'unit:remaining:app', projects: ['sva-studio-react'] });
+      fs.writeFileSync(target, JSON.stringify(evidence));
+    }
+    expect(() => aggregate(directory)).toThrow(error);
   });
 });

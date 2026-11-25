@@ -289,6 +289,24 @@ describe('remaining Unit shards', () => {
       }
     );
 
+    it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])(
+      'never coincides with the App-reserved layout for %i non-App projects',
+      (size) => {
+        // The aggregator detects a gate/aggregator mode mismatch only through
+        // differing layouts, so both must differ whenever non-App work exists.
+        const input = [
+          'sva-studio-react',
+          ...Array.from(
+            { length: size },
+            (_value, index) => `project-${String(index).padStart(2, '0')}`
+          ),
+        ];
+        const withoutApp = (shards: string[][]): string[][] =>
+          shards.map((shard) => shard.filter((project) => project !== 'sva-studio-react'));
+        expect(selectAllShards(input, true)).not.toEqual(withoutApp(selectAllShards(input, false)));
+      }
+    );
+
     it.each([
       { index: 0, count: 4 },
       { index: 5, count: 4 },

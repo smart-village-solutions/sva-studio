@@ -231,11 +231,13 @@ zweite Summary- oder Paritätspolicy einzuführen.
 ### Parallele Unit- und Coverage-Ausführung
 
 Die bisherigen Nx-Targets und ihre lokalen Dateifilter bleiben erhalten. In der
-PR-CI führen `Unit Fast Feedback` und die vier `Unit Complete`-Jobs ausschließlich
-die Nicht-App-Projekte aus. Die `Unit Complete`-Jobs verteilen diese Projekte
-sortiert reihum auf alle vier Runner, unabhängig davon, ob der Restplan die App
-enthält; kein Runner bleibt für die App reserviert. Ohne separate App-Jobs bleibt
-Shard 1 weiterhin der App vorbehalten. Die App läuft unabhängig davon in sieben Jobs:
+PR-CI (mit separaten App-Jobs, `CI_UNIT_APP_SEPARATE=1`) führen `Unit Fast Feedback`
+und die vier `Unit Complete`-Jobs ausschließlich die Nicht-App-Projekte aus. Die
+`Unit Complete`-Jobs verteilen diese Projekte sortiert reihum auf alle vier Runner,
+unabhängig davon, ob der Restplan die App enthält; kein Runner bleibt für die App
+reserviert. Nur in Läufen ohne `CI_UNIT_APP_SEPARATE` gilt das frühere Layout:
+Shard 1 führt die App aus, die übrigen Projekte verteilen sich auf drei Runner.
+In der PR-CI läuft die App in sieben Jobs:
 UI, Hooks, Server sowie vier Datei-Shards der Routensuite. Jeder App-Runner
 verwendet einen Worker. Betroffene Teilsuiten werden weiterhin vom bestehenden
 App-Scope-Plan ausgewählt; bei transitiver App-Betroffenheit läuft die vollständige

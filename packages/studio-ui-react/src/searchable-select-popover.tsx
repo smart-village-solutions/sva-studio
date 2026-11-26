@@ -189,8 +189,17 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
   const listRef = React.useRef<HTMLUListElement>(null);
 
   React.useEffect(() => {
-    const activeOption = listRef.current?.querySelectorAll('[role="option"]').item(activeIndex);
-    activeOption?.scrollIntoView?.({ block: 'nearest' });
+    const list = listRef.current;
+    const activeOption = list?.querySelectorAll('[role="option"]').item(activeIndex);
+    if (!list || !activeOption) return;
+
+    const listBounds = list.getBoundingClientRect();
+    const optionBounds = activeOption.getBoundingClientRect();
+    if (optionBounds.top < listBounds.top) {
+      list.scrollTop += optionBounds.top - listBounds.top;
+    } else if (optionBounds.bottom > listBounds.bottom) {
+      list.scrollTop += optionBounds.bottom - listBounds.bottom;
+    }
   }, [activeIndex, filteredOptions]);
 
   return (
@@ -198,12 +207,12 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
       <Popover.Content
         align="start"
         sideOffset={8}
-        collisionPadding={16}
+        collisionPadding={{ top: 8, right: 16, bottom: 8, left: 16 }}
         aria-label={label}
         className="z-50 flex max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-hidden rounded-lg border border-border-subtle bg-popover p-2 text-popover-foreground shadow-shell"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          (showSearch ? inputRef.current : listRef.current)?.focus();
+          (showSearch ? inputRef.current : listRef.current)?.focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => {

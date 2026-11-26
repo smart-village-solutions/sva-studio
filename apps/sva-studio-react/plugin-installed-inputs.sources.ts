@@ -1,4 +1,5 @@
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { resolve } from 'node:path';
 import { definePluginManifest, satisfiesVersionRange, type PluginManifest } from '@sva/plugin-sdk';
@@ -181,4 +182,79 @@ export const resolveInstalledPluginSources = (
   return readCatalog(appRoot, distribution, selectedPluginIds).map((entry) =>
     resolveInstalledPluginSource(appRoot, distribution, dependencies, entry)
   );
+};
+
+const statOrSkip = (path: string): ReturnType<typeof statSync> | undefined => {
+  try {
+    return statSync(path);
+  } catch {
+    // Dangling, looping or unreadable links cannot be bundled either.
+    return undefined;
+  }
+};
+
+const toPackagePath = (packageRoot: string, path: string): string =>
+  relative(packageRoot, path).split(sep).join('/');
+
+type PackageContent = { readonly files: string[]; readonly directoryLinks: string[] };
+
+const listPackageContent = (packageRoot: string): PackageContent => {
+  const files: string[] = [];
+  const directoryLinks: string[] = [];
+  const visitedDirectories = new Set<string>();
+  const walk = (directory: string): void => {
+    const realDirectory = realpathSync(directory);
+    // Recorded before the visited check: Vite resolves imports through a link from its target,
+    // so retargeting a link between two already walked directories must change the hash.
+    if (lstatSync(directory).isSymbolicLink()) {
+      directoryLinks.push(
+        `${toPackagePath(packageRoot, directory)}\0${toPackagePath(packageRoot, realDirectory)}`
+      );
+    }
+    if (visitedDirectories.has(realDirectory)) return;
+    visitedDirectories.add(realDirectory);
+    // Sorted so the first path to a directory reached through several links is deterministic.
+    for (const name of readdirSync(directory).sort()) {
+      const path = join(directory, name);
+      // Follows symlinks like the entry resolution does.
+      const stats = statOrSkip(path);
+      if (stats?.isDirectory()) {
+        if (name !== 'node_modules' && !name.startsWith('.')) walk(path);
+      } else if (stats?.isFile()) {
+        files.push(toPackagePath(packageRoot, path));
+      }
+    }
+  };
+  walk(packageRoot);
+  return { files: files.sort(), directoryLinks: directoryLinks.sort() };
+};
+
+// Includes the real location, as Vite resolves relative imports from a symlink's target.
+const hashFile = (packageRoot: string, path: string): string => {
+  const location = toPackagePath(packageRoot, realpathSync(path));
+  return `${location}\0${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+};
+
+/**
+ * Content fingerprint of the resolved installed and linked plugin packages. Nx hashes only
+ * workspace files and lockfile versions, and a linked package keeps its lockfile entry when its
+ * files change, so the build target hashes this value as a runtime input. Dependencies of the
+ * package (`node_modules`) and dot-directories are not part of the package content; resolved
+ * entry files are always hashed, even when the manifest points into such a directory. Symlinks
+ * contribute their real target, so retargeting a file or directory link changes the hash.
+ */
+export const fingerprintInstalledPluginSources = (sources: readonly InstalledSource[]): string => {
+  const hash = createHash('sha256');
+  for (const source of sources) {
+    hash.update(`${source.catalog.sourceRef}\n`);
+    const { files, directoryLinks } = listPackageContent(source.packageRoot);
+    for (const link of directoryLinks) hash.update(`link:${link}\n`);
+    for (const file of files) {
+      hash.update(`${file}\0${hashFile(source.packageRoot, join(source.packageRoot, file))}\n`);
+    }
+    for (const [kind, file] of Object.entries(source.files)) {
+      hash.update(`entry:${kind}\0${hashFile(source.packageRoot, file)}\n`);
+    }
+  }
+  return hash.digest('hex');
 };

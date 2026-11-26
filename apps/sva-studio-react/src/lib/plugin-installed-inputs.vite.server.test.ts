@@ -12,6 +12,7 @@ import {
   renderInstalledPluginInputs,
   resolveInstalledPluginSources,
 } from '../../plugin-installed-inputs.vite.js';
+import { fingerprintInstalledPluginSources } from '../../plugin-installed-inputs.sources.js';
 
 const temporaryRoots: string[] = [];
 const createFixture = (
@@ -319,6 +320,131 @@ describe('installed plugin build inputs', () => {
     expect(sources.map((source) => source.catalog)).toEqual([
       expect.objectContaining({ pluginId: 'calendar', sourceType: 'linked-package' }),
     ]);
+  });
+
+  it('fingerprints the content of selected linked packages for the build cache', () => {
+    const { appRoot, packageRoot } = createFixture({
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    const sharedModule = join(packageRoot, 'dist', 'shared.js');
+    writeFileSync(sharedModule, 'export const label = "v1";');
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+    expect(fingerprint()).toBe(initial);
+
+    const manifestPath = join(packageRoot, 'plugin.manifest.json');
+    const manifest = readFileSync(manifestPath, 'utf8');
+    writeFileSync(manifestPath, manifest.replace('"version":"1.0.0"', '"version":"1.0.1"'));
+    expect(fingerprint()).not.toBe(initial);
+    writeFileSync(manifestPath, manifest);
+    expect(fingerprint()).toBe(initial);
+
+    writeFileSync(sharedModule, 'export const label = "v2";');
+    expect(fingerprint()).not.toBe(initial);
+    writeFileSync(sharedModule, 'export const label = "v1";');
+
+    for (const ignored of ['node_modules/dep/index.js', '.cache/build.json']) {
+      mkdirSync(dirname(join(packageRoot, ignored)), { recursive: true });
+      writeFileSync(join(packageRoot, ignored), 'ignored');
+    }
+    expect(fingerprint()).toBe(initial);
+
+    writeFileSync(join(packageRoot, 'dist', '.generated.js'), 'export const value = 1;');
+    expect(fingerprint()).not.toBe(initial);
+  });
+
+  it('fingerprints symlinked entry contents and tolerates directory and file symlink loops', () => {
+    const { appRoot, packageRoot } = createFixture({
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    const target = join(packageRoot, 'build', 'calendar-view.js');
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, 'export const marker = "v1";');
+    const browserEntry = join(packageRoot, 'dist', 'calendar-view.js');
+    rmSync(browserEntry);
+    symlinkSync(target, browserEntry);
+    symlinkSync(packageRoot, join(packageRoot, 'build', 'loop'));
+    symlinkSync(join(packageRoot, 'build', 'loop-b.js'), join(packageRoot, 'build', 'loop-a.js'));
+    symlinkSync(join(packageRoot, 'build', 'loop-a.js'), join(packageRoot, 'build', 'loop-b.js'));
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+
+    writeFileSync(target, 'export const marker = "v2";');
+    expect(fingerprint()).not.toBe(initial);
+
+    // Same bytes at another location: Vite resolves the entry's relative imports from there.
+    const copy = join(packageRoot, 'build-copy', 'calendar-view.js');
+    mkdirSync(dirname(copy), { recursive: true });
+    writeFileSync(copy, 'export const marker = "v2";');
+    const withCopy = fingerprint();
+    rmSync(browserEntry);
+    symlinkSync(copy, browserEntry);
+    expect(fingerprint()).not.toBe(withCopy);
+  });
+
+  it('fingerprints directory symlinks retargeted between already visited directories', () => {
+    const { appRoot, packageRoot } = createFixture({
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    for (const [name, label] of [
+      ['a', 'A'],
+      ['b', 'B'],
+    ]) {
+      mkdirSync(join(packageRoot, name));
+      writeFileSync(join(packageRoot, name, 'module.js'), `export const label = "${label}";`);
+    }
+    writeFileSync(
+      join(packageRoot, 'dist', 'calendar-view.js'),
+      'export { label } from "./link/module.js";'
+    );
+    const link = join(packageRoot, 'dist', 'link');
+    symlinkSync(join(packageRoot, 'a'), link);
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+
+    rmSync(link);
+    symlinkSync(join(packageRoot, 'b'), link);
+    expect(fingerprint()).not.toBe(initial);
+
+    rmSync(link);
+    symlinkSync(join(packageRoot, 'a'), link);
+    expect(fingerprint()).toBe(initial);
+  });
+
+  it('fingerprints entry files the manifest places in excluded directories', () => {
+    const { appRoot, packageRoot } = createFixture({
+      browserPath: './.build/calendar-view.js',
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    const fingerprint = () =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, 'studio'));
+    const initial = fingerprint();
+
+    writeFileSync(join(packageRoot, '.build', 'calendar-view.js'), 'export const marker = 2;');
+    expect(fingerprint()).not.toBe(initial);
+  });
+
+  it('keeps the fingerprint independent of packages outside the selected profile', () => {
+    const { appRoot, packageRoot } = createFixture({
+      distribution: 'ssf',
+      jobsPath: null,
+      sourceType: 'linked-package',
+    });
+    const fingerprint = (distribution: 'studio' | 'ssf') =>
+      fingerprintInstalledPluginSources(resolveInstalledPluginSources(appRoot, distribution));
+    const before = { studio: fingerprint('studio'), ssf: fingerprint('ssf') };
+    expect(before.studio).toBe(fingerprintInstalledPluginSources([]));
+
+    writeFileSync(join(packageRoot, 'dist', 'metadata.js'), 'export const marker = "changed";');
+    expect(fingerprint('studio')).toBe(before.studio);
+    expect(fingerprint('ssf')).not.toBe(before.ssf);
   });
 
   it.each([

@@ -114,7 +114,10 @@
         "{workspaceRoot}/packages/plugin-*/publiccode.yml",
         "{workspaceRoot}/packages/plugin-*/src/**",
         "{workspaceRoot}/packages/routing/src/**",
-        "{projectRoot}/src/lib/studio-changelog.shared.ts"
+        "{projectRoot}/src/lib/studio-changelog.shared.ts",
+        {
+          "runtime": "pnpm exec tsx scripts/ci/studio-distribution-artifact.ts installed-plugin-fingerprint apps/sva-studio-react \"${SVA_STUDIO_DISTRIBUTION:-studio}\""
+        }
       ],
       "outputs": ["{projectRoot}/.output"],
       "options": {

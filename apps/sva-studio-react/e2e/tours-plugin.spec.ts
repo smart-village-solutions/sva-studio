@@ -69,13 +69,18 @@ test('opens a paginated tour and creates a draft in the active organization', as
     dataProvider: { id: '1', name: 'Stadtredaktion' },
   };
   const writes: unknown[] = [];
-  await page.route('**/api/v1/mainserver/tours**', (route) => {
+  let releaseSave!: () => void;
+  const deferredSave = new Promise<void>((resolve) => {
+    releaseSave = resolve;
+  });
+  await page.route('**/api/v1/mainserver/tours**', async (route) => {
     const url = new URL(route.request().url());
     if (route.request().method() === 'POST') {
       writes.push({
         principal: route.request().headers()['x-sva-acting-principal-type'],
         data: route.request().postDataJSON(),
       });
+      if (writes.length === 2) await deferredSave;
       return route.fulfill({ status: 201, json: { data: { id: '44', visible: false } } });
     }
     if (url.pathname.endsWith('/44'))
@@ -135,12 +140,19 @@ test('opens a paginated tour and creates a draft in the active organization', as
   await expect(page.getByRole('link', { name: 'Rund um den See' })).toBeVisible();
   await page.getByRole('link', { name: 'Tour anlegen' }).click();
   await page.getByLabel('Name', { exact: true }).fill('Neuer Rundweg');
+  await page.getByRole('link', { name: 'Zurück zur Liste' }).click();
+  const leavePrompt = page.getByRole('alertdialog', { name: 'Ungespeicherte Eingaben verwerfen?' });
+  await expect(leavePrompt).toBeVisible();
+  await leavePrompt.getByRole('button', { name: 'Weiterbearbeiten' }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Neuer Rundweg');
+  expect(writes).toHaveLength(0);
   await page.getByLabel('Länge', { exact: true }).fill('4');
   await expect(page.locator('#tour-principal')).toHaveValue('Stadtredaktion');
   await expect(page.locator('#tour-principal')).not.toBeEditable();
   await page.locator('#tour-category').selectOption({ label: 'Freizeit' });
   await page.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).first().click();
   await expect(page).toHaveURL(/\/admin\/tours\/44/);
+  await expect(leavePrompt).toHaveCount(0);
   await expect(page.getByText('Unveröffentlicht', { exact: true })).toBeVisible();
   expect(writes).toEqual([
     {
@@ -154,4 +166,28 @@ test('opens a paginated tour and creates a draft in the active organization', as
       },
     },
   ]);
+
+  await page.getByRole('link', { name: 'Zurück zur Liste' }).click();
+  await page.getByRole('link', { name: 'Tour anlegen' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Zweite Tour');
+  await page.getByLabel('Länge', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).first().click();
+  await expect.poll(() => writes.length).toBe(2);
+  await page.getByRole('link', { name: 'Zurück zur Liste' }).click();
+  await leavePrompt.getByRole('button', { name: 'Verwerfen und verlassen' }).click();
+  await expect(page).toHaveURL(/\/admin\/tours(?:\?|$)/);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/mainserver/tours') && response.request().method() === 'POST'
+  );
+  releaseSave();
+  expect(await (await saved).finished()).toBeNull();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+  );
+  await expect(page).toHaveURL(/\/admin\/tours(?:\?|$)/);
+  expect(writes).toHaveLength(2);
 });

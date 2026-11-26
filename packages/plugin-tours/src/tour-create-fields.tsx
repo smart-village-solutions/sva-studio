@@ -21,7 +21,9 @@ import { useEffect, useState } from 'react';
 type Translate = ReturnType<typeof usePluginTranslation>;
 type Principal = MainserverPrincipalControlModel['value'];
 
-function TourDescription({ pt, disabled }: { pt: Translate; disabled: boolean }) {
+type TourDescriptionProps = { pt: Translate; disabled: boolean; onChange: () => void };
+
+function TourDescription({ pt, disabled, onChange }: TourDescriptionProps) {
   const [description, setDescription] = useState('');
   return (
     <div className="space-y-2">
@@ -33,7 +35,10 @@ function TourDescription({ pt, disabled }: { pt: Translate; disabled: boolean })
         id="tour-description"
         labelId="tour-description-label"
         value={description}
-        onChange={setDescription}
+        onChange={(nextDescription) => {
+          setDescription(nextDescription);
+          onChange();
+        }}
         disabled={disabled}
         blockTypeOptions={[
           { value: 'paragraph', label: pt('richText.paragraph') },
@@ -98,11 +103,13 @@ export function TourBasisFields({
   busy,
   principal,
   principalControl,
+  onDescriptionChange,
 }: {
   pt: Translate;
   busy: boolean;
   principal: Principal;
   principalControl?: MainserverPrincipalControlModel;
+  onDescriptionChange: () => void;
 }) {
   return (
     <StudioDetailCard title={pt('basis')}>
@@ -132,7 +139,7 @@ export function TourBasisFields({
           step={1}
         />
       </StudioField>
-      <TourDescription pt={pt} disabled={busy} />
+      <TourDescription pt={pt} disabled={busy} onChange={onDescriptionChange} />
       <TourCategoryField pt={pt} />
       <div className="grid gap-3 sm:grid-cols-3">
         {(['operator', 'email', 'phone'] as const).map((name) => (

@@ -9,6 +9,7 @@ import {
   isMainserverPrincipalReady,
   StudioDetailPageTemplate,
   StudioErrorState,
+  useStudioEditorLeaveGuard,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -89,6 +90,19 @@ function useCreateTourDraft(
   const navigate = useNavigate();
   const principal = principalControl?.value ?? 'user';
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const discarded = useRef(false);
+  const guard = useStudioEditorLeaveGuard({
+    enabled: true,
+    hasUnsavedChanges: dirty || busy,
+    onDiscard: () => {
+      discarded.current = true;
+    },
+  });
+  const markChanged = () => {
+    guard.markChanged();
+    setDirty(true);
+  };
   const inFlight = useRef(false);
   const operation = useRef<{ body: string; key: string; principal: typeof principal } | undefined>(
     undefined
@@ -115,7 +129,9 @@ function useCreateTourDraft(
     }
     operation.current ??= { body, key: crypto.randomUUID(), principal };
     const { key } = operation.current;
+    const revision = guard.captureRevision();
     inFlight.current = true;
+    discarded.current = false;
     setBusy(true);
     setError(null);
     try {
@@ -127,7 +143,10 @@ function useCreateTourDraft(
           body,
         },
       });
-      await navigate({ to: tourDetailPath, params: { id: data.id } });
+      if (!discarded.current && guard.acknowledgeSaved(revision)) {
+        setDirty(false);
+        await navigate({ to: tourDetailPath, params: { id: data.id } });
+      }
     } catch (failure) {
       if (readMainserverMutationFailureOutcome(failure) === 'not_applied') {
         operation.current = undefined;
@@ -138,7 +157,7 @@ function useCreateTourDraft(
       setBusy(false);
     }
   };
-  return { principal, busy, error, submit };
+  return { principal, busy, error, submit, markChanged };
 }
 
 export function TourCreatePage({
@@ -147,7 +166,10 @@ export function TourCreatePage({
 }: Readonly<{ principalControl?: MainserverPrincipalControlModel; instanceId?: string }>) {
   const pt = usePluginTranslation('tours');
   const [stops, setStops] = useState<Stop[]>([]);
-  const { principal, busy, error, submit } = useCreateTourDraft(principalControl, stops);
+  const { principal, busy, error, submit, markChanged } = useCreateTourDraft(
+    principalControl,
+    stops
+  );
 
   return (
     <StudioDetailPageTemplate
@@ -167,7 +189,12 @@ export function TourCreatePage({
         </Button>
       }
     >
-      <form id="tour-draft-form" className="space-y-5" onSubmit={(event) => void submit(event)}>
+      <form
+        id="tour-draft-form"
+        className="space-y-5"
+        onChange={markChanged}
+        onSubmit={(event) => void submit(event)}
+      >
         {error ? <StudioErrorState>{pt(error)}</StudioErrorState> : null}
         <fieldset disabled={busy} className="space-y-5">
           <TourBasisFields
@@ -175,9 +202,17 @@ export function TourCreatePage({
             busy={busy}
             principal={principal}
             principalControl={principalControl}
+            onDescriptionChange={markChanged}
           />
           <TourRouteFields pt={pt} />
-          <Stations pt={pt} stops={stops} setStops={setStops} />
+          <Stations
+            pt={pt}
+            stops={stops}
+            setStops={(nextStops) => {
+              markChanged();
+              setStops(nextStops);
+            }}
+          />
           <TourMediaFields pt={pt} instanceId={instanceId} />
         </fieldset>
       </form>

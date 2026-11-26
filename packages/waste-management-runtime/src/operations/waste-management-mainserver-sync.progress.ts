@@ -46,9 +46,6 @@ export const reportSyncProgress = async (
   await progressReporter?.reportProgress(progress);
 };
 
-export const averageBatchDuration = (values: readonly number[]): number =>
-  values.length > 0 ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
-
 export const formatBatchStepLabel = (details: WasteSyncBatchProgressDetails): string => {
   const labelPrefix = details.operationMode === 'create' ? 'Create' : 'Delete';
   const currentBatch = details.totalBatchCount > 0 ? details.currentBatchIndex : 1;

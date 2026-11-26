@@ -646,6 +646,48 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(result.deleteByValueCount).toBe(1);
   });
 
+  it('finishes a long sequence of small batches, including the final partial create batch', async () => {
+    const createTotals = { count: 0, batches: 0, lastSize: 0 };
+    let deleteCount = 0;
+    const makeRows = (count: number, note: string) =>
+      Array.from({ length: count }, (_, index) => {
+        const item = {
+          pickupDate: '2026-08-18',
+          wasteType: 'RM',
+          street: `Teststraße ${index}`,
+          zip: '00000',
+          city: 'Teststadt',
+          note,
+        };
+        return { ...item, key: buildWasteSyncKey(item) };
+      });
+
+    const result = await runWasteManagementMainserverSync({
+      studioRows: makeRows(1979, 'Aktueller Hinweis'),
+      mainserverRows: makeRows(1966, 'Alter Hinweis'),
+      dryRun: false,
+      batchSize: 2,
+      deleteItems: async (items) => {
+        expect(createTotals.batches).toBe(0);
+        deleteCount += items.length;
+      },
+      createItems: async (items) => {
+        expect(deleteCount).toBe(1966);
+        createTotals.batches += 1;
+        createTotals.count += items.length;
+        createTotals.lastSize = items.length;
+      },
+    });
+
+    expect(createTotals).toEqual({ count: 1979, batches: 990, lastSize: 1 });
+    expect(result).toMatchObject({
+      totalBatchCount: 1973,
+      processedItemCount: 3945,
+      finalDeleteCount: 1966,
+      finalCreateCount: 1979,
+    });
+  });
+
   it('reports phased and batch-level progress during create and delete execution', async () => {
     const progressEvents: StudioJobProgress[] = [];
 

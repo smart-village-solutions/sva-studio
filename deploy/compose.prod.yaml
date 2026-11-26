@@ -1,5 +1,7 @@
 services:
   app:
+    environment:
+      NODE_OPTIONS: '--max-old-space-size=1536'
     image: ${IMAGE_REF}
     networks:
       - network-node-005
@@ -17,7 +19,7 @@ services:
         reservations:
           memory: 256M
         limits:
-          memory: 512M
+          memory: 2G
       labels:
         - 'sva.config.revision=${SVA_CONFIG_REVISION}'
         - 'traefik.docker.network=network-node-005'

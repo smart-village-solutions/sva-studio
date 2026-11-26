@@ -1,0 +1,4 @@
+{
+  "prNumber": 2293,
+  "body": "Der Mainserver-Abgleich für Abfalltermine benötigt bei großen Kalendern weniger Speicher. Das verhindert Abstürze bei der Aufbereitung vieler Abholtermine."
+}

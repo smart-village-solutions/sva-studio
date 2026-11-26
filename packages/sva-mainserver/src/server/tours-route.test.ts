@@ -132,8 +132,14 @@ describe('Studio tour editor routes', () => {
     state.editorRead.mockResolvedValue(data);
     state.resolveResourceAccess.mockResolvedValue(true);
 
-    const input = request('/1/editor');
-    input.headers.set('x-sva-acting-principal-type', 'user');
+    const nativeRequest = request('/1/editor');
+    nativeRequest.headers.set('x-sva-acting-principal-type', 'user');
+    // Nitro's request inherits from Request without Undici's private state.
+    const input: Request = Object.create(Request.prototype, {
+      url: { value: nativeRequest.url },
+      method: { value: nativeRequest.method },
+      headers: { value: nativeRequest.headers },
+    });
     const response = await dispatchSvaMainserverToursRequest(input);
 
     expect(response?.status).toBe(200);

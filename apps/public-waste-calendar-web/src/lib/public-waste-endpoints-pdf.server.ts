@@ -1,12 +1,14 @@
 import {
   buildWasteCalendarPdfDocument,
-  createWasteCalendarPdfTranslator,
-  type WasteCalendarPdfTranslator,
   type WasteCalendarPdfBrandingImage,
   type WasteOutputLegendHint,
   type WasteOutputPickupEntry,
 } from '@sva/waste-management-contracts';
-import { renderWasteCalendarPdf } from '@sva/waste-management-contracts/pdf';
+import {
+  createWasteCalendarPdfTranslator,
+  renderWasteCalendarPdf,
+  type WasteCalendarPdfTranslator,
+} from '@sva/waste-management-contracts/pdf';
 import type { PublicWasteCalendarEntry } from './public-waste-contract.js';
 import { isPublicWastePdfYear, publicWastePdfReferenceDate } from './public-waste-date-utils.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';

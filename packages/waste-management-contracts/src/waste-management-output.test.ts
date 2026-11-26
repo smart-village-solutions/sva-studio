@@ -119,6 +119,16 @@ describe('waste-management output pdf', () => {
     expect(document.pages[0]?.months[2]?.label).toBe('März');
   });
 
+  it('renders the configured holiday abbreviations and uses the full text for other holidays', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({ year: 2026, locationLabel: 'Musterstadt', pickups: [] })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('(Christi Himmelf.)');
+    expect(pdfText).toContain('(Tag d. Dt. Einheit)');
+    expect(pdfText).toContain('(Pfingstmontag)');
+  });
+
   it('renders a valid two-page pdf buffer', () => {
     const pdf = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({

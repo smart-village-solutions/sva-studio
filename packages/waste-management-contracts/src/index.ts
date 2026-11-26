@@ -207,8 +207,6 @@ export {
 export type { EffectiveWasteTourDateShift } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export { buildWasteCalendarPdfDocument } from './waste-management-output.document.js';
-export { createWasteCalendarPdfTranslator } from './waste-management-output.messages.js';
-export type { WasteCalendarPdfTranslator } from './waste-management-output.messages.js';
 export type {
   WasteCalendarPdfBrandingImage,
   WasteCalendarPdfDocument,

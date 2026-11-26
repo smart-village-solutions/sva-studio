@@ -1,6 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
-import { createWasteCalendarPdfTranslator } from '@sva/waste-management-contracts';
+import { createWasteCalendarPdfTranslator } from '@sva/waste-management-contracts/pdf';
 import { type PublicWasteBootstrapState } from '../lib/public-waste-bootstrap.server.js';
 import { resolvePublicWasteReadApiRoute } from '../lib/public-waste-api-routing.js';
 import {

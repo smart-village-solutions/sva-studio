@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  abbreviateHolidayLabel,
   createBrandingImageResource,
   getContrastingTextColor,
   getEntryLabelWidth,
@@ -20,12 +19,6 @@ describe('waste-management-output.render.helpers', () => {
   it('pads single-digit numbers and leaves two digits untouched', () => {
     expect(pad2(4)).toBe('04');
     expect(pad2(12)).toBe('12');
-  });
-
-  it('abbreviates only the configured holiday labels', () => {
-    expect(abbreviateHolidayLabel('Christi Himmelfahrt')).toBe('Christi Himmelf.');
-    expect(abbreviateHolidayLabel('Tag der Deutschen Einheit')).toBe('Tag d. Dt. Einheit');
-    expect(abbreviateHolidayLabel('Pfingstmontag')).toBe('Pfingstmontag');
   });
 
   it('returns width variants for short, medium, and long entry labels', () => {

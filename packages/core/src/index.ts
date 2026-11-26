@@ -37,6 +37,12 @@ export {
 } from './media-url.js';
 export { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
 export {
+  translateResource,
+  type TranslationResourceKey,
+  type TranslationResourceNode,
+  type TranslationVariables,
+} from './translation-resources.js';
+export {
   iamContentAccessReasonCodes,
   iamContentListSortDirections,
   iamContentListSortFields,

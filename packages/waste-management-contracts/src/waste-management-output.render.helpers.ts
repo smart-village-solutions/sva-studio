@@ -186,17 +186,6 @@ export const wrapHelveticaText = (text: string, fontSize: number, maxWidth: numb
 
 export const pad2 = (value: number): string => value.toString().padStart(2, '0');
 
-export const abbreviateHolidayLabel = (label: string): string => {
-  switch (label) {
-    case 'Christi Himmelfahrt':
-      return 'Christi Himmelf.';
-    case 'Tag der Deutschen Einheit':
-      return 'Tag d. Dt. Einheit';
-    default:
-      return label;
-  }
-};
-
 export const getEntryLabelWidth = (code: string): number => {
   if (code.length <= 2) {
     return 18;

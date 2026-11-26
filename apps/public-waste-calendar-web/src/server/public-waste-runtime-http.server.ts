@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
+import { createWasteCalendarPdfTranslator } from '@sva/waste-management-contracts';
 import { type PublicWasteBootstrapState } from '../lib/public-waste-bootstrap.server.js';
 import { resolvePublicWasteReadApiRoute } from '../lib/public-waste-api-routing.js';
 import {
@@ -11,6 +12,7 @@ import {
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
+import { frankfurtWastePdfMessages } from '../lib/public-waste-pdf-messages.bb-frankfurt-oder.de.js';
 import type {
   PublicWasteRuntimeRepository,
   PublicWastePdfStaticConfig,
@@ -181,6 +183,10 @@ export const dispatchPublicWasteApiRequest = async (input: {
     return handlePublicWastePdfRequest({
       repository: input.repository,
       request: input.request,
+      t:
+        input.bootstrapState.config.instanceId === 'bb-frankfurt-oder'
+          ? createWasteCalendarPdfTranslator(frankfurtWastePdfMessages)
+          : undefined,
       loadPdfStaticConfig: async () =>
         await (input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId, {
           getDatabaseUrl: () => input.bootstrapState.config.database.databaseUrl,

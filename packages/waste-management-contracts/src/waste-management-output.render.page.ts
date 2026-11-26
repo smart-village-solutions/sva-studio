@@ -103,7 +103,7 @@ const buildLegendRows = (page: CalendarPage, width: number): DetailRow[] => {
         fontName: 'F2',
         color: SHIFT_MARKER_COLOR,
       });
-      textRow(MARGIN + 12, '= Ausweichtermin')(commands, rowTop);
+      textRow(MARGIN + 12, `= ${page.shiftedPickupLabel}`)(commands, rowTop);
     });
   }
 
@@ -171,13 +171,12 @@ export const renderPageCommands = (page: CalendarPage, imageObjectName?: string)
     if (offset === 0) {
       renderMonthGrid(commands, page);
     } else {
-      const period = `${page.months[0]?.label} bis ${page.months[page.months.length - 1]?.label}`;
       drawText({
         commands,
         x: MARGIN,
         top: 60,
         fontSize: 9,
-        text: `Fortsetzung zur Kalenderseite: ${period}`,
+        text: page.continuationLabel,
         fontName: 'F2',
       });
     }

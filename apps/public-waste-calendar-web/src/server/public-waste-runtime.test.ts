@@ -349,64 +349,83 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
-  it('passes the resolved postgresql config into the pdf static settings loader', async () => {
-    const assetsDir = await createAssetsDir();
-    cleanupPaths.add(assetsDir);
-    const loadPdfStaticConfig = vi.fn(async () => ({}));
+  it.each([
+    { instanceId: 'bb-prignitz', expectedLabel: 'Ausweichtermin', otherLabel: 'Feiertagsregelung' },
+    {
+      instanceId: 'bb-frankfurt-oder',
+      expectedLabel: 'Feiertagsregelung',
+      otherLabel: 'Ausweichtermin',
+    },
+  ])(
+    'uses the configured tenant for PDF settings and legend ($instanceId)',
+    async ({ instanceId, expectedLabel, otherLabel }) => {
+      const assetsDir = await createAssetsDir();
+      cleanupPaths.add(assetsDir);
+      const loadPdfStaticConfig = vi.fn(async () => ({}));
 
-    const runtime = await createPublicWasteRuntime({
-      assetsDir,
-      env: {
-        PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
-          instanceId: 'bb-prignitz',
-          database: {
-            databaseUrl: databaseUrlFor('bb-prignitz'),
-            schemaName: 'public',
-          },
-        }),
-      },
-      createRepository: async () => ({
-        repository: {
-          listPublicLocations: vi.fn(),
-          listPublicRegions: vi.fn(),
-          listSelectionOptions: vi.fn(),
-          loadCalendarEntriesForDates: vi.fn().mockResolvedValue(new Map()),
-          loadCalendarEntries: vi.fn().mockResolvedValue([
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionShortLabel: 'BIO',
-              note: null,
+      const runtime = await createPublicWasteRuntime({
+        assetsDir,
+        env: {
+          PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
+            instanceId,
+            database: {
+              databaseUrl: databaseUrlFor(instanceId),
+              schemaName: 'public',
             },
-          ]),
-          loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
-          loadReminderOptions: vi.fn(),
+          }),
         },
-        pool: { connect: vi.fn() } as never,
-        schemaName: 'wm',
-        dispose: async () => {},
-      }),
-      loadPdfStaticConfig,
-    });
+        createRepository: async () => ({
+          repository: {
+            listPublicLocations: vi.fn(),
+            listPublicRegions: vi.fn(),
+            listSelectionOptions: vi.fn(),
+            loadCalendarEntriesForDates: vi.fn().mockResolvedValue(new Map()),
+            loadCalendarEntries: vi.fn().mockResolvedValue([
+              {
+                id: 'pickup-1',
+                date: '2026-05-19',
+                fractionId: 'bio',
+                fractionLabel: 'Bioabfall',
+                fractionShortLabel: 'BIO',
+                isShifted: true,
+                note: null,
+              },
+            ]),
+            loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+            loadReminderOptions: vi.fn(),
+          },
+          pool: { connect: vi.fn() } as never,
+          schemaName: 'wm',
+          dispose: async () => {},
+        }),
+        loadPdfStaticConfig,
+      });
 
-    await runtime.handle(
-      new Request(
-        'http://localhost/api/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio'
-      )
-    );
+      const response = await runtime.handle(
+        new Request(
+          'http://localhost/api/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio'
+        )
+      );
 
-    expect(loadPdfStaticConfig).toHaveBeenCalledWith(
-      'bb-prignitz',
-      expect.objectContaining({
-        getDatabaseUrl: expect.any(Function),
-        getSchemaName: expect.any(Function),
-      })
-    );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe('application/pdf');
+      const pdf = Buffer.from(await response.arrayBuffer()).toString('latin1');
+      expect(pdf).toContain(`(= ${expectedLabel})`);
+      expect(pdf).not.toContain(`(= ${otherLabel})`);
+      expect(pdf).toContain('(Abfallkalender 2026)');
+      expect(pdf).toContain('(Januar)');
+      expect(pdf).toContain('(Neujahr)');
+      expect(loadPdfStaticConfig).toHaveBeenCalledWith(
+        instanceId,
+        expect.objectContaining({
+          getDatabaseUrl: expect.any(Function),
+          getSchemaName: expect.any(Function),
+        })
+      );
 
-    await runtime.dispose();
-  });
+      await runtime.dispose();
+    }
+  );
 
   it('renders the DOI activation page for configured reminder paths', async () => {
     const assetsDir = await createAssetsDir();

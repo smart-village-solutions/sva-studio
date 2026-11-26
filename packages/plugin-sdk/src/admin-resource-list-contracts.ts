@@ -69,6 +69,7 @@ export type AdminResourceListBulkActionCapability = {
 };
 
 export type AdminResourceListCapabilities = {
+  readonly dedicatedRoute?: true;
   readonly search?: AdminResourceListSearchCapability;
   readonly filters?: readonly AdminResourceListFilterCapability[];
   readonly sorting?: AdminResourceListSortingCapability;

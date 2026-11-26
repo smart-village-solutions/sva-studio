@@ -173,6 +173,33 @@ export const parsePoiInput = async (
   });
 };
 
+const reportPoiVisibilityFailure = async (
+  actor: MainserverMutationActor,
+  data: SvaMainserverPoiItem,
+  errorCode: string,
+  statusCode: number
+): Promise<Response> => {
+  await finalizeMainserverMutation({
+    actor,
+    providerOutcome: 'succeeded',
+    reconciliationStatus: 'reconciliation_required',
+    completedSteps: ['provider_write'],
+    contentId: data.id,
+    observedDataProviderId: data.dataProvider?.id,
+    lastErrorCode: errorCode,
+  });
+  return json(
+    {
+      error: 'poi_visibility_failed',
+      message: 'poi_visibility_failed',
+      details: { contentId: data.id },
+      partialSuccess: true,
+      data,
+    },
+    statusCode
+  );
+};
+
 export const applyPoiVisibilityAfterWrite = async (
   actor: MainserverMutationActor,
   data: SvaMainserverPoiItem,
@@ -183,26 +210,25 @@ export const applyPoiVisibilityAfterWrite = async (
     await changeSvaMainserverPoiVisibility({ ...actor, poiId: data.id, visible });
     return { ...data, visible, status: visible ? 'published' : 'draft' };
   } catch (error) {
-    await finalizeMainserverMutation({
+    return reportPoiVisibilityFailure(
       actor,
-      providerOutcome: 'succeeded',
-      reconciliationStatus: 'reconciliation_required',
-      completedSteps: ['provider_write'],
-      contentId: data.id,
-      observedDataProviderId: data.dataProvider?.id,
-      lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
-    });
-    return json(
-      {
-        error: 'poi_visibility_failed',
-        message: 'poi_visibility_failed',
-        details: { contentId: data.id },
-        partialSuccess: true,
-        data,
-      },
+      data,
+      error instanceof SvaMainserverError ? error.code : 'visibility_failed',
       error instanceof SvaMainserverError ? error.statusCode : 502
     );
   }
+};
+
+const verifyPoiDraftVisibility = async (
+  actor: MainserverMutationActor,
+  created: SvaMainserverPoiItem,
+  reread: () => Promise<SvaMainserverPoiItem>
+): Promise<SvaMainserverPoiItem | Response> => {
+  const observed = await reread().catch(() => undefined);
+  if (created.visible === false && observed?.id === created.id && observed.visible === false) {
+    return created;
+  }
+  return reportPoiVisibilityFailure(actor, created, 'poi_draft_visibility_unconfirmed', 502);
 };
 
 export const createPoiContent = async (request: Request, actor: MainserverMutationActor) => {
@@ -215,16 +241,30 @@ export const createPoiContent = async (request: Request, actor: MainserverMutati
     actor,
     action: 'poi.create',
     contentType: POI_CONTENT_TYPE,
+    ...(parsed.externalId && parsed.visible !== undefined
+      ? {
+          additionalActions: [
+            'poi.update',
+            parsed.visible ? 'content.publish' : 'content.changeStatus',
+          ],
+        }
+      : {}),
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
   const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
+  let readback: Promise<SvaMainserverPoiItem> | undefined;
+  const reread = () =>
+    (readback ??= getSvaMainserverPoiDetail({ ...actor, poiId: data.id }).then(({ data }) => data));
   const bindingResult = await recordCreatedMainserverDataProvider({
     actor,
     created: data,
-    reread: async () => (await getSvaMainserverPoiDetail({ ...actor, poiId: data.id })).data,
+    reread,
     contentType: POI_CONTENT_TYPE,
   });
-  const saved = await applyPoiVisibilityAfterWrite(actor, data, parsed.visible);
+  const saved =
+    parsed.visible === false
+      ? await verifyPoiDraftVisibility(actor, data, reread)
+      : await applyPoiVisibilityAfterWrite(actor, data, parsed.visible);
   if (isResponse(saved)) return saved;
   await finalizeMainserverMutation({
     actor,

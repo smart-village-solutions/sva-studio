@@ -719,6 +719,36 @@
       "titleKey": "surveys.navigation.title"
     },
     {
+      "id": "tours.content.create",
+      "path": "/admin/tours/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "tours"
+      },
+      "titleKey": "tours.title"
+    },
+    {
+      "id": "tours.content.detail",
+      "path": "/admin/tours/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "tours"
+      },
+      "titleKey": "tours.title"
+    },
+    {
+      "id": "tours.content.list",
+      "path": "/admin/tours",
+      "pageType": "list",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "tours"
+      },
+      "titleKey": "tours.title"
+    },
+    {
       "id": "vouchers.content.create",
       "path": "/admin/vouchers/new",
       "pageType": "create",

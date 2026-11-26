@@ -6,7 +6,7 @@ export const poiMessagesDe = {
   lunchesUnavailable: 'Die vorhandenen Mittagsangebote konnten nicht vollständig geladen werden. Der Ort wurde nicht gespeichert. Laden Sie die Seite neu und versuchen Sie es erneut.',
   vouchersForLocation: 'Gutscheine dieses Ortes ansehen',
   visibilityPartialFailure:
-    'Der Ort wurde gespeichert, aber die Sichtbarkeit konnte nicht aktualisiert werden. Öffnen Sie den gespeicherten Ort und prüfen Sie die Sichtbarkeit.',
+    'Der Ort wurde gespeichert. Die gewünschte Sichtbarkeit konnte nicht bestätigt werden. Öffnen Sie den gespeicherten Ort und prüfen Sie die Sichtbarkeit.',
   createdNavigationError:
     'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
   unsavedAfterCreate:

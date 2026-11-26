@@ -6,6 +6,7 @@ import {
   mapNewsItem,
   mapPoiItem,
   mapSurveyItem,
+  mapTourItem,
 } from './iam-content-list-mainserver.js';
 
 const publishedTimestamps = {
@@ -14,6 +15,43 @@ const publishedTimestamps = {
 };
 
 describe('iam content list mainserver mapping', () => {
+  it('projects tour visibility independently of activity for list and mutation rows', () => {
+    const tour = { id: '42', name: 'Tour', active: false, categories: [], ...publishedTimestamps };
+    expect(mapTourItem({ ...tour, visible: true }, 'instance-1')).toMatchObject({
+      status: 'published',
+      payload: { active: false },
+    });
+    expect(mapTourItem({ ...tour, visible: false }, 'instance-1')).toMatchObject({
+      status: 'draft',
+      payload: { active: false },
+    });
+  });
+  it('uses observed provider and category IDs and safe defaults for sparse tour rows', () => {
+    const tour = { id: '42', categories: [{ id: 'category' }] };
+    const [createdAt, updatedAt] = [publishedTimestamps.createdAt, publishedTimestamps.updatedAt];
+    expect(
+      mapTourItem({ ...tour, updatedAt, dataProvider: { id: 'provider' } }, 'instance-1')
+    ).toMatchObject({
+      title: '42',
+      createdAt: updatedAt,
+      updatedAt,
+      sourceDataProviderId: 'provider',
+      status: 'draft',
+      payload: { mainserverCategoryIds: ['category'] },
+    });
+    expect(
+      mapTourItem(
+        { ...tour, createdAt, dataProvider: { id: 'provider', name: 'Redaktion' } },
+        'instance-1'
+      )
+    ).toMatchObject({
+      createdAt,
+      updatedAt: createdAt,
+      sourceDataProviderName: 'Redaktion',
+    });
+    expect(mapTourItem(tour, 'instance-1')).toMatchObject({ createdAt: '', updatedAt: '' });
+  });
+
   it('maps mainserver access from allow permissions', () => {
     expect(
       mapEventItem(
@@ -263,10 +301,20 @@ describe('iam content list mainserver mapping', () => {
   });
 
   it('keeps visible POI published even when the unused active flag is false', () => {
-    expect(mapPoiItem({
-      id: 'poi-visible', name: 'Ort', contentType: 'poi.point-of-interest',
-      visible: true, active: false, ...publishedTimestamps,
-    } as never, 'instance-1', []).status).toBe('published');
+    expect(
+      mapPoiItem(
+        {
+          id: 'poi-visible',
+          name: 'Ort',
+          contentType: 'poi.point-of-interest',
+          visible: true,
+          active: false,
+          ...publishedTimestamps,
+        } as never,
+        'instance-1',
+        []
+      ).status
+    ).toBe('published');
   });
 
   it('falls back across localized survey values and keeps malformed namespaces read-only', () => {
@@ -351,8 +399,18 @@ describe('iam content list mainserver mapping', () => {
 });
 
 it('preserves the voucher POI ID in the legacy projection payload', () => {
-  expect(mapGenericItem({
-    id: '844', contentType: 'vouchers.voucher', genericType: 'Voucher',
-    pointOfInterestId: '33394', createdAt: '2026-10-27', updatedAt: '2026-10-27',
-  }, 'tenant', []).payload).toMatchObject({ pointOfInterestId: '33394' });
+  expect(
+    mapGenericItem(
+      {
+        id: '844',
+        contentType: 'vouchers.voucher',
+        genericType: 'Voucher',
+        pointOfInterestId: '33394',
+        createdAt: '2026-10-27',
+        updatedAt: '2026-10-27',
+      },
+      'tenant',
+      []
+    ).payload
+  ).toMatchObject({ pointOfInterestId: '33394' });
 });

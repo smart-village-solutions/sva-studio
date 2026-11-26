@@ -122,6 +122,7 @@ export type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
   | 'poi.point-of-interest'
+  | 'tours.tour'
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'

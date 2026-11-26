@@ -8,6 +8,7 @@ import type {
 } from '../../types.js';
 import {
   svaMainserverCreatePoiDocument,
+  svaMainserverCreatePoiDraftDocument,
   svaMainserverDestroyRecordDocument,
   svaMainserverPoiDetailDocument,
   svaMainserverPoiListDocument,
@@ -200,14 +201,23 @@ const writePoiWithConfig = async (
   },
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverPoiItem> => {
+  const createDraft = input.poiId === undefined && input.poi.visible === false;
+  // Without an external ID, an explicit visibility choice applies to a new POI only.
+  const forceNewPoi =
+    input.poiId === undefined && input.poi.visible !== undefined && !input.poi.externalId;
   // The Mainserver preserves existing vouchers when the field is omitted.
   // Ordinary POI writes must never enter the nested voucher writer.
   const response = await executeGraphqlWithConfig<SvaMainserverCreatePoiMutation>(
     {
       ...input,
-      document: svaMainserverCreatePoiDocument,
-      operationName: 'SvaMainserverCreatePoi',
-      variables: buildPoiMutationVariables(input),
+      document: createDraft ? svaMainserverCreatePoiDraftDocument : svaMainserverCreatePoiDocument,
+      operationName: createDraft ? 'SvaMainserverCreatePoiDraft' : 'SvaMainserverCreatePoi',
+      variables: {
+        ...buildPoiMutationVariables(input),
+        ...(forceNewPoi ? { forceCreate: true } : {}),
+        ...(createDraft ? { visible: false } : {}),
+      },
+      ...(createDraft || forceNewPoi ? { allowRetry: false } : {}),
     },
     config
   );

@@ -157,7 +157,12 @@ export const createHostOwnedPluginView = (
   const viewKind = matchedView?.[0] as 'list' | 'detail' | 'editor' | undefined;
   // Lists skip the editor-oriented host context. The per-binding wrapper keeps each list route a
   // distinct component, so switching between lists that share a page still remounts it.
-  if (!resource?.contentUi?.contentType || !viewKind || viewKind === 'list')
+  if (
+    !resource?.contentUi?.contentType ||
+    !viewKind ||
+    viewKind === 'list' ||
+    (pluginId === 'tours' && viewKind === 'detail')
+  )
     return () => <Component />;
   return () => (
     <PluginContentView

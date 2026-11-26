@@ -1,4 +1,4 @@
-import { parse, visit } from 'graphql';
+import { buildClientSchema, parse, validate, visit, type IntrospectionQuery } from 'graphql';
 import { describe, expect, it, vi } from 'vitest';
 import { mapPoiItemDetail } from './poi-mappers.js';
 import { createPoiService } from './service-poi.js';
@@ -10,10 +10,76 @@ import {
   svaMainserverPoiListDocument,
   svaMainserverPoiDetailDocument,
   svaMainserverCreatePoiDocument,
+  svaMainserverCreatePoiDraftDocument,
 } from '../../generated/events-poi.js';
+import snapshot from '../../generated/schema.snapshot.json';
 const config = {} as SvaMainserverInstanceConfig;
 const input = { instanceId: 'tenant', keycloakSubject: 'subject', poiId: '1' };
 describe('POI visibility', () => {
+  it('uses the producer draft schema and sends explicit false in one non-retried create', async () => {
+    const schema = buildClientSchema(snapshot.data as unknown as IntrospectionQuery);
+    expect(validate(schema, parse(svaMainserverCreatePoiDraftDocument))).toEqual([]);
+    expect(validate(schema, parse(svaMainserverCreatePoiDocument))).toEqual([]);
+    const execute = vi
+      .fn()
+      .mockResolvedValue({ createPointOfInterest: { id: '1', name: 'Ort', visible: false } });
+    const operation = createPoiOperations(execute as GraphqlExecutor);
+    await expect(
+      operation.writePoiWithConfig(
+        {
+          instanceId: input.instanceId,
+          keycloakSubject: input.keycloakSubject,
+          poi: { name: 'Ort', visible: false },
+        },
+        config
+      )
+    ).resolves.toMatchObject({ id: '1', visible: false, status: 'draft' });
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        document: svaMainserverCreatePoiDraftDocument,
+        operationName: 'SvaMainserverCreatePoiDraft',
+        variables: { name: 'Ort', visible: false, forceCreate: true },
+        allowRetry: false,
+      }),
+      config
+    );
+
+    execute.mockClear();
+    await operation.writePoiWithConfig({ ...input, poi: { name: 'Ort', visible: false } }, config);
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        document: svaMainserverCreatePoiDocument,
+        operationName: 'SvaMainserverCreatePoi',
+        variables: { id: '1', name: 'Ort' },
+      }),
+      config
+    );
+  });
+  it.each([
+    ['', { forceCreate: true }, false],
+    ['existing-ext', {}, undefined],
+  ] as const)(
+    'uses the intended identity for a visible POI (%s)',
+    async (externalId, identity, allowRetry) => {
+      const execute = vi
+        .fn()
+        .mockResolvedValue({ createPointOfInterest: { id: '1', name: 'Ort' } });
+      const operation = createPoiOperations(execute as GraphqlExecutor);
+      await operation.writePoiWithConfig(
+        {
+          instanceId: input.instanceId,
+          keycloakSubject: input.keycloakSubject,
+          poi: { name: 'Ort', visible: true, externalId },
+        },
+        config
+      );
+      expect(execute).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ variables: { name: 'Ort', externalId, ...identity } }),
+        config
+      );
+      expect(execute.mock.calls[0]?.[0].allowRetry).toBe(allowRetry);
+    }
+  );
   it.each([
     [true, false, 'published'],
     [false, true, 'draft'],

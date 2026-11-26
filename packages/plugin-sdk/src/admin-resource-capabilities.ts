@@ -24,6 +24,7 @@ import {
 
 const adminResourceCapabilitiesAllowedKeys = new Set(['list', 'detail'] as const);
 const adminResourceListCapabilitiesAllowedKeys = new Set([
+  'dedicatedRoute',
   'search',
   'filters',
   'sorting',
@@ -146,6 +147,7 @@ const normalizeListCapabilities = (
   assertUniqueValues(resourceId, 'duplicate_admin_resource_search_param', searchParams);
 
   return {
+    ...(capabilities.dedicatedRoute === true ? { dedicatedRoute: true as const } : {}),
     search,
     filters,
     sorting,

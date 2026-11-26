@@ -1,4 +1,6 @@
-import type { ContentJsonValue, IamContentAccessSummary, IamContentListItem } from '@sva/core';
+import type { ContentJsonValue, IamContentListItem } from '@sva/core';
+
+import { createMainserverItemAccess, type PermissionView } from './iam-content-list-mainserver-access.js';
 
 type MainserverDataProvider = Readonly<{
   id?: string;
@@ -137,48 +139,6 @@ const directCategoryIds = (
     (id): id is string => Boolean(id)
   );
 
-const deriveNamespacedAction = (
-  contentType: string,
-  action: 'create' | 'update'
-): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.${action}` : null;
-};
-
-type PermissionView = Readonly<{ action: string }>;
-
-const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
-  permissions.some((permission) => permission.action === action);
-
-const createMainserverItemAccess = (
-  contentType: string,
-  permissions: readonly PermissionView[]
-): IamContentAccessSummary => {
-  const updateAction = deriveNamespacedAction(contentType, 'update');
-  const createAction = deriveNamespacedAction(contentType, 'create');
-  const canUpdate = updateAction ? hasAllowedAction(permissions, updateAction) : false;
-  const canCreate = createAction ? hasAllowedAction(permissions, createAction) : false;
-
-  return canUpdate
-    ? {
-        state: 'editable',
-        canRead: true,
-        canCreate,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: [],
-      }
-    : {
-        state: 'read_only',
-        canRead: true,
-        canCreate,
-        canUpdate: false,
-        reasonCode: 'content_update_missing',
-        organizationIds: [],
-        sourceKinds: [],
-      };
-};
-
 const resolveNewsTitle = (item: MainserverNewsItem): string =>
   normalizeTitle(item.title, normalizeTitle(item.contentBlocks?.[0]?.title, item.id));
 
@@ -296,6 +256,34 @@ export const mapPoiItem = (
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
   access: createMainserverItemAccess(item.contentType, permissions),
+});
+
+export const mapTourItem = (item: Readonly<{
+  id: string;
+  name?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  visible?: boolean | null;
+  active?: boolean | null;
+  categories: readonly Readonly<{ id: string }>[];
+  dataProvider?: Readonly<{ id: string; name?: string | null }> | null;
+}>, instanceId: string): IamContentListItem => ({
+  id: item.id,
+  instanceId,
+  contentType: 'tours.tour',
+  title: normalizeTitle(item.name ?? undefined, item.id),
+  createdAt: item.createdAt ?? item.updatedAt ?? '',
+  createdBy: 'mainserver',
+  updatedAt: item.updatedAt ?? item.createdAt ?? '',
+  updatedBy: 'mainserver',
+  authorDisplayMode: 'organization',
+  author: 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider ? { id: item.dataProvider.id, name: item.dataProvider.name ?? undefined } : undefined),
+  payload: toContentJsonValue({ active: item.active, mainserverCategoryIds: item.categories.map(({ id }) => id) }),
+  status: item.visible === true ? 'published' : 'draft',
+  validationState: 'valid',
+  historyRef: `mainserver:tours:${item.id}`,
+  access: createMainserverItemAccess('tours.tour', []),
 });
 
 export const mapGenericItem = (

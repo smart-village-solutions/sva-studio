@@ -1,0 +1,33 @@
+publiccodeYmlVersion: '0'
+name: Touren
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Zeigt Freizeit- und Tourismustouren aus dem Mainserver an.
+    longDescription: Das Tourenmodul zeigt berechtigten Redaktionen die Tourismustouren des Datenanbieters im aktiven Benutzer- oder Organisationskontext. Die Liste bietet Zugriff auf Tourenstammdaten, Routengeometrie und Stationen. Inhalte werden im Mainserver gespeichert und Studio zeigt den vorhandenen Bestand.
+    features:
+      - Touren auflisten und öffnen
+      - Geordnete Routenpunkte und Stationen einsehen
+  en:
+    localisedName: Tours
+    shortDescription: Displays recreation and tourism tours from Mainserver.
+    longDescription: The tours module shows editors the tourism tours associated with the data provider in the active user or organization context. The list gives access to tour details, route geometry and stops. Mainserver stores the records and Studio displays the existing tours.
+    features:
+      - List and open tours
+      - Inspect ordered route points and stops
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: true
+  availableLanguages: [de, en]

@@ -596,8 +596,8 @@ export const svaMainserverPoiDetailDocument = `
   }
 `;
 
-export const svaMainserverCreatePoiDocument = `
-  mutation SvaMainserverCreatePoi(
+const createPoiDocument = (draft: boolean) => `
+  mutation ${draft ? 'SvaMainserverCreatePoiDraft' : 'SvaMainserverCreatePoi'}(
     $id: ID
     $forceCreate: Boolean
     $dataProviderId: ID
@@ -606,7 +606,7 @@ export const svaMainserverCreatePoiDocument = `
     $description: String
     $keywords: String
     $mobileDescription: String
-    $active: Boolean
+    $active: Boolean${draft ? '\n    $visible: Boolean!' : ''}
     $categoryName: String
     $payload: JSON
     $categories: [CategoryInput!]
@@ -632,7 +632,7 @@ export const svaMainserverCreatePoiDocument = `
       description: $description
       keywords: $keywords
       mobileDescription: $mobileDescription
-      active: $active
+      active: $active${draft ? '\n      visible: $visible' : ''}
       categoryName: $categoryName
       payload: $payload
       categories: $categories
@@ -653,6 +653,9 @@ export const svaMainserverCreatePoiDocument = `
     }
   }
 `;
+
+export const svaMainserverCreatePoiDocument = createPoiDocument(false);
+export const svaMainserverCreatePoiDraftDocument = createPoiDocument(true);
 
 export const svaMainserverDestroyRecordDocument = `
   mutation SvaMainserverDestroyRecord($id: ID!, $recordType: String!) {

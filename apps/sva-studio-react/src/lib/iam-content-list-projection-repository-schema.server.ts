@@ -217,6 +217,7 @@ export const toMainserverContentType = (value: string): MainserverContentType | 
     value === 'news.article' ||
     value === 'events.event-record' ||
     value === 'poi.point-of-interest' ||
+    value === 'tours.tour' ||
     value === 'generic-items.generic-item' ||
     value === 'faq.faq' ||
     value === 'cockpit-cards.cockpit-card' ||

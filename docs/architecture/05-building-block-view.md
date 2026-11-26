@@ -498,6 +498,7 @@ Modulen der jeweiligen Bausteine.
 ### Abhängigkeiten (vereinfacht)
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
+- `@sva/plugin-tours` liefert Tenant-Ansichten für Liste, Detail und Entwurfsanlage. Das Modul verwendet dieselben SDK- und Studio-UI-Bausteine wie Orte und bezieht Touren über die Host-Fassade `/api/v1/mainserver/tours`.
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-runtime` für die Host-Bindung der Waste-Handler
 - `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog

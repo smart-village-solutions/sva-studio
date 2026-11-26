@@ -6,6 +6,7 @@ import {
   getSvaMainserverGenericItem,
   getSvaMainserverNews,
   getSvaMainserverPoi,
+  toursRoute,
   getSvaMainserverSurvey,
 } from '@sva/sva-mainserver/server';
 
@@ -14,6 +15,7 @@ import {
   mapGenericItem,
   mapNewsItem,
   mapPoiItem,
+  mapTourItem,
   mapSurveyItem,
 } from './iam-content-list-mainserver.js';
 import type {
@@ -185,6 +187,25 @@ export const mainserverMutationProjectionLoaders: Record<
       ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
       credentialSource,
       sourceEntityType: 'news.article',
+      sourceEntityId: item.id,
+    };
+  },
+  'tours.tour': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await toursRoute.getSvaMainserverTour(
+      {
+        activeOrganizationId: target.organizationId,
+        ...toMutationProjectionConnectionContext(target),
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+      },
+      entityId
+    );
+    if (!item) throw new Error('tour_projection_scope_mismatch');
+    return {
+      ...mapTourItem(item, target.instanceId),
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'tours.tour',
       sourceEntityId: item.id,
     };
   },

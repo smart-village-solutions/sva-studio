@@ -1,3 +1,4 @@
+import { authorizeMainserverCreatePrincipal } from '@sva/auth-runtime/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -987,22 +988,135 @@ describe('mainserver content route contracts', () => {
     expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
   });
 
-  it('creates a hidden POI using the same visibility choice as the editor', async () => {
+  it.each([{}, { externalId: 'ext-1' }])(
+    'writes and verifies a hidden POI without a second write (%j)',
+    async (identity) => {
+      mockAuthorizedMutation();
+      const draft = {
+        id: 'poi-1',
+        visible: false,
+        status: 'draft',
+        dataProvider: { id: 'dp-org-1' },
+      };
+      state.createSvaMainserverPoi.mockResolvedValue(draft);
+      state.getSvaMainserverPoiDetail.mockResolvedValue({ data: draft, deviations: [] });
+      const response = await dispatchSvaMainserverPoiRequest(
+        createRequest('https://studio.test/api/v1/mainserver/poi', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Ort', visible: false, ...identity }),
+        })
+      );
+      expect(response?.status).toBe(201);
+      expect(state.createSvaMainserverPoi).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ poi: { name: 'Ort', visible: false, ...identity } })
+      );
+      expect(state.getSvaMainserverPoiDetail).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ poiId: 'poi-1' })
+      );
+      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+      await expect(response?.json()).resolves.toMatchObject({
+        data: { visible: false, status: 'draft' },
+      });
+    }
+  );
+
+  it.each([
+    [false, 'poi.update'],
+    [false, 'content.changeStatus'],
+    [true, 'poi.update'],
+    [true, 'content.publish'],
+  ] as const)(
+    'requires the additional authorization for visible=%s and denies %s before writing',
+    async (visible, deniedAction) => {
+      mockAuthorizedMutation();
+      vi.mocked(authorizeMainserverCreatePrincipal).mockImplementation(({ action }) => ({
+        allowed: action !== deniedAction,
+        authorizationMode: 'exact',
+        reason: action === deniedAction ? 'forbidden' : 'allowed',
+        resolverMode: 'automatic',
+      }));
+      const response = await dispatchSvaMainserverPoiRequest(
+        createRequest('https://studio.test/api/v1/mainserver/poi', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Ort', visible, externalId: 'ext-1' }),
+        })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.createSvaMainserverPoi).not.toHaveBeenCalled();
+      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    { writeVisible: true, readVisible: false },
+    { writeVisible: false, readVisible: true },
+    { writeVisible: false, readVisible: undefined },
+  ])(
+    'reports unconfirmed POI draft visibility without another write (%j)',
+    async ({ writeVisible, readVisible }) => {
+      mockAuthorizedMutation();
+      state.createSvaMainserverPoi.mockResolvedValue({
+        id: 'poi-1',
+        visible: writeVisible,
+        dataProvider: { id: 'dp-org-1' },
+      });
+      if (readVisible === undefined) {
+        state.getSvaMainserverPoiDetail.mockRejectedValue(new Error('Readback unavailable'));
+      } else {
+        state.getSvaMainserverPoiDetail.mockResolvedValue({
+          data: { id: 'poi-1', visible: readVisible, dataProvider: { id: 'dp-org-1' } },
+          deviations: [],
+        });
+      }
+      const response = await dispatchSvaMainserverPoiRequest(
+        createRequest('https://studio.test/api/v1/mainserver/poi', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Ort', visible: false }),
+        })
+      );
+      expect(response?.status).toBe(502);
+      expect(state.createSvaMainserverPoi).toHaveBeenCalledOnce();
+      expect(state.getSvaMainserverPoiDetail).toHaveBeenCalledOnce();
+      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+      expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contentId: 'poi-1',
+          providerOutcome: 'succeeded',
+          reconciliationStatus: 'reconciliation_required',
+          lastErrorCode: 'poi_draft_visibility_unconfirmed',
+        })
+      );
+      await expect(response?.json()).resolves.toMatchObject({
+        error: 'poi_visibility_failed',
+        partialSuccess: true,
+        details: { contentId: 'poi-1' },
+      });
+    }
+  );
+
+  it('keeps the visibility step for an authorized visible POI with an external ID', async () => {
     mockAuthorizedMutation();
-    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', visible: true });
+    state.createSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-1',
+      visible: false,
+      dataProvider: { id: 'dp-org-1' },
+    });
     const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi', {
         method: 'POST',
-        body: JSON.stringify({ name: 'Ort', visible: false }),
+        body: JSON.stringify({ name: 'Ort', visible: true, externalId: 'ext-1' }),
       })
     );
     expect(response?.status).toBe(201);
-    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledWith(
-      expect.objectContaining({ poiId: 'poi-1', visible: false })
+    expect(authorizeMainserverCreatePrincipal).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'poi.update' })
     );
-    await expect(response?.json()).resolves.toMatchObject({
-      data: { visible: false, status: 'draft' },
-    });
+    expect(authorizeMainserverCreatePrincipal).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'content.publish' })
+    );
+    expect(state.changeSvaMainserverPoiVisibility).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ poiId: 'poi-1', visible: true })
+    );
   });
 
   it.each([null, 'true', 1])(

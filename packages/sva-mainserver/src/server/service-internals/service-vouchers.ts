@@ -140,6 +140,18 @@ const getVoucherPoi = async (
   assertVoucherPoiWritable(state.poi, state.categories);
   return state;
 };
+function withGraphqlDateInputs(record: RawRecord): RawRecord {
+  if (!Array.isArray(record.dates)) return record;
+  return {
+    ...record,
+    dates: records(record.dates).map((date) => {
+      const flag = date.useOnlyTimeDescription;
+      return flag === 'true' || flag === 'false'
+        ? { ...date, useOnlyTimeDescription: flag === 'true' }
+        : date;
+    }),
+  };
+}
 const writeVoucher = async (
   context: VoucherServiceContext,
   input: SvaMainserverConnectionInput & {
@@ -155,23 +167,34 @@ const writeVoucher = async (
   if (current.fingerprint !== input.expectedFingerprint)
     throw new Error('voucher_content_conflict');
   const { existing, next, uuid, updated, expected } = buildVoucherWrite(current, input);
+  const lunches = current.snapshot.lunches;
+  // DateType returns strings, while DateInput expects booleans. Keep snapshots in read format.
+  const variables = {
+    ...expected,
+    id: input.poiId,
+    vouchers: expected.vouchers.map((voucher) => withGraphqlDateInputs(raw(voucher))),
+    lunches: lunches === undefined ? undefined : records(lunches).map(withGraphqlDateInputs),
+  };
   await execute(
     context,
     input,
     voucherWriteDocument,
     'SvaMainserverVoucherWrite',
-    { ...expected, id: input.poiId },
+    variables,
     false
   );
   const refreshed = await execute<{
     pointOfInterest: unknown;
   }>(context, input, voucherPoiDocument, 'SvaMainserverVoucherPoi', { id: input.poiId });
-  if (!voucherWriteMatches(refreshed.pointOfInterest, expected))
+  if (!voucherWriteMatches(refreshed.pointOfInterest, expected, voucherPoiWriteFields))
     throw new Error('voucher_reconciliation_required');
   const matches = records(raw(refreshed.pointOfInterest).vouchers).filter(
     (item) => item.payload != null && raw(item.payload).id === uuid
   );
-  if (matches.length !== 1 || !voucherWriteMatches(matches[0], updated))
+  if (
+    matches.length !== 1 ||
+    !voucherWriteMatches(matches[0], updated, voucherPoiWriteFields.vouchers)
+  )
     throw new Error('voucher_reconciliation_required');
   const after = records(raw(refreshed.pointOfInterest).vouchers);
   const voucherIdChanges = existing.map((item, i) => {

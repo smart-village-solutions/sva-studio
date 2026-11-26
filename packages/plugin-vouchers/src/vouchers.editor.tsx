@@ -65,6 +65,7 @@ function voucherSaveLabel(state: VoucherEditorState): string {
 export function VoucherEditor(props: VoucherEditorProps) {
   const state = useVoucherEditorState(props);
   const actions = useVoucherEditorActions(state);
+  const showForm = !state.id || state.record !== null;
   const disabled =
     state.busy ||
     state.unknown ||
@@ -82,7 +83,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
         </Button>
       }
       primaryAction={
-        !state.loading ? (
+        !state.loading && showForm ? (
           <Button
             type="submit"
             form="voucher-editor-form"
@@ -100,7 +101,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
         <>
           <VoucherEditorUsage state={state} actions={actions} />
           {state.record && <VoucherHistory id={state.record.id} />}
-          <VoucherEditorForm state={state} actions={actions} disabled={disabled} />
+          {showForm && <VoucherEditorForm state={state} actions={actions} disabled={disabled} />}
           <VoucherResetDialog state={state} actions={actions} />
         </>
       )}

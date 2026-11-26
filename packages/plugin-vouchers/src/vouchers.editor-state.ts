@@ -136,7 +136,13 @@ function useVoucherRecordLoad(state: VoucherEditorState): void {
         if (active) state.setFailure(state.t('messages.categoriesUnavailable'));
         return { data: [] };
       }),
-      state.id && !pending ? getVoucher(state.id, state.principal) : Promise.resolve(null),
+      state.id
+        ? getVoucher(state.id, state.principal).catch((error: unknown) => {
+            // A previous write may have changed the ID. Recovery still works without this read.
+            if (pending) return null;
+            throw error;
+          })
+        : Promise.resolve(null),
     ])
       .then(([choices, value]) => {
         if (!active) return;

@@ -42,7 +42,7 @@ export function VoucherEditorHeader({ state: s, actions }: Props) {
       </fieldset>
       {s.unknown && <p role="alert">{s.t('messages.unknown')}</p>}
       {s.unknown && (
-        <Button type="button" disabled={s.busy} onClick={() => void actions.reconcile()}>
+        <Button type="button" disabled={s.busy || s.loading} onClick={() => void actions.reconcile()}>
           {s.t('actions.reconcile')}
         </Button>
       )}

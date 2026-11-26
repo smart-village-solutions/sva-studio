@@ -131,6 +131,17 @@ describe('SearchableSelect', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
 
     const searchInput = screen.getByPlaceholderText('Suchen');
+    const list = screen.getByRole('listbox', { name: 'Organisation' });
+    const firstOption = screen.getByRole('option', { name: 'Musterstadt' });
+    const secondOption = screen.getByRole('option', { name: 'Stadtwerke' });
+    vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 100, 200, 100));
+    vi.spyOn(firstOption, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 70, 200, 40));
+    vi.spyOn(secondOption, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 190, 200, 40));
+
+    fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+    expect(list.scrollTop).toBe(30);
+    fireEvent.keyDown(searchInput, { key: 'ArrowUp' });
+    expect(list.scrollTop).toBe(0);
     fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
     fireEvent.keyDown(searchInput, { key: 'Enter' });
 

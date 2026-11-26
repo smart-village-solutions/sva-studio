@@ -58,6 +58,9 @@ export const scrollActiveOptionIntoListView = (list: HTMLUListElement, activeInd
   }
 };
 
+// Portaled options are outside the dialog's DOM scroll-lock boundary.
+const keepOptionScrollLocal = (event: React.SyntheticEvent) => event.stopPropagation();
+
 export const SearchableSelectOptionList = ({
   activeIndex,
   close,
@@ -88,6 +91,8 @@ export const SearchableSelectOptionList = ({
     aria-label={label}
     tabIndex={onKeyDown ? 0 : -1}
     onKeyDown={onKeyDown}
+    onWheel={keepOptionScrollLocal}
+    onTouchMove={keepOptionScrollLocal}
     aria-activedescendant={
       onKeyDown && filteredOptions[activeIndex] ? toOptionId(id, activeIndex) : undefined
     }

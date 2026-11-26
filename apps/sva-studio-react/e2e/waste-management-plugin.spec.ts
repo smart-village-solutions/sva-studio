@@ -847,6 +847,15 @@ test.describe('waste management plugin', () => {
           createdAt: '2026-05-10T11:00:00.000Z',
           updatedAt: '2026-05-10T11:00:00.000Z',
         },
+        ...['Bahnhofstraße', 'Dorfstraße', 'Gartenstraße', 'Marktstraße', 'Wallstraße'].map(
+          (name, index) => ({
+            id: `street-filter-${index}`,
+            cityId: 'city-1',
+            name,
+            createdAt: '2026-05-10T11:00:00.000Z',
+            updatedAt: '2026-05-10T11:00:00.000Z',
+          })
+        ),
       ],
       houseNumbers: [
         {
@@ -922,6 +931,17 @@ test.describe('waste management plugin', () => {
           await expect(dialog.getByRole('group', { name: 'Ursprünglicher Termin' })).toBeVisible();
         }
         await page.screenshot({ path: test.info().outputPath(`waste-${id}-filter-${width}.png`) });
+        if (id === 'locations' && width === 1280) {
+          const street = dialog.getByRole('combobox', { name: 'Straße', exact: true });
+          await street.click();
+          const streetOptions = page.getByRole('listbox', { name: 'Straße', exact: true });
+          await streetOptions.getByRole('option').first().hover();
+          await page.mouse.wheel(0, 600);
+          const lastStreet = streetOptions.getByRole('option', { name: /Wallstraße/ });
+          await expect(lastStreet).toBeInViewport({ ratio: 1 });
+          await lastStreet.click();
+          await expect(street).toHaveValue('street-filter-4');
+        }
         if (id === 'shifts' && width === 1280) {
           const from = dialog.getByRole('textbox', { name: 'Von', exact: true });
           await from.fill('26.12.2026');

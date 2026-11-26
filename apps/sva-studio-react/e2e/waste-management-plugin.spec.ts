@@ -1239,7 +1239,17 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abfallfraktionen', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Restmüll', exact: true }).check();
     await page.keyboard.press('Escape');
-    await page.locator('#waste-tour-recurrence').selectOption('custom');
+    const recurrenceSelect = page.locator('#waste-tour-recurrence');
+    await recurrenceSelect.press('ArrowDown');
+    const recurrenceOptions = page.getByRole('listbox');
+    await recurrenceOptions.hover();
+    const recurrenceScrollStart = await recurrenceOptions.evaluate((list) => list.scrollTop);
+    await page.mouse.wheel(0, 120);
+    await expect.poll(() => recurrenceOptions.evaluate((list) => list.scrollTop)).toBeGreaterThan(
+      recurrenceScrollStart
+    );
+    await page.keyboard.press('Escape');
+    await recurrenceSelect.selectOption('custom');
     await page.getByRole('button', { name: 'Tage im Kalender auswählen' }).click();
     const selectedDay = page.getByRole('button', { name: 'Dienstag, 2. Juni 2026', exact: true });
     await selectedDay.focus();
@@ -1254,8 +1264,21 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Termin bearbeiten', exact: true }).click();
     await page.getByRole('button', { name: 'Abholpunkt zuweisen', exact: true }).click();
     const locationTrigger = page.getByRole('button', { name: 'Abholpunkt', exact: true });
+    const viewport = page.viewportSize()!;
+    await page.setViewportSize({ width: viewport.width, height: 420 });
     await locationTrigger.press('Enter');
-    await page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true }).fill('Markt');
+    const locationOptions = page.getByRole('listbox', { name: 'Abholpunkt', exact: true });
+    const locationSearch = page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true });
+    await locationOptions.getByRole('option').first().hover();
+    await page.mouse.wheel(0, 600);
+    const lastLocation = locationOptions.getByRole('option', { name: /Wallstraße/ });
+    await expect(lastLocation.getByText(/Wallstraße/)).toBeInViewport({ ratio: 1 });
+    await expect(locationSearch).toBeInViewport({ ratio: 1 });
+    await lastLocation.click();
+    await expect(locationTrigger).toContainText('Wallstraße');
+    await page.setViewportSize(viewport);
+    await locationTrigger.press('Enter');
+    await locationSearch.fill('Markt');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(locationTrigger).toBeFocused();

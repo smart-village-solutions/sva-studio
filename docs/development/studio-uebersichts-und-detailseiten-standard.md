@@ -521,6 +521,10 @@ Ein einzelner Befehl wird direkt als Button gezeigt. Ein echtes Popup-Menü
 benötigt einen expliziten Triggernamen und darf bestehende freie Aktions-Slots
 nicht stillschweigend ersetzen; der Figma-/Code-Abgleich ist noch offen.
 
+In durchsuchbaren Einfachauswahlen passt sich die Optionsliste dem verfügbaren
+Platz an und lässt sich bis zur letzten Option scrollen. Das Suchfeld und eine
+vorhandene Aktion zum Leeren der Auswahl bleiben dabei erreichbar.
+
 Basis-Eingaben und Selects besitzen mindestens 44 px Höhe. Die Radio-Bedienfläche
 ist 44 × 44 px bei kleinerem sichtbarem Indikator; Namen, Werte und Gruppen gehören
 weiter zum nativen Input. Zugehörige Labels enthalten gültigen Text-/Span-Inhalt,

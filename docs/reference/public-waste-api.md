@@ -48,7 +48,7 @@ Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regi
 
 ## PDF-Legende und Landkreislogo pflegen
 
-Die Weboberfläche zeigt unter „PDF / Druckversion“ einen Download-Button für jedes Jahr mit Abfuhrterminen an der gewählten Adresse und für die ausgewählten Abfallarten. Die Jahresauswahl berücksichtigt das Vorjahr, das laufende Jahr und das Folgejahr vollständig. Die Buttons bleiben unabhängig von der gerade angezeigten Kalenderansicht verfügbar.
+Die Weboberfläche zeigt unter „PDF / Druckversion“ einen Download-Button für jedes Jahr mit Abfuhrterminen an der gewählten Adresse und für die ausgewählten Abfallarten. Die Jahresauswahl berücksichtigt das Vorjahr, das laufende Jahr und das Folgejahr vollständig. Die Buttons bleiben unabhängig von der gerade angezeigten Kalenderansicht verfügbar. Im PDF sind Wochenenden und bundesweite Feiertage hellblau hinterlegt.
 
 Das PDF wird im bestehenden Endpunkt `/api/public-waste/pdf` für Adresse, Jahr und gewählte Abfallarten erzeugt. Die Legende ist aus vorhandenen Fachdaten abgeleitet, kein separat bearbeitbares Textdokument:
 

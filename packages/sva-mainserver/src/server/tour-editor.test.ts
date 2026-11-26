@@ -70,6 +70,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   state.reserve.mockResolvedValue({ status: 'reserved' });
   state.authorize.mockResolvedValue({});
+  state.access.mockResolvedValue({ 'tours.read': true, 'tours.update': true });
 });
 
 describe('tour editor', () => {
@@ -136,6 +137,20 @@ describe('tour editor', () => {
       'SvaMainserverEditableTour',
       'SvaMainserverEditableTour',
     ]);
+  });
+
+  it('rejects a fresh update without exact read access before any GraphQL write', async () => {
+    const { execute, update } = setup();
+    execute.mockResolvedValueOnce({ editableTour: tour });
+    state.access.mockResolvedValueOnce({ 'tours.read': false, 'tours.update': true });
+
+    const response = await update({ expectedRevision: 'r1', patch: { name: 'Other' } });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
+    await expect(response.json()).resolves.toMatchObject({ error: 'forbidden' });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(state.authorize).not.toHaveBeenCalled();
   });
 
   it('rejects stale client revisions and replays known failures without writing', async () => {

@@ -34,6 +34,8 @@ const invalidResponse = () =>
   });
 
 const notFound = () => errorJson(404, 'not_found', 'Tour wurde nicht gefunden.');
+const forbidden = () =>
+  errorJson(403, 'forbidden', 'Die Tour kann im aktiven Kontext nicht bearbeitet werden.');
 const revisionConflict = () =>
   errorJson(409, 'tour_revision_conflict', 'Die Tour wurde zwischenzeitlich geändert.');
 const preWriteErrors = new Set([
@@ -110,6 +112,8 @@ export const createTourEditor = (context: EditorContext) => {
     async persist(actor: MainserverMutationActor, id: string, input: z.output<typeof updateInput>) {
       const { config, tour } = await load(actor, id);
       if (!tour) return withMutationNotApplied(notFound());
+      if (!(await hasExactTourEditorAccess(actor, tour)))
+        return withMutationNotApplied(forbidden());
       const authorization = await authorizeMainserverExistingContent({
         actor,
         action,
@@ -226,9 +230,7 @@ export const handleTourUpdate = async (
       const tour = await editor.read(actor, id);
       if (!tour) return withMutationNotApplied(notFound());
       if (!(await hasExactTourEditorAccess(actor, tour)))
-        return withMutationNotApplied(
-          errorJson(403, 'forbidden', 'Die Tour kann im aktiven Kontext nicht bearbeitet werden.')
-        );
+        return withMutationNotApplied(forbidden());
     }
     return restoreRetryMetadata(
       json(idempotency.responseBody, idempotency.responseStatus),

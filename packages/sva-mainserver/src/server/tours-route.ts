@@ -67,7 +67,7 @@ const readEditor = async (
     authorizedActor.activeOrganizationId ? 'organization' : 'user'
   );
   const actor = await resolveMainserverResourceActor({
-    request: new Request(request, { headers }),
+    request: new Request(request.url, { method: request.method, headers }),
     ctx,
     authorizedActor,
   });

@@ -191,7 +191,8 @@ export const processWasteTourMerge = async (
       await client.query("SET LOCAL statement_timeout = '15s'");
       // Lock participating relations to exclude concurrent inserts by existing READ COMMITTED writers.
       // NOWAIT releases the transaction rather than waiting on a writer holding locks in a different order.
-      await client.query(`LOCK TABLE waste_tours, waste_tour_fractions, waste_custom_recurrence_presets,
+      // Fraction writers lock or update waste_tours before touching the read-only relation.
+      await client.query(`LOCK TABLE waste_tours, waste_custom_recurrence_presets,
         waste_collection_locations, waste_cities, waste_streets, waste_house_numbers, waste_location_tour_links,
         waste_tour_assignments, waste_location_tour_pickup_dates, waste_tour_date_shifts,
         waste_global_date_shifts, waste_holiday_rules IN EXCLUSIVE MODE NOWAIT`);

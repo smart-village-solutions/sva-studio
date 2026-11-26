@@ -154,11 +154,22 @@ describe('Tour merge against PostgreSQL', () => {
     expect(previousPickups.length).toBeGreaterThan(26);
     expect(previousPickups.length).toBeGreaterThan(new Set(previousPickups).size);
     const sourceRevision = await repository().getWasteMainserverSourceRevision();
-    const result = await processWasteTourMerge(client, {
-      ...input,
-      confirmationToken: preview.token,
-    });
-    expect(result).toEqual({ kind: 'merged', archivedCount: 2, totalCount: 26 });
+    const appRole = `${schema}_app`;
+    await client.query(`
+      CREATE ROLE ${appRole};
+      GRANT USAGE ON SCHEMA ${schema} TO ${appRole};
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${schema} TO ${appRole};
+      REVOKE INSERT, UPDATE, DELETE ON waste_tour_fractions FROM ${appRole};
+    `);
+    try {
+      await client.query(`SET ROLE ${appRole}`);
+      await expect(
+        processWasteTourMerge(client, { ...input, confirmationToken: preview.token })
+      ).resolves.toEqual({ kind: 'merged', archivedCount: 2, totalCount: 26 });
+    } finally {
+      await client.query('RESET ROLE');
+      await client.query(`DROP OWNED BY ${appRole}; DROP ROLE ${appRole}`);
+    }
     const tours = await repository().listWasteTours();
     expect(tours.find((tour) => tour.id === target)).toMatchObject({
       locationCount: 26,
@@ -234,13 +245,13 @@ describe('Tour merge against PostgreSQL', () => {
     }
   });
 
-  it('releases its locks and returns rollback when a writer is still changing the batch', async () => {
+  it('rolls back when a writer is still changing a tour fraction assignment', async () => {
     const preview = await previewMerge();
     const writer = await pool.connect();
     try {
       await writer.query(`SET search_path TO ${schema}, public`);
       await writer.query('BEGIN');
-      await writer.query("UPDATE waste_tours SET description = 'Andere Sitzung' WHERE id = $1", [
+      await writer.query('SELECT replace_waste_tour_fractions($1, ARRAY[]::text[])', [
         source,
       ]);
       await expect(

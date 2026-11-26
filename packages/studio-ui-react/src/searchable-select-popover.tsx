@@ -7,6 +7,7 @@ import { Input } from './input.js';
 import {
   findEnabledOptionIndex,
   getSearchableSelectOptionId,
+  scrollActiveOptionIntoListView,
   SearchableSelectOptionList,
   type SearchableSelectOption,
 } from './searchable-select-option-list.js';
@@ -189,17 +190,7 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
   const listRef = React.useRef<HTMLUListElement>(null);
 
   React.useEffect(() => {
-    const list = listRef.current;
-    const activeOption = list?.querySelectorAll('[role="option"]').item(activeIndex);
-    if (!list || !activeOption) return;
-
-    const listBounds = list.getBoundingClientRect();
-    const optionBounds = activeOption.getBoundingClientRect();
-    if (optionBounds.top < listBounds.top) {
-      list.scrollTop += optionBounds.top - listBounds.top;
-    } else if (optionBounds.bottom > listBounds.bottom) {
-      list.scrollTop += optionBounds.bottom - listBounds.bottom;
-    }
+    if (listRef.current) scrollActiveOptionIntoListView(listRef.current, activeIndex);
   }, [activeIndex, filteredOptions]);
 
   return (

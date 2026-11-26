@@ -45,6 +45,19 @@ const toOptionId = (id: string, index: number) => `${id}-option-${index}`;
 
 export const getSearchableSelectOptionId = toOptionId;
 
+export const scrollActiveOptionIntoListView = (list: HTMLUListElement, activeIndex: number) => {
+  const activeOption = list.querySelectorAll('[role="option"]').item(activeIndex);
+  if (!activeOption) return;
+
+  const listBounds = list.getBoundingClientRect();
+  const optionBounds = activeOption.getBoundingClientRect();
+  if (optionBounds.top < listBounds.top) {
+    list.scrollTop += optionBounds.top - listBounds.top;
+  } else if (optionBounds.bottom > listBounds.bottom) {
+    list.scrollTop += optionBounds.bottom - listBounds.bottom;
+  }
+};
+
 export const SearchableSelectOptionList = ({
   activeIndex,
   close,

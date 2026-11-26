@@ -73,7 +73,7 @@ export const SearchableSelectOptionList = ({
     id={`${id}-listbox`}
     role="listbox"
     aria-label={label}
-    tabIndex={onKeyDown ? 0 : undefined}
+    tabIndex={onKeyDown ? 0 : -1}
     onKeyDown={onKeyDown}
     aria-activedescendant={
       onKeyDown && filteredOptions[activeIndex] ? toOptionId(id, activeIndex) : undefined

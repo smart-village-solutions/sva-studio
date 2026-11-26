@@ -2,7 +2,8 @@ import type { PluginDefinition } from '@sva/plugin-sdk';
 
 import { pluginTours as descriptor } from './descriptor.js';
 import { TourCreatePage } from './tour-create-page.js';
-import { TourDetailPage, ToursListPage } from './tours.pages.js';
+import { TourDetailPage } from './tour-detail-page.js';
+import { ToursListPage } from './tours.pages.js';
 
 export const pluginViewBindings = [
   { bindingKey: 'toursList', component: ToursListPage },

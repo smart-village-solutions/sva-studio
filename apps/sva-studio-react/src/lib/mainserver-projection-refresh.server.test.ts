@@ -80,6 +80,24 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('refreshes only the updated tour with the bound principal after a successful PATCH', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/tours/42', { method: 'PATCH' }),
+      Response.json({ data: { id: '42' } }),
+      'tours.tour'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        contentType: 'tours.tour',
+        entityId: '42',
+        operation: 'update',
+        organizationId: 'org-1',
+        actingPrincipalType: 'organization',
+      })
+    );
+  });
+
   it('correlates a successful provider mutation with its media save operation', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', {

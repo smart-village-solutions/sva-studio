@@ -19,6 +19,8 @@ export type SvaMainserverErrorCode =
   | 'network_error'
   | 'graphql_error'
   | 'invalid_response'
+  | 'invalid_request'
+  | 'tour_revision_conflict'
   | 'category_management_invalid_response'
   | 'category_management_access_denied'
   | 'not_found';

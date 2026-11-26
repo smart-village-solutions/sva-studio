@@ -12,7 +12,7 @@ export const toursPath = '/admin/tours';
 export const toursCreatePath = '/admin/tours/new';
 export const tourDetailPath = '/admin/tours/$id';
 const pluginId = 'tours';
-const permissionIds = ['tours.read', 'tours.create'] as const;
+const permissionIds = ['tours.read', 'tours.create', 'tours.update'] as const;
 const standard = createStandardContentPluginContribution({
   pluginId,
   displayName: 'Touren',
@@ -29,11 +29,11 @@ export const pluginTours: PluginDescriptor = createStandardContentPluginDefiniti
   translations: toursTranslations,
   contribution: {
     ...standard,
-    permissions: standard.permissions.filter(
-      ({ id }) => id === 'tours.read' || id === 'tours.create'
+    permissions: standard.permissions.filter(({ id }) =>
+      permissionIds.some((permissionId) => id === permissionId)
     ),
     actions: [
-      ...standard.actions.filter(({ id }) => id === 'tours.create'),
+      ...standard.actions.filter(({ id }) => id === 'tours.create' || id === 'tours.update'),
       ...definePluginActions(pluginId, [
         {
           id: 'tours.read',

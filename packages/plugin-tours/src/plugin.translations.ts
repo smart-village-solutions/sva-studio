@@ -2,10 +2,23 @@ export const toursTranslations = {
   de: {
     tours: {
       title: 'Touren',
-      permissions: { read: 'Touren lesen', create: 'Touren anlegen' },
-      actions: { create: 'Tour anlegen' },
+      permissions: { read: 'Touren lesen', create: 'Touren anlegen', update: 'Touren bearbeiten' },
+      actions: { create: 'Tour anlegen', update: 'Tour bearbeiten' },
       create: 'Tour anlegen',
       saveDraft: 'Als Entwurf speichern',
+      edit: 'Tour bearbeiten',
+      save: 'Änderungen speichern',
+      saved: 'Tour gespeichert',
+      saveError: 'Die Änderungen konnten nicht bestätigt werden.',
+      editNotApplied:
+        'Die Tour wurde nicht geändert. Prüfen Sie die Eingaben und versuchen Sie es erneut.',
+      editConflict:
+        'Die Tour wurde inzwischen geändert. Öffnen Sie die Bearbeitung erneut, bevor Sie speichern.',
+      editPrincipal: 'Bearbeiten als',
+      confirmRemoveStop: 'Station entfernen?',
+      confirmRemoveStopDescription:
+        'Die Station „{{name}}“ wird beim Speichern aus der Tour entfernt.',
+      cancel: 'Abbrechen',
       createError:
         'Der Tourenentwurf konnte nicht bestätigt werden. Prüfen Sie die Liste, bevor Sie eine neue Tour anlegen.',
       inputInvalid:
@@ -104,10 +117,20 @@ export const toursTranslations = {
   en: {
     tours: {
       title: 'Tours',
-      permissions: { read: 'View tours', create: 'Create tours' },
-      actions: { create: 'Create tour' },
+      permissions: { read: 'View tours', create: 'Create tours', update: 'Edit tours' },
+      actions: { create: 'Create tour', update: 'Edit tour' },
       create: 'Create tour',
       saveDraft: 'Save as draft',
+      edit: 'Edit tour',
+      save: 'Save changes',
+      saved: 'Tour saved',
+      saveError: 'Your changes could not be confirmed.',
+      editNotApplied: 'The tour was not changed. Check your entries and try again.',
+      editConflict: 'The tour has changed in the meantime. Reopen the editor before saving.',
+      editPrincipal: 'Edit as',
+      confirmRemoveStop: 'Remove stop?',
+      confirmRemoveStopDescription: 'The stop “{{name}}” will be removed when you save the tour.',
+      cancel: 'Cancel',
       createError: 'The draft could not be confirmed. Check the list before creating another tour.',
       inputInvalid: 'The draft was not created. Check the inputs and try again.',
       coordinatesInvalid: 'Enter at least two complete, valid coordinate pairs for a route.',

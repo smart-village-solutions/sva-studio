@@ -20,6 +20,8 @@ const MAINSERVER_ERROR_STATUS_BY_CODE = {
   token_request_failed: 502,
   graphql_error: 502,
   invalid_response: 502,
+  invalid_request: 400,
+  tour_revision_conflict: 409,
   category_management_invalid_response: 502,
   category_management_access_denied: 403,
 } satisfies Record<string, number>;

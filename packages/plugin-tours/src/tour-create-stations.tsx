@@ -1,10 +1,18 @@
 import type { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioDetailCard, StudioField, Textarea } from '@sva/studio-ui-react';
-import type { ReactNode } from 'react';
+import {
+  Button,
+  Input,
+  StudioConfirmDialog,
+  StudioDetailCard,
+  StudioField,
+  Textarea,
+} from '@sva/studio-ui-react';
+import { useState, type ReactNode } from 'react';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
 export type Stop = {
   key: string;
+  id?: string;
   name: string;
   description: string;
   latitude: string;
@@ -37,7 +45,7 @@ function StationFields({
       <StudioField id={`${stop.key}-name`} label={pt('name')}>
         <Input
           id={`${stop.key}-name`}
-          required
+          required={!stop.id}
           maxLength={250}
           value={stop.name}
           onChange={(event) => onChange({ name: event.target.value })}
@@ -88,6 +96,8 @@ export function Stations({
   stops: Stop[];
   setStops: (next: Stop[]) => void;
 }) {
+  const [pendingRemoval, setPendingRemoval] = useState<Stop>();
+  const remove = (stop: Stop) => setStops(stops.filter(({ key }) => key !== stop.key));
   const change = (index: number, patch: Partial<Stop>) =>
     setStops(
       stops.map((stop, indexOfStop) => (indexOfStop === index ? { ...stop, ...patch } : stop))
@@ -128,7 +138,7 @@ export function Stations({
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setStops(stops.filter((item) => item.key !== stop.key))}
+                  onClick={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}
                 >
                   {pt('removeStop')}
                 </Button>
@@ -145,6 +155,41 @@ export function Stations({
       >
         {pt('addStop')}
       </Button>
+      {pendingRemoval && (
+        <RemoveStationDialog
+          pt={pt}
+          stop={pendingRemoval}
+          onClose={() => setPendingRemoval(undefined)}
+          onRemove={remove}
+        />
+      )}
     </StudioDetailCard>
+  );
+}
+
+function RemoveStationDialog({
+  pt,
+  stop,
+  onClose,
+  onRemove,
+}: {
+  pt: Translate;
+  stop: Stop;
+  onClose: () => void;
+  onRemove: (stop: Stop) => void;
+}) {
+  return (
+    <StudioConfirmDialog
+      open
+      title={pt('confirmRemoveStop')}
+      description={pt('confirmRemoveStopDescription', { name: stop.name })}
+      confirmLabel={pt('removeStop')}
+      cancelLabel={pt('cancel')}
+      onCancel={onClose}
+      onConfirm={() => {
+        onRemove(stop);
+        onClose();
+      }}
+    />
   );
 }

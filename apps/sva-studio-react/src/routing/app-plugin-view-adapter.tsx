@@ -12,7 +12,10 @@ import { t } from '../i18n';
 import { studioBuildTimeRegistry } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
 import { ContentEditorLeaveBoundary } from './content-editor-leave-boundary';
-import { MainserverPrincipalBoundary } from './mainserver-principal-control';
+import {
+  MainserverPrincipalBoundary,
+  useMainserverPrincipalControl,
+} from './mainserver-principal-control';
 import { MainserverResourcePrincipalBoundary } from './mainserver-resource-principal-boundary';
 
 type PluginViewComponent = React.ComponentType<Record<string, unknown>>;
@@ -50,6 +53,19 @@ const CategoriesRoutePage = ({ Page }: Readonly<{ Page: PluginViewComponent }>) 
       mutationActionsLoading={mutationCapabilities.isLoading}
       onReloadMutationActions={mutationCapabilities.reload}
     />
+  );
+};
+
+const TourDetailRoute = ({ Page }: { Page: PluginViewComponent }) => {
+  const { enabledActions } = useMainserverMutationCapabilities();
+  const principal = useMainserverPrincipalControl();
+  return (
+    <ContentEditorLeaveBoundary protectContextChanges>
+      <Page
+        canUpdate={enabledActions.includes('tours.update')}
+        principalControl={principal.kind === 'ready' ? principal.control : undefined}
+      />
+    </ContentEditorLeaveBoundary>
   );
 };
 
@@ -157,12 +173,9 @@ export const createHostOwnedPluginView = (
   const viewKind = matchedView?.[0] as 'list' | 'detail' | 'editor' | undefined;
   // Lists skip the editor-oriented host context. The per-binding wrapper keeps each list route a
   // distinct component, so switching between lists that share a page still remounts it.
-  if (
-    !resource?.contentUi?.contentType ||
-    !viewKind ||
-    viewKind === 'list' ||
-    (pluginId === 'tours' && viewKind === 'detail')
-  )
+  if (pluginId === 'tours' && viewKind === 'detail')
+    return () => <TourDetailRoute Page={Component} />;
+  if (!resource?.contentUi?.contentType || !viewKind || viewKind === 'list')
     return () => <Component />;
   return () => (
     <PluginContentView

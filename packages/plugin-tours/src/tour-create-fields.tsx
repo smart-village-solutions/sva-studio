@@ -60,17 +60,7 @@ function TourDescription({ pt, disabled }: { pt: Translate; disabled: boolean })
   );
 }
 
-export function TourBasisFields({
-  pt,
-  busy,
-  principal,
-  principalControl,
-}: {
-  pt: Translate;
-  busy: boolean;
-  principal: Principal;
-  principalControl?: MainserverPrincipalControlModel;
-}) {
+function TourCategoryField({ pt }: { pt: Translate }) {
   const [categories, setCategories] = useState<readonly { id: string; name: string }[]>([]);
   useEffect(() => {
     const abort = new AbortController();
@@ -85,6 +75,35 @@ export function TourBasisFields({
     );
     return () => abort.abort();
   }, []);
+  return (
+    <StudioField id="tour-category" label={pt('categories')}>
+      <select
+        id="tour-category"
+        name="category"
+        className="min-h-9 w-full rounded-md border bg-background px-3 text-sm"
+      >
+        <option value="">{pt('unknown')}</option>
+        {categories.map(({ id, name }) => (
+          <option key={id} value={id}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </StudioField>
+  );
+}
+
+export function TourBasisFields({
+  pt,
+  busy,
+  principal,
+  principalControl,
+}: {
+  pt: Translate;
+  busy: boolean;
+  principal: Principal;
+  principalControl?: MainserverPrincipalControlModel;
+}) {
   return (
     <StudioDetailCard title={pt('basis')}>
       <MainserverPrincipalControl
@@ -114,20 +133,7 @@ export function TourBasisFields({
         />
       </StudioField>
       <TourDescription pt={pt} disabled={busy} />
-      <StudioField id="tour-category" label={pt('categories')}>
-        <select
-          id="tour-category"
-          name="category"
-          className="min-h-9 w-full rounded-md border bg-background px-3 text-sm"
-        >
-          <option value="">{pt('unknown')}</option>
-          {categories.map(({ id, name }) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </StudioField>
+      <TourCategoryField pt={pt} />
       <div className="grid gap-3 sm:grid-cols-3">
         {(['operator', 'email', 'phone'] as const).map((name) => (
           <StudioField key={name} id={`tour-${name}`} label={pt(name)}>

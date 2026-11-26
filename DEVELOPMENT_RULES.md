@@ -18,11 +18,11 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ### ✅ REQUIRED
 
-- **All UI texts** must be loaded from the database via the translation system
+- UI-Texte stammen aus den versionierten TypeScript-Sprachressourcen des zuständigen Hosts oder Plugins.
 - **All data** must be fetched from the database
 - Use language keys (e.g., `t('navigation.dashboard')`) for all displayed text
 - **ALWAYS use translation keys** - no exceptions for "quick fixes" or "temporary solutions"
-- Translation keys must exist in **both German (de) and English (en)** in the active app translation resources
+- Neue Texte brauchen einen Eintrag in jeder für die jeweilige Ausgabe unterstützten Sprache. Für die Studio-Oberfläche sind das Deutsch (`de`) und Englisch (`en`).
 
 ### ❌ FORBIDDEN - ZERO TOLERANCE
 
@@ -524,30 +524,12 @@ bestehende PR gezielt gehärtet; allgemeine Aufräumarbeiten folgen getrennt.
 
 ## 2. Translation System
 
-### Process for UI Texts
+### Sprachressourcen und Laufzeit
 
-1. Define language key in consistent format (e.g., `admin.users.title`)
-2. Add translations to database via `translations` table
-3. Load translations using `useTranslation()` hook from `react-i18next`
-4. Use `t()` function with the language key
-
-### Translation Key Format
-
-- Use dot notation: `section.subsection.key`
-- Be descriptive and hierarchical
-- Example: `admin.dashboard.welcome`, `common.save`, `auth.login`
-- Host- und Plugin-Keys haben klare Owner: Host-Features verwenden Host-Namespaces
-  wie `shell.*`, `admin.*`, `account.*` oder `interfaces.*`; Plugins liefern ihre
-  eigenen Namespaces über `@sva/plugin-sdk`.
-- Gleiche sichtbare Textwerte in verschiedenen Owner-Namespaces sind erlaubt.
-  Identische Übersetzungsschlüssel über Owner-Grenzen hinweg sind verboten und
-  müssen als Kollisionsfehler behandelt werden.
-
-**Where translations are stored:**
-
-- Database table: `translations`
-- Workspace-specific translations override global ones
-- Fallback language: German (de)
+- Die Studio-Oberfläche lädt ihre Host-Ressourcen aus [`src/i18n/resources`](apps/sva-studio-react/src/i18n/README.md). TypeScript-Dateien sind nach Sprache und Funktionsbereich gegliedert. Plugins liefern ihre Ressourcen über `@sva/plugin-sdk`; der Host führt sie mit seinen Ressourcen zusammen.
+- Host und Plugins verwenden ihren eigenen Namespace. Verwende beschreibende Schlüssel in Punktnotation, etwa `admin.users.title`, und löse sie über `t(key, variables)` auf. Platzhalter in den Ressourcen verwenden `{{name}}`. Gleiche Textwerte sind zulässig; kollidierende Schlüssel zwischen Eigentümern werden abgewiesen.
+- Der gemeinsame Übersetzer in `@sva/core` liest zuerst die gewählte Ressource und dann den Fallback. Studio verwendet Deutsch als Fallback. Ist der Schlüssel in beiden Quellen unbekannt, gibt der Übersetzer den Schlüssel aus.
+- Der öffentliche Abfallkalender nutzt denselben Übersetzer mit eigenen Web- und PDF-Ressourcen. Für bereits lokalisierte Webtexte gibt es deutsche und englische Ressourcen. Der serverseitige PDF-Export verwendet Deutsch. Die Runtime wählt kommunale PDF-Overrides anhand der konfigurierten Instanz und fällt pro Schlüssel auf den deutschen Standardkatalog zurück.
 
 ---
 
@@ -1202,13 +1184,13 @@ logger.error('Auth failed', {
 ### Required Outcome
 
 - Neue Übersetzungsschlüssel müssen in den tatsächlich verwendeten Übersetzungsressourcen des betroffenen Apps oder Pakets ergänzt werden.
-- Für neue UI-Texte sind immer beide Zielsprachen zu pflegen.
+- Neue Texte in allen für die Ausgabe unterstützten Sprachen pflegen. Für Studio-UI und Plugins sind Deutsch und Englisch Pflicht.
 - Veraltete oder ungenutzte Schlüssel sollen bei passenden Änderungen mit bereinigt werden.
 
 ### Recommended Process
 
 1. Suche die tatsächliche Übersetzungsquelle des betroffenen Apps oder Pakets.
-2. Ergänze neue Schlüssel dort in `de` und `en`.
+2. Ergänze neue Schlüssel dort in den unterstützten Sprachen.
 3. Prüfe die Verwendung mit den betroffenen Unit- oder UI-Tests statt mit einem separaten Legacy-Skript.
 
 **Struktur- und Pflegekonventionen für Host-i18n-Ressourcen:**
@@ -1230,7 +1212,7 @@ logger.error('Auth failed', {
 - Use generic keys like `text1`, `label2`
 - Mix different naming conventions
 - Leave placeholder text in translations
-- Forget to add both German and English versions
+- Leave out an actively supported language
 
 ---
 

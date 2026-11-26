@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createWasteCalendarPdfTranslator } from './waste-management-output.messages.js';
 
 import {
   buildWasteCalendarPdfDocument,
@@ -6,6 +7,28 @@ import {
 } from './waste-management-output.js';
 
 describe('waste-management output pdf', () => {
+  it('applies calendar labels without changing weekend and holiday detection', () => {
+    const document = buildWasteCalendarPdfDocument({
+      year: 2026,
+      locationLabel: 'Musterstadt',
+      pickups: [],
+      t: createWasteCalendarPdfTranslator({
+        pdf: {
+          weekdays: { 4: 'Fr.', 5: 'Sa.', 6: 'So.' },
+          holidays: { newYear: 'Neujahrstag' },
+        },
+      }),
+    });
+    const january = document.pages[0]?.months[0];
+    expect(january?.days[0]).toMatchObject({ holidayLabel: 'Neujahrstag', isWeekend: false });
+    expect(january?.days[1]).toMatchObject({ weekdayShort: 'Fr.', isWeekend: false });
+    expect(january?.days[2]).toMatchObject({ weekdayShort: 'Sa.', isWeekend: true });
+    expect(january?.days[3]).toMatchObject({ weekdayShort: 'So.', isWeekend: true });
+    const pdfText = renderWasteCalendarPdf(document).toString('latin1');
+    expect(pdfText).toContain('(Neujahrstag)');
+    expect(pdfText).toContain('(Sa.)');
+  });
+
   it('renders every pickup hint alongside six fractions and a shift explanation', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
@@ -94,6 +117,16 @@ describe('waste-management output pdf', () => {
     ]);
     expect(document.pages[0]?.hints.map((hint) => hint.label)).toEqual(['Tour: Nord']);
     expect(document.pages[0]?.months[2]?.label).toBe('März');
+  });
+
+  it('renders the configured holiday abbreviations and uses the full text for other holidays', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({ year: 2026, locationLabel: 'Musterstadt', pickups: [] })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('(Christi Himmelf.)');
+    expect(pdfText).toContain('(Tag d. Dt. Einheit)');
+    expect(pdfText).toContain('(Pfingstmontag)');
   });
 
   it('renders a valid two-page pdf buffer', () => {

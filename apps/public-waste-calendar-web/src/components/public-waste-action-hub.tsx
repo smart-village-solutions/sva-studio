@@ -1,3 +1,4 @@
+import type { TranslationVariables } from '@sva/core';
 import { IconCalendarPlus, IconFileTypePdf, IconMail } from '@tabler/icons-react';
 
 import type { PublicWasteCalendarResponse } from '../lib/public-waste-api.js';
@@ -28,10 +29,10 @@ type State = ReturnType<typeof usePublicWasteActionState>;
 const REMINDER_ERROR_ID = 'public-waste-reminder-error';
 const triggerId = (panel: ActionPanel): string => `public-waste-action-trigger-${panel}`;
 const panelId = (panel: ActionPanel): string => `public-waste-action-panel-${panel}`;
-const t = (key: PublicWasteTranslationKey): string =>
+const t = (key: PublicWasteTranslationKey, variables?: TranslationVariables): string =>
   createPublicWasteTranslator(
     typeof document === 'undefined' ? 'de' : document.documentElement.lang || 'de'
-  )(key);
+  )(key, variables);
 
 const ActionToolbar = ({
   activePanel,
@@ -113,10 +114,7 @@ const PdfAction = ({ props }: { props: Props }) => (
         disabled={props.pdfRunningYear !== null}
         onClick={() => void props.downloadPdf(year)}
       >
-        {t(props.pdfRunningYear === year ? 'pdf.downloadingYear' : 'pdf.downloadYear').replace(
-          '{year}',
-          String(year)
-        )}
+        {t(props.pdfRunningYear === year ? 'pdf.downloadingYear' : 'pdf.downloadYear', { year })}
       </button>
     ))}
   </div>
@@ -133,7 +131,7 @@ const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
             ? t('reminder.sameDay')
             : days === 1
               ? t('reminder.oneDayBefore')
-              : t('reminder.daysBefore').replace('{days}', String(days));
+              : t('reminder.daysBefore', { days });
         return (
           <li key={fraction.id}>
             {fraction.label}: {timing}

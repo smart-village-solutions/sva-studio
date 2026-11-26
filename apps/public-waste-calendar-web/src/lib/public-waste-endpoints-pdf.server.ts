@@ -4,7 +4,11 @@ import {
   type WasteOutputLegendHint,
   type WasteOutputPickupEntry,
 } from '@sva/waste-management-contracts';
-import { renderWasteCalendarPdf } from '@sva/waste-management-contracts/pdf';
+import {
+  createWasteCalendarPdfTranslator,
+  renderWasteCalendarPdf,
+  type WasteCalendarPdfTranslator,
+} from '@sva/waste-management-contracts/pdf';
 import type { PublicWasteCalendarEntry } from './public-waste-contract.js';
 import { isPublicWastePdfYear, publicWastePdfReferenceDate } from './public-waste-date-utils.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';
@@ -45,7 +49,8 @@ const formatPdfLegendDate = (value: string): string =>
   `${value.slice(8, 10)}.${value.slice(5, 7)}.`;
 
 const buildPdfLegendHints = (
-  entries: readonly PublicWasteCalendarEntry[]
+  entries: readonly PublicWasteCalendarEntry[],
+  t: WasteCalendarPdfTranslator
 ): readonly WasteOutputLegendHint[] => {
   const tourHints = new Map<string, WasteOutputLegendHint>();
   const pickupHints = new Map<string, WasteOutputLegendHint>();
@@ -55,12 +60,16 @@ const buildPdfLegendHints = (
     const tourDescription = entry.tourDescription?.trim();
     if (tourName && tourDescription) {
       const id = JSON.stringify(['tour', tourName, tourDescription]);
-      tourHints.set(id, { id, label: `Tour: ${tourName}`, description: tourDescription });
+      tourHints.set(id, {
+        id,
+        label: t('pdf.tourHintLabel', { tourName }),
+        description: tourDescription,
+      });
     }
 
     const note = entry.note?.trim();
     if (note) {
-      const contextLabel = tourName ? `Tour: ${tourName}` : entry.fractionLabel;
+      const contextLabel = tourName ? t('pdf.tourHintLabel', { tourName }) : entry.fractionLabel;
       const id = JSON.stringify(['pickup', entry.date, contextLabel, note]);
       pickupHints.set(id, {
         id,
@@ -121,6 +130,7 @@ const toPdfFilename = (year: number, locationLabel: string): string =>
 export const handlePublicWastePdfRequest = async (input: {
   readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
   readonly request: Request;
+  readonly t?: WasteCalendarPdfTranslator;
   readonly loadPdfStaticConfig: () => Promise<PublicWastePdfStaticConfig>;
   readonly loadBrandingImage?: (input: {
     readonly assetUrl: string;
@@ -160,17 +170,19 @@ export const handlePublicWastePdfRequest = async (input: {
           requestUrl: input.request.url,
         })
       : undefined;
+    const t = input.t ?? createWasteCalendarPdfTranslator();
     const pdf = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year,
         locationLabel,
         ...(staticConfig.contactBlock ? { contactBlock: staticConfig.contactBlock } : {}),
         pickups: buildPdfPickups(filteredEntries),
-        legendHints: buildPdfLegendHints(filteredEntries),
+        legendHints: buildPdfLegendHints(filteredEntries, t),
+        t,
         ...(brandingImage ? { brandingImage } : {}),
         brandingPlaceholderLabel: staticConfig.brandingAssetUrl
-          ? 'Branding-Grafik'
-          : 'Kommunales Waste-Management',
+          ? t('pdf.configuredBrandingPlaceholder')
+          : t('pdf.brandingPlaceholder'),
       })
     );
     const pdfBody = new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' });

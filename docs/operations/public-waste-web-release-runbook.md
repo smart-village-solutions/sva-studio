@@ -57,6 +57,13 @@ Felder direkt aus `PUBLIC_WASTE_PDF_BRANDING_ASSET_URL` und
 `PUBLIC_WASTE_PDF_CONTACT_BLOCK` ergänzt. Die öffentliche Runtime benötigt für
 die PDF-Erzeugung keine zusätzliche IAM-Verbindung.
 
+Die deutschen Vorlagentexte stammen aus dem gemeinsamen PDF-Katalog in
+`@sva/waste-management-contracts`. Die öffentliche Runtime ergänzt für
+`bb-frankfurt-oder` den lokalen Legendeneintrag „Feiertagsregelung“.
+Der gemeinsame Übersetzer fällt für alle übrigen Schlüssel auf den
+deutschen PDF-Katalog zurück. Der Standardtext für verschobene
+Abholtermine lautet „Ausweichtermin“.
+
 ## Voraussetzungen in GitHub
 
 Für den Releaseworkflow werden mindestens diese GitHub-Konfigurationen

@@ -64,6 +64,15 @@ describe('translate', () => {
     expect(t(missingKey)).toBe('admin.users.page.unknown');
   });
 
+  it('reads the current locale resource after a resource is replaced', () => {
+    const resources = { de: { example: 'Deutsch' }, en: { example: 'English' } };
+    const translate = createTranslatorFromResources(resources, 'en');
+
+    resources.en = { example: 'Updated English' };
+
+    expect(translate('example')).toBe('Updated English');
+  });
+
   it('rejects plugin resource keys that already exist in host resources', () => {
     expect(() =>
       mergeI18nResources({

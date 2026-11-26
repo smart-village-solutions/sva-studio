@@ -12,10 +12,13 @@ import {
   buildHolidayMap,
   formatIsoDate,
   getIsoWeekNumber,
-  MONTH_NAMES,
   normalizeWeekday,
-  WEEKDAY_SHORT_NAMES,
 } from './waste-management-output.calendar.js';
+import {
+  createWasteCalendarPdfTranslator,
+  type WasteCalendarPdfHoliday,
+  type WasteCalendarPdfTranslator,
+} from './waste-management-output.messages.js';
 
 type RgbColor = readonly [red: number, green: number, blue: number];
 
@@ -116,8 +119,9 @@ const buildEntriesByDate = (pickups: readonly WasteOutputPickupEntry[]) => {
 const buildMonth = (
   year: number,
   month: number,
-  holidayMap: ReadonlyMap<string, string>,
-  entriesByDate: ReadonlyMap<string, readonly WasteCalendarPdfEntry[]>
+  holidayMap: ReadonlyMap<string, WasteCalendarPdfHoliday>,
+  entriesByDate: ReadonlyMap<string, readonly WasteCalendarPdfEntry[]>,
+  t: WasteCalendarPdfTranslator
 ): WasteCalendarPdfMonth => {
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const days: WasteCalendarPdfDay[] = [];
@@ -127,19 +131,24 @@ const buildMonth = (
     const isoDate = formatIsoDate(date);
     const weekdayIndex = normalizeWeekday(date.getUTCDay());
 
+    const holiday = holidayMap.get(isoDate);
+    const shortLabelKey = holiday ? (`pdf.holidayShortLabels.${holiday}` as const) : null;
+    const shortLabel = shortLabelKey ? t(shortLabelKey) : undefined;
     days.push({
       isoDate,
       dayOfMonth,
-      weekdayShort: WEEKDAY_SHORT_NAMES[weekdayIndex],
+      weekdayShort: t(`pdf.weekdays.${weekdayIndex}`),
+      isWeekend: weekdayIndex >= 5,
       weekNumber: weekdayIndex === 0 ? getIsoWeekNumber(date) : null,
-      holidayLabel: holidayMap.get(isoDate) ?? null,
+      holidayLabel: holiday ? t(`pdf.holidays.${holiday}`) : null,
+      holidayShortLabel: shortLabel === shortLabelKey ? undefined : shortLabel,
       entries: entriesByDate.get(isoDate) ?? [],
     });
   }
 
   return {
     month,
-    label: MONTH_NAMES[month - 1] ?? String(month),
+    label: t(`pdf.months.${month}`),
     days,
   };
 };
@@ -150,9 +159,11 @@ export const buildWasteCalendarPdfDocument = (input: {
   readonly contactBlock?: string;
   readonly pickups: readonly WasteOutputPickupEntry[];
   readonly legendHints?: readonly WasteOutputLegendHint[];
+  readonly t?: WasteCalendarPdfTranslator;
   readonly brandingPlaceholderLabel?: string;
   readonly brandingImage?: WasteCalendarPdfDocument['pages'][number]['brandingImage'];
 }): WasteCalendarPdfDocument => {
+  const t = input.t ?? createWasteCalendarPdfTranslator();
   const { entriesByDate, legendFractions } = buildEntriesByDate(input.pickups);
   const holidayMap = buildHolidayMap(input.year);
   const fractionLegend = Array.from(legendFractions.values()).sort((left, right) =>
@@ -173,17 +184,29 @@ export const buildWasteCalendarPdfDocument = (input: {
     pickup.fractions.some((fraction) => fraction.isShifted === true)
   );
   const contactBlock = normalizeLegendText(input.contactBlock ?? '');
-  const buildPage = (months: readonly number[]) => ({
-    title: `Abfallkalender ${input.year}`,
-    locationLabel: input.locationLabel,
-    ...(contactBlock ? { contactBlock } : {}),
-    brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? 'Kommunales Waste-Management',
-    ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
-    months: months.map((month) => buildMonth(input.year, month, holidayMap, entriesByDate)),
-    fractionLegend,
-    hasShiftedPickups,
-    hints: hints.filter((hint) => !hint.date || months.includes(Number(hint.date.slice(5, 7)))),
-  });
+  const buildPage = (monthNumbers: readonly number[]) => {
+    const months = monthNumbers.map((month) =>
+      buildMonth(input.year, month, holidayMap, entriesByDate, t)
+    );
+    return {
+      continuationLabel: t('pdf.continuation', {
+        firstMonth: months[0]?.label ?? '',
+        lastMonth: months[months.length - 1]?.label ?? '',
+      }),
+      title: t('pdf.title', { year: input.year }),
+      locationLabel: input.locationLabel,
+      ...(contactBlock ? { contactBlock } : {}),
+      brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? t('pdf.brandingPlaceholder'),
+      ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
+      months,
+      fractionLegend,
+      hasShiftedPickups,
+      shiftedPickupLabel: t('pdf.legend.shiftedPickup'),
+      hints: hints.filter(
+        (hint) => !hint.date || monthNumbers.includes(Number(hint.date.slice(5, 7)))
+      ),
+    };
+  };
 
   return {
     year: input.year,

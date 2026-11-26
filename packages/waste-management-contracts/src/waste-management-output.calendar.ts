@@ -1,19 +1,4 @@
-export const MONTH_NAMES = [
-  'Januar',
-  'Februar',
-  'März',
-  'April',
-  'Mai',
-  'Juni',
-  'Juli',
-  'August',
-  'September',
-  'Oktober',
-  'November',
-  'Dezember',
-] as const;
-
-export const WEEKDAY_SHORT_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
+import type { WasteCalendarPdfHoliday } from './waste-management-output.messages.js';
 
 export const normalizeWeekday = (utcDay: number): number => (utcDay === 0 ? 6 : utcDay - 1);
 
@@ -51,17 +36,17 @@ const addUtcDays = (value: Date, days: number): Date => {
   return copy;
 };
 
-export const buildHolidayMap = (year: number): ReadonlyMap<string, string> => {
+export const buildHolidayMap = (year: number): ReadonlyMap<string, WasteCalendarPdfHoliday> => {
   const easterSunday = computeEasterSunday(year);
-  return new Map<string, string>([
-    [`${year}-01-01`, 'Neujahr'],
-    [formatIsoDate(addUtcDays(easterSunday, -2)), 'Karfreitag'],
-    [formatIsoDate(addUtcDays(easterSunday, 1)), 'Ostermontag'],
-    [`${year}-05-01`, 'Maifeiertag'],
-    [formatIsoDate(addUtcDays(easterSunday, 39)), 'Christi Himmelfahrt'],
-    [formatIsoDate(addUtcDays(easterSunday, 50)), 'Pfingstmontag'],
-    [`${year}-10-03`, 'Tag der Deutschen Einheit'],
-    [`${year}-12-25`, '1. Weihnachtstag'],
-    [`${year}-12-26`, '2. Weihnachtstag'],
+  return new Map<string, WasteCalendarPdfHoliday>([
+    [`${year}-01-01`, 'newYear'],
+    [formatIsoDate(addUtcDays(easterSunday, -2)), 'goodFriday'],
+    [formatIsoDate(addUtcDays(easterSunday, 1)), 'easterMonday'],
+    [`${year}-05-01`, 'labourDay'],
+    [formatIsoDate(addUtcDays(easterSunday, 39)), 'ascension'],
+    [formatIsoDate(addUtcDays(easterSunday, 50)), 'whitMonday'],
+    [`${year}-10-03`, 'germanUnity'],
+    [`${year}-12-25`, 'christmasDay'],
+    [`${year}-12-26`, 'secondChristmasDay'],
   ]);
 };

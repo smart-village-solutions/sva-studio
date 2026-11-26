@@ -1,6 +1,5 @@
 import type { WasteCalendarPdfDocument } from './waste-management-output.types.js';
 import {
-  abbreviateHolidayLabel,
   getContrastingTextColor,
   getEntryLabelWidth,
   pad2,
@@ -72,9 +71,7 @@ const renderMonthDay = (
   }>
 ): void => {
   const { commands, day, rowHeight, rowTop, width, x } = input;
-  const isWeekendOrHoliday =
-    day !== null &&
-    (day.weekdayShort === 'Sa' || day.weekdayShort === 'So' || day.holidayLabel !== null);
+  const isWeekendOrHoliday = day !== null && (day.isWeekend || day.holidayLabel !== null);
   drawFilledRectangle(
     { commands, x, top: rowTop, width, height: rowHeight },
     isWeekendOrHoliday ? [0.94, 0.96, 0.99] : [1, 1, 1]
@@ -139,7 +136,7 @@ const renderDayMetadata = (
       x: x + 42,
       top: centeredTextTop(6.8),
       fontSize: 6.8,
-      text: abbreviateHolidayLabel(day.holidayLabel),
+      text: day.holidayShortLabel ?? day.holidayLabel,
       fontName: 'F1',
     });
   }

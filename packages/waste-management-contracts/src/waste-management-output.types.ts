@@ -35,8 +35,10 @@ export type WasteCalendarPdfDay = Readonly<{
   isoDate: string;
   dayOfMonth: number;
   weekdayShort: string;
+  isWeekend: boolean;
   weekNumber: number | null;
   holidayLabel: string | null;
+  holidayShortLabel?: string;
   entries: readonly WasteCalendarPdfEntry[];
 }>;
 
@@ -59,6 +61,7 @@ type WasteCalendarPdfHintLegendEntry = Readonly<{
 
 type WasteCalendarPdfPage = Readonly<{
   title: string;
+  continuationLabel: string;
   locationLabel: string;
   contactBlock?: string;
   brandingPlaceholderLabel: string;
@@ -66,6 +69,7 @@ type WasteCalendarPdfPage = Readonly<{
   months: readonly WasteCalendarPdfMonth[];
   fractionLegend: readonly WasteCalendarPdfFractionLegendEntry[];
   hasShiftedPickups: boolean;
+  shiftedPickupLabel: string;
   hints: readonly WasteCalendarPdfHintLegendEntry[];
 }>;
 

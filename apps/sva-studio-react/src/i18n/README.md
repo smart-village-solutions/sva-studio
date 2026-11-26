@@ -5,6 +5,13 @@ Die Host-Übersetzungen unter `src/i18n/resources` sind nach zwei Achsen organis
 - pro Sprache (`de`, `en`)
 - pro Feature bzw. Namespace (`shell`, `account`, `admin`, `admin/instances` usw.)
 
+Studio löst die Schlüssel mit `t('namespace.key', { name })` auf.
+Die Sprachressourcen enthalten Textwerte und verwenden `{{name}}` für Platzhalter.
+Der Host bindet die Ressourcen registrierter Plugins in denselben Übersetzer ein.
+Fehlende Werte fallen auf Deutsch zurück. Fehlt ein Schlüssel auch dort, erscheint
+der Schlüssel selbst. Der öffentliche Abfallkalender nutzt denselben
+frameworkunabhängigen Übersetzer aus `@sva/core` mit eigenen Ressourcen.
+
 ## Strukturregeln
 
 - Jede konkrete Übersetzungsdatei liegt unter `resources/<locale>/...` und endet auf `.resources.ts`.

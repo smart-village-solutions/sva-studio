@@ -114,6 +114,7 @@ type WasteToursContentBodyProps = {
   readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
   readonly setBulkStatusOpen: Dispatch<SetStateAction<boolean>>;
   readonly onOpenAnnualTransfer: () => void;
+  readonly onOpenTourMerge?: () => void;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
   readonly focusFallbackRef: RefObject<HTMLElement | null>;
@@ -127,6 +128,7 @@ export const WasteToursContentBody = ({
   setBulkValidityOpen,
   setBulkStatusOpen,
   onOpenAnnualTransfer,
+  onOpenTourMerge,
   filters,
   table,
   focusFallbackRef,
@@ -150,6 +152,7 @@ export const WasteToursContentBody = ({
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         onOpenAnnualTransfer={onOpenAnnualTransfer}
+        onOpenTourMerge={onOpenTourMerge}
         canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}
         onOpenBulkValidity={() => setBulkValidityOpen(true)}

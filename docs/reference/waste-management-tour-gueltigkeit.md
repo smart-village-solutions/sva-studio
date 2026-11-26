@@ -63,6 +63,14 @@ Aktuelle JSON- und Tabellenexporte schreiben den Status als `draft`, `published`
 Beim Import wird ein fehlender Status als `draft` behandelt; ältere Daten mit `active = true`
 werden als `published`, mit `active = false` als `draft` übernommen.
 
+## Gleich geplante Touren zusammenführen
+
+Markieren Sie in **Touren** mindestens zwei veröffentlichte Touren und öffnen Sie **Ausgewählte Touren zusammenführen**. Die Zieltour bleibt veröffentlicht. Bei gleichnamigen Touren helfen die Abholpunktzahl, der Turnus, die Gültigkeit und die kurze Tour-ID bei der Zuordnung. Eine Tour bleibt ausgewählt, wenn Sie sie mit einem Filter ausblenden. Der Dialog weist auf solche Touren hin.
+
+Die Vorschau nennt die Zieltour und alle Touren, die archiviert werden. Sie zeigt, wie viele Abholpunkte die Zieltour bereits hat, wie viele hinzukommen und wie viele sie danach hat. Gemeinsame Abholpunkte zählen einmal. Archivierte Touren behalten ihre Planung und Zuordnungen im Studio. Ihre eigenen Termine entfallen im öffentlichen Kalender. Abholtage, Abfallarten und Hinweise bleiben für die betroffenen Abholpunkte erhalten.
+
+Die Bestätigung setzt übereinstimmende Abfallarten, Gültigkeit, Terminplanung und Hinweise voraus. Bei individuellen Tour-Einsätzen und abholpunktspezifischen Einzelterminen ist die Zusammenführung gesperrt. Falls sich der geprüfte Stand nach der Vorschau geändert hat oder Studio einen fehlgeschlagenen Vorgang zurückgerollt hat, laden und prüfen Sie die Vorschau erneut. Nach erfolgreicher Bestätigung aktualisiert Studio die Tourenliste.
+
 ## Ortstermine an die App übertragen
 
 Der Mainserver erhält die effektiven Abholtermine einschließlich tourbezogener, globaler und konfigurierter Feiertagsverschiebungen. Feiertage werden bereits beim Lesen aus PostgreSQL als reine Datumswerte (`YYYY-MM-DD`) ausgegeben, damit die Terminberechnung sie ohne Zeitzonenumrechnung berücksichtigt. Der Abgleich vergleicht das aktuelle und das nächste Kalenderjahr, löscht nicht mehr zum Sollbestand gehörende Termine und legt die korrigierten Termine anschließend an. Nach einer Korrektur der Terminberechnung ist ein erneuter Mainserver-Abgleich erforderlich; erst dessen erfolgreicher Abschluss und die Prüfung des übertragenen Bestands bestätigen die Bereinigung.

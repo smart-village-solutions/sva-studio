@@ -48,9 +48,9 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares each existing Waste method and path once as a server handler', () => {
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
-    expect(descriptors).toHaveLength(70);
-    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(53);
-    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(70);
+    expect(descriptors).toHaveLength(71);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(54);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(71);
     expect(descriptors).toContainEqual(expect.objectContaining({
       path: '/api/v1/waste-management/email-monitoring/search',
       method: 'POST',
@@ -60,6 +60,13 @@ describe('pluginWasteManagement contract', () => {
       path: '/api/v1/waste-management/fractions/impact-preview', method: 'POST',
       actionId: 'waste-management.master-data.manage',
     }));
+    expect(descriptors).toContainEqual(
+      expect.objectContaining({
+        path: '/api/v1/waste-management/tours/merge',
+        method: 'POST',
+        actionId: 'waste-management.tours.manage',
+      })
+    );
     expect(descriptors).toContainEqual(
       expect.objectContaining({
         path: '/api/v1/waste-management/tours/annual-transfer',
@@ -562,6 +569,10 @@ describe('pluginWasteManagement contract', () => {
       {
         eventType: 'waste-management.tour.validity-bulk-updated',
         titleKey: 'wasteManagement.audit.tourValidityBulkUpdated',
+      },
+      {
+        eventType: 'waste-management.tour.merged',
+        titleKey: 'wasteManagement.audit.tourMerged',
       },
       {
         eventType: 'waste-management.tour.status-bulk-updated',

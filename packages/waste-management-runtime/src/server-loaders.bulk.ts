@@ -11,10 +11,17 @@ import type {
   WasteTourStatusBulkUpdateResult,
 } from '@sva/waste-management-contracts';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
+import { processWasteTourMerge } from './repositories/tour-merge.js';
+import type { WasteTourMergeInput } from '@sva/waste-management-contracts';
 import type { WasteLoaderContext } from './server-loaders.context.js';
 
 export class WasteBulkLoaders {
   constructor(private readonly context: WasteLoaderContext) {}
+
+  mergeWasteTours = (instanceId: string, input: WasteTourMergeInput) =>
+    this.context.withWasteClient(instanceId, 'merge_waste_tours', (client) =>
+      processWasteTourMerge(client, input)
+    );
 
   saveWasteLocationTourLinksBulk = async (
     instanceId: string,

@@ -1,5 +1,7 @@
 import type {
   WasteTourRecord,
+  WasteTourMergeInput,
+  WasteTourMergeResult,
   WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateResult,
 } from '@sva/waste-management-contracts';
@@ -36,6 +38,12 @@ export const updateWasteManagementTourStatusBulk = async (
   input: UpdateWasteManagementTourStatusBulkInput
 ): Promise<WasteTourStatusBulkUpdateResult> =>
   requestWasteManagementMutation('/api/v1/waste-management/tours/bulk-status', input, 'PUT');
+
+export const mergeWasteManagementTours = (input: WasteTourMergeInput) =>
+  requestWasteManagementMutation<WasteTourMergeResult>(
+    '/api/v1/waste-management/tours/merge',
+    input
+  );
 
 export const deleteWasteManagementTour = async (
   tourId: string

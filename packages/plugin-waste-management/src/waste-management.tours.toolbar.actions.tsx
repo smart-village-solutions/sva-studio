@@ -1,9 +1,11 @@
 import {
   IconCalendarClock as IconCalendarTime,
   IconFilter,
+  IconGitMerge,
   IconToggleRight,
   IconTrash,
 } from '@tabler/icons-react';
+import { wasteTourStatusBulkLimit } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, cn } from '@sva/studio-ui-react';
 
@@ -20,6 +22,7 @@ type WasteToursToolbarActionsProps = {
   readonly onOpenBulkDelete: () => void;
   readonly onOpenBulkValidity: () => void;
   readonly onOpenBulkStatus: () => void;
+  readonly onOpenTourMerge?: () => void;
   readonly onToggleSelectAllFiltered: (checked: boolean) => void;
   readonly onClearSelection: () => void;
   readonly onOpenFilterDialog: () => void;
@@ -88,11 +91,32 @@ const WasteToursBulkActions = ({
   onOpenBulkDelete,
   onOpenBulkValidity,
   onOpenBulkStatus,
+  onOpenTourMerge,
 }: WasteToursToolbarActionsProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const mergeSelectionExceedsLimit = selectedCount > wasteTourStatusBulkLimit;
   const validitySelectionExceedsLimit = selectedCount > wasteTourValidityBulkLimit;
   return (
     <>
+      {onOpenTourMerge ? (
+        <Button
+          type="button"
+          variant="secondary"
+          aria-haspopup="dialog"
+          data-waste-tour-merge-trigger
+          className="h-11 rounded-md px-3"
+          disabled={selectedCount < 2 || mergeSelectionExceedsLimit}
+          onClick={onOpenTourMerge}
+        >
+          <IconGitMerge aria-hidden="true" className="h-4 w-4" />
+          {pt('tours.merge.open')}
+        </Button>
+      ) : null}
+      {onOpenTourMerge && mergeSelectionExceedsLimit ? (
+        <span className="text-sm font-medium text-destructive" role="status">
+          {pt('tours.merge.tooMany', { count: wasteTourStatusBulkLimit })}
+        </span>
+      ) : null}
       <Button
         type="button"
         variant="secondary"

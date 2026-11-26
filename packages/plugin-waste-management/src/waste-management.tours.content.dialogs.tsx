@@ -1,3 +1,8 @@
+import { useState } from 'react';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { StatusNotice } from './waste-management.page.support.js';
+import { WasteToursMergeDialog } from './waste-management.tours-merge-dialog.js';
+
 import type { Dispatch, ReactNode, RefObject, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 
@@ -104,3 +109,59 @@ export const WasteToursContentDialogs = (props: WasteToursContentDialogsProps) =
     />
   </>
 );
+
+export const useWasteToursMerge = (
+  props: WasteToursContentProps,
+  selection: {
+    selectedTourIds: readonly string[];
+    clearSelection: () => void;
+    sortedTours: readonly WasteTourRecord[];
+  },
+  fallbackFocusRef: RefObject<HTMLElement | null>
+) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const [open, setOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  return {
+    open: props.canMergeTours
+      ? () => {
+          setNotice(null);
+          setOpen(true);
+        }
+      : undefined,
+    notice: notice ? <StatusNotice message={{ kind: 'success', text: notice }} /> : null,
+    dialog:
+      open && props.canMergeTours ? (
+        <WasteToursMergeDialog
+          tours={(props.allTours ?? props.tours).filter((tour) =>
+            selection.selectedTourIds.includes(tour.id)
+          )}
+          filteredTours={selection.sortedTours}
+          locationLinks={props.masterDataOverview?.locationTourLinks}
+          onClose={() => setOpen(false)}
+          onRestoreFocus={() => {
+            const trigger = fallbackFocusRef.current?.querySelector<HTMLButtonElement>(
+              '[data-waste-tour-merge-trigger]:enabled'
+            );
+            (trigger ?? fallbackFocusRef.current)?.focus();
+          }}
+          onMerged={async (target, result) => {
+            selection.clearSelection();
+            setOpen(false);
+            const text = pt('tours.merge.success', {
+              target,
+              archived: result.archivedCount,
+              locations: result.totalCount,
+            });
+            setNotice(text);
+            try {
+              await props.onReloadOverview?.(true);
+            } catch {
+              setNotice(`${text} ${pt('tours.merge.refreshListError')}`);
+            }
+          }}
+        />
+      ) : null,
+  };
+};

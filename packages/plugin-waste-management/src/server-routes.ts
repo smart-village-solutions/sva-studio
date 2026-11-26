@@ -51,6 +51,7 @@ export const wasteManagementServerRoutes = [
   ['/api/v1/waste-management/tours/annual-transfer', 'POST', 'createAnnualTourTransfer', 'waste-management.annual-transfer.execute'],
   ['/api/v1/waste-management/tours/annual-transfer/preview', 'POST', 'previewAnnualTourTransfer', 'waste-management.annual-transfer.execute'],
   ['/api/v1/waste-management/tours/bulk-validity', 'PUT', 'updateTourValidityBulk', 'waste-management.tours.manage'],
+  ['/api/v1/waste-management/tours/merge', 'POST', 'mergeTours', 'waste-management.tours.manage'],
   ['/api/v1/waste-management/tours/bulk-status', 'PUT', 'updateTourStatusBulk', 'waste-management.tours.manage'],
   ['/api/v1/waste-management/tours/$tourId', 'DELETE', 'deleteTour', 'waste-management.tours.manage'],
   ['/api/v1/waste-management/tours/$tourId', 'PUT', 'updateTour', 'waste-management.tours.manage'],

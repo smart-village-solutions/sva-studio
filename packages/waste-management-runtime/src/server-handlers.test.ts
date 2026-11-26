@@ -143,6 +143,9 @@ const coreHandlerMocks = vi.hoisted(() => ({
 }));
 
 const loaderMocks = vi.hoisted(() => ({
+  mergeWasteTours: vi.fn(
+    async (): Promise<import('@sva/waste-management-contracts').WasteTourMergeResult | null> => null
+  ),
   previewWasteAddressMutation: vi.fn(async () => ({ token: 'address-preview' })),
   loadWasteMainserverSyncStatus: vi.fn(async () => null),
   loadMasterDataOverview: vi.fn(async () => null),
@@ -276,6 +279,7 @@ const serverLoadersMock = {
     createWasteAnnualTourTransfer: saverMocks.createWasteAnnualTourTransfer,
     updateWasteTourValidityBulk: saverMocks.updateWasteTourValidityBulk,
     updateWasteTourStatusBulk: saverMocks.updateWasteTourStatusBulk,
+    mergeWasteTours: loaderMocks.mergeWasteTours,
     saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
     deleteWasteTour: saverMocks.deleteWasteTour,
     deleteWasteTourAssignment: saverMocks.deleteWasteTourAssignment,
@@ -354,6 +358,69 @@ describe('wasteManagementHandlers', () => {
     expect(sharedWasteManagementDepsMock.authorizeAction).toHaveBeenCalledOnce();
     expect(loaderMocks.previewWasteAddressMutation).not.toHaveBeenCalled();
     expect(saverMocks.mutateWasteAddressInTransaction).not.toHaveBeenCalled();
+  });
+
+  const mergeBody = { tourIds: [sourceId, targetEntityId], targetTourId: targetEntityId };
+  const mergeRequest = (body: Record<string, unknown> = mergeBody) =>
+    new Request('https://studio.test/api/v1/waste-management/tours/merge', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  it('requires tour write access and CSRF before loading a merge preview or saving', async () => {
+    sharedWasteManagementDepsMock.authorizeAction.mockResolvedValueOnce(
+      new Response(null, { status: 403 })
+    );
+    expect((await wasteManagementHandlers.mergeTours(mergeRequest())).status).toBe(403);
+    expect(sharedWasteManagementDepsMock.authorizeAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'instance-1',
+        action: 'waste-management.tours.manage',
+      })
+    );
+    sharedWasteManagementDepsMock.validateCsrf.mockReturnValueOnce(
+      new Response(null, { status: 403 })
+    );
+    expect(
+      (
+        await wasteManagementHandlers.mergeTours(
+          mergeRequest({ ...mergeBody, confirmationToken: 'a'.repeat(64) })
+        )
+      ).status
+    ).toBe(403);
+    expect(loaderMocks.mergeWasteTours).not.toHaveBeenCalled();
+  });
+
+  it('validates the target within the selection and looks up tours in the authenticated tenant', async () => {
+    const invalid = mergeRequest({ ...mergeBody, tourIds: [sourceId, sourceId] });
+    expect((await wasteManagementHandlers.mergeTours(invalid)).status).toBe(400);
+    expect(loaderMocks.mergeWasteTours).not.toHaveBeenCalled();
+    const missing = await wasteManagementHandlers.mergeTours(mergeRequest());
+    expect(missing.status).toBe(404);
+    expect(loaderMocks.mergeWasteTours).toHaveBeenCalledWith('instance-1', mergeBody);
+    expect(sharedWasteManagementDepsMock.emitAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('records a confirmed merge and returns its verified counts', async () => {
+    loaderMocks.mergeWasteTours.mockResolvedValueOnce({
+      kind: 'merged',
+      totalCount: 26,
+      archivedCount: 2,
+    });
+    const body = { ...mergeBody, confirmationToken: 'a'.repeat(64) };
+    const response = await wasteManagementHandlers.mergeTours(mergeRequest(body));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { kind: 'merged', totalCount: 26, archivedCount: 2 },
+    });
+    expect(loaderMocks.mergeWasteTours).toHaveBeenCalledWith('instance-1', body);
+    expect(sharedWasteManagementDepsMock.emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'user-1',
+        outcome: 'success',
+      })
+    );
   });
 
   it('wires every handler to the authenticated wrapper and its delegated dependency set', async () => {

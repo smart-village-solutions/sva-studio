@@ -10,8 +10,33 @@ import {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test('opens a tour from the second page and returns to that page', async ({ page }) => {
+test('opens a paginated tour and creates a draft in the active organization', async ({ page }) => {
   await mockSharedShellRequests(page);
+  await page.route('**/api/v1/iam/me/context', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          activeOrganizationId: 'org-1',
+          personalMainserverReadiness: 'ready',
+          organizations: [
+            {
+              organizationId: 'org-1',
+              organizationKey: 'stadtredaktion',
+              displayName: 'Stadtredaktion',
+              organizationType: 'municipality',
+              contentAuthorPolicy: 'org_or_personal',
+              isActive: true,
+              isDefaultContext: true,
+              mainserverReadiness: 'ready',
+            },
+          ],
+        },
+      },
+    })
+  );
+  await page.route('**/api/v1/mainserver/categories?dataType=tour', (route) =>
+    route.fulfill({ json: { data: [{ id: '7', name: 'Freizeit' }] } })
+  );
   await page.route('**/auth/me', (route) =>
     route.fulfill({
       json: {
@@ -47,7 +72,10 @@ test('opens a tour from the second page and returns to that page', async ({ page
   await page.route('**/api/v1/mainserver/tours**', (route) => {
     const url = new URL(route.request().url());
     if (route.request().method() === 'POST') {
-      writes.push(route.request().postDataJSON());
+      writes.push({
+        principal: route.request().headers()['x-sva-acting-principal-type'],
+        data: route.request().postDataJSON(),
+      });
       return route.fulfill({ status: 201, json: { data: { id: '44', visible: false } } });
     }
     if (url.pathname.endsWith('/44'))
@@ -108,8 +136,22 @@ test('opens a tour from the second page and returns to that page', async ({ page
   await page.getByRole('link', { name: 'Tour anlegen' }).click();
   await page.getByLabel('Name', { exact: true }).fill('Neuer Rundweg');
   await page.getByLabel('Länge', { exact: true }).fill('4');
+  await expect(page.locator('#tour-principal')).toHaveValue('Stadtredaktion');
+  await expect(page.locator('#tour-principal')).not.toBeEditable();
+  await page.locator('#tour-category').selectOption({ label: 'Freizeit' });
   await page.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).first().click();
   await expect(page).toHaveURL(/\/admin\/tours\/44/);
   await expect(page.getByText('Unveröffentlicht', { exact: true })).toBeVisible();
-  expect(writes).toEqual([{ name: 'Neuer Rundweg', lengthKm: 4, visible: false, tourStops: [] }]);
+  expect(writes).toEqual([
+    {
+      principal: 'organization',
+      data: {
+        name: 'Neuer Rundweg',
+        lengthKm: 4,
+        visible: false,
+        categories: [{ id: '7' }],
+        tourStops: [],
+      },
+    },
+  ]);
 });

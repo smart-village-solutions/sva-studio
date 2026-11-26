@@ -206,6 +206,28 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
   });
 
+  it('includes universal and tour categories in the tour editor lookup', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'universal', name: 'Allgemein', dataTypes: [] },
+      { id: 'tour', name: 'Wandern', dataTypes: ['tour'] },
+      { id: 'poi', name: 'Ort', dataTypes: ['point_of_interest'] },
+    ]);
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=tour')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'universal', name: 'Allgemein' },
+        { id: 'tour', name: 'Wandern' },
+      ],
+    });
+  });
+
   it('allows construction editors to read only compatible choices without category-management rights', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('construction-sites.read');

@@ -6,7 +6,7 @@ import {
   getSvaMainserverGenericItem,
   getSvaMainserverNews,
   getSvaMainserverPoi,
-  getSvaMainserverTour,
+  toursRoute,
   getSvaMainserverSurvey,
 } from '@sva/sva-mainserver/server';
 
@@ -191,7 +191,7 @@ export const mainserverMutationProjectionLoaders: Record<
     };
   },
   'tours.tour': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
-    const item = await getSvaMainserverTour(
+    const item = await toursRoute.getSvaMainserverTour(
       {
         activeOrganizationId: target.organizationId,
         ...toMutationProjectionConnectionContext(target),

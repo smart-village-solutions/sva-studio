@@ -26,6 +26,32 @@ describe('iam content list mainserver mapping', () => {
       payload: { active: false },
     });
   });
+  it('uses observed provider and category IDs and safe defaults for sparse tour rows', () => {
+    const tour = { id: '42', categories: [{ id: 'category' }] };
+    const [createdAt, updatedAt] = [publishedTimestamps.createdAt, publishedTimestamps.updatedAt];
+    expect(
+      mapTourItem({ ...tour, updatedAt, dataProvider: { id: 'provider' } }, 'instance-1')
+    ).toMatchObject({
+      title: '42',
+      createdAt: updatedAt,
+      updatedAt,
+      sourceDataProviderId: 'provider',
+      status: 'draft',
+      payload: { mainserverCategoryIds: ['category'] },
+    });
+    expect(
+      mapTourItem(
+        { ...tour, createdAt, dataProvider: { id: 'provider', name: 'Redaktion' } },
+        'instance-1'
+      )
+    ).toMatchObject({
+      createdAt,
+      updatedAt: createdAt,
+      sourceDataProviderName: 'Redaktion',
+    });
+    expect(mapTourItem(tour, 'instance-1')).toMatchObject({ createdAt: '', updatedAt: '' });
+  });
+
   it('maps mainserver access from allow permissions', () => {
     expect(
       mapEventItem(

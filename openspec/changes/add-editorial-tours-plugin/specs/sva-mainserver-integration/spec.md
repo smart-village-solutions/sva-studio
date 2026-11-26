@@ -2,7 +2,7 @@
 
 ### Requirement: Typisierte Tourenadapter nutzen den bestehenden Mainserver-Pfad
 
-Das System SHALL Liste und Detail über getrennte typisierte serverseitige GraphQL-Dokumente an `tours` und `tour` anbinden. Die fachliche Pagination SHALL erst nach Begrenzung auf den gemeinsamen autorisierten Umfang erfolgen. Liste und Detail SHALL im aktiven persönlichen oder organisatorischen Kontext durch denselben Studio-Zugriffsvertrag geschützt sein. Schreibaktionen SHALL den bestehenden Mainserver-Hostpfad mit effektiven Credentials, Principal, DataProvider, Idempotenz und Reconciliation verwenden. Veröffentlichung und Entfernen für `Tour` SHALL erst nach bestätigter Mainserver-Semantik verfügbar sein.
+Das System SHALL Liste und Detail über getrennte typisierte serverseitige GraphQL-Dokumente an `tours` und `tour` anbinden. Die fachliche Pagination SHALL erst nach Begrenzung auf den gemeinsamen autorisierten Umfang erfolgen. Liste und Detail SHALL im aktiven persönlichen oder organisatorischen Kontext durch denselben Studio-Zugriffsvertrag geschützt sein. Der Toureneditor SHALL neue Entwürfe im aktiven Kontext der Tourenliste anlegen. Schreibaktionen SHALL den bestehenden Mainserver-Hostpfad mit effektiven Credentials, Principal, DataProvider, Idempotenz und Reconciliation verwenden. Veröffentlichung und Entfernen für `Tour` SHALL erst nach bestätigter Mainserver-Semantik verfügbar sein.
 
 #### Scenario: Liste und Detail haben getrennte Datengrenzen
 

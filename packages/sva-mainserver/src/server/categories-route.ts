@@ -44,6 +44,7 @@ const categoryContentDataTypes = [
   'news_item',
   'event_record',
   'point_of_interest',
+  'tour',
   'generic_item_voucher',
   'generic_item_construction_site',
   'generic_item_job',

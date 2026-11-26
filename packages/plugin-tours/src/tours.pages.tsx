@@ -1,7 +1,5 @@
 import {
   buildMainserverListUrl,
-  fetchIamContentHistory,
-  formatDateTimeInEditorTimeZone,
   MainserverApiError,
   normalizeListSearch,
   readPluginLocales,
@@ -13,8 +11,6 @@ import {
 import {
   Button,
   StudioDataTable,
-  StudioContentHistory,
-  StudioDetailCard,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -26,6 +22,7 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { tourDetailPath, toursCreatePath, toursPath } from './descriptor.js';
+import { TourDetailContent, type TourDetailFields } from './tour-detail-content.js';
 
 type NamedRecord = { id: string; name?: string | null };
 type TourSummary = NamedRecord & {
@@ -36,10 +33,7 @@ type TourSummary = NamedRecord & {
   categories: readonly NamedRecord[];
   dataProvider?: NamedRecord | null;
 };
-type TourDetail = TourSummary & {
-  geometryTourData: readonly { latitude?: number | null; longitude?: number | null }[];
-  tourStops: readonly NamedRecord[];
-};
+type TourDetail = TourSummary & TourDetailFields;
 type TourList = {
   data: readonly TourSummary[];
   pagination: { page: number; pageSize: number; hasNextPage: boolean };
@@ -214,71 +208,6 @@ export function ToursListPage() {
   );
 }
 
-function TourDetails({ tour, pt }: { tour: TourDetail; pt: Translator }) {
-  const { locale } = readPluginLocales();
-  return (
-    <>
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {summaryFields(pt).map(({ id, header, cell }) => (
-          <div key={id}>
-            <dt className="font-medium">{header}</dt>
-            <dd>{cell(tour)}</dd>
-          </div>
-        ))}
-      </dl>
-      <StudioDetailCard title={pt('route')}>
-        {tour.geometryTourData.length ? (
-          <ol className="list-decimal space-y-1 ps-6">
-            {tour.geometryTourData.map(({ latitude, longitude }, index) => (
-              <li key={index}>
-                {latitude == null || longitude == null
-                  ? pt('unknown')
-                  : pt('coordinates', {
-                      latitude: latitude.toLocaleString(locale, { maximumFractionDigits: 8 }),
-                      longitude: longitude.toLocaleString(locale, { maximumFractionDigits: 8 }),
-                    })}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>{pt('noRoute')}</p>
-        )}
-      </StudioDetailCard>
-      <StudioDetailCard title={pt('stops')}>
-        {tour.tourStops.length ? (
-          <ol className="list-decimal space-y-1 ps-6">
-            {tour.tourStops.map((stop) => (
-              <li key={stop.id}>{stop.name || pt('unknown')}</li>
-            ))}
-          </ol>
-        ) : (
-          <p>{pt('noStops')}</p>
-        )}
-      </StudioDetailCard>
-      <StudioDetailCard title={pt('history')}>
-        <StudioContentHistory
-          contentId={tour.id}
-          loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'tours.tour' })}
-          labels={{
-            loading: pt('loading'),
-            error: pt('historyError'),
-            empty: pt('historyEmpty'),
-            createHint: pt('historyEmpty'),
-            tableLabel: pt('history'),
-            time: pt('historyTime'),
-            action: pt('historyAction'),
-            actor: pt('historyActor'),
-            summary: pt('historySummary'),
-            emptySummary: pt('unknown'),
-          }}
-          formatAction={(action) => pt(action === 'created' ? 'historyCreated' : 'historyChanged')}
-          formatDate={(date) => formatDateTimeInEditorTimeZone(date) ?? date}
-        />
-      </StudioDetailCard>
-    </>
-  );
-}
-
 export function TourDetailPage() {
   const pt = usePluginTranslation('tours');
   const id = useParams({ strict: false, select: (params) => (params as { id: string }).id });
@@ -299,7 +228,19 @@ export function TourDetailPage() {
     >
       {!result ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
       {result && 'error' in result ? <StudioErrorState>{pt(result.error)}</StudioErrorState> : null}
-      {tour ? <TourDetails tour={tour} pt={pt} /> : null}
+      {tour ? (
+        <>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {summaryFields(pt).map(({ id, header, cell }) => (
+              <div key={id}>
+                <dt className="font-medium">{header}</dt>
+                <dd>{cell(tour)}</dd>
+              </div>
+            ))}
+          </dl>
+          <TourDetailContent tour={tour} pt={pt} />
+        </>
+      ) : null}
     </StudioDetailPageTemplate>
   );
 }

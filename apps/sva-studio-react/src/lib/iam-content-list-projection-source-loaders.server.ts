@@ -6,7 +6,7 @@ import {
   listSvaMainserverNews,
   listSvaMainserverPoi,
   listSvaMainserverSurveys,
-  listSvaMainserverTours,
+  toursRoute,
 } from '@sva/sva-mainserver/server';
 
 import {
@@ -229,7 +229,7 @@ export const mainserverProjectionPageLoaders: Record<
     }),
   'tours.tour': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
-      result: await listSvaMainserverTours(
+      result: await toursRoute.listSvaMainserverTours(
         {
           instanceId: target.instanceId,
           keycloakSubject: target.keycloakSubject,

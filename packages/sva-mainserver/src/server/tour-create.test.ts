@@ -63,6 +63,7 @@ const setup = (visible = false) => {
   return {
     execute,
     detail,
+    identity: context.loadDataProviderIdentityWithConfig,
     create: (input?: typeof draft) =>
       handleTourCreate(request(input), actor, context, { list: vi.fn(), detail }),
   };
@@ -113,6 +114,47 @@ describe('Tour draft creation', () => {
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({ reconciliationStatus: 'reconciliation_required', contentId: '42' })
     );
+  });
+
+  it('keeps the write ambiguous after an upstream error and does not repeat it', async () => {
+    const { create, execute, detail } = setup();
+    const upstreamFailure = new Error('transport closed');
+    execute.mockRejectedValueOnce(upstreamFailure);
+
+    const response = await create();
+
+    expect(response.ok).toBe(false);
+    expect(response.headers.get('X-SVA-Mutation-Outcome')).not.toBe('not_applied');
+    expect(execute).toHaveBeenCalledOnce();
+    expect(detail).not.toHaveBeenCalled();
+    expect(state.fail).toHaveBeenCalledWith(
+      expect.objectContaining({ providerOutcome: 'unknown', error: upstreamFailure })
+    );
+  });
+
+  it('reports reconciliation without another write if the draft is verified but binding fails', async () => {
+    const { create, execute } = setup();
+    state.binding.mockResolvedValueOnce({ outcome: 'conflict' });
+    const response = await create();
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      data: { id: '42', visible: false },
+      meta: { reconciliationStatus: 'reconciliation_required' },
+    });
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('ends before any provider write if the key is reused or the principal is denied', async () => {
+    const { create, execute, identity } = setup();
+    state.reserve.mockResolvedValueOnce({ status: 'conflict', message: 'idempotency conflict' });
+    expect((await create()).status).toBe(409);
+    expect(state.authorize).not.toHaveBeenCalled();
+
+    state.authorize.mockResolvedValueOnce(Response.json({ error: 'forbidden' }, { status: 403 }));
+    expect((await create()).status).toBe(403);
+    expect(identity).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('rejects invalid input and replays an already reserved operation without sending a write', async () => {

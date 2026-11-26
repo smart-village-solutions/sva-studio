@@ -1,4 +1,6 @@
-import type { ContentJsonValue, IamContentAccessSummary, IamContentListItem } from '@sva/core';
+import type { ContentJsonValue, IamContentListItem } from '@sva/core';
+
+import { createMainserverItemAccess, type PermissionView } from './iam-content-list-mainserver-access.js';
 
 type MainserverDataProvider = Readonly<{
   id?: string;
@@ -136,48 +138,6 @@ const directCategoryIds = (
   [...new Set([primaryCategoryId, ...(categories ?? []).map(({ id }) => id)])].filter(
     (id): id is string => Boolean(id)
   );
-
-const deriveNamespacedAction = (
-  contentType: string,
-  action: 'create' | 'update'
-): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.${action}` : null;
-};
-
-type PermissionView = Readonly<{ action: string }>;
-
-const hasAllowedAction = (permissions: readonly PermissionView[], action: string): boolean =>
-  permissions.some((permission) => permission.action === action);
-
-const createMainserverItemAccess = (
-  contentType: string,
-  permissions: readonly PermissionView[]
-): IamContentAccessSummary => {
-  const updateAction = deriveNamespacedAction(contentType, 'update');
-  const createAction = deriveNamespacedAction(contentType, 'create');
-  const canUpdate = updateAction ? hasAllowedAction(permissions, updateAction) : false;
-  const canCreate = createAction ? hasAllowedAction(permissions, createAction) : false;
-
-  return canUpdate
-    ? {
-        state: 'editable',
-        canRead: true,
-        canCreate,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: [],
-      }
-    : {
-        state: 'read_only',
-        canRead: true,
-        canCreate,
-        canUpdate: false,
-        reasonCode: 'content_update_missing',
-        organizationIds: [],
-        sourceKinds: [],
-      };
-};
 
 const resolveNewsTitle = (item: MainserverNewsItem): string =>
   normalizeTitle(item.title, normalizeTitle(item.contentBlocks?.[0]?.title, item.id));

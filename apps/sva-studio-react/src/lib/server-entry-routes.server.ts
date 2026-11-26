@@ -64,9 +64,9 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   {
     label: 'mainserver tours',
     getDispatcher: lazyDispatcher(async () => {
-      const { dispatchSvaMainserverToursRequest } = await import('@sva/sva-mainserver/server');
+      const { toursRoute } = await import('@sva/sva-mainserver/server');
       return async (request) => {
-        const response = await dispatchSvaMainserverToursRequest(request);
+        const response = await toursRoute.dispatchSvaMainserverToursRequest(request);
         if (response && request.method === 'POST') {
           const { refreshProjectionAfterMainserverMutation } =
             await import('./mainserver-projection-refresh.server.js');

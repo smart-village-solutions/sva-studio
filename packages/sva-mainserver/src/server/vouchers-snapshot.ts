@@ -82,6 +82,18 @@ export const assertVoucherPoiWritable = (
   }
   voucherWriteSnapshot(poi);
 };
+export function withGraphqlDateInputs(record: RawRecord): RawRecord {
+  if (!Array.isArray(record.dates)) return record;
+  return {
+    ...record,
+    dates: records(record.dates).map((date) => {
+      const flag = date.useOnlyTimeDescription;
+      return flag === 'true' || flag === 'false'
+        ? { ...date, useOnlyTimeDescription: flag === 'true' }
+        : date;
+    }),
+  };
+}
 // GraphQL may add nullable/default fields, but every submitted value must survive.
 export const voucherWriteMatches = (
   actual: unknown,

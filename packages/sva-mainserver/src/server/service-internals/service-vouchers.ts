@@ -18,6 +18,7 @@ import {
   voucherContentFingerprint,
   voucherWriteSnapshot,
   voucherWriteMatches,
+  withGraphqlDateInputs,
   type RawRecord,
 } from '../vouchers-snapshot.js';
 import { toVoucherFields } from '../vouchers-model.js';
@@ -140,18 +141,6 @@ const getVoucherPoi = async (
   assertVoucherPoiWritable(state.poi, state.categories);
   return state;
 };
-function withGraphqlDateInputs(record: RawRecord): RawRecord {
-  if (!Array.isArray(record.dates)) return record;
-  return {
-    ...record,
-    dates: records(record.dates).map((date) => {
-      const flag = date.useOnlyTimeDescription;
-      return flag === 'true' || flag === 'false'
-        ? { ...date, useOnlyTimeDescription: flag === 'true' }
-        : date;
-    }),
-  };
-}
 const writeVoucher = async (
   context: VoucherServiceContext,
   input: SvaMainserverConnectionInput & {
@@ -172,17 +161,10 @@ const writeVoucher = async (
   const variables = {
     ...expected,
     id: input.poiId,
-    vouchers: expected.vouchers.map((voucher) => withGraphqlDateInputs(raw(voucher))),
+    vouchers: records(expected.vouchers).map(withGraphqlDateInputs),
     lunches: lunches === undefined ? undefined : records(lunches).map(withGraphqlDateInputs),
   };
-  await execute(
-    context,
-    input,
-    voucherWriteDocument,
-    'SvaMainserverVoucherWrite',
-    variables,
-    false
-  );
+  await execute(context, input, voucherWriteDocument, 'SvaMainserverVoucherWrite', variables, false);
   const refreshed = await execute<{
     pointOfInterest: unknown;
   }>(context, input, voucherPoiDocument, 'SvaMainserverVoucherPoi', { id: input.poiId });

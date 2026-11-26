@@ -53,14 +53,24 @@ function VoucherEditorForm({
     </form>
   );
 }
-function voucherSaveLabel(state: VoucherEditorState): string {
-  return state.busy
+function renderVoucherSaveAction(state: VoucherEditorState, disabled: boolean, showForm: boolean) {
+  if (state.loading || !showForm) return undefined;
+  const label = state.busy
     ? 'messages.saving'
     : state.id
       ? 'actions.update'
       : state.draft.visible
         ? 'actions.saveVisible'
         : 'actions.saveHidden';
+  return (
+    <Button
+      type="submit"
+      form="voucher-editor-form"
+      disabled={disabled || (Boolean(state.id) && !state.hasChanges)}
+    >
+      {state.t(label)}
+    </Button>
+  );
 }
 export function VoucherEditor(props: VoucherEditorProps) {
   const state = useVoucherEditorState(props);
@@ -82,17 +92,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
           <Link to="/admin/content" search={{ type: 'vouchers.voucher' }}>{state.t('actions.back')}</Link>
         </Button>
       }
-      primaryAction={
-        !state.loading && showForm ? (
-          <Button
-            type="submit"
-            form="voucher-editor-form"
-            disabled={disabled || (Boolean(state.id) && !state.hasChanges)}
-          >
-            {state.t(voucherSaveLabel(state))}
-          </Button>
-        ) : undefined
-      }
+      primaryAction={renderVoucherSaveAction(state, disabled, showForm)}
     >
       <VoucherEditorHeader state={state} actions={actions} />
       {state.loading ? (

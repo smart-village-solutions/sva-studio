@@ -53,7 +53,8 @@ export const collectLegacyContentAliasDefinitions = (
       .filter(
         (resource) =>
           resource.guard === 'content' &&
-          !(resource.resourceId !== 'content' && resource.contentUi?.contentType)
+          (resource.capabilities?.list?.dedicatedRoute === true ||
+            !(resource.resourceId !== 'content' && resource.contentUi?.contentType))
       )
       .map((resource) => ({
         sourcePrefix: `/plugins/${resource.basePath}`,

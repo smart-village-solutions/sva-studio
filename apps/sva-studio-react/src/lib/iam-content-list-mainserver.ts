@@ -298,6 +298,34 @@ export const mapPoiItem = (
   access: createMainserverItemAccess(item.contentType, permissions),
 });
 
+export const mapTourItem = (item: Readonly<{
+  id: string;
+  name?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  visible?: boolean | null;
+  active?: boolean | null;
+  categories: readonly Readonly<{ id: string }>[];
+  dataProvider?: Readonly<{ id: string; name?: string | null }> | null;
+}>, instanceId: string): IamContentListItem => ({
+  id: item.id,
+  instanceId,
+  contentType: 'tours.tour',
+  title: normalizeTitle(item.name ?? undefined, item.id),
+  createdAt: item.createdAt ?? item.updatedAt ?? '',
+  createdBy: 'mainserver',
+  updatedAt: item.updatedAt ?? item.createdAt ?? '',
+  updatedBy: 'mainserver',
+  authorDisplayMode: 'organization',
+  author: 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider ? { id: item.dataProvider.id, name: item.dataProvider.name ?? undefined } : undefined),
+  payload: toContentJsonValue({ active: item.active, mainserverCategoryIds: item.categories.map(({ id }) => id) }),
+  status: item.visible === true ? 'published' : 'draft',
+  validationState: 'valid',
+  historyRef: `mainserver:tours:${item.id}`,
+  access: createMainserverItemAccess('tours.tour', []),
+});
+
 export const mapGenericItem = (
   item: MainserverGenericItem,
   instanceId: string,

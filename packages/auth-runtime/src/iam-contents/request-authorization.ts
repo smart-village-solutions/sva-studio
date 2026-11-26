@@ -8,6 +8,7 @@ export type ContentReadAction =
   | 'news.read'
   | 'events.read'
   | 'poi.read'
+  | 'tours.read'
   | 'generic-items.read'
   | 'faq.read'
   | 'cockpit-cards.read'

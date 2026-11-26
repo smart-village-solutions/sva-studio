@@ -23,6 +23,7 @@ const regularPlugins = [
   'projects',
   'search',
   'surveys',
+  'tours',
   'vouchers',
   'waste-management',
 ];
@@ -33,6 +34,7 @@ const workspacePluginIds = [
   'news',
   'events',
   'poi',
+  'tours',
   'generic-items',
   'vouchers',
   'faq',

@@ -148,6 +148,7 @@ export const createServiceContext = (options: SvaMainserverServiceOptions = {}) 
     executeGraphqlWithConfig,
     executeOwnershipTransferGraphql,
     loadDataProviderIdentity,
+    loadDataProviderIdentityWithConfig,
     ...operations,
     ...diagnostics,
   };

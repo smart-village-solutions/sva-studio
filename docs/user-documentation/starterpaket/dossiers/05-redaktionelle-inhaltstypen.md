@@ -34,6 +34,19 @@ ungespeichert geschützt. Wurde der Inhalt bereits angelegt, führt „Gespeiche
 zur angelegten Fassung; eine zweite Anlage wird verhindert. Fehler lassen
 sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür geöffnet.
 
+## `tours.content.list` und `tours.content.detail` – Touren ansehen
+
+- **Routen:** `/admin/tours` und `/admin/tours/$id`. Frühere Links aus `/plugins/tours` führen zu den neuen Ansichten.
+- **Zugriff:** Öffnen Sie **Touren** im Bereich **Datenverwaltung**. Sie brauchen ein aktives Tourenmodul und das Recht **Touren lesen**. Die Liste zeigt Touren des Datenanbieters im aktiven persönlichen oder Organisationskontext.
+- **Ablauf:** Blättern Sie bei Bedarf mit **Weiter** und öffnen Sie eine Tour über ihren Namen. In der Detailansicht stehen die Routenpunkte und Stationen in ihrer gespeicherten Reihenfolge. **Zurück zur Liste** führt auf dieselbe Seite zurück.
+- **Status:** Die fachliche Aktivität und die Veröffentlichung stehen in eigenen Feldern. Eine Tour kann inaktiv und weiterhin veröffentlicht sein.
+
+## `tours.content.create` – Tourenentwurf anlegen
+
+- **Route:** `/admin/tours/new`. Sie brauchen das Recht **Touren anlegen** und einen bereiten Mainserver-Kontext unter **Anlegen als**.
+- **Ablauf:** Geben Sie Name und Länge in Kilometern ein. Ergänzen Sie bei Bedarf Beschreibung, Kategorie, Ort, Kontaktdaten, Betreiber, Routenpunkte, Stationen und einen Bildlink. Die Stationsliste lässt sich auch per Tastatur sortieren.
+- **Speichern:** **Als Entwurf speichern** legt die Tour unveröffentlicht an und öffnet die Detailansicht. Studio zeigt den Vorgang in der Historie an.
+
 ## `cockpit-cards.content.create` – Kachel anlegen
 
 - **Route / Typ / Owner:** `/admin/cockpit-cards/new`, Anlegen, Plugin `cockpit-cards`.

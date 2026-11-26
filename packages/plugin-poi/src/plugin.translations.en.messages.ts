@@ -6,7 +6,7 @@ export const poiMessagesEn = {
   lunchesUnavailable: 'Existing lunch offers could not be loaded completely. The location was not saved. Reload the page and try again.',
   vouchersForLocation: 'View vouchers at this location',
   visibilityPartialFailure:
-    'The place was saved, but its visibility could not be updated. Open the saved place and check its visibility.',
+    'The place was saved. Its requested visibility could not be confirmed. Open the saved place and check its visibility.',
   createdNavigationError: 'The content was created, but the editing view could not be opened.',
   unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
   loading: 'Loading POI.',

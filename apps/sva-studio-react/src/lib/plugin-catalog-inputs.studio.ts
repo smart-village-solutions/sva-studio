@@ -22,6 +22,7 @@ const workspacePluginCatalogConfig = [
     sourceRef: 'packages/plugin-events',
   },
   { pluginId: 'poi', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-poi' },
+  { pluginId: 'tours', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-tours' },
   {
     pluginId: 'generic-items',
     sourceType: 'workspace',

@@ -198,7 +198,12 @@ const enrichProjectionRowsWithBindingState = async (
 const resolveSlimProjectionStatus = (
   item: SvaMainserverProjectionListItem
 ): MainserverProjectionRowInput['status'] => {
-  if (item.visible === false || (item.contentType !== 'poi.point-of-interest' && item.active === false) || item.status === 'DRAFT') return 'draft';
+  if (
+    item.visible === false ||
+    (item.contentType !== 'poi.point-of-interest' && item.active === false) ||
+    item.status === 'DRAFT'
+  )
+    return 'draft';
   return item.status === 'ARCHIVED' ? 'archived' : 'published';
 };
 
@@ -270,7 +275,10 @@ export const loadMainserverProjectionPage = async (
   }
   const refreshCredentialSource =
     pageQuery.page === 1 ? await assertProjectionCredentialsReady(target) : undefined;
-  if ((process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy') {
+  if (
+    target.contentType !== 'tours.tour' &&
+    (process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy'
+  ) {
     const result = await listSvaMainserverProjection({
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,

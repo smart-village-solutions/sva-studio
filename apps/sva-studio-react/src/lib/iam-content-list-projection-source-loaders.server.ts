@@ -6,6 +6,7 @@ import {
   listSvaMainserverNews,
   listSvaMainserverPoi,
   listSvaMainserverSurveys,
+  listSvaMainserverTours,
 } from '@sva/sva-mainserver/server';
 
 import {
@@ -14,8 +15,12 @@ import {
   mapNewsItem,
   mapPoiItem,
   mapSurveyItem,
+  mapTourItem,
 } from './iam-content-list-mainserver.js';
-import { MAINSERVER_PROJECTION_ITEM_LIMIT, type MainserverContentType } from './iam-content-list-api.shared.js';
+import {
+  MAINSERVER_PROJECTION_ITEM_LIMIT,
+  type MainserverContentType,
+} from './iam-content-list-api.shared.js';
 import type {
   ContentProjectionSyncTarget,
   MainserverProjectionRowInput,
@@ -217,6 +222,28 @@ export const mainserverProjectionPageLoaders: Record<
         ...(target.organizationId ? { organizationId: target.organizationId } : {}),
         credentialSource,
         sourceEntityType: 'news.article',
+        sourceEntityId: item.id,
+      }),
+      projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
+    }),
+  'tours.tour': async ({ target, pageQuery }) =>
+    buildLoadedProjectionPage({
+      result: await listSvaMainserverTours(
+        {
+          instanceId: target.instanceId,
+          keycloakSubject: target.keycloakSubject,
+          activeOrganizationId: target.organizationId,
+          ...toProjectionPrincipalContext(target),
+        },
+        pageQuery
+      ),
+      pageQuery,
+      mapRow: (item, credentialSource) => ({
+        ...mapTourItem(item, target.instanceId),
+        ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'tours.tour',
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,

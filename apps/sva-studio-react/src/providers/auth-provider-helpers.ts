@@ -36,6 +36,7 @@ const MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION = new Map<string, string>([
   ['news.read', 'news.article'],
   ['events.read', 'events.event-record'],
   ['poi.read', 'poi.point-of-interest'],
+  ['tours.read', 'tours.tour'],
   ['generic-items.read', 'generic-items.generic-item'],
   ['faq.read', 'faq.faq'],
   ['cockpit-cards.read', 'cockpit-cards.cockpit-card'],

@@ -147,6 +147,7 @@ const createListRouteDefinition = (
 });
 
 const shouldExposeAdminResourceListRoute = (resource: AdminResourceDefinition): boolean =>
+  resource.capabilities?.list?.dedicatedRoute === true ||
   !(resource.guard === 'content' && resource.resourceId !== 'content' && resource.contentUi?.contentType);
 
 const createAdminResourceRouteDefinitions = (

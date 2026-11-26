@@ -62,6 +62,21 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
     ),
   },
   {
+    label: 'mainserver tours',
+    getDispatcher: lazyDispatcher(async () => {
+      const { dispatchSvaMainserverToursRequest } = await import('@sva/sva-mainserver/server');
+      return async (request) => {
+        const response = await dispatchSvaMainserverToursRequest(request);
+        if (response && request.method === 'POST') {
+          const { refreshProjectionAfterMainserverMutation } =
+            await import('./mainserver-projection-refresh.server.js');
+          await refreshProjectionAfterMainserverMutation(request, response, 'tours.tour');
+        }
+        return response;
+      };
+    }),
+  },
+  {
     label: 'mainserver generic items',
     getDispatcher: lazyDispatcher(() =>
       import('./mainserver-generic-items-api.server').then(

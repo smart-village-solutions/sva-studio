@@ -16,6 +16,11 @@ export * from './server/root-interface-contract.js';
 export * from './server/service.js';
 export * from './server/surveys-route.js';
 export {
+  dispatchSvaMainserverToursRequest,
+  getSvaMainserverTour,
+  listSvaMainserverTours,
+} from './server/tours-route.js';
+export {
   CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE,
   type SvaMainserverWasteSyncItem,
   type SvaMainserverWasteSyncSnapshot,

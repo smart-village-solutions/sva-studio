@@ -107,6 +107,38 @@ describe('SearchableSelect', () => {
     expect(option.parentElement?.getAttribute('role')).toBe('presentation');
   });
 
+  it('keeps wheel and touch scrolling inside the options', () => {
+    const onWheel = vi.fn();
+    const onTouchMove = vi.fn();
+    render(
+      <div onWheel={onWheel} onTouchMove={onTouchMove}>
+        <SearchableSelect
+          id="organization-select"
+          label="Organisation"
+          value=""
+          placeholder="Bitte wählen"
+          searchPlaceholder="Suchen"
+          emptyText="Keine Treffer"
+          options={[{ value: 'org-1', label: 'Musterstadt' }, ...fillerOptions]}
+          onValueChange={vi.fn()}
+        />
+      </div>
+    );
+    const trigger = screen.getByRole('button', { name: 'Organisation' });
+    fireEvent.click(trigger);
+    const option = screen.getByRole('option', { name: 'Musterstadt' });
+
+    expect(fireEvent.wheel(option, { deltaY: 120 })).toBe(true);
+    expect(fireEvent.touchMove(option)).toBe(true);
+    expect(onWheel).not.toHaveBeenCalled();
+    expect(onTouchMove).not.toHaveBeenCalled();
+
+    fireEvent.wheel(trigger, { deltaY: 120 });
+    fireEvent.touchMove(trigger);
+    expect(onWheel).toHaveBeenCalledOnce();
+    expect(onTouchMove).toHaveBeenCalledOnce();
+  });
+
   it('supports arrow navigation and enter selection from the search input', () => {
     const onValueChange = vi.fn();
 

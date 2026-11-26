@@ -170,7 +170,7 @@ export type WasteToursDataProps = {
 };
 
 export type WasteToursActionsProps = {
-  readonly onReloadOverview?: () => Promise<void>;
+  readonly onReloadOverview?: (propagateError?: boolean) => Promise<void>;
   readonly onOpenCreateDialog: () => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
@@ -187,6 +187,7 @@ export type WasteToursActionsProps = {
 
 export type WasteToursCapabilitiesProps = {
   readonly canDuplicateTour?: boolean;
+  readonly canMergeTours?: boolean;
   readonly canManageScheduling?: boolean;
   readonly canTransferAnnualTours?: boolean;
   readonly search?: WasteManagementSearchParams;

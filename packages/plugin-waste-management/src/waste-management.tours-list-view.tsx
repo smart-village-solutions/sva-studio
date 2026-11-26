@@ -51,6 +51,7 @@ export const WasteToursListView = ({
       onUpdateTourValidityBulk={controller.onUpdateTourValidityBulk}
       onUpdateTourStatusBulk={controller.onUpdateTourStatusBulk}
       canDuplicateTour={canDuplicateTour}
+      canMergeTours={canManageAssignments}
       canManageScheduling={canManageScheduling}
       canTransferAnnualTours={canDuplicateTour && canManageScheduling}
       search={search}

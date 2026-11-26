@@ -1,4 +1,7 @@
-import { loadWasteEmailMonitoring, type WasteEmailMonitoringLookup } from './repositories/email-reminders.monitoring.js';
+import {
+  loadWasteEmailMonitoring,
+  type WasteEmailMonitoringLookup,
+} from './repositories/email-reminders.monitoring.js';
 import type { StudioJobRepository } from '@sva/data-repositories';
 import type {
   listExternalInterfaceRecords,
@@ -112,8 +115,12 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     deleteWasteHolidayRule,
     saveWastePdfStaticSettings,
   } = createEntitiesRules(context);
-  const { saveWasteLocationTourLinksBulk, updateWasteTourValidityBulk, updateWasteTourStatusBulk } =
-    new WasteBulkLoaders(context);
+  const {
+    saveWasteLocationTourLinksBulk,
+    updateWasteTourValidityBulk,
+    updateWasteTourStatusBulk,
+    mergeWasteTours,
+  } = new WasteBulkLoaders(context);
   const { previewWasteAnnualTourTransfer, createWasteAnnualTourTransfer } = createAnnual(context);
   const { previewWasteAddressMutation, mutateWasteAddressInTransaction } = context;
 
@@ -196,6 +203,7 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     createWasteAnnualTourTransfer,
     updateWasteTourValidityBulk,
     updateWasteTourStatusBulk,
+    mergeWasteTours,
     deleteWasteTour,
     deleteWasteTourDateShift,
     createWasteTourDateShift,

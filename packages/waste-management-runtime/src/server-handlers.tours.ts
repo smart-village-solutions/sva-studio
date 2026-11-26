@@ -1,3 +1,4 @@
+import { handleWasteTourMerge } from './handlers/tour-merge.js';
 import type { WasteServerHandlerDeps } from './server-handler-deps.js';
 export const createWasteTourHandlers = (deps: WasteServerHandlerDeps) => {
   const {
@@ -89,10 +90,15 @@ export const createWasteTourBulkHandlers = (deps: WasteServerHandlerDeps) => {
     updateWasteManagementTourStatusBulkInternal,
     updateWasteManagementTourValidityBulkInternal,
     updateWasteTourStatusBulk,
+    mergeWasteTours,
     updateWasteTourValidityBulk,
     withAuthenticatedWasteManagementHandler,
   } = deps;
   return {
+    mergeTours: (request: Request): Promise<Response> =>
+      withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+        handleWasteTourMerge(nextRequest, ctx, bindWasteAuditActor(ctx), mergeWasteTours)
+      ),
     updateTourValidityBulk: (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
         updateWasteManagementTourValidityBulkInternal(nextRequest, ctx, {

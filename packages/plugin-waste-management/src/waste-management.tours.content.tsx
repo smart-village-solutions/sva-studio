@@ -17,7 +17,7 @@ import {
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
 import { useWasteToursAnnualTransfer } from './waste-management.tours-annual-transfer.js';
-import { WasteToursContentDialogs } from './waste-management.tours.content.dialogs.js';
+import { WasteToursContentDialogs, useWasteToursMerge } from './waste-management.tours.content.dialogs.js';
 export { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
 export const WasteToursContent = (props: WasteToursContentProps) => {
   const annualTransfer = useWasteToursAnnualTransfer(props);
@@ -113,6 +113,11 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     endDateFrom,
     endDateTo,
   });
+  const merge = useWasteToursMerge(
+    props,
+    { selectedTourIds, clearSelection, sortedTours },
+    deleteFocusFallbackRef
+  );
   useWasteTabPanelActions(null);
   const filters: WasteToursFilterViewModel = {
     query,
@@ -209,6 +214,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
+      {merge.notice}
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
@@ -216,11 +222,13 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         onOpenAnnualTransfer={annualTransfer.open}
+        onOpenTourMerge={merge.open}
         filters={filters}
         table={table}
         focusFallbackRef={deleteFocusFallbackRef}
         focusFallbackLabel={pt('tabs.tours.title')}
       />
+      {merge.dialog}
       <WasteToursContentDialogs
         annualTransferDialog={annualTransfer.dialog}
         allTours={allTours}

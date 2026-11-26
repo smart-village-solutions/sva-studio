@@ -200,7 +200,7 @@ export const SearchableSelectPopover = (props: SearchableSelectPopoverProps) => 
         sideOffset={8}
         collisionPadding={16}
         aria-label={label}
-        className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] space-y-2 overflow-y-auto rounded-lg border border-border-subtle bg-popover p-2 text-popover-foreground shadow-shell"
+        className="z-50 flex max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-hidden rounded-lg border border-border-subtle bg-popover p-2 text-popover-foreground shadow-shell"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           (showSearch ? inputRef.current : listRef.current)?.focus();

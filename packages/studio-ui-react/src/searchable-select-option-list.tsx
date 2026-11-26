@@ -78,7 +78,7 @@ export const SearchableSelectOptionList = ({
     aria-activedescendant={
       onKeyDown && filteredOptions[activeIndex] ? toOptionId(id, activeIndex) : undefined
     }
-    className="max-h-60 space-y-1 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    className="min-h-0 max-h-60 space-y-1 overflow-y-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
   >
     {filteredOptions.length ? (
       filteredOptions.map((option, index) => {

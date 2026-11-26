@@ -53,18 +53,29 @@ function VoucherEditorForm({
     </form>
   );
 }
-function voucherSaveLabel(state: VoucherEditorState): string {
-  return state.busy
+function renderVoucherSaveAction(state: VoucherEditorState, disabled: boolean, showForm: boolean) {
+  if (state.loading || !showForm) return undefined;
+  const label = state.busy
     ? 'messages.saving'
     : state.id
       ? 'actions.update'
       : state.draft.visible
         ? 'actions.saveVisible'
         : 'actions.saveHidden';
+  return (
+    <Button
+      type="submit"
+      form="voucher-editor-form"
+      disabled={disabled || (Boolean(state.id) && !state.hasChanges)}
+    >
+      {state.t(label)}
+    </Button>
+  );
 }
 export function VoucherEditor(props: VoucherEditorProps) {
   const state = useVoucherEditorState(props);
   const actions = useVoucherEditorActions(state);
+  const showForm = !state.id || state.record !== null;
   const disabled =
     state.busy ||
     state.unknown ||
@@ -81,17 +92,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
           <Link to="/admin/content" search={{ type: 'vouchers.voucher' }}>{state.t('actions.back')}</Link>
         </Button>
       }
-      primaryAction={
-        !state.loading ? (
-          <Button
-            type="submit"
-            form="voucher-editor-form"
-            disabled={disabled || (Boolean(state.id) && !state.hasChanges)}
-          >
-            {state.t(voucherSaveLabel(state))}
-          </Button>
-        ) : undefined
-      }
+      primaryAction={renderVoucherSaveAction(state, disabled, showForm)}
     >
       <VoucherEditorHeader state={state} actions={actions} />
       {state.loading ? (
@@ -100,7 +101,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
         <>
           <VoucherEditorUsage state={state} actions={actions} />
           {state.record && <VoucherHistory id={state.record.id} />}
-          <VoucherEditorForm state={state} actions={actions} disabled={disabled} />
+          {showForm && <VoucherEditorForm state={state} actions={actions} disabled={disabled} />}
           <VoucherResetDialog state={state} actions={actions} />
         </>
       )}

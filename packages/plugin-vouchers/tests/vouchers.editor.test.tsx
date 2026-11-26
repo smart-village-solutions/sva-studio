@@ -213,7 +213,7 @@ describe('voucher editor', () => {
     expect(state.commit).toHaveBeenCalledOnce();
     expect(sessionStorage.getItem('voucher-pending:user:2')).toContain(preparation.preparationId);
   });
-  it('reconciles a lost response after reload without re-reading the deleted old ID or repeating the write', async () => {
+  it('offers reconciliation without an empty editor when the previous ID no longer loads', async () => {
     sessionStorage.setItem(
       'voucher-pending:user:2',
       JSON.stringify({
@@ -223,10 +223,31 @@ describe('voucher editor', () => {
     );
     state.get.mockRejectedValue(new Error('old_id_deleted'));
     render(<VoucherEditor id="2" />);
-    fireEvent.click(await screen.findByRole('button', { name: labels.actions.reconcile }));
+    const reconcile = await screen.findByRole<HTMLButtonElement>('button', {
+      name: labels.actions.reconcile,
+    });
+    await waitFor(() => expect(reconcile.disabled).toBe(false));
+    expect(screen.queryByLabelText(labels.fields.title)).toBeNull();
+    fireEvent.click(reconcile);
     await waitFor(() => expect(state.reconcile).toHaveBeenCalledOnce());
     await waitFor(() => expect(state.navigate).toHaveBeenCalled());
-    expect(state.get).not.toHaveBeenCalled();
+    expect(state.get).toHaveBeenCalledWith('2', 'user');
+    expect(state.commit).not.toHaveBeenCalled();
+  });
+
+  it('loads saved voucher values while a previous write remains unresolved', async () => {
+    sessionStorage.setItem(
+      'voucher-pending:user:2',
+      JSON.stringify({
+        preparationId: preparation.preparationId,
+        payloadHash: preparation.payloadHash,
+      })
+    );
+    render(<VoucherEditor id="2" />);
+    const title = await screen.findByLabelText<HTMLInputElement>(labels.fields.title);
+    expect(title.value).toBe(record.title);
+    expect(title.closest('fieldset')?.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: labels.actions.reconcile })).toBeDefined();
     expect(state.commit).not.toHaveBeenCalled();
   });
 });
@@ -793,12 +814,11 @@ it('keeps a failed visibility action separate from destructive content editing',
 it('blocks editing after a malformed recovery marker rather than retrying the write', async () => {
   sessionStorage.setItem('voucher-pending:user:2', '{}');
   render(<VoucherEditor id="2" />);
-  fireEvent.click(await screen.findByRole('button', { name: labels.actions.reconcile }));
-  await waitFor(() =>
-    expect(screen.getByLabelText(labels.fields.title).closest('fieldset')?.disabled).toBe(true)
-  );
+  const title = await screen.findByLabelText(labels.fields.title);
+  fireEvent.click(screen.getByRole('button', { name: labels.actions.reconcile }));
+  expect(title.closest('fieldset')?.disabled).toBe(true);
   expect(state.reconcile).not.toHaveBeenCalled();
-  expect(state.get).not.toHaveBeenCalled();
+  expect(state.get).toHaveBeenCalledWith('2', 'user');
   expect(state.commit).not.toHaveBeenCalled();
 });
 

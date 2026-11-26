@@ -18,6 +18,7 @@ import {
   voucherContentFingerprint,
   voucherWriteSnapshot,
   voucherWriteMatches,
+  withGraphqlDateInputs,
   type RawRecord,
 } from '../vouchers-snapshot.js';
 import { toVoucherFields } from '../vouchers-model.js';
@@ -155,23 +156,27 @@ const writeVoucher = async (
   if (current.fingerprint !== input.expectedFingerprint)
     throw new Error('voucher_content_conflict');
   const { existing, next, uuid, updated, expected } = buildVoucherWrite(current, input);
-  await execute(
-    context,
-    input,
-    voucherWriteDocument,
-    'SvaMainserverVoucherWrite',
-    { ...expected, id: input.poiId },
-    false
-  );
+  const lunches = current.snapshot.lunches;
+  // DateType returns strings, while DateInput expects booleans. Keep snapshots in read format.
+  const variables = {
+    ...expected,
+    id: input.poiId,
+    vouchers: records(expected.vouchers).map(withGraphqlDateInputs),
+    lunches: lunches === undefined ? undefined : records(lunches).map(withGraphqlDateInputs),
+  };
+  await execute(context, input, voucherWriteDocument, 'SvaMainserverVoucherWrite', variables, false);
   const refreshed = await execute<{
     pointOfInterest: unknown;
   }>(context, input, voucherPoiDocument, 'SvaMainserverVoucherPoi', { id: input.poiId });
-  if (!voucherWriteMatches(refreshed.pointOfInterest, expected))
+  if (!voucherWriteMatches(refreshed.pointOfInterest, expected, voucherPoiWriteFields))
     throw new Error('voucher_reconciliation_required');
   const matches = records(raw(refreshed.pointOfInterest).vouchers).filter(
     (item) => item.payload != null && raw(item.payload).id === uuid
   );
-  if (matches.length !== 1 || !voucherWriteMatches(matches[0], updated))
+  if (
+    matches.length !== 1 ||
+    !voucherWriteMatches(matches[0], updated, voucherPoiWriteFields.vouchers)
+  )
     throw new Error('voucher_reconciliation_required');
   const after = records(raw(refreshed.pointOfInterest).vouchers);
   const voucherIdChanges = existing.map((item, i) => {

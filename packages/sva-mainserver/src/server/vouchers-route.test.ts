@@ -293,10 +293,15 @@ describe('voucher request boundaries', () => {
 });
 describe('voucher recovery', () => {
   it('reads back by pre-issued identity after response loss without another provider write', async () => {
-    const prepared = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+    const prepared = await dispatchSvaMainserverVouchersRequest(
+      request('prepare', { voucher: { ...voucher, dateStart: '2026-11-25' } })
+    );
     const { data } = await prepared!.json();
     const binding = state.complete.mock.calls.at(-1)![0].responseBody;
     expect(data).not.toHaveProperty('expectedSnapshot');
+    expect(binding.expectedSnapshot.vouchers[1].dates).toEqual([
+      { dateStart: '2026-11-25', dateEnd: null },
+    ]);
     state.reserve.mockResolvedValue({
       status: 'replay',
       responseBody: binding,
@@ -309,6 +314,7 @@ describe('voucher recovery', () => {
           (item: Record<string, unknown>, index: number) => ({
             ...item,
             id: index === 0 ? '2' : '99',
+            ...(index === 1 ? { dates: [{ dateStart: '2026-11-25', dateEnd: '' }] } : {}),
           })
         ),
       },

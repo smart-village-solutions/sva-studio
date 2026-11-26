@@ -82,20 +82,46 @@ export const assertVoucherPoiWritable = (
   }
   voucherWriteSnapshot(poi);
 };
+export function withGraphqlDateInputs(record: RawRecord): RawRecord {
+  if (!Array.isArray(record.dates)) return record;
+  return {
+    ...record,
+    dates: records(record.dates).map((date) => {
+      const flag = date.useOnlyTimeDescription;
+      return flag === 'true' || flag === 'false'
+        ? { ...date, useOnlyTimeDescription: flag === 'true' }
+        : date;
+    }),
+  };
+}
 // GraphQL may add nullable/default fields, but every submitted value must survive.
-export const voucherWriteMatches = (actual: unknown, expected: unknown): boolean => {
+export const voucherWriteMatches = (
+  actual: unknown,
+  expected: unknown,
+  voucherShape?: WriteShape
+): boolean => {
   if (expected === undefined) return true;
   if (Array.isArray(expected))
     return (
       Array.isArray(actual) &&
       expected.length === actual.length &&
-      expected.every((item, index) => voucherWriteMatches(actual[index], item))
+      expected.every((item, index) => voucherWriteMatches(actual[index], item, voucherShape))
     );
   if (expected !== null && typeof expected === 'object') {
     if (actual === null || typeof actual !== 'object' || Array.isArray(actual)) return false;
-    return Object.entries(expected).every(([key, value]) =>
-      voucherWriteMatches((actual as RawRecord)[key], value)
-    );
+    return Object.entries(expected).every(([key, value]) => {
+      const observed = (actual as RawRecord)[key];
+      const field = voucherShape?.[key];
+      // GraphQL DateType returns an empty string for a cleared date boundary.
+      if (
+        field === true &&
+        (key === 'dateStart' || key === 'dateEnd') &&
+        value === null &&
+        observed === ''
+      )
+        return true;
+      return voucherWriteMatches(observed, value, typeof field === 'object' ? field : undefined);
+    });
   }
   return actual === expected;
 };

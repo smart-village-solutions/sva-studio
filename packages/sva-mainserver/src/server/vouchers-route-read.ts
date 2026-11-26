@@ -31,6 +31,7 @@ import {
   rawRecordSchema,
 } from './vouchers-snapshot.js';
 import { TYPE, BASE, local } from './vouchers-route-access.js';
+import { voucherPoiWriteFields } from '../generated/vouchers.js';
 export const reconcile = async (request: Request, ctx: AuthenticatedRequestContext) => {
   if (validateCsrf(request))
     return errorJson(403, 'csrf_validation_failed', 'csrf_validation_failed');
@@ -79,7 +80,7 @@ export const reconcile = async (request: Request, ctx: AuthenticatedRequestConte
   const aggregate = await getSvaMainserverVoucherPoi({ ...actor, poiId: binding.poiId });
   // The complete expectation also contains the bound POI operation identity.
   // Old preparations without an expectation remain unresolved.
-  if (!voucherWriteMatches(aggregate.poi, binding.expectedSnapshot))
+  if (!voucherWriteMatches(aggregate.poi, binding.expectedSnapshot, voucherPoiWriteFields))
     return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
   const matches = records(aggregate.poi.vouchers).filter(
     (item) => item.payload != null && raw(item.payload).id === binding.voucherIdentity

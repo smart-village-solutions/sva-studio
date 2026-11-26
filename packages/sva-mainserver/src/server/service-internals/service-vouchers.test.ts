@@ -89,6 +89,11 @@ function setup() {
         dates: (item.dates as RawRecord[]).map((date) => ({
           ...blank(voucherPoiWriteFields.vouchers.dates),
           ...date,
+          dateStart: date.dateStart ?? '',
+          dateEnd: date.dateEnd ?? '',
+          ...(typeof date.useOnlyTimeDescription === 'boolean'
+            ? { useOnlyTimeDescription: String(date.useOnlyTimeDescription) }
+            : {}),
         })),
         quota: {
           ...(item.quota as RawRecord),
@@ -170,19 +175,20 @@ describe('voucher aggregate write', () => {
     expect(execute.mock.calls.some(([call]) => call.operationName === 'SvaMainserverVoucherWrite')).toBe(false);
     expect(poi.vouchers[0]!.dataProvider.id).toBe('foreign-provider');
   });
-  it('preserves weekday and time rules when editing content without date boundaries', async () => {
-    const { poi, service, fingerprint } = setup();
+  it('preserves weekday and time rules through Boolean input and String readback', async () => {
+    const { poi, execute, service, fingerprint } = setup();
     const date = {
       ...blank(voucherPoiWriteFields.vouchers.dates),
       weekday: 'Monday',
       timeStart: '09:00',
       timeEnd: '12:00',
       timeDescription: 'Morning',
-      useOnlyTimeDescription: false,
+      useOnlyTimeDescription: 'false',
     };
-    const [target] = poi.vouchers;
-    if (!target) throw new Error('Missing voucher fixture');
+    const [target, sibling] = poi.vouchers;
+    if (!target || !sibling) throw new Error('Missing voucher fixture');
     target.dates = [date];
+    sibling.dates = [{ ...date, useOnlyTimeDescription: 'true' }];
     const result = await service.writeVoucher({
       ...connection,
       poiId: '1',
@@ -191,8 +197,14 @@ describe('voucher aggregate write', () => {
       creationId: 'attempt',
       expectedFingerprint: fingerprint(),
     });
-    expect(result.dates).toEqual([{ dateStart: null, dateEnd: null }]);
-    expect(poi.vouchers[0]?.dates).toEqual([date]);
+    const write = execute.mock.calls.find(
+      ([call]) => call.operationName === 'SvaMainserverVoucherWrite'
+    )?.[0];
+    expect(write?.variables.vouchers[0].dates[0].useOnlyTimeDescription).toBe(false);
+    expect(write?.variables.vouchers[1].dates[0].useOnlyTimeDescription).toBe(true);
+    expect(write?.variables.vouchers[0].visible).toBe(false);
+    expect(result.dates).toEqual([{ dateStart: '', dateEnd: '' }]);
+    expect(poi.vouchers[0]?.dates).toEqual([{ ...date, dateStart: '', dateEnd: '' }]);
   });
   it('retains unedited image metadata and opaque payload while rebinding a library asset', async () => {
     const { poi, service, fingerprint } = setup();

@@ -72,10 +72,12 @@ const renderMonthDay = (
   }>
 ): void => {
   const { commands, day, rowHeight, rowTop, width, x } = input;
-  const hasWeekend = day !== null && (day.weekdayShort === 'Sa' || day.weekdayShort === 'So');
+  const isWeekendOrHoliday =
+    day !== null &&
+    (day.weekdayShort === 'Sa' || day.weekdayShort === 'So' || day.holidayLabel !== null);
   drawFilledRectangle(
     { commands, x, top: rowTop, width, height: rowHeight },
-    hasWeekend ? [0.94, 0.96, 0.99] : [1, 1, 1]
+    isWeekendOrHoliday ? [0.94, 0.96, 0.99] : [1, 1, 1]
   );
   drawStrokedRectangle(
     { commands, x, top: rowTop, width, height: rowHeight },

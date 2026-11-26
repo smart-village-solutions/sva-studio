@@ -12,20 +12,13 @@ import {
   type WasteMaterializationSyncState,
 } from './waste-management-mainserver-sync.snapshot.server.js';
 import {
-  averageBatchDuration,
   buildSyncProgress,
   formatBatchStepLabel,
   reportSyncProgress,
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
-import {
-  buildWasteSyncCompatibilityKey,
-  chunkWasteSyncItems,
-  toWasteSyncRow,
-  type WasteSyncRow,
-} from './waste-management-mainserver-sync.rows.js';
-
+import { buildWasteSyncPlan, toWasteSyncRow, type WasteSyncRow } from './waste-management-mainserver-sync.rows.js';
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
 type WasteManagementSyncMainserverJobInput = {
@@ -73,15 +66,19 @@ type WasteManagementMainserverSyncPlanDetails = Readonly<{
 const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
 
 const filterSyncRowsToYearWindow = (
-  rows: readonly WasteSyncRow[],
+  rows: readonly WasteMainserverSyncItem[],
   currentYear: number,
   nextYear: number
 ): readonly WasteSyncRow[] => {
   const yearWindow = new Set(getEffectiveYearWindow(currentYear, nextYear));
-  return rows.filter((row) => {
+  const result: WasteSyncRow[] = [];
+  for (const row of rows) {
     const pickupDate = parseIsoDateUtc(row.pickupDate);
-    return pickupDate ? yearWindow.has(pickupDate.getUTCFullYear()) : false;
-  });
+    if (pickupDate && yearWindow.has(pickupDate.getUTCFullYear())) {
+      result.push(toWasteSyncRow(row));
+    }
+  }
+  return result;
 };
 
 const buildStudioRowsFromSyncState = (
@@ -93,8 +90,6 @@ const buildStudioRowsFromSyncState = (
   return buildStudioRowsFromMaterialization({
     pickupDates: buildMaterializedLocationTourPickupDates({
       ...studioState,
-      locationTourPickupDates: studioState.locationTourPickupDates,
-      tourAssignments: studioState.tourAssignments,
       currentYear,
       nextYear,
     }),
@@ -107,9 +102,7 @@ const buildStudioRowsFromSyncState = (
   });
 };
 
-export const runWasteManagementMainserverSync = async (input: {
-  studioRows: readonly WasteSyncRow[];
-  mainserverRows: readonly WasteSyncRow[];
+type WasteSyncExecutionOptions = {
   dryRun: boolean;
   batchSize?: number;
   getNow?: () => Date;
@@ -117,31 +110,13 @@ export const runWasteManagementMainserverSync = async (input: {
   deleteItems?: (items: readonly WasteMainserverSyncItem[]) => Promise<void>;
   onPlanReady?: (details: WasteManagementMainserverSyncPlanDetails) => Promise<void> | void;
   onBatchProgress?: (details: WasteSyncBatchProgressDetails) => Promise<void> | void;
-}): Promise<WasteManagementMainserverSyncResult> => {
-  const studioByKey = new Map(input.studioRows.map((row) => [row.key, row] as const));
-  const mainserverByKey = new Map(input.mainserverRows.map((row) => [row.key, row] as const));
-  const mainserverCompatibilityKeys = new Set(
-    input.mainserverRows.map(buildWasteSyncCompatibilityKey)
-  );
-  const studioCompatibilityKeysWithoutZip = new Set(
-    input.studioRows.filter((row) => !row.zip?.trim()).map(buildWasteSyncCompatibilityKey)
-  );
+};
 
-  const createItems = input.studioRows
-    .filter(
-      (row) =>
-        !mainserverByKey.has(row.key) &&
-        (Boolean(row.zip?.trim()) ||
-          !mainserverCompatibilityKeys.has(buildWasteSyncCompatibilityKey(row)))
-    )
-    .map(({ key: _key, ...row }) => row);
-  const deleteItems = input.mainserverRows
-    .filter(
-      (row) =>
-        !studioByKey.has(row.key) &&
-        !studioCompatibilityKeysWithoutZip.has(buildWasteSyncCompatibilityKey(row))
-    )
-    .map(({ key: _key, ...row }) => row);
+const executeWasteSyncPlan = async (
+  plan: ReturnType<typeof buildWasteSyncPlan>,
+  input: WasteSyncExecutionOptions
+): Promise<WasteManagementMainserverSyncResult> => {
+  const { studioCount, mainserverCount, createItems, deleteItems } = plan;
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;
   const totalPlannedItemCount = createItems.length + deleteItems.length;
@@ -162,7 +137,11 @@ export const runWasteManagementMainserverSync = async (input: {
   let processedItemCount = 0;
   let createCount = 0;
   let deleteCount = 0;
-  const batchDurationsMs: number[] = [];
+  let totalBatchDurationMs = 0;
+  let measuredBatchCount = 0;
+  let longestBatchDurationMs: number | undefined;
+  const averageBatchDurationMs = () =>
+    measuredBatchCount === 0 ? 0 : Math.round(totalBatchDurationMs / measuredBatchCount);
   const batchSize = Math.max(1, input.batchSize ?? DEFAULT_MAINSERVER_SYNC_BATCH_SIZE);
 
   const processBatches = async (params: {
@@ -170,7 +149,7 @@ export const runWasteManagementMainserverSync = async (input: {
     readonly operationMode: 'create' | 'delete';
     readonly writer?: (items: readonly WasteMainserverSyncItem[]) => Promise<void>;
   }): Promise<void> => {
-    const batches = chunkWasteSyncItems(params.items, batchSize);
+    const totalBatchCount = Math.ceil(params.items.length / batchSize);
 
     if (params.items.length === 0) {
       await input.onBatchProgress?.({
@@ -186,13 +165,17 @@ export const runWasteManagementMainserverSync = async (input: {
       return;
     }
 
-    for (const [batchIndex, batch] of batches.entries()) {
-      const batchStartedAt = (input.getNow ?? (() => new Date()))().getTime();
+    let currentBatchIndex = 0;
+    for (let offset = 0; offset < params.items.length; offset += batchSize) {
+      currentBatchIndex += 1;
+      const batch = params.items.slice(offset, offset + batchSize);
+      const batchStartedAt = (input.getNow?.() ?? new Date()).getTime();
       await params.writer?.(batch);
-      const batchFinishedAt = input.getNow ?? (() => new Date());
-      const batchFinishedAtDate = batchFinishedAt();
+      const batchFinishedAtDate = input.getNow?.() ?? new Date();
       const batchDurationMs = batchFinishedAtDate.getTime() - batchStartedAt;
-      batchDurationsMs.push(batchDurationMs);
+      totalBatchDurationMs += batchDurationMs;
+      measuredBatchCount += 1;
+      longestBatchDurationMs = Math.max(longestBatchDurationMs ?? batchDurationMs, batchDurationMs);
       processedItemCount += batch.length;
       if (params.operationMode === 'create') {
         createCount += batch.length;
@@ -203,15 +186,15 @@ export const runWasteManagementMainserverSync = async (input: {
       await input.onBatchProgress?.({
         operationMode: params.operationMode,
         totalItemCount: totalPlannedItemCount,
-        totalBatchCount: batches.length,
-        currentBatchIndex: batchIndex + 1,
+        totalBatchCount,
+        currentBatchIndex,
         currentBatchSize: batch.length,
         processedItemCount,
         createCount,
         deleteCount,
         lastSuccessfulBatchAt: batchFinishedAtDate.toISOString(),
         lastBatchDurationMs: batchDurationMs,
-        averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
+        averageBatchDurationMs: averageBatchDurationMs(),
       });
     }
   };
@@ -231,8 +214,8 @@ export const runWasteManagementMainserverSync = async (input: {
   }
 
   return {
-    studioItemCount: input.studioRows.length,
-    mainserverItemCount: input.mainserverRows.length,
+    studioItemCount: studioCount,
+    mainserverItemCount: mainserverCount,
     createCount: createItems.length,
     createBatchCount: Math.ceil(createItems.length / batchSize),
     deleteCount: deleteItems.length,
@@ -244,22 +227,34 @@ export const runWasteManagementMainserverSync = async (input: {
     processedItemCount,
     finalCreateCount: input.dryRun ? createItems.length : createCount,
     finalDeleteCount: input.dryRun ? deleteItems.length : deleteCount,
-    averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
-    longestBatchDurationMs: batchDurationsMs.length > 0 ? Math.max(...batchDurationsMs) : 0,
-    mainserverSnapshotCount: input.mainserverRows.length,
-    studioSnapshotCount: input.studioRows.length,
+    averageBatchDurationMs: averageBatchDurationMs(),
+    longestBatchDurationMs: longestBatchDurationMs ?? 0,
+    mainserverSnapshotCount: mainserverCount,
+    studioSnapshotCount: studioCount,
     createItems,
     deleteItems,
   };
 };
 
-export const runWasteManagementMainserverSyncForInstance = async (input: {
+export const runWasteManagementMainserverSync = ({
+  studioRows,
+  mainserverRows,
+  ...execution
+}: WasteSyncExecutionOptions & {
+  studioRows: readonly WasteSyncRow[];
+  mainserverRows: readonly WasteSyncRow[];
+}): Promise<WasteManagementMainserverSyncResult> =>
+  executeWasteSyncPlan(buildWasteSyncPlan(studioRows, mainserverRows), execution);
+
+type InstanceSyncInput = {
   instanceId: string;
   runtimeDeps?: WasteOperationRuntimeDeps;
   syncInput: WasteManagementSyncMainserverJobInput;
   progressReporter?: WasteSyncProgressReporter;
   batchSize?: number;
-}): Promise<WasteManagementMainserverSyncExecutionResult> => {
+};
+
+const prepareInstanceSync = async (input: InstanceSyncInput) => {
   await reportSyncProgress(
     input.progressReporter,
     buildSyncProgress({
@@ -268,7 +263,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       currentStepLabel: 'load-studio-state',
     })
   );
-  const studioSnapshot = await loadWasteMainserverStudioSnapshot(
+  const { studioState, sourceState } = await loadWasteMainserverStudioSnapshot(
     input.runtimeDeps ?? {},
     input.instanceId
   );
@@ -276,7 +271,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
   const now = input.runtimeDeps?.now?.() ?? new Date();
   const currentYear = now.getUTCFullYear();
   const nextYear = currentYear + 1;
-  const studioRows = buildStudioRowsFromSyncState(studioSnapshot.studioState, now);
+  const studioRows = buildStudioRowsFromSyncState(studioState, now);
   const keycloakSubject = input.syncInput.keycloakSubject?.trim() || 'plugin-operation-runtime';
   const activeOrganizationId = input.syncInput.activeOrganizationId?.trim() || undefined;
   const listSnapshot = input.runtimeDeps?.listMainserverWasteSyncSnapshot;
@@ -302,17 +297,32 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     })
   );
   const mainserverRows = filterSyncRowsToYearWindow(
-    mainserverSnapshot.pickupTimes.map(toWasteSyncRow),
+    mainserverSnapshot.pickupTimes,
     currentYear,
     nextYear
   );
-  const result = await runWasteManagementMainserverSync({
-    studioRows,
-    mainserverRows,
+  return {
+    plan: buildWasteSyncPlan(studioRows, mainserverRows),
+    sourceRevision: sourceState.sourceRevision,
+    yearWindow: [currentYear, nextYear] as const,
+    keycloakSubject,
+    activeOrganizationId,
+    createPickupTimes,
+    deletePickupTimes,
+  };
+};
+
+export const runWasteManagementMainserverSyncForInstance = async (
+  input: InstanceSyncInput
+): Promise<WasteManagementMainserverSyncExecutionResult> => {
+  const prepared = await prepareInstanceSync(input);
+  const { plan, keycloakSubject, activeOrganizationId, createPickupTimes, deletePickupTimes } =
+    prepared;
+  const result = await executeWasteSyncPlan(plan, {
     dryRun: false,
     batchSize: input.batchSize,
     getNow: input.runtimeDeps?.now,
-    onPlanReady: async (plan) => {
+    onPlanReady: async (details) => {
       await reportSyncProgress(
         input.progressReporter,
         buildSyncProgress({
@@ -320,11 +330,11 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
           currentStepKey: 'diff-sync-state',
           currentStepLabel: 'diff-sync-state',
           details: {
-            studioSnapshotCount: studioRows.length,
-            mainserverSnapshotCount: mainserverRows.length,
-            plannedCreateCount: plan.createCount,
-            plannedDeleteCount: plan.deleteCount,
-            plannedTotalCount: plan.totalCount,
+            studioSnapshotCount: plan.studioCount,
+            mainserverSnapshotCount: plan.mainserverCount,
+            plannedCreateCount: details.createCount,
+            plannedDeleteCount: details.deleteCount,
+            plannedTotalCount: details.totalCount,
           },
         })
       );
@@ -382,7 +392,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
 
   return {
     ...result,
-    sourceRevision: studioSnapshot.sourceState.sourceRevision,
-    yearWindow: [currentYear, nextYear],
+    sourceRevision: prepared.sourceRevision,
+    yearWindow: prepared.yearWindow,
   };
 };

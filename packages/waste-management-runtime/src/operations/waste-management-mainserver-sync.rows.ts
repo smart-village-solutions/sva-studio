@@ -41,18 +41,50 @@ export const toWasteSyncRow = (item: WasteMainserverSyncItem): WasteSyncRow => (
   key: buildWasteSyncKey(item),
 });
 
-export const chunkWasteSyncItems = <TItem>(
-  items: readonly TItem[],
-  batchSize: number
-): readonly (readonly TItem[])[] => {
-  if (items.length === 0) {
-    return [];
-  }
+const collectSyncKeys = (
+  rows: readonly WasteSyncRow[],
+  toKey: (row: WasteSyncRow) => string
+): Set<string> => {
+  const keys = new Set<string>();
+  for (const row of rows) keys.add(toKey(row));
+  return keys;
+};
 
-  const normalizedBatchSize = Math.max(1, batchSize);
-  const batches: TItem[][] = [];
-  for (let index = 0; index < items.length; index += normalizedBatchSize) {
-    batches.push(items.slice(index, index + normalizedBatchSize));
-  }
-  return batches;
+export const buildWasteSyncPlan = (
+  studioRows: readonly WasteSyncRow[],
+  mainserverRows: readonly WasteSyncRow[]
+) => {
+  const studioByKey = collectSyncKeys(studioRows, (row) => row.key);
+  const mainserverByKey = collectSyncKeys(mainserverRows, (row) => row.key);
+  const studioCompatibilityKeysWithoutZip = collectSyncKeys(
+    studioRows.filter((row) => !row.zip?.trim()),
+    buildWasteSyncCompatibilityKey
+  );
+  const mainserverCompatibilityKeys =
+    studioCompatibilityKeysWithoutZip.size > 0
+      ? collectSyncKeys(mainserverRows, buildWasteSyncCompatibilityKey)
+      : undefined;
+
+  const createItems = studioRows
+    .filter(
+      (row) =>
+        !mainserverByKey.has(row.key) &&
+        (Boolean(row.zip?.trim()) ||
+          !mainserverCompatibilityKeys?.has(buildWasteSyncCompatibilityKey(row)))
+    )
+    .map(({ key: _key, ...row }) => row);
+  const deleteItems = mainserverRows
+    .filter(
+      (row) =>
+        !studioByKey.has(row.key) &&
+        (studioCompatibilityKeysWithoutZip.size === 0 ||
+          !studioCompatibilityKeysWithoutZip.has(buildWasteSyncCompatibilityKey(row)))
+    )
+    .map(({ key: _key, ...row }) => row);
+  return {
+    studioCount: studioRows.length,
+    mainserverCount: mainserverRows.length,
+    createItems,
+    deleteItems,
+  };
 };

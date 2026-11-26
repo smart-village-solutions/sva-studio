@@ -104,7 +104,7 @@ const buildStudioRowsFromSyncState = (
     houseNumbers: studioState.houseNumbers,
     cities: studioState.cities,
     streets: studioState.streets,
-  }).map(toWasteSyncRow);
+  });
 };
 
 export const runWasteManagementMainserverSync = async (input: {

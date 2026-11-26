@@ -65,6 +65,55 @@ const buildPickupNote = (
   return fragments.map((fragment) => `<div>${fragment}</div>`).join('');
 };
 
+type PickupText = string | Set<string> | undefined;
+type PickupGroup = {
+  row: StudioMaterializedWasteRow;
+  descriptions?: PickupText;
+  notes?: PickupText;
+};
+
+const addPickupText = (current: PickupText, value?: string | null): PickupText => {
+  if (!value || current === value) return current;
+  if (current instanceof Set) {
+    current.add(value);
+    return current;
+  }
+  return current === undefined ? value : new Set([current, value]);
+};
+
+const sortedPickupText = (value: PickupText): readonly string[] => {
+  if (value === undefined) return [];
+  return typeof value === 'string' ? [value] : [...value].sort();
+};
+
+const resolvePickupGroupNote = (
+  { descriptions, notes }: PickupGroup,
+  singleNoteCache: Map<string, string | undefined>
+): string | undefined => {
+  if (descriptions === undefined && notes === undefined) return undefined;
+  const singleText = descriptions ?? notes;
+  if (typeof singleText !== 'string' || (descriptions !== undefined && notes !== undefined)) {
+    return buildPickupNote(sortedPickupText(descriptions), sortedPickupText(notes));
+  }
+  if (singleNoteCache.has(singleText)) return singleNoteCache.get(singleText);
+  const note = buildPickupNote([singleText], []);
+  if (singleNoteCache.size < 1024) singleNoteCache.set(singleText, note);
+  return note;
+};
+
+const resolveAddressStreet = (
+  location: WasteCollectionLocationRecord,
+  streetById: ReadonlyMap<string, WasteStreetRecord>,
+  houseNumberById: ReadonlyMap<string, WasteHouseNumberRecord>
+): string | undefined => {
+  if (!location.streetId) return undefined;
+  const name = streetById.get(location.streetId)?.name?.trim();
+  if (!name) return undefined;
+  const house = location.houseNumberId ? houseNumberById.get(location.houseNumberId) : undefined;
+  const number = house?.streetId === location.streetId ? house.number : undefined;
+  return buildWasteStreetKey(name, number);
+};
+
 export const buildStudioRowsFromMaterialization = (
   input: StudioRowMaterializationInput
 ): readonly StudioMaterializedWasteRow[] => {
@@ -85,15 +134,17 @@ export const buildStudioRowsFromMaterialization = (
     streetLocationsByCity.set(location.cityId, locations);
   }
 
-  const rows = input.pickupDates.flatMap((pickupDate) => {
+  // The Mainserver bulk API identifies pickups by date and location type, without the note.
+  const groupedRows = new Map<string, PickupGroup>();
+  for (const pickupDate of input.pickupDates) {
     const tour = tourById.get(pickupDate.tourId);
     const location = locationById.get(pickupDate.locationId);
-    if (tour?.status !== 'published' || !location?.active) return [];
+    if (tour?.status !== 'published' || !location?.active) continue;
 
     const cityRecord = cityById.get(location.cityId);
     const city = cityRecord?.name?.trim();
     const zip = cityRecord?.postalCode?.trim();
-    if (!city) return [];
+    if (!city) continue;
 
     const isCityWide =
       !location.streetId ||
@@ -110,72 +161,43 @@ export const buildStudioRowsFromMaterialization = (
         )
       : [location];
 
-    return targetLocations.flatMap((target) => {
-      const streetName = target.streetId
-        ? streetById.get(target.streetId)?.name?.trim()
-        : undefined;
-      const houseNumberRecord = target.houseNumberId
-        ? houseNumberById.get(target.houseNumberId)
-        : undefined;
-      const houseNumber =
-        houseNumberRecord && houseNumberRecord.streetId === target.streetId
-          ? houseNumberRecord.number
-          : undefined;
-      const street = streetName ? buildWasteStreetKey(streetName, houseNumber) : undefined;
-      if (!street) return [];
+    for (const target of targetLocations) {
+      const street = resolveAddressStreet(target, streetById, houseNumberById);
+      if (!street) continue;
 
-      return tour.wasteFractionIds.flatMap((fractionId) => {
+      for (const fractionId of tour.wasteFractionIds) {
         const fraction = fractionById.get(fractionId);
-        if (!fraction?.name?.trim()) return [];
+        if (!fraction?.name?.trim()) continue;
         const wasteType = fraction.pdfShortLabel?.trim().toUpperCase();
         if (!wasteType) throw new Error(`missing_waste_type_short_label:${fractionId}`);
 
-        return [
-          {
-            pickupDate: pickupDate.pickupDate,
-            wasteType,
-            street,
-            ...(zip ? { zip } : {}),
-            city,
-            tourDescription: tour.description,
-            pickupNote: pickupDate.note,
-            key: buildWasteSyncKey({
-              pickupDate: pickupDate.pickupDate,
-              wasteType,
-              street,
-              zip,
-              city,
-            }),
-          },
-        ];
-      });
-    });
-  });
-  // The Mainserver bulk API identifies pickups by date and location type, without the note.
-  const groupedRows = new Map<
-    string,
-    {
-      row: StudioMaterializedWasteRow;
-      descriptions: Set<string | null | undefined>;
-      notes: Set<string | null | undefined>;
+        const row = {
+          pickupDate: pickupDate.pickupDate,
+          wasteType,
+          street,
+          ...(zip ? { zip } : {}),
+          city,
+        };
+        const key = buildWasteSyncKey(row);
+        const group = groupedRows.get(key) ?? { row: { ...row, key } };
+        group.descriptions = addPickupText(group.descriptions, tour.description);
+        group.notes = addPickupText(group.notes, pickupDate.note);
+        groupedRows.set(key, group);
+      }
     }
-  >();
-  rows.forEach(({ tourDescription, pickupNote, ...row }) => {
-    const group = groupedRows.get(row.key) ?? {
-      row,
-      descriptions: new Set<string | null | undefined>(),
-      notes: new Set<string | null | undefined>(),
-    };
-    group.descriptions.add(tourDescription);
-    group.notes.add(pickupNote);
-    groupedRows.set(row.key, group);
-  });
-  return [...groupedRows.values()].map(({ row, descriptions, notes }) => {
-    const note = buildPickupNote([...descriptions].sort(), [...notes].sort());
-    return {
+  }
+
+  const singleNoteCache = new Map<string, string | undefined>();
+  const result: StudioMaterializedWasteRow[] = [];
+  for (const [key, group] of groupedRows) {
+    const note = resolvePickupGroupNote(group, singleNoteCache);
+    const { row } = group;
+    result.push({
       ...row,
       note,
-      key: buildWasteSyncKey({ ...row, note }),
-    };
-  });
+      key: note === undefined ? row.key : buildWasteSyncKey({ ...row, note }),
+    });
+    groupedRows.delete(key);
+  }
+  return result;
 };

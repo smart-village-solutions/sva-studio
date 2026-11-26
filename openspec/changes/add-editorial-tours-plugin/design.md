@@ -36,6 +36,14 @@ Bei Anbindung des Anlegepfads wechselt das Modul auf den bestehenden Standard-Co
 
 Der Mainserver-Vertrag aus [MR !1110](https://gitlab.tpwd.de/ikusei/smart-village-app-mainserver/-/merge_requests/1110) ergänzt das optionale GraphQL-Argument `visible` in `createTour` und `createPointOfInterest`. Bei einem Bestandsupdate prüft der Mainserver eine ausdrücklich angeforderte Sichtbarkeitsänderung anhand des berechtigten Datenbestands. Ausgelassenes `visible` erhält den gespeicherten Wert. Studio schreibt beide Entwurfstypen ausdrücklich mit `visible: false` und bestätigt den Zustand mit einer Detailabfrage. Fehlende oder widersprüchliche Bestätigung führt nach einer erfolgreichen Neuanlage zu einem Teilerfolg mit bekannter ID und einem Eintrag zur Abstimmung. Bewusst sichtbare POI-Anlagen verwenden nach der Berechtigungsprüfung den bestehenden Sichtbarkeitsaufruf, falls der gespeicherte Wert vom Zielwert abweicht. Der Studio-Rollout setzt eine Mainserver-Zielumgebung mit dem neuen Schema voraus.
 
+## Eingrenzung des Bestandseditors
+
+Der bestätigte SaaS-Stand `77a9bbc9` bietet weiterhin keinen sicheren Bestandsupdatevertrag. Studio benötigt eine strikt auf die vorhandene Tour und ihren Anbieter begrenzte Patch-Mutation. Die Touren-ID und der geladene Revisionsstand sind verpflichtend. Rails prüft Anbieter und Revision innerhalb derselben Transaktion wie die Änderung und erhält ausgelassene Felder und Relationen. Eine ausgelassene Geometrie bleibt erhalten, eine leere Liste leert die Route.
+
+Bei einer Änderung der Stationsreihenfolge enthält der Auftrag eine geordnete Liste stabiler IDs und gegebenenfalls neue Stationen. Geänderte Felder eines bestehenden Stopps werden als Patch übermittelt. Vor Anwendung prüft Rails alle gelieferten IDs im Bestand dieser Tour. Eine bestätigte Entfernung und das daraus resultierende Löschen einer Zuordnung sind Teil desselben Updates. Redaktionsdaten stammen aus einem frischen, anbietergeprüften Read der originären Stationswerte. Die öffentlichen POI-Überlagerungen bleiben der öffentlichen Darstellung zugeordnet.
+
+Im Studio verwenden Anlage und Bearbeitung dieselben Eingaben für Name, Länge, Beschreibung, Route und Stationen. Der Bestandseditor folgt dem vorhandenen Principal-, DataProvider-, Idempotenz- und Reconciliation-Pfad für Ortsänderungen. Die Freigabe von `tours.update` setzt den Rails/MySQL-Vertragsnachweis und das passende Schema der Zielumgebung voraus. Veröffentlichung, Hard Delete, Inhabertransfer und der Ausbau der Fachliste behalten ihre eigenen Nachweise.
+
 ## Kritische Invarianten
 
 | Invariante                                                                             | Geplanter Nachweis                                                                                                                                                               |

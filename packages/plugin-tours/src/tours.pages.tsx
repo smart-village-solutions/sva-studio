@@ -11,21 +11,19 @@ import {
 import {
   Button,
   StudioDataTable,
-  StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
   StudioLoadingState,
   StudioOverviewPageTemplate,
   StudioPagination,
 } from '@sva/studio-ui-react';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { tourDetailPath, toursCreatePath, toursPath } from './descriptor.js';
-import { TourDetailContent, type TourDetailFields } from './tour-detail-content.js';
 
 type NamedRecord = { id: string; name?: string | null };
-type TourSummary = NamedRecord & {
+export type TourSummary = NamedRecord & {
   active?: boolean | null;
   visible?: boolean | null;
   lengthKm?: number | null;
@@ -33,16 +31,15 @@ type TourSummary = NamedRecord & {
   categories: readonly NamedRecord[];
   dataProvider?: NamedRecord | null;
 };
-type TourDetail = TourSummary & TourDetailFields;
 type TourList = {
   data: readonly TourSummary[];
   pagination: { page: number; pageSize: number; hasNextPage: boolean };
 };
 type ReadResult<T> = { data: T } | { error: 'forbidden' | 'notFound' | 'error' };
 type Translator = ReturnType<typeof usePluginTranslation>;
-const apiPath = '/api/v1/mainserver/tours';
+export const apiPath = '/api/v1/mainserver/tours';
 
-function useTourRead<T>(url: string) {
+export function useTourRead<T>(url: string) {
   const access = useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -80,7 +77,7 @@ function useTourRead<T>(url: string) {
   return state?.url === url && state.access === access ? state.result : undefined;
 }
 
-const summaryFields = (pt: Translator) => {
+export const summaryFields = (pt: Translator) => {
   const { locale } = readPluginLocales();
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   return [
@@ -205,42 +202,5 @@ export function ToursListPage() {
         />
       ) : null}
     </StudioOverviewPageTemplate>
-  );
-}
-
-export function TourDetailPage() {
-  const pt = usePluginTranslation('tours');
-  const id = useParams({ strict: false, select: (params) => (params as { id: string }).id });
-  const search = normalizeListSearch(useSearch({ strict: false }));
-  const result = useTourRead<{ data: TourDetail }>(`${apiPath}/${encodeURIComponent(id)}`);
-  const tour = result && 'data' in result ? result.data.data : undefined;
-
-  return (
-    <StudioDetailPageTemplate
-      title={tour?.name || pt('title')}
-      actions={
-        <Button asChild variant="secondary">
-          <Link to={toursPath} search={search}>
-            {pt('back')}
-          </Link>
-        </Button>
-      }
-    >
-      {!result ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
-      {result && 'error' in result ? <StudioErrorState>{pt(result.error)}</StudioErrorState> : null}
-      {tour ? (
-        <>
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {summaryFields(pt).map(({ id, header, cell }) => (
-              <div key={id}>
-                <dt className="font-medium">{header}</dt>
-                <dd>{cell(tour)}</dd>
-              </div>
-            ))}
-          </dl>
-          <TourDetailContent tour={tour} pt={pt} />
-        </>
-      ) : null}
-    </StudioDetailPageTemplate>
   );
 }

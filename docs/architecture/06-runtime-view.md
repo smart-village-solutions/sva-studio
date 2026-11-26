@@ -1219,13 +1219,15 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 4. Vor einem POI- oder Event-Update liest der Server den aktuellen Datensatz erneut und ergänzt nur deklarierte, im Request ausgelassene und fehlerfrei gelesene Passthrough-Felder. Explizite Leerwerte bleiben explizite Änderungen; bewusst korrigierte degradierte Felder benötigen eine Bestätigung im Editor.
 5. Die Mutation sendet ausschließlich Felder des typisierten GraphQL-Inputs; unbekannte Rohfelder werden nicht durchgereicht.
 
-## Redaktionelle Touren ansehen
+## Redaktionelle Touren verwalten
 
 1. Das Tourenmodul öffnet Liste und Detail unter `/admin/tours`. Frühere Tourenlinks unter `/plugins/tours` werden weitergeleitet. Beide Ansichten und ihre Host-Fassade verlangen `tours.read` und ein aktives Modul.
 2. Der Host ermittelt den Datenanbieter aus den Mainserver-Credentials des aktiven Kontexts. Die Listenabfrage filtert beim Mainserver nach dieser Anbieter-ID vor der stabilen ID-Sortierung und Pagination. Ein zusätzlicher Treffer bestimmt, ob eine Folgeseite verfügbar ist.
 3. Der Detailpfad liest Route und Stationen und vergleicht die Anbieter-ID mit demselben Kontext. Studio zeigt die gelieferte Reihenfolge als strukturierte Liste an.
 4. Neue Touren benötigen `tours.create` im wirksamen Mutationskontext. Nach Prüfung des Principals und der Idempotenz sendet die Host-Fassade genau eine GraphQL-Schreibmutation mit `visible: false`. Der erneute Leseaufruf bestätigt Anbieter, Inhalt und Sichtbarkeit. Journal, Historie und Projektion verwenden den bestehenden Mainserver-Folgepfad.
 5. Neue Ortsentwürfe nutzen ebenfalls eine Schreibmutation mit `visible: false`. Bei einer fehlenden Bestätigung protokolliert Studio den Teilerfolg mit der zurückgegebenen Mainserver-ID.
+6. **Tour bearbeiten** lädt die originären Redaktionsfelder über `GET /api/v1/mainserver/tours/$id/editor`. Der Host bindet den Read an den aktiven Principal, prüft `tours.update` im exakten DataProvider-Scope und übernimmt die Kontextbindung aus dem bestehenden Mainserver-Pfad.
+7. Das Update übermittelt ausschließlich geänderte Felder und den geladenen Revisionsstand. Rails prüft Tour, Anbieter und Stations-IDs, schreibt in einer Transaktion und erhält unberührte Daten. Die Reihenfolge liegt an den Stationszuordnungen. Die Host-Fassade bestätigt den gesicherten Stand über `editableTour` und verwendet für Historie und Projektion den bestehenden Folgepfad.
 
 ## Kontrollierter Datenbank-Vollrestore
 

@@ -8,6 +8,11 @@ const state = vi.hoisted(() => ({
   validateCsrf: vi.fn(),
   resolveMutationActor: vi.fn(),
   create: vi.fn(),
+  editorRead: vi.fn(),
+  update: vi.fn(),
+  resolveResourceActor: vi.fn(),
+  resolveResourceAccess: vi.fn(),
+  capability: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -15,14 +20,23 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readConfiguredPluginTenantAccess: state.moduleAccess,
   validateCsrf: state.validateCsrf,
   withAuthenticatedUser: (_request: Request, respond: (ctx: unknown) => Promise<Response>) =>
-    respond({}),
+    respond({ user: { id: 'user', instanceId: 'tenant' } }),
 }));
 vi.mock('./service-internals/service-context.js', () => ({ createServiceContext: () => ({}) }));
 vi.mock('./tour-reads.js', () => ({ createTourReads: () => state }));
 vi.mock('./mutation-principal.js', () => ({
   resolveMainserverMutationActor: state.resolveMutationActor,
+  resolveMainserverResourceActor: state.resolveResourceActor,
 }));
 vi.mock('./tour-create.js', () => ({ handleTourCreate: state.create }));
+vi.mock('./tour-editor.js', () => ({
+  createTourEditor: () => ({ read: state.editorRead }),
+  handleTourUpdate: state.update,
+  hasExactTourEditorAccess: state.resolveResourceAccess,
+}));
+vi.mock('./mainserver-mutation-capabilities.js', () => ({
+  isMainserverMutationCapabilityEnabled: state.capability,
+}));
 
 import { dispatchSvaMainserverToursRequest } from './tours-route.js';
 
@@ -34,6 +48,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   state.authorize.mockResolvedValue({ ok: true, actor });
   state.moduleAccess.mockResolvedValue({ allowed: true });
+  state.capability.mockReturnValue(false);
 });
 
 describe('Studio tour read routes', () => {
@@ -76,7 +91,7 @@ describe('Studio tour read routes', () => {
     state.detail.mockResolvedValue({ id: '1' });
     expect((await dispatchSvaMainserverToursRequest(request('/1')))?.status).toBe(200);
     expect(state.detail).toHaveBeenCalledWith({ ...actor, actingPrincipalType: 'user' }, '1');
-    expect((await dispatchSvaMainserverToursRequest(request('/1', 'PATCH')))?.status).toBe(405);
+    expect((await dispatchSvaMainserverToursRequest(request('/1', 'PATCH')))?.status).toBe(503);
     expect(state.list).not.toHaveBeenCalled();
   });
 
@@ -92,5 +107,76 @@ describe('Studio tour read routes', () => {
     state.create.mockResolvedValue(new Response(null, { status: 201 }));
     expect((await dispatchSvaMainserverToursRequest(createRequest))?.status).toBe(201);
     expect(state.create).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Studio tour editor routes', () => {
+  it('fails closed for editor read and update until the capability is enabled', async () => {
+    expect((await dispatchSvaMainserverToursRequest(request('/1/editor')))?.status).toBe(503);
+    expect((await dispatchSvaMainserverToursRequest(request('/1', 'PATCH')))?.status).toBe(503);
+    expect(state.capability).toHaveBeenCalledWith('tours.update');
+    expect(state.editorRead).not.toHaveBeenCalled();
+    expect(state.update).not.toHaveBeenCalled();
+  });
+
+  it('returns editor data and a context binding after exact authorization in the active organization', async () => {
+    state.capability.mockReturnValue(true);
+    state.authorize.mockResolvedValue({ ok: true, actor: { ...actor, organizationId: 'org' } });
+    const resourceActor = {
+      ...actor,
+      activeOrganizationId: 'org',
+      actingPrincipalType: 'organization',
+    };
+    const data = { id: '1', revision: 'revision' };
+    state.resolveResourceActor.mockResolvedValue(resourceActor);
+    state.editorRead.mockResolvedValue(data);
+    state.resolveResourceAccess.mockResolvedValue(true);
+
+    const input = request('/1/editor');
+    input.headers.set('x-sva-acting-principal-type', 'user');
+    const response = await dispatchSvaMainserverToursRequest(input);
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get('X-SVA-Context-Binding')).toMatch(/^v1\./);
+    await expect(response?.json()).resolves.toEqual({ data });
+    expect(
+      state.resolveResourceActor.mock.calls[0]?.[0].request.headers.get(
+        'x-sva-acting-principal-type'
+      )
+    ).toBe('organization');
+    expect(state.resolveResourceAccess).toHaveBeenCalledWith(resourceActor, data);
+    state.resolveResourceAccess.mockResolvedValueOnce(false);
+    expect((await dispatchSvaMainserverToursRequest(input))?.status).toBe(403);
+  });
+
+  it('checks CSRF and the resolved principal against the active context before update', async () => {
+    state.capability.mockReturnValue(true);
+    const patch = request('/1', 'PATCH');
+    state.validateCsrf.mockReturnValueOnce('csrf');
+    expect((await dispatchSvaMainserverToursRequest(patch))?.status).toBe(403);
+    expect(state.resolveMutationActor).not.toHaveBeenCalled();
+
+    const organizationActor = {
+      ...actor,
+      activeOrganizationId: 'org',
+      actingPrincipalType: 'organization',
+    };
+    state.resolveMutationActor.mockResolvedValueOnce({
+      ...organizationActor,
+      actingPrincipalType: 'user',
+    });
+    expect((await dispatchSvaMainserverToursRequest(patch))?.status).toBe(403);
+    expect(state.update).not.toHaveBeenCalled();
+
+    state.resolveMutationActor.mockResolvedValueOnce(organizationActor);
+    state.update.mockResolvedValueOnce(Response.json({ data: { id: '1' } }));
+    expect((await dispatchSvaMainserverToursRequest(patch))?.status).toBe(200);
+    expect(state.authorize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'tours.update',
+        resource: { contentType: 'tours.tour', contentId: '1' },
+      })
+    );
+    expect(state.update).toHaveBeenCalledWith(patch, organizationActor, '1', expect.anything());
   });
 });

@@ -47,6 +47,13 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Ablauf:** Geben Sie Name und Länge in Kilometern ein. Ergänzen Sie bei Bedarf Beschreibung, Kategorie, Ort, Kontaktdaten, Betreiber, Routenpunkte, Stationen und einen Bildlink. Die Stationsliste lässt sich auch per Tastatur sortieren.
 - **Speichern:** **Als Entwurf speichern** legt die Tour unveröffentlicht an und öffnet die Detailansicht. Studio zeigt den Vorgang in der Historie an.
 
+## `tours.content.detail` – Bestehende Tour bearbeiten
+
+- Öffnen Sie die Tour und wählen Sie **Tour bearbeiten**. Die Aktion ist bei freigeschalteter Bestandsbearbeitung und mit dem Recht **Touren bearbeiten** verfügbar.
+- Ändern Sie Name, Länge, Beschreibung oder Routenpunkte. Leeren Sie das Feld **Routenpunkte**, um die bisherige Route zu entfernen.
+- Ergänzen und bearbeiten Sie Stationen oder verschieben Sie sie mit **Nach oben** und **Nach unten**. Bestätigen Sie das Entfernen einer vorhandenen Station. Die Änderung wird erst beim Speichern übernommen.
+- **Änderungen speichern** zeigt den gesicherten Stand. Beim Verlassen schützt Studio offene Eingaben. Falls jemand die Tour inzwischen geändert hat, öffnen Sie die aktuelle Fassung erneut.
+
 ## `cockpit-cards.content.create` – Kachel anlegen
 
 - **Route / Typ / Owner:** `/admin/cockpit-cards/new`, Anlegen, Plugin `cockpit-cards`.

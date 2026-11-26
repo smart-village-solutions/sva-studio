@@ -306,6 +306,11 @@ describe('remote app config builder', () => {
       expect(result.source).toContain('SVA_MANAGED_MAPSTICK_URL=https://mapstick.smart-village.app/\n');
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
+      if (environment === 'staging') {
+        expect(result.source).toContain('SVA_MAINSERVER_CONFIRMED_CAPABILITIES=tours.update\n');
+      } else {
+        expect(result.source).not.toContain('SVA_MAINSERVER_CONFIRMED_CAPABILITIES=');
+      }
     }
   );
 

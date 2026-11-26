@@ -1266,6 +1266,9 @@ test.describe('waste management plugin', () => {
     const locationTrigger = page.getByRole('button', { name: 'Abholpunkt', exact: true });
     const viewport = page.viewportSize()!;
     await page.setViewportSize({ width: viewport.width, height: 420 });
+    await locationTrigger.evaluate((trigger) =>
+      trigger.scrollIntoView({ block: 'center', behavior: 'instant' })
+    );
     await locationTrigger.press('Enter');
     const locationOptions = page.getByRole('listbox', { name: 'Abholpunkt', exact: true });
     const locationSearch = page.getByRole('combobox', { name: 'Abholpunkt suchen', exact: true });

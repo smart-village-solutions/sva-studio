@@ -1,4 +1,4 @@
-import { isMp3UploadFile } from '@sva/plugin-sdk/content-media';
+import { isMp3UploadFile } from '@sva/media';
 import type { StudioMediaPickerAssetDetail } from './studio-media-picker-overlay.shared.js';
 
 export const createLocalStudioMediaPickerAsset = (input: {

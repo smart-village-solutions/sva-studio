@@ -166,6 +166,7 @@ describe('technical app translation', () => {
 
   it.each([
     { upstream: 413, status: 502, retryable: false },
+    { upstream: 502, status: 503, retryable: true },
     { upstream: 503, status: 503, retryable: true },
   ])(
     'preserves retry semantics for SSF status $upstream',

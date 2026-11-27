@@ -58,7 +58,7 @@ const ssfRequest = async (
   });
   if (!response.ok) {
     await response.body?.cancel();
-    if ([408, 429, 500, 503, 504].includes(response.status))
+    if ([408, 429, 500, 502, 503, 504].includes(response.status))
       throw new Error('ssf_translation_unavailable');
     throw terminal(
       response.status === 413 ? 'ssf_translation_too_large' : 'ssf_translation_rejected'

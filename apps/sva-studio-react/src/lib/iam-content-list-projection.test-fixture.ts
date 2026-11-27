@@ -26,6 +26,7 @@ const state = vi.hoisted(() => ({
   reconcileDeferredMainserverMutationProjections: vi.fn(),
   recordSuccessfulExternalContentDeletion: vi.fn(),
   recordSuccessfulExternalContentMutation: vi.fn(),
+  revealField: vi.fn(),
   withInstanceScopedDb: vi.fn(),
   getSvaMainserverNews: vi.fn(),
   getSvaMainserverEvent: vi.fn(),
@@ -88,6 +89,7 @@ vi.mock('@sva/server-runtime', () => ({
     warn: state.loggerWarn,
   }),
   getWorkspaceContext: state.getWorkspaceContext,
+  revealField: state.revealField,
 }));
 
 import {
@@ -174,6 +176,7 @@ export const registerProjectionFixture = (): void => {
     state.reconcileDeferredMainserverMutationProjections.mockReset();
     state.recordSuccessfulExternalContentDeletion.mockReset();
     state.recordSuccessfulExternalContentMutation.mockReset();
+    state.revealField.mockReset();
     state.withInstanceScopedDb.mockReset();
     state.getSvaMainserverNews.mockReset();
     state.getSvaMainserverEvent.mockReset();

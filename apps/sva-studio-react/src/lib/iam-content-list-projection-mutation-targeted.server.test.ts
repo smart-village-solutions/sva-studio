@@ -13,10 +13,8 @@ const replay = vi.hoisted(() => ({
   query: vi.fn(),
   recordMutation: vi.fn(),
   finalizeJournal: vi.fn(),
-  revealActor: vi.fn(),
 }));
 
-vi.mock('@sva/iam-admin', () => ({ revealField: replay.revealActor }));
 vi.mock('../../../../packages/auth-runtime/src/iam-account-management/shared.js', () => ({
   withInstanceScopedDb: async (
     _instanceId: string,
@@ -98,7 +96,7 @@ describe('targeted content projection mutations', () => {
       })
     );
 
-    replay.revealActor.mockReturnValueOnce('Redaktion');
+    state.revealField.mockReturnValueOnce('Redaktion');
     replay.query.mockResolvedValueOnce({
       rows: [
         {

@@ -101,18 +101,18 @@ const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) =
   const activeTotal = data.activeTotal;
   return (
     <div className="min-w-0 max-w-6xl space-y-6" aria-busy={loading}>
-      {activeTotal !== undefined && (
-        <p className="text-lg font-semibold tabular-nums" aria-live="polite">
-          {pt('emailMonitoring.activeSubscriptions', { count: activeTotal })}
-        </p>
-      )}
+      <p className="min-h-7 text-lg font-semibold tabular-nums" aria-live="polite">
+        {activeTotal === undefined
+          ? null
+          : pt('emailMonitoring.activeSubscriptions', { count: activeTotal })}
+      </p>
       <MonitoringControls pt={pt} selection={selection} onChange={setSelection} />
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.privacy')}</p>
       {error && <StudioErrorState>{pt(error)}</StudioErrorState>}
-      {loading && <StudioLoadingState>{pt('emailMonitoring.loading')}</StudioLoadingState>}
       <EmailMonitoringTables
         pt={pt}
         data={data}
+        loading={loading && data.subscriptions.length === 0}
         selected={selection.selected}
         page={selection.page}
         deliveryPage={selection.deliveryPage}

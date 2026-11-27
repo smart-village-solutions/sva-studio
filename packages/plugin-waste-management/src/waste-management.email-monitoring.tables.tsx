@@ -15,6 +15,7 @@ import { defaultWastePageSize } from './pagination-search-params.js';
 export const emailMonitoringPageSize = defaultWastePageSize;
 type TableProps = {
   data: WasteEmailMonitoringOverview;
+  loading: boolean;
   pt: EmailMonitoringTranslate;
   selected: WasteEmailSubscriptionSummary | null;
   page: number;
@@ -58,7 +59,7 @@ const Pagination = ({
     </div>
   );
 };
-const SubscriptionTable = ({ pt, data, selected, onSelect, page, onPage }: TableProps) => (
+const SubscriptionTable = ({ pt, data, loading, selected, onSelect, page, onPage }: TableProps) => (
   <StudioDataTable
     selectionMode="none"
     sorting={{ mode: 'disabled' }}
@@ -66,6 +67,9 @@ const SubscriptionTable = ({ pt, data, selected, onSelect, page, onPage }: Table
     caption={pt('emailMonitoring.subscriptions')}
     labels={tableLabels(pt)}
     data={data.subscriptions}
+    isLoading={loading}
+    loadingState={pt('emailMonitoring.loading')}
+    keepToolbarWhileLoading
     columns={emailMonitoringSubscriptionColumns(pt)}
     getRowId={(row) => row.id}
     emptyState={<p>{pt('emailMonitoring.empty')}</p>}

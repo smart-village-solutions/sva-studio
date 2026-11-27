@@ -143,6 +143,28 @@ describe('email monitoring page', () => {
     expect(getWasteEmailMonitoring).not.toHaveBeenCalled();
     expect(searchWasteEmailMonitoring).not.toHaveBeenCalled();
   });
+
+  it('keeps monitoring controls mounted while the first subscription request loads', async () => {
+    let resolveSubscriptions: (value: WasteEmailMonitoringOverview) => void = () => undefined;
+    const subscriptions = new Promise<WasteEmailMonitoringOverview>((resolve) => {
+      resolveSubscriptions = resolve;
+    });
+    vi.mocked(getWasteEmailMonitoring).mockReturnValue(subscriptions);
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+
+    const filter = screen.getByRole('combobox', { name: 'emailMonitoring.statusFilter' });
+    const heading = screen.getByRole('heading', { name: 'emailMonitoring.subscriptions' });
+    expect(screen.getByText('emailMonitoring.loading')).toBeTruthy();
+    expect(screen.queryByText('emailMonitoring.empty')).toBeNull();
+
+    resolveSubscriptions(data);
+    await screen.findAllByText(subscription.maskedEmail);
+
+    expect(screen.getByRole('combobox', { name: 'emailMonitoring.statusFilter' })).toBe(filter);
+    expect(screen.getByRole('heading', { name: 'emailMonitoring.subscriptions' })).toBe(heading);
+    expect(screen.queryByText('emailMonitoring.loading')).toBeNull();
+  });
   it('submits the full address in search mode and restores the regular list when cleared', async () => {
     const address = 'Rédaktion@example.invalid';
     const matched = { ...subscription, maskedEmail: 'r******n@e********d' };

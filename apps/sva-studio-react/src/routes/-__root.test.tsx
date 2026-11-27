@@ -2,6 +2,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getRootHead,
+  loadDocumentSession,
+  loadRootData,
+  resolveServerFallowBrowserBeaconKey,
+  resolveServerStudioBranding,
+  resolveServerStudioParentDomain,
+  RootDocument,
+} from './__root';
 
 const useRouterStateMock = vi.fn();
 const useMatchesMock = vi.fn();
@@ -10,7 +19,7 @@ const activeLocaleMock = vi.hoisted(() => ({ value: 'de' }));
 const documentSessionMocks = vi.hoisted(() => ({
   getRequest: vi.fn<() => Request>(),
   setResponseHeader: vi.fn(),
-  withAuthenticatedUser: vi.fn(),
+  dispatchAuthRouteRequest: vi.fn(),
   loadStudioReleaseNotes: vi.fn(),
 }));
 
@@ -19,8 +28,8 @@ vi.mock('@tanstack/react-start/server', () => ({
   setResponseHeader: documentSessionMocks.setResponseHeader,
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
-  withAuthenticatedUser: documentSessionMocks.withAuthenticatedUser,
+vi.mock('@sva/routing/server', () => ({
+  dispatchAuthRouteRequest: documentSessionMocks.dispatchAuthRouteRequest,
 }));
 
 vi.mock('../lib/studio-release-notes.server', () => ({
@@ -126,11 +135,6 @@ vi.mock('../i18n', async (importOriginal) => ({
 }));
 
 describe('root route document', () => {
-  const importRootDocument = async () => {
-    const { RootDocument } = await import('./__root');
-    return RootDocument;
-  };
-
   const mockPendingRoute = () => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
@@ -142,10 +146,8 @@ describe('root route document', () => {
     );
   };
 
-  const renderPendingRootDocument = async () => {
+  const renderPendingRootDocument = () => {
     mockPendingRoute();
-    const RootDocument = await importRootDocument();
-
     render(
       <RootDocument>
         <div>content</div>
@@ -153,9 +155,7 @@ describe('root route document', () => {
     );
   };
 
-  it('publishes the safe server runtime configuration in metadata', async () => {
-    const { resolveServerStudioBranding, resolveServerStudioParentDomain, getRootHead } =
-      await import('./__root');
+  it('publishes the safe server runtime configuration in metadata', () => {
     try {
       vi.stubEnv('SVA_STUDIO_BRANDING', 'kassel-dialog');
       vi.stubEnv('SVA_PARENT_DOMAIN', 'Dialog.Kassel.DE');
@@ -184,8 +184,7 @@ describe('root route document', () => {
     }
   });
 
-  it('exposes the ingest-only browser key exclusively on staging', async () => {
-    const { resolveServerFallowBrowserBeaconKey, getRootHead } = await import('./__root');
+  it('exposes the ingest-only browser key exclusively on staging', () => {
     try {
       vi.stubEnv('FALLOW_BROWSER_INGEST_KEY', 'fallow_pub_k1_test_only');
       vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'production');
@@ -223,44 +222,74 @@ describe('root route document', () => {
   });
 
   it('only prepares navigation and Changelog data for a verified document session', async () => {
-    const { loadDocumentSession } = await import('./__root');
     const request = (path: string, headers?: HeadersInit) =>
       ({ url: `https://studio.test${path}`, headers: new Headers(headers) }) as Request;
     const cookie = { cookie: 'session=test' };
 
     documentSessionMocks.getRequest.mockReturnValue(request('/'));
-    documentSessionMocks.withAuthenticatedUser.mockClear();
+    documentSessionMocks.dispatchAuthRouteRequest.mockClear();
     documentSessionMocks.loadStudioReleaseNotes.mockClear();
     await expect(loadDocumentSession()).resolves.toEqual({});
-    expect(documentSessionMocks.withAuthenticatedUser).not.toHaveBeenCalled();
+    expect(documentSessionMocks.dispatchAuthRouteRequest).not.toHaveBeenCalled();
     expect(documentSessionMocks.setResponseHeader).toHaveBeenCalledWith(
       'Cache-Control',
       'private, no-store'
     );
 
     documentSessionMocks.getRequest.mockReturnValue(request('/changelog', cookie));
-    documentSessionMocks.withAuthenticatedUser.mockResolvedValueOnce(
+    documentSessionMocks.dispatchAuthRouteRequest.mockResolvedValueOnce(
       new Response(null, { status: 401 })
     );
     await expect(loadDocumentSession()).resolves.toEqual({});
     expect(documentSessionMocks.loadStudioReleaseNotes).not.toHaveBeenCalled();
 
-    documentSessionMocks.withAuthenticatedUser.mockImplementation(
-      (_request: Request, handler: () => Promise<Response>) => handler()
-    );
-    documentSessionMocks.getRequest.mockReturnValue(request('/', cookie));
-    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
+    const user = { id: 'user-1', instanceId: 'tenant-1', roles: ['editor'], assignedModules: ['media'] };
+    const permission = { action: 'media.read', resourceType: 'media' };
+    const subject = { actorUserId: user.id, effectiveUserId: user.id, isImpersonating: false };
+    const permissions = { instanceId: user.instanceId, organizationId: 'org-1', permissions: [permission], subject };
+    documentSessionMocks.dispatchAuthRouteRequest.mockImplementation(async (request: Request) => {
+      const url = new URL(request.url);
+      if (url.pathname === '/auth/me') return Response.json({ user: { ...user, email: 'private@example.test' } });
+      if (url.pathname === '/api/v1/iam/me/context') return Response.json({ data: { activeOrganizationId: 'org-1' } });
+      expect(url.searchParams.get('organizationId')).toBe('org-1');
+      expect(request.headers.has('authorization')).toBe(false);
+      return Response.json(permissions);
+    });
+    const navigation = { user: { ...user, instanceDisplayName: undefined }, organizationId: 'org-1', permissions: [permission] };
+    documentSessionMocks.getRequest.mockReturnValue(request('/', { ...cookie, authorization: 'Bearer ignored' }));
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true, navigation });
     expect(documentSessionMocks.loadStudioReleaseNotes).not.toHaveBeenCalled();
+
+    documentSessionMocks.dispatchAuthRouteRequest
+      .mockResolvedValueOnce(Response.json({ user }))
+      .mockResolvedValueOnce(Response.json({ data: { activeOrganizationId: 'org-1' } }))
+      .mockResolvedValueOnce(Response.json({ ...permissions, organizationId: 'org-2' }));
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
+
+    documentSessionMocks.dispatchAuthRouteRequest
+      .mockResolvedValueOnce(Response.json({ user }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
+
+    const platformUser = { id: 'platform-user', roles: ['instance_registry_admin'] };
+    documentSessionMocks.dispatchAuthRouteRequest.mockResolvedValueOnce(
+      Response.json({ user: platformUser })
+    );
+    await expect(loadDocumentSession()).resolves.toEqual({
+      initiallyAuthenticated: true,
+      navigation: { user: platformUser, organizationId: null, permissions: [] },
+    });
 
     documentSessionMocks.getRequest.mockReturnValue(request('/changelog/', cookie));
     documentSessionMocks.loadStudioReleaseNotes.mockResolvedValueOnce([]);
     await expect(loadDocumentSession()).resolves.toEqual({
       initiallyAuthenticated: true,
+      navigation,
       changelogReleases: [],
     });
 
     documentSessionMocks.loadStudioReleaseNotes.mockRejectedValueOnce(new Error('offline'));
-    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true, navigation });
   });
 
   it('restores public root configuration during client navigation', async () => {
@@ -278,7 +307,6 @@ describe('root route document', () => {
     document.head.append(parentDomainMeta);
 
     try {
-      const { loadRootData } = await import('./__root');
       await expect(loadRootData()).resolves.toEqual({
         pluginRouteScope: 'tenant',
         studioBranding: 'kassel-dialog',
@@ -309,9 +337,7 @@ describe('root route document', () => {
     cleanup();
   });
 
-  it('returns stable root head metadata', async () => {
-    const { getRootHead } = await import('./__root');
-
+  it('returns stable root head metadata', () => {
     expect(getRootHead()).toEqual({
       meta: [
         { charSet: 'utf-8' },
@@ -327,9 +353,7 @@ describe('root route document', () => {
     });
   });
 
-  it('uses the server-selected app name in root metadata', async () => {
-    const { getRootHead } = await import('./__root');
-
+  it('uses the server-selected app name in root metadata', () => {
     expect(
       getRootHead({
         loaderData: {
@@ -341,9 +365,7 @@ describe('root route document', () => {
     ).toContainEqual({ title: 'Kassel DIALOG' });
   });
 
-  it('publishes the server-resolved plugin route scope for hydration', async () => {
-    const { getRootHead } = await import('./__root');
-
+  it('publishes the server-resolved plugin route scope for hydration', () => {
     expect(
       getRootHead({
         loaderData: {
@@ -359,8 +381,6 @@ describe('root route document', () => {
   });
 
   it('renders the app shell and focuses main content from the skip link', async () => {
-    const { RootDocument } = await import('./__root');
-
     render(
       <>
         <main id="main-content" tabIndex={-1} />
@@ -388,6 +408,21 @@ describe('root route document', () => {
     expect(document.head.querySelector('style[data-app-styles="true"]')).toBeNull();
   });
 
+  it('focuses the main content without changing the scroll position on page load', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    try {
+      render(
+        <RootDocument>
+          <main id="main-content" tabIndex={-1} />
+        </RootDocument>
+      );
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+      expect(document.activeElement).toBe(document.getElementById('main-content'));
+    } finally {
+      focus.mockRestore();
+    }
+  });
+
   it('updates the document title for the unified content route', async () => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
@@ -396,8 +431,6 @@ describe('root route document', () => {
         location: { pathname: '/admin/content' },
       })
     );
-
-    const { RootDocument } = await import('./__root');
 
     render(
       <>
@@ -425,7 +458,6 @@ describe('root route document', () => {
       })
     );
 
-    const { RootDocument } = await import('./__root');
     render(
       <RootDocument>
         <div>content</div>
@@ -449,7 +481,6 @@ describe('root route document', () => {
       })
     );
 
-    const { RootDocument } = await import('./__root');
     render(
       <RootDocument>
         <div>content</div>
@@ -477,7 +508,6 @@ describe('root route document', () => {
         resolvedLocation: { pathname: '/admin/faq/new', href: '/admin/faq/new' },
       })
     );
-    const RootDocument = await importRootDocument();
     render(
       <RootDocument>
         <input defaultValue="Unsaved question" />
@@ -491,7 +521,7 @@ describe('root route document', () => {
   });
 
   it('reports navigation in progress while keeping the current route visible', async () => {
-    await renderPendingRootDocument();
+    renderPendingRootDocument();
 
     await waitFor(() => {
       expect(screen.getByTestId('app-shell').getAttribute('data-is-navigating')).toBe('true');
@@ -499,10 +529,8 @@ describe('root route document', () => {
     expect(screen.getByText('content')).toBeTruthy();
   });
 
-  it('renders pending shell content as non-loading during server render to keep hydration stable', async () => {
+  it('renders pending shell content as non-loading during server render to keep hydration stable', () => {
     mockPendingRoute();
-
-    const RootDocument = await importRootDocument();
 
     const markup = renderToStaticMarkup(
       <RootDocument>
@@ -515,7 +543,7 @@ describe('root route document', () => {
   });
 
   it('keeps the current layout until the destination is ready', async () => {
-    await renderPendingRootDocument();
+    renderPendingRootDocument();
 
     await waitFor(() => {
       expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe(

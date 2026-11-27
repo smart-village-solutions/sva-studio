@@ -9,6 +9,8 @@ import React from 'react';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
+import Sidebar from './Sidebar';
+import type { DocumentNavigation } from './sidebar-access';
 import { t } from '../i18n';
 import { redirectRolelessUser } from '../lib/auth-navigation';
 import { studioPlugins } from '../lib/plugins';
@@ -29,19 +31,13 @@ type AppShellProps = Readonly<{
   sidebarSlot?: React.ReactNode;
   documentationPageId?: string;
   initiallyAuthenticated?: boolean;
+  initialNavigation?: DocumentNavigation;
 }>;
 
 const LazyRuntimeHealthIndicator = React.lazy(async () => {
   const module = await import('./RuntimeHealthIndicator');
   return {
     default: module.RuntimeHealthIndicator,
-  };
-});
-
-const LazySidebar = React.lazy(async () => {
-  const module = await import('./Sidebar');
-  return {
-    default: module.default,
   };
 });
 
@@ -167,6 +163,7 @@ export default function AppShell({
   sidebarSlot,
   documentationPageId,
   initiallyAuthenticated = false,
+  initialNavigation,
 }: AppShellProps) {
   const auth = useAuth();
   const { isAuthenticated, isLoading: isAuthLoading } = auth;
@@ -175,9 +172,9 @@ export default function AppShell({
   const hasSidebarLayout = !studioPlugins.some((plugin) =>
     plugin.routes.some((route) => route.path === currentPathname && route.layout === 'content-only')
   );
-  const showChangelogLink = initiallyAuthenticated && isAuthLoading;
-  const showSidebar =
-    hasSidebarLayout && ((isAuthenticated && !isAuthLoading) || showChangelogLink);
+  const hasInitialSession = initiallyAuthenticated && isAuthLoading && !auth.hasResolvedSession;
+  const showAuthenticatedNavigation = isAuthenticated || hasInitialSession;
+  const showSidebar = hasSidebarLayout && showAuthenticatedNavigation;
   const showBreadcrumbs = currentPathname !== '/';
   const showLegalTextAcceptanceDialog = shouldRenderLegalTextAcceptanceDialog({
     isHydrated,
@@ -192,13 +189,12 @@ export default function AppShell({
     <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
       {showSidebar
         ? (sidebarSlot ?? (
-            <React.Suspense fallback={sidebarPlaceholder}>
-              <LazySidebar
-                showChangelogLink={showChangelogLink}
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileOpenChange={onMobileSidebarOpenChange}
-              />
-            </React.Suspense>
+            <Sidebar
+              initialNavigation={initialNavigation}
+              showChangelogLink={hasInitialSession}
+              isMobileOpen={isMobileSidebarOpen}
+              onMobileOpenChange={onMobileSidebarOpenChange}
+            />
           ))
         : hasSidebarLayout && isAuthLoading
           ? sidebarPlaceholder
@@ -262,7 +258,7 @@ export default function AppShell({
               {documentationPageId ? (
                 <ContextualHelpBoundary
                   key={documentationPageId}
-                  enabled={isAuthenticated}
+                  enabled={showAuthenticatedNavigation}
                   pageId={documentationPageId}
                 >
                   <div className="space-y-4">{children}</div>

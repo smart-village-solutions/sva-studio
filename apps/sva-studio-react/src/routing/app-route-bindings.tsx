@@ -2,7 +2,7 @@ import { ContentEditorLeaveBoundary } from './content-editor-leave-boundary';
 import type { AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import { CatalogsPage } from '@sva/plugin-app-translations';
 import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { lazyRouteComponent, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
@@ -46,18 +46,9 @@ const ContentDetailRoutePage = () => {
   );
 };
 
-const LazyAppConfigurationEditor = React.lazy(() =>
-  import('../routes/app-configuration/-editor').then((module) => ({
-    default: module.AppConfigurationEditor,
-  }))
-);
-
-const AppConfigurationRoutePage = () => (
-  <React.Suspense
-    fallback={<StudioLoadingState>{t('interfaces.appConfiguration.loading')}</StudioLoadingState>}
-  >
-    <LazyAppConfigurationEditor />
-  </React.Suspense>
+const AppConfigurationRoutePage = lazyRouteComponent(
+  () => import('../routes/app-configuration/-editor'),
+  'AppConfigurationEditor'
 );
 
 const hostAppRouteBindings = {

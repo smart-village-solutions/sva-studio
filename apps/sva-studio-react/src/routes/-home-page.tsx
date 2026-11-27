@@ -313,7 +313,7 @@ export const HomePage = ({
       </section>
 
       {isLoading ? (
-        <section className="mx-auto max-w-6xl px-6 py-12">
+        <section className="mx-auto grid min-h-24 max-w-6xl place-items-center px-6">
           <StudioLoadingState>{t('home.session.loading')}</StudioLoadingState>
         </section>
       ) : isAuthenticated ? (

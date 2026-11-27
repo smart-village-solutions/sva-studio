@@ -25,6 +25,7 @@ import {
   type PluginRouteScope,
 } from '../lib/plugin-route-scope';
 import type { StudioReleaseNotes } from '../lib/studio-release-notes.shared';
+import type { DocumentNavigation } from '../components/sidebar-access';
 import { createThemeBootstrapScript } from '../lib/theme';
 import {
   FALLOW_BROWSER_BEACON_META_NAME,
@@ -90,19 +91,14 @@ export const loadDocumentSession = createServerOnlyFn(async () => {
   // The SSR navigation can depend on the session. Do not reuse the document for another user.
   setResponseHeader('Cache-Control', 'private, no-store');
   if (!request.headers.has('cookie')) return {};
-  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
-  const response = await withAuthenticatedUser(request, async () => {
-    const pathname = new URL(request.url).pathname.replace(/\/$/, '');
-    if (pathname !== '/changelog') return new Response(null, { status: 204 });
-    const { loadStudioReleaseNotes } = await import('../lib/studio-release-notes.server');
-    const releases = await loadStudioReleaseNotes().catch(() => undefined);
-    return releases ? Response.json(releases) : new Response(null, { status: 204 });
-  });
-
-  if (!response.ok) return {};
-  const initialSession = { initiallyAuthenticated: true };
-  if (response.status === 204) return initialSession;
-  return { ...initialSession, changelogReleases: (await response.json()) as StudioReleaseNotes };
+  const { loadDocumentNavigation } = await import('../lib/document-navigation.server');
+  const session = await loadDocumentNavigation(request);
+  if (!session.initiallyAuthenticated || new URL(request.url).pathname.replace(/\/$/, '') !== '/changelog') {
+    return session;
+  }
+  const { loadStudioReleaseNotes } = await import('../lib/studio-release-notes.server');
+  const releases = await loadStudioReleaseNotes().catch(() => undefined);
+  return releases ? { ...session, changelogReleases: releases } : session;
 });
 
 /** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
@@ -131,6 +127,7 @@ export const loadRootData = async () => {
 
 export type RootLoaderData = {
   readonly initiallyAuthenticated?: boolean;
+  readonly navigation?: DocumentNavigation;
   readonly changelogReleases?: StudioReleaseNotes;
   readonly pluginRouteScope: PluginRouteScope;
   readonly studioBranding: StudioBranding;
@@ -239,7 +236,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
 
   React.useEffect(() => {
     const mainElement = globalThis.document.getElementById('main-content');
-    mainElement?.focus();
+    mainElement?.focus({ preventScroll: true });
   }, [currentPathname]);
 
   return (
@@ -280,6 +277,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                       initiallyAuthenticated={
                         (rootLoaderData as RootLoaderData | undefined)?.initiallyAuthenticated
                       }
+                      initialNavigation={(rootLoaderData as RootLoaderData | undefined)?.navigation}
                       isNavigating={isHydrated && isNavigating}
                       isMobileSidebarOpen={isMobileSidebarOpen}
                       onMobileSidebarOpenChange={setIsMobileSidebarOpen}

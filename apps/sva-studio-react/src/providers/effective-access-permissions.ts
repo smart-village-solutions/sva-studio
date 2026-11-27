@@ -6,6 +6,8 @@ import {
   readIamErrorResponse,
 } from '../lib/iam-api';
 
+export type { MePermissionsResponse };
+
 const buildPermissionsPath = (instanceId: string, organizationId: string | null): string => {
   const searchParams = new URLSearchParams({ instanceId });
   if (organizationId) {

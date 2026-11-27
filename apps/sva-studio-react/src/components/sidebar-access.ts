@@ -1,4 +1,8 @@
+import React from 'react';
+import { summarizeContentAccess } from '@sva/core';
+import type { EffectiveAccessSnapshot, UiAccessRequirement } from '@sva/plugin-sdk';
 import { useContentAccess } from '../hooks/use-content-access';
+import { useOrganizationContext } from '../hooks/use-organization-context';
 import {
   hasExperimentalAccess,
   hasIamGovernanceAccess,
@@ -13,8 +17,89 @@ import {
   isIamUiEnabled,
 } from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
-import { useEffectiveAccess } from '../providers/effective-access-provider';
+import type { MePermissionsResponse } from '../providers/effective-access-permissions';
+import { evaluateUiAccess, useEffectiveAccess } from '../providers/effective-access-provider';
 import { useStudioBranding } from '../providers/studio-branding-provider';
+
+export type DocumentNavigation = Readonly<{
+  user: Pick<
+    NonNullable<ReturnType<typeof useAuth>['user']>,
+    'id' | 'instanceId' | 'instanceDisplayName' | 'roles' | 'assignedModules'
+  >;
+  organizationId: string | null;
+  permissions: MePermissionsResponse['permissions'];
+}>;
+
+const resolveDocumentSidebarAccess = (navigation: DocumentNavigation) => {
+  const { user, organizationId, permissions } = navigation;
+  const snapshot: EffectiveAccessSnapshot = user.instanceId
+    ? {
+        status: 'ready',
+        generation: 0,
+        scope: {
+          kind: 'tenant',
+          instanceId: user.instanceId,
+          organizationId,
+          authGeneration: 0,
+          moduleAssignmentGeneration: 0,
+        },
+        assignedModules: user.assignedModules ?? [],
+        permissions,
+      }
+    : {
+        status: 'ready',
+        generation: 0,
+        scope: { kind: 'platform', authGeneration: 0 },
+        platformRoles: user.roles,
+      };
+  return {
+    user,
+    isAuthenticated: true,
+    contentAccessApi: {
+      access: user.instanceId ? summarizeContentAccess(permissions) : null,
+      permissionActions: [...new Set(permissions.map(({ action }) => action))],
+      unscopedPermissionActions: [],
+      isLoading: false,
+      error: null,
+    },
+    decideAccess: (requirement: UiAccessRequirement) =>
+      evaluateUiAccess({ isAuthenticated: true, requirement, snapshot }),
+  };
+};
+
+const useDocumentSidebarAccess = (
+  initialNavigation: DocumentNavigation | undefined,
+  contentAccess: ReturnType<typeof useContentAccess>
+) => {
+  const auth = useAuth();
+  const organization = useOrganizationContext();
+  const [navigation, setNavigation] = React.useState(
+    auth.isLoading && !auth.hasResolvedSession ? initialNavigation : undefined
+  );
+  const verifyingSession = auth.isLoading && !auth.hasResolvedSession;
+  const sameIdentity =
+    auth.user?.id === navigation?.user.id && auth.user?.instanceId === navigation?.user.instanceId;
+  const verifyingOrganization = organization.isLoading && !organization.context;
+  const sameOrganization =
+    (organization.context?.activeOrganizationId ?? null) === navigation?.organizationId;
+  const showInitialNavigation =
+    navigation &&
+    !auth.error &&
+    !auth.isRecoveringSession &&
+    !organization.error &&
+    !organization.isUpdating &&
+    (verifyingSession ||
+      (sameIdentity && (verifyingOrganization || (sameOrganization && contentAccess.isLoading))));
+
+  React.useEffect(() => {
+    if (!showInitialNavigation && navigation) setNavigation(undefined);
+  }, [showInitialNavigation, navigation]);
+
+  return React.useMemo(
+    () => showInitialNavigation ? resolveDocumentSidebarAccess(navigation) : undefined,
+    [showInitialNavigation, navigation]
+  );
+};
 
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
 const MODULES_READ_PERMISSION = 'modules.read';
@@ -208,11 +293,18 @@ const resolveSidebarSystemAccess = ({
   };
 };
 
-export const useSidebarAccess = () => {
-  const { user, isAuthenticated } = useAuth();
+export const useSidebarAccess = (initialNavigation?: DocumentNavigation) => {
+  const auth = useAuth();
   const { profile: brandingProfile } = useStudioBranding();
-  const contentAccessApi = useContentAccess();
-  const { decide: decideAccess } = useEffectiveAccess();
+  const contentAccess = useContentAccess();
+  const effectiveAccess = useEffectiveAccess();
+  const initial = useDocumentSidebarAccess(initialNavigation, contentAccess);
+  const { user, isAuthenticated, contentAccessApi, decideAccess } = initial ?? {
+    user: auth.user,
+    isAuthenticated: auth.isAuthenticated,
+    contentAccessApi: contentAccess,
+    decideAccess: effectiveAccess.decide,
+  };
   const accessUser = user
     ? { ...user, permissionActions: contentAccessApi.permissionActions }
     : user;

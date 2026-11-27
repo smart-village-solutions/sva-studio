@@ -463,6 +463,34 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toBeTruthy();
   });
 
+  it('shows contextual help from the verified document session until the browser resolves it', () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = (
+      <AppShell currentPathname="/" documentationPageId="home.overview" initiallyAuthenticated>
+        <div>Startseite</div>
+      </AppShell>
+    );
+    const view = render(page);
+    expect(screen.getByTestId('contextual-help')).toBeTruthy();
+
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      hasResolvedSession: true,
+    });
+    view.rerender(React.cloneElement(page));
+    expect(screen.queryByTestId('contextual-help')).toBeNull();
+  });
+
   it('zeigt die kontextuelle Hilfe nicht fuer anonyme Nutzer', async () => {
     useAuthMock.mockReturnValue({
       user: null,

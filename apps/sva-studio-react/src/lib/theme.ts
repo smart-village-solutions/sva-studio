@@ -3,6 +3,7 @@ export type ThemeMode = 'light' | 'dark';
 // Phase 1 keeps the existing runtime theme ids to avoid wide churn.
 export type AppThemeName = 'sva-default' | 'sva-forest';
 
+export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
 export const THEME_MODE_STORAGE_KEY = 'sva-studio.theme-mode';
 export const DEFAULT_THEME_NAME: AppThemeName = 'sva-default';
 
@@ -39,6 +40,10 @@ export const createThemeBootstrapScript = (): string =>
     'root.dataset.themeMode=mode;',
     'root.style.colorScheme=mode;',
     "root.classList.toggle('dark',mode==='dark');",
+    'try{',
+    `var sidebar=window.localStorage.getItem(${JSON.stringify(SIDEBAR_COLLAPSED_STORAGE_KEY)});`,
+    "if(sidebar==='1'||sidebar==='0')root.dataset.sidebarCollapse=sidebar;",
+    '}catch(error){}',
     '})();',
   ].join('');
 

@@ -22,6 +22,8 @@ import {
   subscribeToEffectiveAccessInvalidation,
 } from './effective-access-invalidation';
 
+export { evaluateUiAccess };
+
 export type EffectiveAccessContextValue = Readonly<{
   snapshot: EffectiveAccessSnapshot;
   isCurrent: boolean;

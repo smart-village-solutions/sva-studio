@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isMp3UploadFile,
   mediaLiterals,
   resolveMediaFocusCrop,
   type MediaAsset,
@@ -9,6 +10,19 @@ import {
   type MediaReference,
   type MediaVariant,
 } from './index.js';
+
+describe('MP3 upload file detection', () => {
+  it.each([
+    ['clip', 'audio/mpeg', true],
+    ['clip', 'audio/mp3', true],
+    ['clip.MP3', '', true],
+    ['clip.mp3', 'application/octet-stream', true],
+    ['clip.wav', 'application/octet-stream', false],
+    ['clip.mp3', 'image/jpeg', false],
+  ])('checks the filename %s and declared MIME type %s', (name, type, allowed) => {
+    expect(isMp3UploadFile({ name, type })).toBe(allowed);
+  });
+});
 
 describe('media type contracts', () => {
   it('publishes the canonical literal value sets for runtime consumers', () => {

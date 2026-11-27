@@ -64,7 +64,7 @@ const editingUploadSchema = z
 export const uploadInitializationSchema = z
   .object({
     instanceId: instanceIdSchema,
-    mediaType: z.literal(mediaLiterals.types[0]).default(mediaLiterals.types[0]),
+    mediaType: z.enum(mediaLiterals.types).default('image'),
     mimeType: z.string().trim().min(1),
     byteSize: z.number().int().positive(),
     visibility: visibilitySchema.default('public'),
@@ -82,6 +82,13 @@ export const uploadInitializationSchema = z
         ? Boolean(contentSaveOperationId) && Boolean(draftId)
         : !contentSaveOperationId && !draftId,
     'Content-Save-Uploads benötigen Operations- und Draft-ID; Library-Uploads dürfen sie nicht enthalten.'
+  )
+  .refine(
+    ({ mediaType, mimeType, editing }) =>
+      mediaType === 'audio'
+        ? mimeType === 'audio/mpeg' && !editing
+        : !mimeType.toLowerCase().startsWith('audio/'),
+    'Für Audio-Uploads sind ausschließlich MP3-Dateien ohne Bildbearbeitung zulässig.'
   );
 
 export const contentSaveOperationCreateSchema = z.object({

@@ -5,3 +5,4 @@ export * from './media.deletion.js';
 export * from './media.tags.js';
 export * from './media.metadata.js';
 export * from './media.editing.js';
+export * from './media.upload.js';

@@ -424,7 +424,7 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(false);
     fireEvent.click(document.getElementById('content-media-add')!);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/image.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
@@ -969,7 +969,7 @@ describe('PoiDetailPage', () => {
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/image.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
@@ -986,6 +986,35 @@ describe('PoiDetailPage', () => {
       expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
       expect(mediaUrl.getAttribute('aria-invalid')).toBe('true');
     });
+  });
+
+  it('sends a direct audio link with its metadata when creating a POI', async () => {
+    render(<PoiDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Stadtpark' } });
+    switchSection('content');
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
+      target: { value: 'https://example.test/stadtpark.mp3' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
+    fireEvent.change(screen.getByLabelText('Medientyp'), { target: { value: 'audio' } });
+    fireEvent.change(screen.getByLabelText('Medienbeschriftung'), {
+      target: { value: 'Stadtpark entdecken' },
+    });
+    fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadtarchiv' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+
+    await waitFor(() =>
+      expect(vi.mocked(createPoi).mock.calls[0]?.[0].mediaContents).toMatchObject([
+        {
+          contentType: 'audio',
+          captionText: 'Stadtpark entdecken',
+          copyright: 'Stadtarchiv',
+          sourceUrl: { url: 'https://example.test/stadtpark.mp3' },
+        },
+      ])
+    );
   });
 
   it('focuses the invalid media source url row when later media entries are invalid', async () => {
@@ -1490,8 +1519,16 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('uploads local media only while saving and assigns the resolved image to the created poi', async () => {
-    const uploadedFile = new File(['image-bytes'], 'upload-rathaus.webp', { type: 'image/webp' });
+  it.each([
+    { fileName: 'upload-rathaus.webp', mimeType: 'image/webp', contentType: 'image' },
+    { fileName: 'upload-rathaus.mp3', mimeType: 'application/octet-stream', contentType: 'audio' },
+  ])('uploads local $contentType only while saving and assigns it to the created POI', async ({
+    fileName,
+    mimeType,
+    contentType,
+  }) => {
+    const persistentUrl = `https://cdn.example.test/${fileName}`;
+    const uploadedFile = new File(['file-bytes'], fileName, { type: mimeType });
 
     vi.mocked(createPoi).mockResolvedValueOnce({
       id: 'poi-created',
@@ -1512,7 +1549,7 @@ describe('PoiDetailPage', () => {
           {
             draftId,
             assetId: 'asset-uploaded',
-            persistentUrl: 'https://cdn.example.test/upload-rathaus.webp',
+            persistentUrl,
           },
         ]),
       };
@@ -1533,9 +1570,13 @@ describe('PoiDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
-    await waitFor(() =>
-      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
-    );
+    if (contentType === 'image') {
+      await waitFor(() =>
+        expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+      );
+    } else {
+      expect((await screen.findByLabelText<HTMLSelectElement>('Medientyp')).value).toBe('audio');
+    }
 
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
@@ -1544,11 +1585,11 @@ describe('PoiDetailPage', () => {
         expect.objectContaining({
           mediaContents: [
             expect.objectContaining({
-              captionText: 'upload-rathaus.webp',
-              contentType: 'image',
+              captionText: fileName,
+              contentType,
               sourceUrl: {
-                url: 'https://cdn.example.test/upload-rathaus.webp',
-                description: 'upload-rathaus.webp',
+                url: persistentUrl,
+                description: fileName,
               },
             }),
           ],

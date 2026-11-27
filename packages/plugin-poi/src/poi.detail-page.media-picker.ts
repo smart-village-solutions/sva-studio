@@ -4,6 +4,7 @@ import {
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
+  isMp3UploadFile,
   isSupportedContentMediaUploadFile as isSupportedUploadFile,
   readHostMediaAssetFileName as readAssetFileName,
   readHostMediaAssetTitle as readAssetTitle,
@@ -90,6 +91,7 @@ const acceptPoiAsset = (asset: PoiMediaPickerAsset, input: PickerInput) => {
   const usage = {
     ...poiAssetToUsage({
       assetId: asset.id,
+      mimeType: asset.mimeType,
       persistentUrl: asset.localDraft ? '' : (asset.persistentUrl ?? ''),
       previewUrl: asset.previewUrl,
       metadata: { ...asset.metadata, fileName: asset.fileName },
@@ -165,7 +167,7 @@ export const usePoiMediaPicker = (input: PickerInput) => {
   const mediaPicker = useStudioMediaPickerOverlay<PoiMediaPickerAsset>({
     onAccept: (asset) => acceptPoiAsset(asset, input),
     canAcceptAsset: isAssetSelectable,
-    isSupportedUploadFile,
+    isSupportedUploadFile: (file) => isSupportedUploadFile(file) || isMp3UploadFile(file),
     createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: (assetId) => loadPoiAsset(assetId, input),
     saveAssetMetadata: (assetId, metadata) => savePoiAssetMetadata(assetId, metadata, input),

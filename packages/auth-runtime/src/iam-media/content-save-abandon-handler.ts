@@ -1,13 +1,10 @@
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
+import { resolveContentSaveOperationContext } from './content-save-support.js';
 import { contentSaveOperationCommandSchema } from './schemas.js';
 import { deleteMediaEditingObjects } from './processing-editing.js';
-import {
-  getMediaRequestId as getRequestId,
-  readMediaContentSaveOperationId as readContentSaveOperationId,
-  resolveBodyScopedMediaInstanceId as resolveBodyScopedInstanceId,
-} from './request-context.js';
+import { getMediaRequestId as getRequestId } from './request-context.js';
 import {
   emitMediaAuditEvent,
   mapMediaAuthorizationFailure as mapAuthorizationFailure,
@@ -73,12 +70,17 @@ export const abandonContentSaveOperation = async (
 ): Promise<Response> => {
   const parsed = await parseRequestBody(request, contentSaveOperationCommandSchema);
   if (!parsed.ok) return createApiError(400, 'invalid_request', parsed.message, getRequestId());
-  const operationId = readContentSaveOperationId(request);
-  if (operationId instanceof Response) return operationId;
-  const scope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
-  if (!scope.ok) return scope.response;
-  const { instanceId } = scope;
-  const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
+  const operationContext = await resolveContentSaveOperationContext({
+    deps, request, ctx, bodyInstanceId: parsed.data.instanceId,
+  });
+  if (operationContext instanceof Response) return operationContext;
+  const { instanceId, operationId, operation } = operationContext;
+  const authorization = await deps.authorizeAction({
+    ctx,
+    instanceId,
+    action: 'media.reference.manage',
+    resource: { targetType: operation.targetType, targetId: operation.targetId },
+  });
   if (!authorization.ok) return mapAuthorizationFailure(authorization);
   const marked = await deps.withMediaService(instanceId, (service) =>
     service.markContentSaveOperationAbandonPending({

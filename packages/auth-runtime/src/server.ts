@@ -145,7 +145,7 @@ export {
   type TenantPermissionProjectionSubject,
   type PermissionDirectorySubject,
 } from './iam-authorization/tenant-permission-projection.js';
-export { withMediaRepository, withMediaService } from './iam-media/index.js';
+export { canUseEditorialAudioSources, withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';
 export {
   cleanupMediaContentSaveOperation,

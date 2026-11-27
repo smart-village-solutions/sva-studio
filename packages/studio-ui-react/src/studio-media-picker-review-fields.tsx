@@ -145,7 +145,7 @@ const ReviewAssetPreview = ({
     <div className="flex items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20">
       <StudioMediaPreview
         alt={metadataDraft.altText || metadataDraft.title || reviewAsset.title}
-        url={reviewAsset.previewUrl}
+        url={reviewAsset.mimeType === 'audio/mpeg' ? undefined : reviewAsset.previewUrl}
       />
     </div>
     <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3">

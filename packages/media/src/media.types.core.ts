@@ -1,7 +1,7 @@
 export const mediaScanLimits = { maxInventoryFiles: 25, maxBytes: 64 * 1024 * 1024 } as const;
 
 export const mediaLiterals = {
-  types: ['image'],
+  types: ['image', 'audio'],
   visibilities: ['public', 'protected'],
   uploadStatuses: ['pending', 'validated', 'processed', 'failed', 'blocked'],
   processingStatuses: ['pending', 'ready', 'failed'],

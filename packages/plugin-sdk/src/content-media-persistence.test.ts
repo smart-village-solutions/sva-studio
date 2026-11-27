@@ -10,6 +10,31 @@ import {
 } from './content-media-persistence.js';
 
 describe('content media persistence', () => {
+  it('protects an existing audio asset with prepared references before the content write', async () => {
+    const sequence: string[] = [];
+    const fetch = vi.fn(async (request: RequestInfo | URL) => {
+      const url = String(request);
+      sequence.push(url.split('/').at(-1) ?? '');
+      return Response.json({ data: { id: 'operation-1' } });
+    });
+    const saveContent = vi.fn(async () => {
+      sequence.push('provider-write');
+      return { id: 'tour-1' };
+    });
+    await expect(saveContentWithHostMediaReferences({
+      fetch,
+      saveContent,
+      getTargetId: (saved) => saved.id,
+      targetType: 'tours.tour',
+      references: [{ assetId: 'library-audio', role: 'gallery_item' }],
+      requirePreparedReferences: true,
+    })).resolves.toMatchObject({ status: 'complete' });
+    expect(saveContent).toHaveBeenCalledWith([], { operationId: 'operation-1' });
+    expect(sequence).toEqual([
+      'content-save-operations', 'references', 'saving-content', 'provider-write', 'content-saved', 'commit',
+    ]);
+  });
+
   const processingSave = (pending: boolean) => {
     let reads = 0;
     const fetch = vi.fn(async (request: RequestInfo | URL) => {

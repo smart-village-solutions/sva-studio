@@ -1,5 +1,5 @@
 import React from 'react';
-import { waitForHostMediaUpload } from '@sva/plugin-sdk';
+import { isMp3UploadFile, waitForHostMediaUpload } from '@sva/plugin-sdk';
 
 import {
   asIamError,
@@ -136,9 +136,10 @@ export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
       });
 
       try {
+        const isAudio = isMp3UploadFile(file);
         const initialized = await initializeMediaUpload({
-          mediaType: file.type.startsWith('image/') ? 'image' : undefined,
-          mimeType: file.type || 'application/octet-stream',
+          mediaType: isAudio ? 'audio' : file.type.startsWith('image/') ? 'image' : undefined,
+          mimeType: isAudio ? 'audio/mpeg' : file.type || 'application/octet-stream',
           byteSize: file.size,
           visibility: 'public',
         });

@@ -125,7 +125,16 @@ export const mapNewsDetailFormValuesToMutation = (
     normalizedValues.sourceUrl.url,
     normalizedValues.sourceUrlDescription || normalizedValues.sourceUrl.description
   );
-  const contentBlocks = buildEditorialContentBlocks(normalizedValues);
+  const remainingBlocks = snapshot?.legacyContentBlocks?.slice(1) ?? [];
+  const contentBlocks = [
+    ...buildEditorialContentBlocks(normalizedValues),
+    ...remainingBlocks.map((block) => ({
+      title: block.title,
+      intro: block.intro,
+      body: block.body,
+      mediaContents: block.mediaContents.map(buildMediaContentMutation),
+    })),
+  ];
 
   return {
     ...mutation,

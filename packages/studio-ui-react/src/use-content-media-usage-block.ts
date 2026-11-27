@@ -15,9 +15,11 @@ type UsageListActionsInput = Readonly<{
   onOpenLibrary?: () => void;
   onOpenUpload?: () => void;
   announcements: ContentMediaUsageBlockLabels['announcements'];
+  addButtonId: string;
 }>;
 
 export const useContentMediaUsageListActions = ({
+  addButtonId,
   announcements,
   onAddManual,
   onChange,
@@ -55,7 +57,7 @@ export const useContentMediaUsageListActions = ({
     globalThis.setTimeout(() => {
       const next = usages[index + 1] ?? usages[index - 1];
       globalThis.document
-        ?.getElementById(next ? `content-media-${next.uiId}-remove` : 'content-media-add')
+        ?.getElementById(next ? `content-media-${next.uiId}-remove` : addButtonId)
         ?.focus();
     }, 0);
   };

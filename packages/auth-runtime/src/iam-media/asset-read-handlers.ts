@@ -255,7 +255,10 @@ export const getMediaDelivery = async (
         return mapAuthorizationFailure(authorization);
       }
 
-      if (!isMediaAssetReady(asset)) {
+      if (
+        !isMediaAssetReady(asset) ||
+        (asset.mediaType === 'audio' && asset.technical.scanStatus !== 'clean')
+      ) {
         return createApiError(
           409,
           'conflict',

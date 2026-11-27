@@ -5,15 +5,17 @@ import {
 
 export const mediaDEResources = {
   picker: {
+    mediaLinkHint: 'Fügen Sie den direkten Link zur Mediendatei ein.',
+    mediaUrl: 'Medien-URL',
     linkHint:
       'Fügen Sie den direkten Link zum Bild ein. Weitere Bildangaben können Sie nach der Übernahme im Inhalt ergänzen.',
     url: 'Bild-URL',
-    urlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS umgestellt.',
+    urlUpgradedToHttps: 'Die URL wurde auf HTTPS umgestellt.',
     urlInsecureHttp:
       'Diese HTTP-Adresse ist unverschlüsselt. Der Browser kann das Bild blockieren.',
     urlHttpsUnavailable:
       'Keine funktionierende HTTPS-Version gefunden. Bitte verwenden Sie einen vollständigen Bildlink.',
-    urlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
+    urlInvalid: 'Die URL ist ungültig oder nicht dauerhaft speicherbar.',
     preview: 'Vorschau des verlinkten Bildes',
     previewUnavailable:
       'Keine Vorschau verfügbar. Ein gültiger Bildlink kann trotzdem übernommen werden.',
@@ -279,12 +281,12 @@ export const mediaDEResources = {
       description:
         'Ziehen Sie Dateien hierher oder klicken Sie auf „Dateien auswählen“, um den Upload im Studio vorzubereiten.',
       regionLabel: 'Upload-Schnellzugriff',
-      supportLabel: 'Unterstützt:',
+      supportLabel: 'JPEG, PNG, WebP und MP3',
     },
     upload: {
       initializing: 'Upload wird vorbereitet …',
       uploading: 'Datei wird hochgeladen …',
-      finalizing: 'Bild wird verarbeitet …',
+      finalizing: 'Datei wird verarbeitet …',
       processingTimeout:
         'Die Verarbeitung dauert länger. Das Medium wird im Hintergrund weiterverarbeitet und bleibt in der Bibliothek sichtbar.',
       processingFailed: 'Das Bild konnte nicht verarbeitet werden.',

@@ -72,11 +72,12 @@ const formatUpdatedAt = (value: string | undefined): string | null => {
     : null;
 };
 
-const imageMimeTypeByExtension: Readonly<Record<string, string>> = {
+const mimeTypeByExtension: Readonly<Record<string, string>> = {
   avif: 'image/avif',
   gif: 'image/gif',
   jpeg: 'image/jpeg',
   jpg: 'image/jpeg',
+  mp3: 'audio/mpeg',
   png: 'image/png',
   svg: 'image/svg+xml',
   webp: 'image/webp',
@@ -84,7 +85,7 @@ const imageMimeTypeByExtension: Readonly<Record<string, string>> = {
 
 const inferMimeTypeFromFileName = (fileName: string): string | undefined => {
   const extension = fileName.split('.').pop()?.trim().toLowerCase();
-  return extension ? imageMimeTypeByExtension[extension] : undefined;
+  return extension ? mimeTypeByExtension[extension] : undefined;
 };
 
 const isVisualPreview = (mimeType: string | undefined): boolean =>

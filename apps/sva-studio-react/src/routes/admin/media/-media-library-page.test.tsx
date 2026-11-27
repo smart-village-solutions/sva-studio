@@ -284,7 +284,7 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByRole('heading', { name: 'Medienbibliothek' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Dateien hochladen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dateien auswählen' })).toBeTruthy();
-    expect(screen.getByText('Unterstützt:')).toBeTruthy();
+    expect(screen.getByText('JPEG, PNG, WebP und MP3')).toBeTruthy();
     expect(screen.getByTestId('media-intake-shelf').querySelectorAll('svg')).toHaveLength(2);
     expect(screen.queryByText('Blockiert')).toBeNull();
     expect(screen.queryByText('Neu')).toBeNull();
@@ -310,10 +310,13 @@ describe('MediaLibraryPage', () => {
     expect(uploadFileMock).toHaveBeenCalledWith(file);
   });
 
-  it('accepts a supported image file via drag and drop', () => {
+  it.each([
+    ['hero.jpg', 'image/jpeg'],
+    ['station.mp3', 'audio/mpeg'],
+  ])('accepts %s via drag and drop', (fileName, mimeType) => {
     render(<MediaLibraryPage />);
 
-    const file = new File(['binary'], 'hero.jpg', { type: 'image/jpeg' });
+    const file = new File(['binary'], fileName, { type: mimeType });
     const shelf = screen.getByTestId('media-intake-shelf');
 
     fireEvent.dragEnter(shelf, {
@@ -426,7 +429,7 @@ describe('MediaLibraryPage', () => {
       reset: vi.fn(),
     });
     rerender(<MediaLibraryPage />);
-    expect(screen.getByText('Bild wird verarbeitet …')).toBeTruthy();
+    expect(screen.getByText('Datei wird verarbeitet …')).toBeTruthy();
 
     useSingleFileMediaUploadMock.mockReturnValue({
       phase: 'error',

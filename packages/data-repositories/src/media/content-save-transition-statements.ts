@@ -1,4 +1,42 @@
 import type { SqlStatement } from '../iam/repositories/types.js';
+import type { MediaRepository } from './repository-types.js';
+
+export const claimEditorialMediaWriteStatement = (
+  input: Parameters<MediaRepository['claimEditorialMediaWrite']>[0]
+): SqlStatement => ({
+  text: `
+UPDATE iam.media_content_save_operations AS operation
+SET editorial_write_claimed_at = NOW(),
+    target_id = COALESCE(operation.target_id, $5::text),
+    updated_at = NOW()
+WHERE operation.id = $1::uuid
+  AND operation.instance_id = $2
+  AND operation.actor_subject = $3
+  AND operation.target_type = $4
+  AND (operation.target_id IS NULL OR operation.target_id = $5::text)
+  AND operation.status IN ('saving_content', 'outcome_unknown')
+  AND operation.editorial_write_claimed_at IS NULL
+  AND cardinality($6::uuid[]) > 0
+  AND NOT EXISTS (
+    SELECT 1 FROM unnest($6::uuid[]) AS requested(asset_id)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM iam.media_content_save_operation_references AS prepared
+      WHERE prepared.operation_id = operation.id
+        AND prepared.instance_id = operation.instance_id
+        AND prepared.asset_id = requested.asset_id
+    )
+  )
+RETURNING operation.id;
+`,
+  values: [
+    input.operationId,
+    input.instanceId,
+    input.actorSubject,
+    input.targetType,
+    input.targetId ?? null,
+    input.assetIds,
+  ],
+});
 
 export const markContentSaveOperationContentSavedStatement = (input: {
   readonly instanceId: string;
@@ -63,12 +101,30 @@ RETURNING id;
 
 const commitContentSaveOperationSql = `
 WITH eligible_operation AS (
-  SELECT id, instance_id, target_type, target_id, status
-  FROM iam.media_content_save_operations
-  WHERE id = $1::uuid
-    AND instance_id = $2
-    AND actor_subject = $3
-    AND status IN ('content_saved', 'committed')
+  SELECT operation.id, operation.instance_id, operation.target_type, operation.target_id, operation.status
+  FROM iam.media_content_save_operations AS operation
+  WHERE operation.id = $1::uuid
+    AND operation.instance_id = $2
+    AND operation.actor_subject = $3
+    AND (
+      operation.status = 'committed'
+      OR (
+        operation.status = 'content_saved'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM iam.media_assets AS provisional_asset
+          WHERE provisional_asset.instance_id = operation.instance_id
+            AND provisional_asset.provisional_operation_id = operation.id
+            AND provisional_asset.lifecycle_status = 'provisional'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM iam.media_content_save_operation_references AS desired_reference
+              WHERE desired_reference.operation_id = operation.id
+                AND desired_reference.asset_id = provisional_asset.id
+            )
+        )
+      )
+    )
   FOR UPDATE
 ), deleted AS (
   DELETE FROM iam.media_references AS reference
@@ -123,27 +179,14 @@ WITH eligible_operation AS (
       updated_at = NOW()
   FROM eligible_operation
   WHERE operation.id = eligible_operation.id
-    AND (
-      eligible_operation.status = 'committed'
-      OR (
-        eligible_operation.status = 'content_saved'
-        AND NOT EXISTS (
-          SELECT 1
-          FROM iam.media_assets AS provisional_asset
-          WHERE provisional_asset.instance_id = eligible_operation.instance_id
-            AND provisional_asset.provisional_operation_id = eligible_operation.id
-            AND provisional_asset.lifecycle_status = 'provisional'
-            AND NOT EXISTS (
-              SELECT 1
-              FROM iam.media_content_save_operation_references AS desired_reference
-              WHERE desired_reference.operation_id = eligible_operation.id
-                AND desired_reference.asset_id = provisional_asset.id
-            )
-        )
-      )
-    )
     AND (SELECT COUNT(*) FROM activated) >= 0
-  RETURNING operation.id
+  RETURNING operation.id, operation.instance_id
+), released AS (
+  DELETE FROM iam.media_content_save_operation_references AS reference
+  USING committed
+  WHERE reference.operation_id = committed.id
+    AND reference.instance_id = committed.instance_id
+  RETURNING reference.id
 )
 SELECT EXISTS(SELECT 1 FROM committed) AS successful;
 `;

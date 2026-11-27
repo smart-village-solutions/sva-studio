@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { completeIdempotency, reserveIdempotency } from '@sva/auth-runtime/server';
+import { completeIdempotency, reserveIdempotency, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import type { z } from 'zod';
 
 import type { SvaMainserverConnectionInput, SvaMainserverErrorCode } from '../types.js';
 import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
+import { changedEditorialAudioUrls, validateEditorialAudioUrls } from './editorial-audio.js';
 import {
   authorizeMainserverExistingContent,
   finalizeMainserverMutation,
@@ -19,12 +20,28 @@ import {
   editableTourDocument,
   editTourDocument,
   readResult,
+  toTourEditVariables,
   updateInput,
   updateResult,
+  type TourEditorSnapshot,
 } from './tour-editor-contract.js';
 
 const contentType = 'tours.tour';
 const action = 'tours.update';
+
+const validateTourAudio = async (
+  context: Parameters<typeof validateEditorialAudioUrls>[0],
+  patch: z.output<typeof updateInput>['patch'],
+  tour: TourEditorSnapshot
+) => {
+  const urls = changedEditorialAudioUrls(patch.mediaContents, tour.mediaContents);
+  for (const stop of patch.tourStops ?? []) {
+    if (stop.mediaContents === undefined) continue;
+    const previous = tour.tourStops.find(({ id }) => id === stop.id);
+    urls.push(...changedEditorialAudioUrls(stop.mediaContents, previous?.mediaContents));
+  }
+  await validateEditorialAudioUrls(context, urls);
+};
 
 const invalidResponse = () =>
   new SvaMainserverError({
@@ -109,7 +126,13 @@ export const createTourEditor = (context: EditorContext) => {
     async read(actor: SvaMainserverConnectionInput, id: string) {
       return (await load(actor, id)).tour;
     },
-    async persist(actor: MainserverMutationActor, id: string, input: z.output<typeof updateInput>) {
+    async persist(
+      actor: MainserverMutationActor,
+      id: string,
+      input: z.output<typeof updateInput>,
+      request: Request,
+      ctx: AuthenticatedRequestContext
+    ) {
       const { config, tour } = await load(actor, id);
       if (!tour) return withMutationNotApplied(notFound());
       if (!(await hasExactTourEditorAccess(actor, tour)))
@@ -135,13 +158,18 @@ export const createTourEditor = (context: EditorContext) => {
         return withMutationNotApplied(revisionConflict());
       }
 
+      await validateTourAudio(
+        { request, ctx, instanceId: actor.instanceId, targetType: contentType, targetId: id },
+        input.patch,
+        tour
+      );
       const result = updateResult.safeParse(
         await context.executeGraphqlWithConfig<unknown>(
           {
             ...actor,
             document: editTourDocument,
             operationName: 'SvaMainserverEditTour',
-            variables: { id, expectedRevision: input.expectedRevision, ...input.patch },
+            variables: toTourEditVariables(id, input),
             mapErrorCode: mapEditorError,
             allowRetry: false,
           },
@@ -194,7 +222,8 @@ export const handleTourUpdate = async (
   request: Request,
   actor: MainserverMutationActor,
   id: string,
-  editor: ReturnType<typeof createTourEditor>
+  editor: ReturnType<typeof createTourEditor>,
+  ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const parsed = updateInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
@@ -242,7 +271,7 @@ export const handleTourUpdate = async (
 
   let response: Response;
   try {
-    response = await editor.persist(actor, id, parsed.data);
+    response = await editor.persist(actor, id, parsed.data, request, ctx);
   } catch (error) {
     const known = error instanceof SvaMainserverError && preWriteErrors.has(error.code);
     await finalizeMainserverMutationFailure({

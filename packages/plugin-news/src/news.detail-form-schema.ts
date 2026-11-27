@@ -39,6 +39,7 @@ const isHttpsUrl = (value: string): boolean => {
 };
 
 const mediaContentSchema = z.object({
+  payload: z.record(z.string(), z.unknown()).optional(),
   captionText: z.string(),
   copyright: z.string(),
   contentType: z.string(),

@@ -1,5 +1,6 @@
 import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
 import snapshot from '../generated/schema.snapshot.json';
 import type { MainserverMutationActor } from './mutation-principal-types.js';
@@ -65,7 +66,9 @@ const setup = (visible = false) => {
     detail,
     identity: context.loadDataProviderIdentityWithConfig,
     create: (input?: typeof draft) =>
-      handleTourCreate(request(input), actor, context, { list: vi.fn(), detail }),
+      handleTourCreate(request(input), actor, context, { list: vi.fn(), detail }, {
+        user: { id: 'user', instanceId: 'tenant' },
+      } as AuthenticatedRequestContext),
   };
 };
 

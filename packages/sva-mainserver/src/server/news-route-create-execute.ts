@@ -1,6 +1,7 @@
 import { completeIdempotency, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { isRecord, isResponse, json } from './content-route-core.js';
+import { collectBlockMedia, validateEditorialAudio } from './editorial-audio.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { authorizeOrResponse, NEWS_CONTENT_TYPE } from './news-route-access.js';
@@ -81,6 +82,10 @@ const persistNewsCreate = async (input: CreateExecutionInput): Promise<Response>
       : {}),
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
+  await validateEditorialAudio(
+    { request: input.request, ctx: context, instanceId: actor.instanceId, targetType: NEWS_CONTENT_TYPE },
+    collectBlockMedia(parsed.news.contentBlocks)
+  );
   input.providerWriteStarted = true;
   input.onProviderWrite();
   const data = await createSvaMainserverNews({

@@ -84,6 +84,7 @@ export type ContentMediaUsageBlockProps = Readonly<{
   }) => React.ReactNode;
   showHeader?: boolean;
   disabled?: boolean;
+  addButtonId?: string;
 }>;
 
 type ContentMediaUsageItemsProps = Readonly<{
@@ -104,10 +105,11 @@ type ContentMediaUsageItemsProps = Readonly<{
 const ContentMediaUsageBlockHeader = ({
   labels,
   showHeader,
-}: Readonly<{ labels: ContentMediaUsageBlockLabels; showHeader: boolean }>) =>
+  titleId,
+}: Readonly<{ labels: ContentMediaUsageBlockLabels; showHeader: boolean; titleId: string }>) =>
   showHeader ? (
     <div className="space-y-1">
-      <h3 id="content-media-block-title" className="text-lg font-semibold text-foreground">
+      <h3 id={titleId} className="text-lg font-semibold text-foreground">
         {labels.title}
       </h3>
       <p className="text-sm text-muted-foreground">{labels.description}</p>
@@ -156,6 +158,7 @@ const ContentMediaUsageItems = ({
 );
 
 export const ContentMediaUsageBlock = ({
+  addButtonId = 'content-media-add',
   disabled = false,
   errors = {},
   labels,
@@ -169,9 +172,11 @@ export const ContentMediaUsageBlock = ({
   showHeader = true,
   usages,
 }: ContentMediaUsageBlockProps) => {
+  const titleId = React.useId();
   useContentMediaUsageObjectUrlCleanup(usages);
   const { add, announcement, move, remove, update } = useContentMediaUsageListActions({
     announcements: labels.announcements,
+    addButtonId,
     onAddManual,
     onChange,
     onOpenLibrary,
@@ -183,11 +188,11 @@ export const ContentMediaUsageBlock = ({
 
   return (
     <section
-      aria-labelledby={showHeader ? 'content-media-block-title' : undefined}
+      aria-labelledby={showHeader ? titleId : undefined}
       aria-label={showHeader ? undefined : labels.title}
     >
       <fieldset disabled={disabled} aria-busy={disabled} className="min-w-0 space-y-4 border-0 p-0">
-        <ContentMediaUsageBlockHeader labels={labels} showHeader={showHeader} />
+        <ContentMediaUsageBlockHeader labels={labels} showHeader={showHeader} titleId={titleId} />
         <p className="sr-only" aria-live="polite">
           {announcement}
         </p>
@@ -211,7 +216,7 @@ export const ContentMediaUsageBlock = ({
           refresh={refresh}
         />
         <div>
-          <Button id="content-media-add" type="button" onClick={add}>
+          <Button id={addButtonId} type="button" onClick={add}>
             {labels.actions.add}
           </Button>
         </div>

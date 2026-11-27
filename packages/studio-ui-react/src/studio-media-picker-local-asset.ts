@@ -1,3 +1,4 @@
+import { isMp3UploadFile } from '@sva/media';
 import type { StudioMediaPickerAssetDetail } from './studio-media-picker-overlay.shared.js';
 
 export const createLocalStudioMediaPickerAsset = (input: {
@@ -10,7 +11,7 @@ export const createLocalStudioMediaPickerAsset = (input: {
   fileName: input.file.name,
   previewUrl: input.previewUrl,
   persistentUrl: input.previewUrl,
-  mimeType: input.file.type,
+  mimeType: isMp3UploadFile(input.file) ? 'audio/mpeg' : input.file.type,
   visibility: 'public',
   metadata: { title: input.file.name, altText: '', description: '', copyright: '', license: '' },
   localDraft: { id: input.draftId, file: input.file },

@@ -32,6 +32,7 @@ export const NewsDetailMediaPicker = ({
   const navigate = useNavigate();
   return (
     <StudioMediaPickerOverlay
+      allowAudio
       libraryStatus={libraryStatus}
       assets={mediaAssets.map(toNewsMediaPickerSummary)}
       canUpload={canUploadMedia}

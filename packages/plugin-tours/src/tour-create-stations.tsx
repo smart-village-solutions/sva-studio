@@ -87,22 +87,64 @@ function StationFields({
   );
 }
 
+function StationActions({
+  pt,
+  first,
+  last,
+  removeDisabled,
+  moveUp,
+  moveDown,
+  remove,
+}: {
+  pt: Translate;
+  first: boolean;
+  last: boolean;
+  removeDisabled: boolean;
+  moveUp: () => void;
+  moveDown: () => void;
+  remove: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="secondary" disabled={first} onClick={moveUp}>
+        {pt('moveUp')}
+      </Button>
+      <Button type="button" variant="secondary" disabled={last} onClick={moveDown}>
+        {pt('moveDown')}
+      </Button>
+      <Button type="button" variant="secondary" disabled={removeDisabled} onClick={remove}>
+        {pt('removeStop')}
+      </Button>
+    </div>
+  );
+}
+
 export function Stations({
   pt,
   stops,
   setStops,
+  renderAudio,
+  lockedAudioStops,
 }: {
   pt: Translate;
   stops: Stop[];
   setStops: (next: Stop[]) => void;
+  renderAudio?: (stop: Stop) => ReactNode;
+  lockedAudioStops?: ReadonlySet<string>;
 }) {
   const [pendingRemoval, setPendingRemoval] = useState<Stop>();
-  const remove = (stop: Stop) => setStops(stops.filter(({ key }) => key !== stop.key));
+  const remove = (stop: Stop) => {
+    if (!lockedAudioStops?.has(stop.key)) setStops(stops.filter(({ key }) => key !== stop.key));
+  };
+  const swapBlocked = (index: number, target: number) =>
+    !!lockedAudioStops?.has(stops[index]?.key ?? '') &&
+    lockedAudioStops.has(stops[target]?.key ?? '');
   const change = (index: number, patch: Partial<Stop>) =>
     setStops(
       stops.map((stop, indexOfStop) => (indexOfStop === index ? { ...stop, ...patch } : stop))
     );
   const move = (index: number, target: number) => {
+    if (swapBlocked(index, target)) return;
     const next = [...stops];
     [next[index], next[target]] = [next[target]!, next[index]!];
     setStops(next);
@@ -118,31 +160,16 @@ export function Stations({
               number={index + 1}
               onChange={(patch) => change(index, patch)}
             >
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={index === 0}
-                  onClick={() => move(index, index - 1)}
-                >
-                  {pt('moveUp')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={index === stops.length - 1}
-                  onClick={() => move(index, index + 1)}
-                >
-                  {pt('moveDown')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}
-                >
-                  {pt('removeStop')}
-                </Button>
-              </div>
+              {renderAudio?.(stop)}
+              <StationActions
+                pt={pt}
+                first={index === 0 || swapBlocked(index, index - 1)}
+                last={index === stops.length - 1 || swapBlocked(index, index + 1)}
+                removeDisabled={lockedAudioStops?.has(stop.key) === true}
+                moveUp={() => move(index, index - 1)}
+                moveDown={() => move(index, index + 1)}
+                remove={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}
+              />
             </StationFields>
           </li>
         ))}

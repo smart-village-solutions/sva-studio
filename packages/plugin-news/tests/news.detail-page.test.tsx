@@ -567,7 +567,14 @@ describe('NewsDetailPage', () => {
     expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
-  it('keeps a selected upload local until the news item is saved', async () => {
+  it.each([
+    { fileName: 'uploaded.jpg', mimeType: 'image/jpeg', contentType: 'image' },
+    { fileName: 'uploaded.mp3', mimeType: 'audio/mpeg', contentType: 'audio' },
+  ])('keeps a selected $contentType upload local until the news item is saved', async ({
+    fileName,
+    mimeType,
+    contentType,
+  }) => {
     const checkers = new Set<() => boolean>();
     const check = () => Array.from(checkers).some((checker) => checker());
     render(
@@ -589,14 +596,19 @@ describe('NewsDetailPage', () => {
     expect(check()).toBe(true);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
-        files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
+        files: [new File(['file-bytes'], fileName, { type: mimeType })],
       },
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
-    await waitFor(() =>
-      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
-    );
+    if (contentType === 'image') {
+      await waitFor(() =>
+        expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+      );
+    } else {
+      const audioOption = await screen.findByRole('option', { name: 'Audio' });
+      expect(audioOption.closest<HTMLSelectElement>('select')?.value).toBe('audio');
+    }
     expect((screen.getByLabelText('Medien-URL') as HTMLInputElement).value).toBe('');
     expect(check()).toBe(true);
     expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
@@ -1021,6 +1033,40 @@ describe('NewsDetailPage', () => {
     } as never);
     fireEvent.click(screen.getByRole('button', { name: 'news.media.refresh' }));
     expect(await screen.findByText('news.media.refreshTitle')).toBeTruthy();
+  });
+
+  it('sends an extensionless direct audio link with its metadata when creating news', async () => {
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Hörbeitrag' } });
+    if (screen.queryByLabelText('Bereich auswählen'))
+      fireEvent.change(screen.getByLabelText('Bereich auswählen'), {
+        target: { value: 'content' },
+      });
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
+      target: { value: 'https://example.test/hoerbeitrag' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
+    fireEvent.change(screen.getByRole('option', { name: 'Audio' }).closest('select')!, {
+      target: { value: 'audio' },
+    });
+    fireEvent.change(screen.getByLabelText('Bildunterschrift'), {
+      target: { value: 'Rathaus für die Ohren' },
+    });
+    fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadtarchiv' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+
+    await waitFor(() =>
+      expect(vi.mocked(saveNewsEditorItem).mock.calls[0]?.[0].values.contentMedia).toMatchObject([
+        {
+          contentType: 'audio',
+          captionText: 'Rathaus für die Ohren',
+          copyright: 'Stadtarchiv',
+          sourceUrl: { url: 'https://example.test/hoerbeitrag' },
+        },
+      ])
+    );
   });
 
   it('renders a fixed principal without exposing an editable author', async () => {

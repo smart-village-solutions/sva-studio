@@ -47,6 +47,7 @@ export const poiMediaUsagesToContents = (
 
 export const poiAssetToUsage = (input: {
   readonly assetId: string;
+  readonly mimeType?: string;
   readonly persistentUrl: string;
   readonly previewUrl?: string | null;
   readonly metadata: Readonly<{
@@ -97,6 +98,6 @@ export const poiAssetToUsage = (input: {
         }
       : snapshot,
     referenceStatus: 'pending',
-    additionalData: { contentType: 'image' },
+    additionalData: { contentType: input.mimeType === 'audio/mpeg' ? 'audio' : 'image' },
   };
 };

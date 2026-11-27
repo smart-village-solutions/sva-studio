@@ -129,6 +129,14 @@ export type MediaRepository = {
     readonly operationId: string;
     readonly actorSubject: string;
   }): Promise<boolean>;
+  claimEditorialMediaWrite(input: {
+    readonly instanceId: string;
+    readonly operationId: string;
+    readonly actorSubject: string;
+    readonly targetType: string;
+    readonly targetId?: string;
+    readonly assetIds: readonly string[];
+  }): Promise<boolean>;
   markContentSaveOperationOutcomeUnknown(input: {
     readonly instanceId: string;
     readonly operationId: string;

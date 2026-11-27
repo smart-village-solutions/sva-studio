@@ -1,3 +1,5 @@
+import type { MediaType } from '@sva/media';
+
 export type MediaVisibility = 'public' | 'protected';
 
 export type MediaUploadStatus = 'pending' | 'validated' | 'processed' | 'failed' | 'blocked';
@@ -27,7 +29,7 @@ export type IamRegisteredMediaAsset = Readonly<{
   id: string;
   instanceId: string;
   storageKey: string;
-  mediaType: 'image';
+  mediaType: MediaType;
   mimeType: string;
   byteSize: number;
   visibility: MediaVisibility;
@@ -79,7 +81,7 @@ export type IamMediaUsageImpact = Readonly<{
 }>;
 
 export type InitializeMediaUploadPayload = Readonly<{
-  mediaType?: 'image';
+  mediaType?: MediaType;
   mimeType: string;
   byteSize: number;
   visibility?: MediaVisibility;

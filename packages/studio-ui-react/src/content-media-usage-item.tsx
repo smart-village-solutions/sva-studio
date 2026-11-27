@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
-import { IconTrash } from '@tabler/icons-react';
+import { IconMusic, IconTrash } from '@tabler/icons-react';
 
 import { Badge } from './badge.js';
 import { Button } from './button.js';
@@ -42,7 +42,9 @@ const Preview = ({ labels, usage }: Pick<ItemProps, 'labels' | 'usage'>) => {
   return (
     <div className="space-y-3">
       <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20">
-        {previewUrl ? (
+        {usage.additionalData?.contentType === 'audio' ? (
+          <IconMusic aria-hidden="true" className="h-8 w-8 text-muted-foreground" />
+        ) : previewUrl ? (
           <img className="h-full w-full object-cover" src={previewUrl} alt={usage.altText} />
         ) : (
           <span className="px-4 text-center text-sm text-muted-foreground">
@@ -87,6 +89,7 @@ const UsageFields = ({
   return (
     <StudioFieldGroup columns={2}>
       <ContentMediaUrlField
+        probeImage={usage.additionalData?.contentType !== 'audio'}
         usageId={usage.uiId}
         value={usage.persistentUrl}
         externalError={externalUrlError}

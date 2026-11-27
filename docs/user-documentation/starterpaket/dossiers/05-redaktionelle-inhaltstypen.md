@@ -54,6 +54,13 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - Ergänzen und bearbeiten Sie Stationen oder verschieben Sie sie mit **Nach oben** und **Nach unten**. Bestätigen Sie das Entfernen einer vorhandenen Station. Die Änderung wird erst beim Speichern übernommen.
 - **Änderungen speichern** zeigt den gesicherten Stand. Beim Verlassen schützt Studio offene Eingaben. Falls jemand die Tour inzwischen geändert hat, öffnen Sie die aktuelle Fassung erneut.
 
+## Hörbeiträge zu Nachrichten, Orten, Touren und Stationen hinzufügen
+
+- Öffnen Sie den Medienbereich der Nachricht oder des Orts beziehungsweise den Audiobereich der Tour oder Station. Laden Sie eine MP3 hoch, wählen Sie eine bereits freigegebene MP3 aus der Medienbibliothek oder geben Sie einen direkten Link zur Audiodatei ein. Wählen Sie bei Nachrichten und Orten für einen manuellen Hörbeitrag den Typ **Audio**.
+- Ergänzen Sie die Bildunterschrift beziehungsweise den Titel und die Urheberangabe. Speichern Sie den Inhalt und öffnen Sie ihn erneut, um die Zuordnung zu prüfen. Bei Nachrichten bearbeiten Sie den ersten Inhaltsblock. Weitere vorhandene Blöcke bleiben erhalten.
+- Ein eigener Hörbeitrag an einer Station wird vor dem Audio eines verknüpften Orts abgespielt. Der Editor zeigt Audio des verknüpften Orts separat an. Entfernen Sie den eigenen Hörbeitrag, um wieder das Audio des öffentlich lesbaren Orts zu verwenden.
+- Die Medienprüfung muss den Upload freigeben, bevor die Datei im öffentlichen App-Inhalt verwendet werden kann. Prüfen Sie bei abgewiesenen Dateien Format und Größe. Verwenden Sie bei Direktlinks eine dauerhafte Adresse der MP3-Datei.
+
 ## `cockpit-cards.content.create` – Kachel anlegen
 
 - **Route / Typ / Owner:** `/admin/cockpit-cards/new`, Anlegen, Plugin `cockpit-cards`.

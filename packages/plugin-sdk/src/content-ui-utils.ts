@@ -37,6 +37,8 @@ export const toHostMediaFieldOptions = (
 export const isSupportedContentMediaUploadFile = (file: File): boolean =>
   supportedContentMediaUploadMimeTypes.has(file.type);
 
+export { isMp3UploadFile } from '@sva/media';
+
 export const contentMediaUploadPhaseMessageKey = (
   phase: ContentMediaUploadPhase
 ): string | null => {

@@ -14,6 +14,7 @@ import { createMediaHttpHandlers } from './core.js';
 import { createMediaInventoryScanHandler } from './inventory-scan-job.js';
 import { createS3MediaStoragePort } from './storage-s3.js';
 import { createMediaUploadProcessingService } from './processing.js';
+import { mp3WithoutTags } from '../../tests/iam-media-mp3.test-fixtures.js';
 import type { MediaAssetRecord, MediaUploadSessionRecord } from '@sva/data-repositories';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -252,14 +253,20 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         (await fetch(upload.uploadUrl, { method: 'PUT', headers: upload.headers, body })).ok
       ).toBe(true);
 
-    const initialize = async (body: Uint8Array, visibility: 'public' | 'protected' = 'public') => {
+    const initialize = async (
+      body: Uint8Array,
+      visibility: 'public' | 'protected' = 'public',
+      mediaType: 'image' | 'audio' = 'image'
+    ) => {
       const id = crypto.randomUUID();
+      const mimeType = mediaType === 'audio' ? 'audio/mpeg' : 'image/jpeg';
       const upload = await storage.prepareUpload({
         instanceId: 'tenant-a',
         assetId: id,
         uploadSessionId: id,
-        mediaType: 'image',
-        mimeType: 'image/jpeg',
+        mediaType,
+        mimeType,
+        ...(mediaType === 'audio' ? { requireScan: true } : {}),
         byteSize: body.length,
       });
       await putUpload(upload, body);
@@ -268,8 +275,8 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         id,
         instanceId: 'tenant-a',
         storageKey: upload.storageKey,
-        mediaType: 'image',
-        mimeType: 'image/jpeg',
+        mediaType,
+        mimeType,
         byteSize: body.length,
         visibility,
         uploadStatus: 'pending',
@@ -282,7 +289,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         assetId: id,
         instanceId: 'tenant-a',
         storageKey: upload.storageKey,
-        mimeType: 'image/jpeg',
+        mimeType,
         byteSize: body.length,
         status: 'uploaded',
       };
@@ -294,6 +301,33 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
         run,
       };
     };
+    it('scans a privately uploaded MP3 and serves the public original with byte ranges', async () => {
+      const upload = await initialize(mp3WithoutTags, 'public', 'audio');
+      const intake = `${endpoint}/studio-intake/${upload.upload.storageKey}`;
+      expect((await fetch(intake)).status).toBe(403);
+      const completed = await upload.run({
+        ...storage,
+        readObject: async (input) => {
+          const snapshot = await storage.readObject(input);
+          await putUpload(upload.upload, Buffer.alloc(mp3WithoutTags.length));
+          return snapshot;
+        },
+      });
+      expect(completed.ok).toBe(true);
+      const asset = upload.getAsset();
+      expect(asset.technical).toMatchObject({ scanStatus: 'clean', variantBytes: 0 });
+      const delivery = await storage.resolveDelivery({
+        instanceId: 'tenant-a',
+        assetId: asset.id,
+        storageKey: asset.storageKey,
+        visibility: 'public',
+      });
+      expect(delivery.isPublicUrl).toBe(true);
+      const range = await fetch(delivery.deliveryUrl, { headers: { Range: 'bytes=0-31' } });
+      expect(range.status).toBe(206);
+      expect(range.headers.get('content-type')).toBe('audio/mpeg');
+      expect(Buffer.from(await range.arrayBuffer())).toEqual(mp3WithoutTags.subarray(0, 32));
+    }, 30000);
     it('denies anonymous intake reads and publishes only the bytes that were scanned', async () => {
       const upload = await initialize(original);
       const source = `${endpoint}/studio-intake/${upload.upload.storageKey}`;

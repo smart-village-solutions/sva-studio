@@ -90,12 +90,12 @@ const writeTour = async (
     return errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.');
   const actor = await resolveMainserverMutationActor({ request, ctx, authorizedActor });
   if (actor instanceof Response) return actor;
-  if (!updateId) return handleTourCreate(request, actor, getContext(), getReads());
+  if (!updateId) return handleTourCreate(request, actor, getContext(), getReads(), ctx);
   if (!hasActivePrincipal(actor))
     return withMutationNotApplied(
       errorJson(403, 'forbidden', 'Die Tour kann im aktiven Kontext nicht bearbeitet werden.')
     );
-  return handleTourUpdate(request, actor, updateId, getEditor());
+  return handleTourUpdate(request, actor, updateId, getEditor(), ctx);
 };
 
 export const listSvaMainserverTours: ReturnType<typeof createTourReads>['list'] = (...input) =>

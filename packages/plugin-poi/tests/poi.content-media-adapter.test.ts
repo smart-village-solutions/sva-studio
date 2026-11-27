@@ -7,6 +7,38 @@ import {
 } from '../src/poi.content-media-adapter.js';
 
 describe('POI content media adapter', () => {
+  it('maps an MP3 library asset as audio and keeps the existing image', () => {
+    const [image] = poiMediaContentsToUsages([
+      { contentType: 'image', sourceUrl: { url: 'https://example.test/park.jpg' }, width: 800 },
+    ]);
+    const audio = poiAssetToUsage({
+      assetId: 'audio-1',
+      mimeType: 'audio/mpeg',
+      persistentUrl: 'https://example.test/park.mp3',
+      sortOrder: 1,
+      metadata: {
+        title: 'Parkrundgang',
+        fileName: 'park.mp3',
+        altText: '',
+        description: '',
+        copyright: 'Stadtarchiv',
+        license: '',
+      },
+    });
+
+    const media = poiMediaUsagesToContents([image!, audio]);
+    expect(media).toMatchObject([
+      { contentType: 'image', sourceUrl: { url: 'https://example.test/park.jpg' }, width: 800 },
+      {
+        contentType: 'audio',
+        sourceUrl: { url: 'https://example.test/park.mp3' },
+        captionText: 'Parkrundgang',
+        copyright: 'Stadtarchiv',
+      },
+    ]);
+    expect(poiMediaUsagesToContents(poiMediaContentsToUsages(media))).toEqual(media);
+  });
+
   it('roundtrips supported Mainserver fields and preserves additional dimensions', () => {
     const source = [
       {

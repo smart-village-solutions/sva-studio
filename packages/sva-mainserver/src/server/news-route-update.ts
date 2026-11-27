@@ -1,6 +1,7 @@
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { isResponse, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
+import { collectBlockMedia, validateEditorialAudio } from './editorial-audio.js';
 import { authorizeOrResponse, NEWS_CONTENT_TYPE, type RouteMatch } from './news-route-access.js';
 import { parseAuthorizedNewsInput, parseVisibilityInput } from './news-route-input.js';
 import { preserveExistingNewsMetadata } from './news-route-metadata.js';
@@ -62,6 +63,11 @@ export const handleItemUpdate = async (
           ],
         });
         if (isResponse(providerAuthorization)) return providerAuthorization;
+        await validateEditorialAudio(
+          { request, ctx, instanceId: actor.instanceId, targetType: NEWS_CONTENT_TYPE, targetId: route.newsId },
+          collectBlockMedia(parsed.news.contentBlocks),
+          collectBlockMedia(existing.contentBlocks)
+        );
         response = await updateNewsForRoute(
           { kind: 'item', newsId: route.newsId },
           actor,

@@ -1,6 +1,8 @@
+import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type { SvaMainserverPoiInput, SvaMainserverPoiItem } from '../types.js';
+import { validateEditorialAudio } from './editorial-audio.js';
 import {
   errorJson,
   isResponse,
@@ -231,7 +233,11 @@ const verifyPoiDraftVisibility = async (
   return reportPoiVisibilityFailure(actor, created, 'poi_draft_visibility_unconfirmed', 502);
 };
 
-export const createPoiContent = async (request: Request, actor: MainserverMutationActor) => {
+export const createPoiContent = async (
+  request: Request,
+  actor: MainserverMutationActor,
+  ctx: AuthenticatedRequestContext
+) => {
   const parsed = await parsePoiInput(request);
   if (isResponse(parsed)) {
     return parsed;
@@ -251,6 +257,10 @@ export const createPoiContent = async (request: Request, actor: MainserverMutati
       : {}),
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
+  await validateEditorialAudio(
+    { request, ctx, instanceId: actor.instanceId, targetType: POI_CONTENT_TYPE },
+    parsed.mediaContents
+  );
   const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
   let readback: Promise<SvaMainserverPoiItem> | undefined;
   const reread = () =>

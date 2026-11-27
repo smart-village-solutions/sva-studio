@@ -4,6 +4,7 @@ import {
   getHostMediaAsset,
   getHostMediaDelivery,
   listHostMediaAssets,
+  isMp3UploadFile,
   isSupportedContentMediaUploadFile as isSupportedUploadFile,
   updateHostMediaAsset,
   type HostMediaAssetListItem,
@@ -91,7 +92,7 @@ export const useNewsDetailMedia = ({
         refreshMediaAssets
       ),
     canAcceptAsset: isAssetSelectable,
-    isSupportedUploadFile,
+    isSupportedUploadFile: (file) => isSupportedUploadFile(file) || isMp3UploadFile(file),
     createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [detail, delivery] = await Promise.all([

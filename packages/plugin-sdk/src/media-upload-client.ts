@@ -4,6 +4,7 @@ import {
   type MediaEditorialMetadataPatch,
   type MediaEditingDocument,
   type MediaFocusPoint,
+  type MediaType,
 } from '@sva/media';
 import { getHostMediaAsset } from './media-picker-client.js';
 import { requestJson, type FetchLike } from './http-client.js';
@@ -52,7 +53,7 @@ const toEditingPayload = (editing: HostMediaEditingUpload): HostMediaEditingUplo
 };
 
 export type InitializeHostMediaUploadInput = Readonly<{
-  mediaType?: 'image';
+  mediaType?: MediaType;
   mimeType: string;
   byteSize: number;
   visibility?: HostMediaUploadVisibility;
@@ -229,7 +230,7 @@ export const uploadHostMediaFile = async (input: {
   readonly fetch: FetchLike;
   readonly file: File;
   readonly visibility?: HostMediaUploadVisibility;
-  readonly mediaType?: 'image';
+  readonly mediaType?: MediaType;
   readonly instanceId?: string;
   readonly uploadContext?: HostMediaUploadContext;
   readonly contentSaveOperationId?: string;
@@ -246,7 +247,7 @@ export const uploadHostMediaFile = async (input: {
       fetch: input.fetch,
       payload: {
         mediaType: input.mediaType,
-        mimeType: input.file.type,
+        mimeType: input.mediaType === 'audio' ? 'audio/mpeg' : input.file.type,
         byteSize: input.file.size,
         visibility: input.visibility,
         instanceId: input.instanceId,

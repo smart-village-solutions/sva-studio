@@ -1,3 +1,5 @@
+import { tourAudioTranslations } from './tour-audio.translations.js';
+
 export const toursTranslations = {
   de: {
     tours: {
@@ -64,6 +66,7 @@ export const toursTranslations = {
       latitude: 'Breitengrad',
       longitude: 'Längengrad',
       media: 'Medien',
+      ...tourAudioTranslations.de,
       mediaLibrary: 'Aus Medienbibliothek wählen',
       mediaLoading: 'Medienbibliothek wird geladen.',
       mediaError: 'Medienbibliothek konnte nicht geladen werden.',
@@ -173,6 +176,7 @@ export const toursTranslations = {
       latitude: 'Latitude',
       longitude: 'Longitude',
       media: 'Media',
+      ...tourAudioTranslations.en,
       mediaLibrary: 'Choose from media library',
       mediaLoading: 'Loading the media library.',
       mediaError: 'The media library could not be loaded.',

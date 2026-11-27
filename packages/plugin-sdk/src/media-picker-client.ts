@@ -4,6 +4,7 @@ import {
   parseMediaEditingDocument,
   type MediaEditingDocument,
   type MediaFocusPoint,
+  type MediaType,
 } from '@sva/media';
 
 export type HostMediaAssetListItem = Readonly<{
@@ -32,7 +33,7 @@ export type HostMediaAssetDetail = Readonly<{
   id: string;
   instanceId: string;
   storageKey: string;
-  mediaType: 'image';
+  mediaType: MediaType;
   mimeType: string;
   byteSize: number;
   visibility: 'public' | 'protected';

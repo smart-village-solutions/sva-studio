@@ -40,6 +40,7 @@ export type UpstreamRequestInput = {
 export type GraphqlOperationInput = SvaMainserverConnectionInput & {
   readonly document: string;
   readonly operationName: string;
+  readonly editorialAudio?: boolean;
   readonly variables?: Record<string, unknown>;
   readonly mapErrorCode?: (code: string) => SvaMainserverError | undefined;
   readonly allowRetry?: boolean;

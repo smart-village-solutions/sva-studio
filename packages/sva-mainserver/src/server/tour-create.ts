@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
-import { completeIdempotency, reserveIdempotency } from '@sva/auth-runtime/server';
+import { completeIdempotency, reserveIdempotency, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { z } from 'zod';
 
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, withMutationNotApplied } from './content-route-core.js';
+import { validateEditorialAudio } from './editorial-audio.js';
+import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
   authorizeMainserverCreateForPrincipal,
@@ -15,6 +17,7 @@ import {
 import type { ServiceContext } from './service-internals/service-context.js';
 import { toSvaMainserverError } from './service-internals/shared.js';
 import type { createTourReads } from './tour-reads.js';
+import { audioInput } from './tour-editor-contract.js';
 
 const endpoint = 'POST:/api/v1/mainserver/tours';
 const contentType = 'tours.tour';
@@ -25,6 +28,7 @@ const coordinates = z.object({
 });
 const description = z.string().max(100_000).transform(sanitizeRichTextHtml);
 const httpsUrl = z.url({ protocol: /^https$/ });
+const createAudioInput = audioInput.omit({ id: true });
 const draftInput = z.strictObject({
   name: text,
   lengthKm: z.number().int().min(0).max(2_147_483_647),
@@ -42,12 +46,12 @@ const draftInput = z.strictObject({
   operatingCompany: z.object({ name: text }).optional(),
   mediaContents: z
     .array(
-      z.object({
+      z.union([z.object({
         contentType: z.literal('image'),
         sourceUrl: z.object({ url: httpsUrl }),
         captionText: text.optional(),
         copyright: text.optional(),
-      })
+      }), createAudioInput])
     )
     .max(20)
     .optional(),
@@ -58,6 +62,7 @@ const draftInput = z.strictObject({
         name: text,
         description: description.optional(),
         location: z.object({ geoLocation: coordinates }).optional(),
+        mediaContents: z.array(createAudioInput).max(20).optional(),
       })
     )
     .max(200)
@@ -115,6 +120,7 @@ const persistDraft = async (
         ...actor,
         document: createTourDraftDocument,
         operationName: 'SvaMainserverCreateTourDraft',
+        editorialAudio: true,
         variables: input,
         allowRetry: false,
       },
@@ -191,7 +197,8 @@ export const handleTourCreate = async (
   request: Request,
   actor: MainserverMutationActor,
   context: TourCreateContext,
-  reads: ReturnType<typeof createTourReads>
+  reads: ReturnType<typeof createTourReads>,
+  ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const parsed = draftInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
@@ -234,18 +241,24 @@ export const handleTourCreate = async (
     });
     if (isResponse(authorization)) response = authorization;
     else {
+      await validateEditorialAudio(
+        { request, ctx, instanceId, targetType: contentType },
+        [...(parsed.data.mediaContents ?? []), ...(parsed.data.tourStops ?? []).flatMap((stop) => stop.mediaContents ?? [])]
+      );
       const result = await persistDraft(context, actor, parsed.data);
       createdId = result.created.id;
       response = await verifyDraft(reads, actor, result);
     }
   } catch (error) {
+    const rejectedAudio = error instanceof SvaMainserverError && error.code === 'invalid_request';
     await finalizeMainserverMutationFailure({
       actor,
       error,
-      providerOutcome: 'unknown',
+      providerOutcome: rejectedAudio ? 'failed' : 'unknown',
       contentId: createdId,
     });
     response = toMainserverErrorResponse(error, 'Der Tourenentwurf konnte nicht bestätigt werden.');
+    if (rejectedAudio) response = withMutationNotApplied(response);
   }
   await completeIdempotency({
     ...reservation,

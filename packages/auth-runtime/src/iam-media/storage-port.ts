@@ -44,7 +44,7 @@ export type PrepareMediaUploadInput = Readonly<{
   mimeType: string;
   byteSize: number;
   privateInput?: boolean;
-  /** Retain an already established scan obligation when retrying a quarantined session. */
+  /** Require private quarantine, including when retrying an already quarantined session. */
   requireScan?: boolean;
 }>;
 

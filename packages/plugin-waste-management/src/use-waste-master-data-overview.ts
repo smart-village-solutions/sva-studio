@@ -59,10 +59,11 @@ export const useWasteMasterDataOverview = (
     setLocationCoverageToursStatus,
   } = state;
 
+  const overviewError = getMasterDataError(list.error, pt);
   useLayoutEffect(() => {
     setOverview(list.data ?? null);
     setLoading(list.state === 'loading');
-    setOverviewError(getMasterDataError(list.error, pt));
+    setOverviewError(overviewError);
     setAvailableTours(tours.data?.tours ?? []);
     setLocationCoverageFractions(fractions.data?.fractions ?? []);
     setLocationCoverageFractionsStatus(isLocations ? fractions.state : 'idle');
@@ -72,9 +73,8 @@ export const useWasteMasterDataOverview = (
     fractions.state,
     isLocations,
     list.data,
-    list.error,
     list.state,
-    pt,
+    overviewError,
     setAvailableTours,
     setLoading,
     setLocationCoverageFractions,
@@ -88,12 +88,12 @@ export const useWasteMasterDataOverview = (
 
   const loadOverview = useCallback(async () => {
     await invalidate(['waste'], false);
-    const result = await list.refresh();
+    const result = await list.refresh(true);
     if (isLocations) {
-      await Promise.all([fractions.refetch(), tours.refetch()]);
+      await Promise.all([fractions.refresh(true), tours.refresh(true)]);
     }
     return result ?? null;
-  }, [fractions.refetch, invalidate, isLocations, list.refresh, tours.refetch]);
+  }, [fractions.refresh, invalidate, isLocations, list.refresh, tours.refresh]);
 
   return {
     loadOverview,

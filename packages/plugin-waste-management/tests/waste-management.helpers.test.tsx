@@ -752,13 +752,13 @@ describe('waste management helper modules', () => {
       setMessage: vi.fn(),
       setDialogOpen: vi.fn(),
       setSelectedTour: vi.fn(),
-      setSchedulingOverview: vi.fn(),
-      setSchedulingLoadState: vi.fn(),
-      schedulingRequestRef: { current: 0 },
       setCalendarOpen: vi.fn(),
     };
 
-    const actions = createWasteToursActions(state as never);
+    const actions = createWasteToursActions(
+      state as never,
+      vi.fn(async () => undefined)
+    );
     const tour = {
       id: 'tour-1',
       name: 'Tour A',
@@ -981,7 +981,10 @@ describe('waste management helper modules', () => {
         .mockResolvedValueOnce(chunkingState.masterDataOverview);
       if (accessRemainsValid) {
         getWasteManagementMasterDataOverviewMock.mockResolvedValueOnce({
-          locationTourLinks: selectedLocationIds.map((locationId) => ({ locationId, tourId: 'tour-1' })),
+          locationTourLinks: selectedLocationIds.map((locationId) => ({
+            locationId,
+            tourId: 'tour-1',
+          })),
         });
       }
 

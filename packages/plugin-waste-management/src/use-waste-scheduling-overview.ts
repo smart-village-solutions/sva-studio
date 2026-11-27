@@ -17,32 +17,35 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
   const scheduling = useStudioTableQuery(['waste', 'scheduling'], (signal) =>
     getWasteManagementSchedulingOverview({ signal })
   );
-  const tours = useStudioTableQuery(['waste', 'tours'], (signal) =>
-    getWasteManagementToursOverview(signal)
+  const ready = Boolean(scheduling.data);
+  const tours = useStudioTableQuery(
+    ['waste', 'tours'],
+    (signal) => getWasteManagementToursOverview(signal),
+    ready
   );
-  const locations = useStudioTableQuery(['waste', 'master-data', 'locations'], (signal) =>
-    getWasteManagementMasterDataOverview({ scope: 'locations', signal })
+  const locations = useStudioTableQuery(
+    ['waste', 'master-data', 'locations'],
+    (signal) => getWasteManagementMasterDataOverview({ scope: 'locations', signal }),
+    ready
   );
+  const error = scheduling.error
+    ? pt(
+        resolveApiErrorCode(scheduling.error) === 'forbidden'
+          ? 'scheduling.messages.loadForbidden'
+          : 'scheduling.messages.loadError'
+      )
+    : null;
 
   useLayoutEffect(() => {
     setOverview(scheduling.data ?? null);
-    setAvailableTours(scheduling.data ? (tours.data?.tours ?? []) : []);
-    setLocationOverview(scheduling.data ? (locations.data ?? null) : null);
+    setAvailableTours(tours.data?.tours ?? []);
+    setLocationOverview(locations.data ?? null);
     setLoading(scheduling.state === 'loading');
-    setError(
-      scheduling.error
-        ? pt(
-            resolveApiErrorCode(scheduling.error) === 'forbidden'
-              ? 'scheduling.messages.loadForbidden'
-              : 'scheduling.messages.loadError'
-          )
-        : null
-    );
+    setError(error);
   }, [
+    error,
     locations.data,
-    pt,
     scheduling.data,
-    scheduling.error,
     scheduling.state,
     setAvailableTours,
     setError,
@@ -54,8 +57,8 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
 
   return useCallback(async () => {
     await invalidate(['waste'], false);
-    await scheduling.refetch();
-    void tours.refetch();
-    void locations.refetch();
-  }, [invalidate, locations.refetch, scheduling.refetch, tours.refetch]);
+    await scheduling.refresh(true);
+    void tours.refresh(true);
+    void locations.refresh(true);
+  }, [invalidate, locations.refresh, scheduling.refresh, tours.refresh]);
 };

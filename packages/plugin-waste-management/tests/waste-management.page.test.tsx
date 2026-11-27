@@ -1798,10 +1798,11 @@ describe('WasteManagementPage', () => {
     await waitFor(() => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'locations',
-        fresh: true,
+        signal: expect.any(AbortSignal),
       });
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'fractions',
+        signal: expect.any(AbortSignal),
       });
     });
 
@@ -1993,10 +1994,11 @@ describe('WasteManagementPage', () => {
     await waitFor(() => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'locations',
-        fresh: true,
+        signal: expect.any(AbortSignal),
       });
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
         scope: 'fractions',
+        signal: expect.any(AbortSignal),
       });
     });
 
@@ -2174,7 +2176,10 @@ describe('WasteManagementPage', () => {
 
         searchMock.mockReturnValue({ ...searchMock(), toursView: 'assignments', tourId: 'tour-1' });
         const view = render(<WasteManagementPage />);
-        await act(async () => undefined);
+        await vi.waitFor(async () => {
+          await act(async () => vi.advanceTimersByTimeAsync(1));
+          expect(screen.getByLabelText('wasteManagement.filters.searchLabel')).toBeTruthy();
+        });
         const dialog = screen;
         const search = dialog.getByLabelText<HTMLInputElement>(
           'wasteManagement.filters.searchLabel'
@@ -2408,7 +2413,9 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.firstDate'), {
       target: { value: '2026-05-19' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tours.fields.wasteFractions' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'wasteManagement.tours.fields.wasteFractions' })
+    );
     fireEvent.click(screen.getByRole('checkbox', { name: 'Restmüll' }));
     fireEvent.click(
       screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!
@@ -2570,7 +2577,9 @@ describe('WasteManagementPage', () => {
         (screen.getByLabelText('wasteManagement.tours.fields.recurrence') as HTMLSelectElement)
           .value
       ).toBe(source.customRecurrenceId ? 'preset:preset-test' : source.recurrence);
-      const fractions = screen.getByRole('button', { name: 'wasteManagement.tours.fields.wasteFractions' });
+      const fractions = screen.getByRole('button', {
+        name: 'wasteManagement.tours.fields.wasteFractions',
+      });
       fireEvent.click(fractions);
       expect(screen.getByRole('checkbox', { name: 'Restmüll' })).toHaveProperty('checked', true);
       fireEvent.click(fractions);
@@ -2670,6 +2679,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalled();
     });
 
+    await screen.findByRole('option', { name: 'Restmüll Nord' });
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.tourId'), {
       target: { value: 'tour-1' },
     });

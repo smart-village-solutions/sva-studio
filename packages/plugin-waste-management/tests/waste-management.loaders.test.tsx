@@ -164,6 +164,7 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
       scope: 'fractions',
+      signal: expect.any(AbortSignal),
     });
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
   });
@@ -290,7 +291,8 @@ describe('waste management data loaders', () => {
       })
     );
     expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1, pageSize: 100 })
+      expect.objectContaining({ page: 1, pageSize: 100 }),
+      expect.any(AbortSignal)
     );
     rerender({ search: { ...firstPage, page: 2 } });
     await waitFor(() =>
@@ -307,7 +309,8 @@ describe('waste management data loaders', () => {
       )
     );
     expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1, pageSize: 25 })
+      expect.objectContaining({ page: 1, pageSize: 25 }),
+      expect.any(AbortSignal)
     );
   });
 
@@ -458,6 +461,7 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
       scope: 'fractions',
+      signal: expect.any(AbortSignal),
     });
     expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(0);
   });
@@ -494,10 +498,11 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'locations',
-      fresh: true,
+      signal: expect.any(AbortSignal),
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'fractions',
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -696,6 +701,7 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'fractions',
+      signal: expect.any(AbortSignal),
     });
 
     rerender(<DynamicMasterDataLoaderHarness tab="locations" />);
@@ -703,7 +709,7 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
         scope: 'locations',
-        fresh: true,
+        signal: expect.any(AbortSignal),
       });
     });
   });
@@ -756,6 +762,7 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
       scope: 'locations',
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -799,10 +806,11 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'fractions',
+      signal: expect.any(AbortSignal),
     });
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
       scope: 'locations',
-      fresh: true,
+      signal: expect.any(AbortSignal),
     });
   });
 

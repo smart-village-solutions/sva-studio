@@ -56,6 +56,7 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
     setSchedulingLoadState,
   } = state;
   const error = tours.error ?? fractions.error;
+  const errorMessage = getToursLoadError(error, pt);
   const loading = tours.state === 'loading' || fractions.state === 'loading';
 
   useLayoutEffect(() => {
@@ -63,12 +64,12 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
     setCustomRecurrencePresets(tours.data?.customRecurrencePresets ?? []);
     setAvailableFractions(fractions.data?.fractions ?? []);
     setLoading(loading && !error);
-    setError(getToursLoadError(error, pt));
+    setError(errorMessage);
   }, [
     error,
+    errorMessage,
     fractions.data,
     loading,
-    pt,
     overview,
     setAvailableFractions,
     setCustomRecurrencePresets,
@@ -95,16 +96,17 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
     setSchedulingOverview,
   ]);
 
-  return useCallback(
+  const loadOverview = useCallback(
     async (propagateError = false) => {
       await invalidate(['waste'], false);
-      const outcomes = await Promise.all([tours.refetch(), fractions.refetch()]);
-      if (propagateError && outcomes.includes(false)) {
+      const outcomes = await Promise.all([tours.refresh(true), fractions.refresh(true)]);
+      if (propagateError && outcomes.includes(undefined)) {
         throw new Error('waste_tours_refresh_failed');
       }
-      void locations.refetch();
-      void scheduling.refetch();
+      void locations.refresh(true);
+      void scheduling.refresh(true);
     },
-    [fractions.refetch, invalidate, locations.refetch, scheduling.refetch, tours.refetch]
+    [fractions.refresh, invalidate, locations.refresh, scheduling.refresh, tours.refresh]
   );
+  return { loadOverview, refreshScheduling: scheduling.refresh };
 };

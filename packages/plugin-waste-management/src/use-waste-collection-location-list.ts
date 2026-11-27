@@ -103,23 +103,22 @@ const useCollectionLocationPageLoader = (
     (signal) => getWasteCollectionLocationPage(query, signal),
     isActiveLocationList(search)
   );
+  const error = list.error
+    ? pt(
+        resolveApiErrorCode(list.error) === 'forbidden'
+          ? 'masterData.messages.loadForbidden'
+          : 'masterData.messages.loadError'
+      )
+    : null;
   useLayoutEffect(() => {
     setCollectionLocationPage(list.data ?? null);
-    setCollectionLocationListError(
-      list.error
-        ? pt(
-            resolveApiErrorCode(list.error) === 'forbidden'
-              ? 'masterData.messages.loadForbidden'
-              : 'masterData.messages.loadError'
-          )
-        : null
-    );
-  }, [list.data, list.error, pt, setCollectionLocationListError, setCollectionLocationPage]);
+    setCollectionLocationListError(error);
+  }, [error, list.data, setCollectionLocationListError, setCollectionLocationPage]);
 
   return useCallback(async () => {
     await invalidate(['waste', 'collection-locations'], false);
-    await list.refetch();
-  }, [invalidate, list.refetch]);
+    await list.refresh(true);
+  }, [invalidate, list.refresh]);
 };
 
 export const useWasteCollectionLocationList = (

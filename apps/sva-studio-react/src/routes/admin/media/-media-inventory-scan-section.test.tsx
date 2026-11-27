@@ -65,18 +65,30 @@ describe('manual inventory scan UI', () => {
     fireEvent.submit(form);
     expect(api.start).not.toHaveBeenCalled();
   });
-  it.each(['start', 'get'] as const)(
-    'permits manual retry after a %s network failure',
-    async (operation) => {
-      api[operation].mockRejectedValueOnce(new Error('unavailable'));
-      render(<MediaInventoryScanSection />);
-      fireEvent.click(screen.getByRole('button', { name: 'Bestandsscan starten' }));
-      await screen.findByText(/Berichtabruf ist fehlgeschlagen/);
-      expect(
-        screen.getByRole('button', { name: 'Bestandsscan starten' }).hasAttribute('disabled')
-      ).toBe(false);
-    }
-  );
+  it('permits restarting after the scan start request fails', async () => {
+    api.start.mockRejectedValueOnce(new Error('unavailable'));
+    render(<MediaInventoryScanSection />);
+    const start = screen.getByRole<HTMLButtonElement>('button', { name: 'Bestandsscan starten' });
+    fireEvent.click(start);
+    await screen.findByText(/Berichtabruf ist fehlgeschlagen/);
+    expect(start.disabled).toBe(false);
+    fireEvent.click(start);
+    await screen.findByText('Sauber');
+    expect(api.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries the failed report read without starting a second scan', async () => {
+    api.get.mockRejectedValueOnce(new Error('unavailable'));
+    render(<MediaInventoryScanSection />);
+    const start = screen.getByRole<HTMLButtonElement>('button', { name: 'Bestandsscan starten' });
+    fireEvent.click(start);
+    await screen.findByText(/Berichtabruf ist fehlgeschlagen/);
+    expect(start.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /erneut versuchen/i }));
+    await screen.findByText('Sauber');
+    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(api.start).toHaveBeenCalledOnce();
+  });
   it('ends an empty section without offering automatic or manual continuation', async () => {
     api.get.mockResolvedValue({
       data: {

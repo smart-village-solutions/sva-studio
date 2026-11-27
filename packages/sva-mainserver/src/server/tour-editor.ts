@@ -17,10 +17,10 @@ import type { ServiceContext } from './service-internals/service-context.js';
 
 import {
   editableTourDocument,
+  editTourDocument,
   readResult,
   updateInput,
   updateResult,
-  updateTourDocument,
 } from './tour-editor-contract.js';
 
 const contentType = 'tours.tour';
@@ -139,9 +139,9 @@ export const createTourEditor = (context: EditorContext) => {
         await context.executeGraphqlWithConfig<unknown>(
           {
             ...actor,
-            document: updateTourDocument,
-            operationName: 'SvaMainserverUpdateTour',
-            variables: { id, ...input },
+            document: editTourDocument,
+            operationName: 'SvaMainserverEditTour',
+            variables: { id, expectedRevision: input.expectedRevision, ...input.patch },
             mapErrorCode: mapEditorError,
             allowRetry: false,
           },
@@ -149,7 +149,7 @@ export const createTourEditor = (context: EditorContext) => {
         )
       );
       if (!result.success) throw invalidResponse();
-      const saved = result.data.updateTour;
+      const saved = result.data.createTour.editorialSnapshot;
       const observed = await load(actor, id)
         .then(({ tour }) => tour)
         .catch(() => null);

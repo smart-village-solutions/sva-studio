@@ -1,0 +1,4 @@
+{
+  "prNumber": 2296,
+  "body": "Studio speichert Änderungen an bestehenden Touren über denselben Mainserver-Schreibaufruf wie neue Touren. Die Revisionsprüfung schützt vor dem Überschreiben gleichzeitiger Änderungen."
+}

@@ -38,7 +38,7 @@ Der Mainserver-Vertrag aus [MR !1110](https://gitlab.tpwd.de/ikusei/smart-villag
 
 ## Eingrenzung des Bestandseditors
 
-Der bestätigte SaaS-Stand `77a9bbc9` bietet weiterhin keinen sicheren Bestandsupdatevertrag. Studio benötigt eine strikt auf die vorhandene Tour und ihren Anbieter begrenzte Patch-Mutation. Die Touren-ID und der geladene Revisionsstand sind verpflichtend. Rails prüft Anbieter und Revision innerhalb derselben Transaktion wie die Änderung und erhält ausgelassene Felder und Relationen. Eine ausgelassene Geometrie bleibt erhalten, eine leere Liste leert die Route.
+Studio nutzt beim Bearbeiten `createTour` im selben GraphQL-Feld wie bei der Anlage. Studio übergibt die Touren-ID, `expectedRevision` und die geänderten Felder als direkte Argumente. Der Mainserver weist Importargumente in einem Aufruf mit Revision zurück. Beim regulären Import verlangt er weiterhin Name und Länge. Rails prüft Anbieter und Revision innerhalb derselben Transaktion wie die Änderung und erhält ausgelassene Felder und Relationen. Eine ausgelassene Geometrie bleibt erhalten, eine leere Liste leert die Route.
 
 Bei einer Änderung der Stationsreihenfolge enthält der Auftrag eine geordnete Liste stabiler IDs und gegebenenfalls neue Stationen. Geänderte Felder eines bestehenden Stopps werden als Patch übermittelt. Vor Anwendung prüft Rails alle gelieferten IDs im Bestand dieser Tour. Eine bestätigte Entfernung und das daraus resultierende Löschen einer Zuordnung sind Teil desselben Updates. Redaktionsdaten stammen aus einem frischen, anbietergeprüften Read der originären Stationswerte. Die öffentlichen POI-Überlagerungen bleiben der öffentlichen Darstellung zugeordnet.
 

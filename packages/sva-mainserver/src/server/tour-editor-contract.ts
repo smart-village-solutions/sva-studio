@@ -65,7 +65,7 @@ const editableTour = z.object({
   ),
 });
 export const readResult = z.object({ editableTour: editableTour.nullable() });
-export const updateResult = z.object({ updateTour: editableTour });
+export const updateResult = z.object({ createTour: z.object({ editorialSnapshot: editableTour }) });
 const editorFields = `
   id revision name lengthKm description
   dataProvider { id name }
@@ -79,8 +79,16 @@ export const editableTourDocument = `
   }
 `;
 
-export const updateTourDocument = `
-  mutation SvaMainserverUpdateTour($id: ID!, $expectedRevision: String!, $patch: TourEditorialPatchInput!) {
-    updateTour(id: $id, expectedRevision: $expectedRevision, patch: $patch) { ${editorFields} }
+export const editTourDocument = `
+  mutation SvaMainserverEditTour(
+    $id: ID!, $expectedRevision: String!, $name: String, $lengthKm: Int,
+    $description: String, $geometryTourData: [GeoLocationInput!], $tourStops: [TourStopInput!]
+  ) {
+    createTour(
+      id: $id, expectedRevision: $expectedRevision, name: $name, lengthKm: $lengthKm,
+      description: $description, geometryTourData: $geometryTourData, tourStops: $tourStops
+    ) {
+      editorialSnapshot { ${editorFields} }
+    }
   }
 `;

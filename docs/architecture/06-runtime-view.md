@@ -1227,7 +1227,7 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 4. Neue Touren benötigen `tours.create` im wirksamen Mutationskontext. Nach Prüfung des Principals und der Idempotenz sendet die Host-Fassade genau eine GraphQL-Schreibmutation mit `visible: false`. Der erneute Leseaufruf bestätigt Anbieter, Inhalt und Sichtbarkeit. Journal, Historie und Projektion verwenden den bestehenden Mainserver-Folgepfad.
 5. Neue Ortsentwürfe nutzen ebenfalls eine Schreibmutation mit `visible: false`. Bei einer fehlenden Bestätigung protokolliert Studio den Teilerfolg mit der zurückgegebenen Mainserver-ID.
 6. **Tour bearbeiten** lädt die originären Redaktionsfelder über `GET /api/v1/mainserver/tours/$id/editor`. Der Host bindet den Read an den aktiven Principal, prüft `tours.update` im exakten DataProvider-Scope und übernimmt die Kontextbindung aus dem bestehenden Mainserver-Pfad.
-7. Das Update übermittelt ausschließlich geänderte Felder und den geladenen Revisionsstand. Rails prüft Tour, Anbieter und Stations-IDs, schreibt in einer Transaktion und erhält unberührte Daten. Die Reihenfolge liegt an den Stationszuordnungen. Die Host-Fassade bestätigt den gesicherten Stand über `editableTour` und verwendet für Historie und Projektion den bestehenden Folgepfad.
+7. Die Host-Fassade ruft für das Update `createTour` mit Tour-ID, `expectedRevision` und den geänderten Feldern auf. Rails prüft Tour, Anbieter und Stations-IDs, schreibt in einer Transaktion und erhält unberührte Daten. Die Reihenfolge liegt an den Stationszuordnungen. Die Host-Fassade bestätigt den gesicherten Stand über `editableTour` und verwendet für Historie und Projektion den bestehenden Folgepfad.
 
 ## Kontrollierter Datenbank-Vollrestore
 

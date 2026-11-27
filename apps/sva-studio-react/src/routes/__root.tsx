@@ -24,6 +24,8 @@ import {
   readDocumentPluginRouteScope,
   type PluginRouteScope,
 } from '../lib/plugin-route-scope';
+import type { StudioReleaseNotes } from '../lib/studio-release-notes.shared';
+import type { DocumentNavigation } from '../components/sidebar-access';
 import { createThemeBootstrapScript } from '../lib/theme';
 import {
   FALLOW_BROWSER_BEACON_META_NAME,
@@ -83,12 +85,33 @@ export const resolveServerFallowBrowserBeaconKey = createServerOnlyFn(() => {
     : '';
 });
 
+export const loadDocumentSession = createServerOnlyFn(async () => {
+  const { getRequest, setResponseHeader } = await import('@tanstack/react-start/server');
+  const request = getRequest();
+  // The SSR navigation can depend on the session. Do not reuse the document for another user.
+  setResponseHeader('Cache-Control', 'private, no-store');
+  if (!request.headers.has('cookie')) return {};
+  const { loadDocumentNavigation } = await import('../lib/document-navigation.server');
+  const session = await loadDocumentNavigation(request);
+  if (!session.initiallyAuthenticated || new URL(request.url).pathname.replace(/\/$/, '') !== '/changelog') {
+    return session;
+  }
+  const { loadStudioReleaseNotes } = await import('../lib/studio-release-notes.server');
+  const releases = await loadStudioReleaseNotes().catch(() => undefined);
+  return releases ? { ...session, changelogReleases: releases } : session;
+});
+
 /** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
     await ensureRootSdkInitialized();
+    const [pluginRouteScope, session] = await Promise.all([
+      resolveRootPluginRouteScope(),
+      loadDocumentSession(),
+    ]);
     return {
-      pluginRouteScope: await resolveRootPluginRouteScope(),
+      ...session,
+      pluginRouteScope,
       studioBranding: resolveServerStudioBranding(),
       studioParentDomain: resolveServerStudioParentDomain(),
       fallowBrowserBeaconKey: resolveServerFallowBrowserBeaconKey(),
@@ -102,7 +125,10 @@ export const loadRootData = async () => {
   };
 };
 
-type RootLoaderData = {
+export type RootLoaderData = {
+  readonly initiallyAuthenticated?: boolean;
+  readonly navigation?: DocumentNavigation;
+  readonly changelogReleases?: StudioReleaseNotes;
   readonly pluginRouteScope: PluginRouteScope;
   readonly studioBranding: StudioBranding;
   readonly studioParentDomain: string;
@@ -188,13 +214,14 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       : undefined
   );
   const routeDocumentation = resolveActiveRouteDocumentation(matches);
-  const isRouterPending = useRouterState({
+  const isNavigating = useRouterState({
     select: (state) =>
+      Boolean(state.resolvedLocation) &&
       (state.status === 'pending' || state.isLoading) &&
       state.location.href !== state.resolvedLocation?.href,
   });
   const currentPathname = useRouterState({
-    select: (state) => state.location.pathname,
+    select: (state) => state.resolvedLocation?.pathname ?? state.location.pathname,
   });
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
@@ -209,7 +236,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
 
   React.useEffect(() => {
     const mainElement = globalThis.document.getElementById('main-content');
-    mainElement?.focus();
+    mainElement?.focus({ preventScroll: true });
   }, [currentPathname]);
 
   return (
@@ -247,7 +274,11 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                   <ThemeProvider>
                     <AppShell
                       currentPathname={currentPathname}
-                      isLoading={isHydrated && isRouterPending}
+                      initiallyAuthenticated={
+                        (rootLoaderData as RootLoaderData | undefined)?.initiallyAuthenticated
+                      }
+                      initialNavigation={(rootLoaderData as RootLoaderData | undefined)?.navigation}
+                      isNavigating={isHydrated && isNavigating}
                       isMobileSidebarOpen={isMobileSidebarOpen}
                       onMobileSidebarOpenChange={setIsMobileSidebarOpen}
                       documentationPageId={

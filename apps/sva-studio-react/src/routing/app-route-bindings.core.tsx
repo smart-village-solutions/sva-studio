@@ -5,8 +5,14 @@ import {
   normalizeRoleDetailTab,
   normalizeOrganizationDetailTab,
 } from '@sva/routing/route-search';
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import React from 'react';
+import {
+  lazyRouteComponent,
+  useLoaderData,
+  useNavigate,
+  useParams,
+  useSearch,
+  type AsyncRouteComponent,
+} from '@tanstack/react-router';
 import NotFound from '../components/NotFound';
 
 import { t } from '../i18n';
@@ -35,27 +41,22 @@ import { InvitationTemplatePage } from '../routes/admin/users/-invitation-templa
 import { UserListPage } from '../routes/admin/users/-user-list-page';
 import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
+import type { RootLoaderData } from '../routes/__root';
 import { HomePage } from '../routes/-home-page';
 import { PlaceholderPage } from '../routes/-placeholder-page';
 
 const readStringParam = (value: unknown, fallback = ''): string =>
   typeof value === 'string' ? value : fallback;
 
-const renderLazyPage = <TProps extends object>(
-  Component: React.ComponentType<TProps> | React.LazyExoticComponent<React.ComponentType<TProps>>,
-  props?: TProps
-) => (
-  <React.Suspense
-    fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}
-  >
-    <Component {...(props ?? ({} as TProps))} />
-  </React.Suspense>
-);
+const bindLazyRouteParams = <TProps extends object>(
+  Page: AsyncRouteComponent<TProps>,
+  useProps: () => TProps
+) => Object.assign(() => <Page {...useProps()} />, { preload: () => Page.preload?.() });
 
-const LazyChangelogPage = React.lazy(async () => {
-  const mod = await import('../routes/-changelog-page');
-  return { default: mod.ChangelogPage };
-});
+const ChangelogRoutePage = lazyRouteComponent(
+  () => import('../routes/-changelog-page'),
+  'ChangelogRoutePage'
+);
 
 const HelpPlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.help')} title={t('shell.sidebar.help')} />
@@ -67,86 +68,69 @@ const LicensePlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.license')} title={t('shell.sidebar.license')} />
 );
 
-const LazyMonitoringOverviewPage = React.lazy(async () => {
-  const mod = await import('../routes/monitoring/-overview-page');
-  return { default: mod.MonitoringOverviewPage };
-});
-const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
-const LazyInterfacesPage = React.lazy(async () => {
-  const mod = await import('../routes/interfaces/-interfaces-page');
-  return { default: mod.InterfacesPage };
-});
-const InterfacesRoutePage = () => renderLazyPage(LazyInterfacesPage);
-const LazyGroupsPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/groups/-groups-page');
-  return { default: mod.GroupsPage };
-});
-const GroupsRoutePage = () => renderLazyPage(LazyGroupsPage);
-const LazyMonitoringJobsPage = React.lazy(async () => {
-  const mod = await import('../routes/monitoring/-jobs-page');
-  return { default: mod.MonitoringJobsPage };
-});
-const MonitoringJobsRoutePage = () => renderLazyPage(LazyMonitoringJobsPage);
-const LazyMonitoringJobDetailPage = React.lazy(async () => {
-  const mod = await import('../routes/monitoring/-job-detail-page');
-  return { default: mod.MonitoringJobDetailPage };
-});
-const MonitoringJobDetailRoutePage = () =>
-  renderLazyPage(LazyMonitoringJobDetailPage, {
-    jobId: readStringParam(useParams({ strict: false }).jobId),
-  });
-const LazyGroupDetailPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/groups/-group-detail-page');
-  return { default: mod.GroupDetailPage };
-});
-const GroupDetailRoutePage = () =>
-  renderLazyPage(LazyGroupDetailPage, {
-    groupId: readStringParam(useParams({ strict: false }).groupId),
-  });
-const LazyOrganizationsPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/organizations/-organizations-page');
-  return { default: mod.OrganizationsPage };
-});
-const OrganizationsRoutePage = () => renderLazyPage(LazyOrganizationsPage);
-const LazyOrganizationDetailPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/organizations/-organization-detail-page');
-  return { default: mod.OrganizationDetailPage };
-});
-const OrganizationDetailRoutePage = () => {
-  const params = useParams({ strict: false });
-  const search = useSearch({ strict: false });
-  const navigate = useNavigate();
-  return renderLazyPage(LazyOrganizationDetailPage, {
-    organizationId: readStringParam(params.organizationId),
-    activeTab: normalizeOrganizationDetailTab(search.tab),
-    onTabChange: (tab) =>
-      void navigate({
-        search: { tab } as never,
-        replace: true,
-      }),
-  });
-};
-const LazyRolesPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/roles/-roles-page');
-  return { default: mod.RolesPage };
-});
-const RolesRoutePage = () => renderLazyPage(LazyRolesPage);
-const LazyUserEditPage = React.lazy(async () => {
-  const mod = await import('../routes/admin/users/-user-edit-page');
-  return { default: mod.UserEditPage };
-});
-const UserEditRoutePage = () => {
-  const params = useParams({ strict: false });
-  const search = useSearch({ strict: false });
-  return renderLazyPage(LazyUserEditPage, {
-    userId: readStringParam(params.userId),
-    invitationStatus: search.invite === 'failed' ? 'failed' : undefined,
-    invitationErrorMessage:
-      typeof search.inviteMessage === 'string' && search.inviteMessage.trim().length > 0
-        ? search.inviteMessage
-        : undefined,
-  });
-};
+const MonitoringRoutePage = lazyRouteComponent(
+  () => import('../routes/monitoring/-overview-page'),
+  'MonitoringOverviewPage'
+);
+const InterfacesRoutePage = lazyRouteComponent(
+  () => import('../routes/interfaces/-interfaces-page'),
+  'InterfacesPage'
+);
+const GroupsRoutePage = lazyRouteComponent(
+  () => import('../routes/admin/groups/-groups-page'),
+  'GroupsPage'
+);
+const MonitoringJobsRoutePage = lazyRouteComponent(
+  () => import('../routes/monitoring/-jobs-page'),
+  'MonitoringJobsPage'
+);
+const MonitoringJobDetailRoutePage = bindLazyRouteParams(
+  lazyRouteComponent(() => import('../routes/monitoring/-job-detail-page'), 'MonitoringJobDetailPage'),
+  () => ({ jobId: readStringParam(useParams({ strict: false }).jobId) })
+);
+const GroupDetailRoutePage = bindLazyRouteParams(
+  lazyRouteComponent(() => import('../routes/admin/groups/-group-detail-page'), 'GroupDetailPage'),
+  () => ({ groupId: readStringParam(useParams({ strict: false }).groupId) })
+);
+const OrganizationsRoutePage = lazyRouteComponent(
+  () => import('../routes/admin/organizations/-organizations-page'),
+  'OrganizationsPage'
+);
+const OrganizationDetailRoutePage = bindLazyRouteParams(
+  lazyRouteComponent(
+    () => import('../routes/admin/organizations/-organization-detail-page'),
+    'OrganizationDetailPage'
+  ),
+  () => {
+    const params = useParams({ strict: false });
+    const search = useSearch({ strict: false });
+    const navigate = useNavigate();
+    return {
+      organizationId: readStringParam(params.organizationId),
+      activeTab: normalizeOrganizationDetailTab(search.tab),
+      onTabChange: (tab) => void navigate({ search: { tab } as never, replace: true }),
+    };
+  }
+);
+const RolesRoutePage = lazyRouteComponent(
+  () => import('../routes/admin/roles/-roles-page'),
+  'RolesPage'
+);
+const UserEditRoutePage = bindLazyRouteParams(
+  lazyRouteComponent(() => import('../routes/admin/users/-user-edit-page'), 'UserEditPage'),
+  () => {
+    const params = useParams({ strict: false });
+    const search = useSearch({ strict: false });
+    return {
+      userId: readStringParam(params.userId),
+      invitationStatus: search.invite === 'failed' ? ('failed' as const) : undefined,
+      invitationErrorMessage:
+        typeof search.inviteMessage === 'string' && search.inviteMessage.trim().length > 0
+          ? search.inviteMessage
+          : undefined,
+    };
+  }
+);
 const InstanceDetailRoutePage = () => (
   <InstanceDetailPage instanceId={readStringParam(useParams({ strict: false }).instanceId)} />
 );
@@ -174,9 +158,17 @@ const AccountPrivacyDetailRoutePage = () => (
   <AccountPrivacyDetailPage caseId={readStringParam(useParams({ strict: false }).caseId)} />
 );
 
+const HomeRoutePage = () => {
+  const initiallyAuthenticated = useLoaderData({
+    from: '__root__',
+    select: (data) => (data as RootLoaderData | undefined)?.initiallyAuthenticated,
+  });
+  return <HomePage initiallyAuthenticated={initiallyAuthenticated} />;
+};
+
 export const coreAppRouteBindings = {
-  home: HomePage,
-  changelog: () => renderLazyPage(LazyChangelogPage),
+  home: HomeRoutePage,
+  changelog: ChangelogRoutePage,
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   accountPrivacyDetail: AccountPrivacyDetailRoutePage,

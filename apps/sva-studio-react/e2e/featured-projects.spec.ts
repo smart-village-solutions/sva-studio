@@ -32,6 +32,64 @@ const projectPermissions = {
   evaluatedAt: '2026-08-03T12:00:00.000Z',
 };
 
+test('restores the project content table before its refreshed page arrives', async ({ page }) => {
+  await mockSharedShellRequests(page);
+  await page.route('**/auth/me', (route) => route.fulfill({ json: projectUser }));
+  await page.route('**/iam/me/permissions?**', (route) =>
+    route.fulfill({ json: projectPermissions })
+  );
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+    route.fulfill({ json: { enabledActions: [] } })
+  );
+  await page.route('**/api/v1/iam/contents/refresh', (route) =>
+    route.fulfill({ json: { data: { status: 'completed', syncStates: [] } } })
+  );
+  let returning = false;
+  let backgroundRead = false;
+  let releaseRefresh: () => void = () => undefined;
+  const refresh = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  await page.route('**/api/v1/iam/contents?**', async (route) => {
+    const refreshRead = returning;
+    if (refreshRead) {
+      backgroundRead = true;
+      await refresh;
+    }
+    await route.fulfill({
+      json: {
+        data: [{
+          id: 'project-1',
+          contentType: 'projects.project',
+          title: refreshRead ? 'Aktuelles Projekt' : 'Bekanntes Projekt',
+          status: 'published',
+          author: 'Editor One',
+          createdAt: '2026-08-03T12:00:00.000Z',
+          updatedAt: '2026-08-03T12:00:00.000Z',
+          payload: {},
+          access: { state: 'read_only', canRead: true, canUpdate: false },
+        }],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      },
+    });
+  });
+  await gotoHomeAsAuthenticatedUser(page);
+  try {
+    await navigateClientSide(page, '/admin/content?type=projects.project&page=1');
+    await expect(page.getByRole('row', { name: /Bekanntes Projekt/ })).toBeVisible();
+    await page.getByRole('complementary').getByRole('link', { name: 'Übersicht' }).click();
+    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+    returning = true;
+    await page.goBack();
+    await expect.poll(() => backgroundRead).toBe(true);
+    await expect(page.getByRole('row', { name: /Bekanntes Projekt/ })).toBeVisible();
+    releaseRefresh();
+    await expect(page.getByRole('row', { name: /Aktuelles Projekt/ })).toBeVisible();
+  } finally {
+    releaseRefresh();
+  }
+});
+
 test('creates, publishes, reorders and deletes a featured project with multiple images', async ({
   page,
 }) => {

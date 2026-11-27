@@ -20,6 +20,14 @@ export default mergeConfig(
           '../plugin-sdk/src/content-media-contracts-public-api.ts'
         ),
         '@sva/plugin-sdk/temporal': resolve(currentDir, '../plugin-sdk/src/temporal.ts'),
+        '@sva/plugin-sdk/plugin-translations': resolve(
+          currentDir,
+          '../plugin-sdk/src/plugin-translations.ts'
+        ),
+        '@sva/plugin-sdk/studio-table-events': resolve(
+          currentDir,
+          '../plugin-sdk/src/studio-table-events.ts'
+        ),
         '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
       },

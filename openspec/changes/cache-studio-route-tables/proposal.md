@@ -1,0 +1,39 @@
+# Tabellen im Studio beim Zurückwechseln sofort anzeigen
+
+## Warum
+
+Viele Studio-Tabellen speichern Serverergebnisse im lokalen Zustand ihrer Route. Beim Verlassen der Route geht dieser Zustand verloren. Die generische Inhaltstabelle behält kürzlich geladene Ergebnisse bereits im Speicher. Eigenständige Tabellen in Host und Plugins brauchen dieselbe Bedienung und eine gemeinsame Umsetzung.
+
+## Umfang
+
+Für alle aktiven Studio-Routen mit serverseitig geladenen Tabellen sollen Zeilen, Pagination und zugehörige Metadaten beim Wiederöffnen derselben Ansicht unmittelbar aus dem letzten zulässigen Ergebnis erscheinen. Die jeweilige Datenquelle aktualisiert das Ergebnis im Hintergrund. Dazu gehören Tabellen in Routen-Tabs und Detailansichten. Statische Tabellen und Tabellen, die ausschließlich einen lokalen Formularentwurf darstellen, benötigen keinen Datenabruf.
+
+| Bereich                            | Zu prüfende Ladepfade                                                                                                                                                                                                                           | Lieferabschnitt                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Fachinhalte                        | Generische Inhaltsliste und Aliase, FAQ, Projekte, Jobs, Baustellen, Gutscheine, Kategorien, Cockpit-Kacheln, eigenständige Listen für Events, generische Inhalte und POI, Umfrage-Moderation, Suche, Touren soweit im aktiven Profil verfügbar | Erster Abschnitt mit FAQ, Projekten, Jobs und Baustellen. Weitere Fachlisten direkt anschließend |
+| Studio-Administration              | Benutzer, Rollen und Berechtigungen, Gruppen und Mitgliedschaften, Organisationen, Instanzen, Rechtstexte, IAM-Fälle, Datenschutzaktivität, Medien und Inventar, Module, Schnittstellen, Monitoring und Jobtabellen                             | Zweiter Abschnitt                                                                                |
+| Weitere Plugin- und Profileinträge | Abfallmanagement-Tabellen für Stammdaten, Zuordnungen, Touren, Planung und E-Mail-Monitoring. Weitere servergespeiste Tabellen aus Studio- und SSF-Routenregistrierung, einschließlich profilabhängiger Plugins                                 | Dritter Abschnitt                                                                                |
+
+Die Aufstellung ist der Einstieg für einen Abgleich der tatsächlich gemounteten Ansichten, ihrer Datenabfragen und Mutationen. Eine Route und ihr Alias mit derselben Abfrage nutzen dasselbe Ergebnis. Tabellen mit nur einmal sichtbaren Geheimnissen behalten ausschließlich die reguläre, erneut abrufbare Listenantwort.
+
+## Umsetzung
+
+- TanStack Router und Start verwalten Routen, Suchparameter und Zugriffsprüfung. TanStack Query v5 verwaltet die kurzlebigen Ergebnisse der Tabellenabfragen im Browser. Der Studio-Host stellt einen QueryClient über dem Route-Outlet bereit. Plugins verwenden den vorhandenen Host- und SDK-Pfad für die Anbindung. Die generische Inhaltsliste wechselt im ersten Lieferabschnitt auf denselben Pfad und ihr bisheriger lokaler Cache entfällt im selben Abschnitt.
+- Query Keys enthalten die fachliche Ressource, den bestätigten Zugriffskontext und alle Parameter der Abfrage. Dazu zählen Seite, Seitengröße, Filter, Suche, Sortierung und gegebenenfalls Sprache oder übergeordnete Ressource. Der Zugriffskontext umfasst Konto, Instanz, Organisation, aktuelle Berechtigungs- und Modulzuordnung sowie bei Mainserver-Listen die verwendete Identität. Cache-Lebensdauer und Aktualisierungsfrequenz werden getrennt konfiguriert. Der vorhandene Wiederverwendungszeitraum von 30 Sekunden ist der Ausgangswert. Die aktualisierte Ansicht verwendet das Ergebnis auch bei einem legitimen leeren Datensatz.
+- Die Query meldet Erstladen und Hintergrundaktualisierung getrennt. Nur Erstladen ohne zulässiges Ergebnis zeigt den bestehenden lokalen Ladezustand. Eine Hintergrundaktualisierung erhält Tabelle, Toolbar, Seitengröße und Fokus. Ein dezenter Status für längere Aktualisierungen darf das Layout nicht verschieben. Ein temporärer Fehler lässt die letzte zulässige Tabelle mit einem Hinweis und einer Wiederholungsmöglichkeit stehen. Neue Filter ohne eigenes Ergebnis behalten ihren lokalen Ladezustand und zeigen keine Zeilen einer anderen Abfrage.
+- Der Browser verwirft beim Verlassen oder Wechseln eines Zugriffskontexts die betroffenen Einträge und bricht laufende Abrufe nach Möglichkeit ab. Der neue Kontext darf vor der Bestätigung keine alten Ergebnisse verwenden. Antworten aus einem verworfenen Kontext können weder dessen Einträge erneut füllen noch im neuen Kontext erscheinen. Eine verweigerte Listenabfrage entfernt die betroffenen Daten und Zeilenaktionen. Serverseitig bleiben die bestehenden Prüfungen bei jedem Abruf und jeder Mutation maßgeblich. Die Ergebnisse werden weder in Web Storage persistiert noch in das initiale HTML serialisiert. Ein Cache-Treffer autorisiert keine Aktion.
+- Erfolgreiche Schreiboperationen invalidieren die betroffenen Abfragen. Aktive Tabellen aktualisieren sich im Hintergrund. Wo die Mutation ein vollständiges Ergebnis liefert, darf die betroffene Zeile unmittelbar korrigiert werden. Nach dem Löschen oder dem Entzug eines Zugriffs dürfen betroffene Zeilen beim schnellen Zurückwechseln nicht erneut erscheinen. Bestehende Polling-, Bulk-, Pagination- und Mainserver-Synchronisationspfade werden je Tabelle in die Migration einbezogen.
+
+## Nachweis und Berührungspunkte
+
+Die Browser-Regression verzögert den zweiten HTTP-Abruf kontrolliert. Sie weist für Menüwechsel und Browser-Zurück nach, dass die ursprünglichen Zeilen vor Freigabe der Antwort sichtbar und fokussierbar sind, dass kein Ladeplatzhalter die Tabelle verdeckt und dass die neue Antwort Zeilen und Pagination zusammen aktualisiert. Weitere Nachweise decken leere Listen, Filterwechsel, 401/403, Netzwerkfehler, schnelle Kontextwechsel, verspätete Antworten sowie Änderungen und Löschungen ab. Je tatsächlich verwendeter Datenquelle wird der passende Weg geprüft. Zwei gleichzeitige Leser derselben Abfrage dürfen keinen doppelten Abruf auslösen.
+
+Betroffen sind Studio-Host, bestehende Client-Integration der Plugins und die jeweiligen Listen-Hooks. API- und Datenbankverträge bleiben unverändert. Die Implementierung aktualisiert die [Bausteinsicht](../../../docs/architecture/05-building-block-view.md), [Laufzeitsicht](../../../docs/architecture/06-runtime-view.md) und [Querschnittlichen Konzepte](../../../docs/architecture/08-cross-cutting-concepts.md). Der Versions-, Bundle- und Lizenzcheck für TanStack Query gehört zum ersten Abschnitt.
+
+## Referenzen
+
+- [React empfiehlt beim manuellen Client-Fetching einen Cache](https://react.dev/learn/synchronizing-with-effects#what-are-good-alternatives-to-data-fetching-in-effects)
+- [TanStack Router und externe Datenverwaltung](https://tanstack.com/router/latest/docs/guide/external-data-loading)
+- [TanStack Query v5 zu Aktualisierung und Cache-Lebensdauer](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults)
+- [TanStack Query v5 zu Query Keys](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
+- [TanStack Query v5 zu Abbruch und Invalidierung](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation) und [Invalidierung nach Mutationen](https://tanstack.com/query/latest/docs/framework/react/guides/invalidations-from-mutations)

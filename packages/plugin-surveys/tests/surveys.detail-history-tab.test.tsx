@@ -7,6 +7,7 @@ import { SurveyDetailHistoryTab } from '../src/surveys.detail-history-tab.js';
 const fetchIamContentHistoryMock = vi.fn();
 
 vi.mock('@sva/plugin-sdk', () => ({
+  usePluginTranslation: () => (key: string) => key,
   fetchIamContentHistory: (...args: unknown[]) => fetchIamContentHistoryMock(...args),
   formatDateTimeInEditorTimeZone: (value: string) => `formatted:${value}`,
 }));

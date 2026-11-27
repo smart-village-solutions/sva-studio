@@ -1,5 +1,6 @@
 /** Published Studio releases, independent of the currently deployed version. */
 import { Button, StudioPageTitle } from '@sva/studio-ui-react';
+import { useLoaderData } from '@tanstack/react-router';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,6 +12,7 @@ import {
   type StudioReleaseNotes,
 } from '../lib/studio-release-notes.shared';
 import { useLocale } from '../providers/locale-provider';
+import type { RootLoaderData } from './__root';
 
 type LoadState =
   { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; releases: StudioReleaseNotes };
@@ -93,11 +95,16 @@ const ReleaseEntry = ({
   );
 };
 
-export const ChangelogPage = () => {
+export const ChangelogPage = ({
+  initialReleases,
+}: Readonly<{ initialReleases?: StudioReleaseNotes }>) => {
   const { locale } = useLocale();
   const [attempt, setAttempt] = React.useState(0);
-  const [state, setState] = React.useState<LoadState>({ kind: 'loading' });
+  const [state, setState] = React.useState<LoadState>(() =>
+    initialReleases ? { kind: 'ready', releases: initialReleases } : { kind: 'loading' }
+  );
   React.useEffect(() => {
+    if (initialReleases) return;
     const controller = new AbortController();
     setState({ kind: 'loading' });
     void fetch('/api/studio/releases', { signal: controller.signal, credentials: 'same-origin' })
@@ -110,7 +117,7 @@ export const ChangelogPage = () => {
         if (!controller.signal.aborted) setState({ kind: 'error' });
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, initialReleases]);
 
   return (
     <section className="space-y-6">
@@ -147,4 +154,12 @@ export const ChangelogPage = () => {
         : null}
     </section>
   );
+};
+
+export const ChangelogRoutePage = () => {
+  const initialReleases = useLoaderData({
+    from: '__root__',
+    select: (data) => (data as RootLoaderData | undefined)?.changelogReleases,
+  });
+  return <ChangelogPage initialReleases={initialReleases} />;
 };

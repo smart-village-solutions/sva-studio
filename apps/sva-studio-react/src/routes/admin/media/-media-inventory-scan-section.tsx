@@ -1,6 +1,6 @@
 import React from 'react';
 import { studioJobContract } from '@sva/core';
-import { Button, Input } from '@sva/studio-ui-react';
+import { Button, Input, useStudioTableQuery } from '@sva/studio-ui-react';
 import { mediaScanLimits, type MediaInventoryScanReport } from '@sva/media';
 import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
@@ -45,53 +45,38 @@ const InventoryReport = ({ report }: { report: MediaInventoryScanReport }) => (
   </div>
 );
 
+const isValidScanLimit = (limit: number) =>
+  Number.isInteger(limit) && limit >= 1 && limit <= mediaScanLimits.maxInventoryFiles;
+
 export const MediaInventoryScanSection = () => {
   const [limit, setLimit] = React.useState<number>(mediaScanLimits.maxInventoryFiles);
-  const [job, setJob] = React.useState<MediaInventoryScanJob | null>(null);
   const [starting, setStarting] = React.useState(false);
   const [error, setError] = React.useState(false);
   const id = React.useId();
+  const scan = useStudioTableQuery<MediaInventoryScanJob | null>(
+    ['media-inventory-scan'],
+    async (signal, previous) =>
+      previous ? (await getMediaInventoryScan(previous.id, signal)).data : null
+  );
+  const job = scan.data;
   const pending = Boolean(job && !studioJobContract.isTerminalStatus(job.status));
-
-  const jobId = job?.id;
+  const { refetch } = scan;
   React.useEffect(() => {
-    if (!pending || !jobId) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = async () => {
-      try {
-        const response = await getMediaInventoryScan(jobId, controller.signal);
-        if (controller.signal.aborted) return;
-        setJob(response.data);
-        if (!studioJobContract.isTerminalStatus(response.data.status))
-          timer = setTimeout(() => void refresh(), 1500);
-      } catch {
-        if (!controller.signal.aborted) {
-          setError(true);
-          setJob(null);
-        }
-      }
-    };
-    void refresh();
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [jobId, pending]);
+    if (!pending || scan.isFetching || scan.error) return;
+    const timer = setTimeout(() => void refetch(), 1500);
+    return () => clearTimeout(timer);
+  }, [job?.id, pending, refetch, scan.error, scan.isFetching]);
 
   const start = async (cursor?: string) => {
-    if (
-      !Number.isInteger(limit) ||
-      limit < 1 ||
-      limit > mediaScanLimits.maxInventoryFiles ||
-      starting ||
-      pending
-    )
-      return;
+    if (!isValidScanLimit(limit) || starting || pending) return;
     setStarting(true);
     setError(false);
     try {
-      setJob((await startMediaInventoryScan({ limit, ...(cursor ? { cursor } : {}) })).data);
+      const response = await startMediaInventoryScan({ limit, ...(cursor ? { cursor } : {}) });
+      await scan.replaceData(response.data);
+      if (!studioJobContract.isTerminalStatus(response.data.status)) {
+        void refetch();
+      }
     } catch {
       setError(true);
     } finally {
@@ -100,7 +85,7 @@ export const MediaInventoryScanSection = () => {
   };
   const report = job?.report;
   const nextCursor = report?.nextCursor;
-  const failed = error || job?.status === 'failed' || job?.status === 'cancelled';
+  const failed = error || scan.error || job?.status === 'failed' || job?.status === 'cancelled';
 
   return (
     <section className="space-y-3 rounded-lg border p-4" aria-labelledby={id}>
@@ -137,6 +122,11 @@ export const MediaInventoryScanSection = () => {
         {starting || pending ? <p>{t('media.inventory.pending')}</p> : null}
         {failed ? <p className="text-destructive">{t('media.inventory.error')}</p> : null}
       </div>
+      {scan.error ? (
+        <Button type="button" variant="secondary" onClick={() => void refetch()}>
+          {t('shared.errorFallback.retry')}
+        </Button>
+      ) : null}
       {report ? <InventoryReport report={report} /> : null}
       {nextCursor ? (
         <Button type="button" disabled={starting || pending} onClick={() => void start(nextCursor)}>

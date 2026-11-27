@@ -16,9 +16,10 @@ import {
   StudioLoadingState,
   StudioOverviewPageTemplate,
   StudioPagination,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { tourDetailPath, toursCreatePath, toursPath } from './descriptor.js';
 
@@ -35,7 +36,7 @@ type TourList = {
   data: readonly TourSummary[];
   pagination: { page: number; pageSize: number; hasNextPage: boolean };
 };
-type ReadResult<T> = { data: T } | { error: 'forbidden' | 'notFound' | 'error' };
+type ReadError = 'forbidden' | 'notFound' | 'error';
 type Translator = ReturnType<typeof usePluginTranslation>;
 export const apiPath = '/api/v1/mainserver/tours';
 
@@ -45,36 +46,27 @@ export function useTourRead<T>(url: string) {
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
-  const [state, setState] = useState<{
-    url: string;
-    access: typeof access;
-    result: ReadResult<T>;
-  }>();
-
-  useEffect(() => {
-    if (!access.isResolved || access.hasError) return;
-    const controller = new AbortController();
-    const store = (result: ReadResult<T>) => {
-      if (!controller.signal.aborted) setState({ url, access, result });
-    };
-    void requestMainserverJson<T, MainserverApiError>({
-      url,
-      init: { signal: controller.signal, cache: 'no-store' },
-      errorFactory: (code, message, denial) => new MainserverApiError(code, message, denial),
-    }).then(
-      (data) => store({ data }),
-      (error: unknown) => {
-        const code = error instanceof MainserverApiError ? error.code : undefined;
-        store({
-          error: code === 'not_found' ? 'notFound' : code === 'forbidden' ? 'forbidden' : 'error',
-        });
-      }
-    );
-    return () => controller.abort();
-  }, [access, url]);
-
-  if (access.hasError) return { error: 'error' } as const;
-  return state?.url === url && state.access === access ? state.result : undefined;
+  const result = useStudioTableQuery(
+    ['tours', url],
+    (signal) =>
+      requestMainserverJson<T, MainserverApiError>({
+        url,
+        init: { signal, cache: 'no-store' },
+        errorFactory: (code, message, denial) => new MainserverApiError(code, message, denial),
+      }),
+    access.isResolved && !access.hasError
+  );
+  const code = result.error instanceof MainserverApiError ? result.error.code : undefined;
+  const error: ReadError | undefined = access.hasError
+    ? 'error'
+    : result.error
+      ? code === 'not_found'
+        ? 'notFound'
+        : code === 'forbidden'
+          ? 'forbidden'
+          : 'error'
+      : undefined;
+  return { ...result, error, loading: !error && result.state === 'loading' };
 }
 
 export const summaryFields = (pt: Translator) => {
@@ -135,7 +127,7 @@ export function ToursListPage() {
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
-  const list = result && 'data' in result ? result.data : undefined;
+  const list = result.data;
 
   return (
     <StudioOverviewPageTemplate
@@ -149,45 +141,16 @@ export function ToursListPage() {
         ) : undefined
       }
     >
-      {!result ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
-      {result && 'error' in result ? <StudioErrorState>{pt(result.error)}</StudioErrorState> : null}
+      {result.loading ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
+      {result.error ? (
+        <StudioErrorState onRetry={list ? () => void result.refetch() : undefined}>
+          {pt(result.error)}
+        </StudioErrorState>
+      ) : null}
       {list?.data.length === 0 ? (
         <StudioEmptyState>{pt(query.page === 1 ? 'empty' : 'emptyPage')}</StudioEmptyState>
       ) : null}
-      {list && list.data.length > 0 ? (
-        <StudioDataTable
-          ariaLabel={pt('title')}
-          data={list.data}
-          columns={[
-            {
-              id: 'name',
-              header: pt('name'),
-              cell: (tour) => (
-                <Link
-                  to={tourDetailPath}
-                  params={{ id: tour.id }}
-                  search={query}
-                  className="font-medium underline underline-offset-4"
-                >
-                  {tour.name || pt('unknown')}
-                </Link>
-              ),
-            },
-            ...summaryFields(pt),
-          ]}
-          getRowId={(tour) => tour.id}
-          emptyState={null}
-          selectionMode="none"
-          sorting={{ mode: 'disabled' }}
-          labels={{
-            selectionColumn: pt('name'),
-            actionsColumn: pt('open'),
-            loading: pt('loading'),
-            selectAllRows: (label) => label,
-            selectRow: ({ label }) => label,
-          }}
-        />
-      ) : null}
+      {list && list.data.length > 0 ? <ToursTable list={list} query={query} pt={pt} /> : null}
       {list && (list.pagination.page > 1 || list.pagination.hasNextPage) ? (
         <StudioPagination
           page={list.pagination.page}
@@ -202,5 +165,50 @@ export function ToursListPage() {
         />
       ) : null}
     </StudioOverviewPageTemplate>
+  );
+}
+
+function ToursTable({
+  list,
+  query,
+  pt,
+}: {
+  list: TourList;
+  query: ReturnType<typeof normalizeListSearch>;
+  pt: Translator;
+}) {
+  return (
+    <StudioDataTable
+      ariaLabel={pt('title')}
+      data={list.data}
+      columns={[
+        {
+          id: 'name',
+          header: pt('name'),
+          cell: (tour) => (
+            <Link
+              to={tourDetailPath}
+              params={{ id: tour.id }}
+              search={query}
+              className="font-medium underline underline-offset-4"
+            >
+              {tour.name || pt('unknown')}
+            </Link>
+          ),
+        },
+        ...summaryFields(pt),
+      ]}
+      getRowId={(tour) => tour.id}
+      emptyState={null}
+      selectionMode="none"
+      sorting={{ mode: 'disabled' }}
+      labels={{
+        selectionColumn: pt('name'),
+        actionsColumn: pt('open'),
+        loading: pt('loading'),
+        selectAllRows: (label) => label,
+        selectRow: ({ label }) => label,
+      }}
+    />
   );
 }

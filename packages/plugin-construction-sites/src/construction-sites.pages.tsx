@@ -16,8 +16,9 @@ function ConstructionSiteHistory({ id }: Readonly<{ id: string }>) {
   return (
     <StudioContentHistory
       contentId={id}
-      loadHistory={(contentId) =>
-        fetchIamContentHistory(contentId, { contentType: CONSTRUCTION_SITES_TYPE })
+      contentType={CONSTRUCTION_SITES_TYPE}
+      loadHistory={(contentId, signal) =>
+        fetchIamContentHistory(contentId, { contentType: CONSTRUCTION_SITES_TYPE, signal })
       }
       labels={{
         loading: pt('history.loading'),

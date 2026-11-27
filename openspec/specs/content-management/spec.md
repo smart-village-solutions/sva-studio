@@ -18,6 +18,13 @@ Die Seite MUST für sichtbare Inhaltstypen eine einzige führende serverseitige 
 - **UND** der Inhaltstyp ist pro Zeile erkennbar
 - **UND** das System zeigt einen Ladezustand, bis mindestens vollständige oder partielle Inhaltsdaten verfügbar sind
 
+#### Scenario: Kürzlich geladene Inhaltsliste wird erneut geöffnet
+
+- **WENN** im aktuellen bestätigten Zugriffskontext ein kürzlich geladenes Ergebnis für dieselbe Tabellenabfrage vorliegt
+- **DANN** zeigt die Seite die vorhandenen Zeilen und die zugehörige Pagination sofort wieder an
+- **UND** aktualisiert sie das Ergebnis über die führende Listenquelle im Hintergrund
+- **UND** verwirft sie das zwischengespeicherte Ergebnis, wenn der Server den Lesezugriff verweigert
+
 #### Scenario: Mainserver-gestützte Inhaltstypen erscheinen über die führende Listenquelle
 
 - **WENN** für die aktive Instanz lesbare News-, Event-, POI-, Generic-Item-, FAQ- oder Survey-Inhalte nur im Mainserver existieren

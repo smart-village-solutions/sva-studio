@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { StudioTableQueryProvider } from '@sva/studio-ui-react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -134,6 +135,46 @@ describe('GroupDetailPage', () => {
     expect(navigation?.state?.(locationState)).toEqual({ preserved: true });
   });
 
+  it('preserves a concurrently added role and description when saving only the group name', async () => {
+    let finishRefresh!: (value: typeof detailFixture) => void;
+    const refresh = new Promise<typeof detailFixture>((resolve) => {
+      finishRefresh = resolve;
+    });
+    const updated = {
+      ...detailFixture,
+      description: 'Extern aktualisiert',
+      assignedRoleIds: ['role-1', 'role-2'],
+      memberships: [{ ...detailFixture.memberships[0]!, displayName: 'Neue Person' }],
+    };
+    const groups = createGroupsState({
+      loadGroupDetail: vi
+        .fn()
+        .mockResolvedValueOnce(detailFixture)
+        .mockReturnValueOnce(refresh)
+        .mockResolvedValue(updated),
+    });
+    useGroupsMock.mockReturnValue(groups);
+    const route = (show: boolean) => (
+      <StudioTableQueryProvider scope={1}>
+        {show ? <GroupDetailPage groupId="group-1" /> : null}
+      </StudioTableQueryProvider>
+    );
+    const view = render(route(true));
+    await screen.findByText('Max Mustermann');
+    view.rerender(route(false));
+    view.rerender(route(true));
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#edit-group-name' }), {
+      target: { value: 'Neuer Name' },
+    });
+    await act(async () => finishRefresh(updated));
+    await screen.findByText('Neue Person');
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    await screen.findByRole('button', { name: 'Gespeichert' });
+    expect(groups.updateGroup).toHaveBeenCalledWith('group-1', { displayName: 'Neuer Name' });
+    expect(groups.removeRole).not.toHaveBeenCalled();
+    expect(groups.assignRole).not.toHaveBeenCalled();
+  });
+
   it('loads the detail view and persists edits, roles, and memberships', async () => {
     const loadGroupDetail = vi
       .fn()
@@ -160,10 +201,10 @@ describe('GroupDetailPage', () => {
     render(<GroupDetailPage groupId="group-1" />);
 
     await waitFor(() => {
-      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1', expect.any(AbortSignal));
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Entfernen' }));
     await waitFor(() => {
       expect(removeMembership).toHaveBeenCalledWith('group-1', 'kc-1');
     });
@@ -185,7 +226,6 @@ describe('GroupDetailPage', () => {
       expect(updateGroup).toHaveBeenCalledWith('group-1', {
         displayName: 'Admins Updated',
         description: 'Neue Beschreibung',
-        isActive: true,
       });
     });
     expect(assignRole).toHaveBeenCalledWith('group-1', 'role-2');
@@ -301,7 +341,7 @@ describe('GroupDetailPage', () => {
     });
     expect(screen.getByText('Request-ID: req-mutation-1')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Gruppe löschen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Gruppe löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe löschen' }));
 
     await waitFor(() => {
@@ -331,10 +371,13 @@ describe('GroupDetailPage', () => {
     render(<GroupDetailPage groupId="group-1" />);
 
     await waitFor(() => {
-      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1', expect.any(AbortSignal));
     });
 
-    expect(screen.getByRole('button', { name: 'Entfernen' })).toHaveProperty('disabled', true);
+    expect(await screen.findByRole('button', { name: 'Entfernen' })).toHaveProperty(
+      'disabled',
+      true
+    );
     expect(removeMembership).not.toHaveBeenCalled();
   });
 

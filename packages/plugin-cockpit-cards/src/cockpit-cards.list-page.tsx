@@ -2,6 +2,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDataTable,
+  useStudioTableQuery,
   StudioEmptyState,
   StudioErrorState,
   StudioLoadingState,
@@ -9,7 +10,6 @@ import {
   StudioPagination,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import * as React from 'react';
 
 import { getCockpitCard, listCockpitCards } from './cockpit-cards.api.js';
 import { readCockpitCardPayload } from './cockpit-cards.model.js';
@@ -20,27 +20,11 @@ export function CockpitCardsListPage() {
   const search = useSearch({ strict: false }) as { page?: number; pageSize?: number };
   const page = Number.isInteger(search.page) && (search.page ?? 0) > 0 ? (search.page ?? 1) : 1;
   const pageSize = search.pageSize === 50 || search.pageSize === 100 ? search.pageSize : 25;
-  const [items, setItems] = React.useState<readonly Awaited<ReturnType<typeof getCockpitCard>>[]>(
-    []
+  const { data, state, error, refetch } = useStudioTableQuery(['cockpit-cards', page, pageSize], () =>
+    listCockpitCards({ page, pageSize })
   );
-  const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');
-  const [hasNextPage, setHasNextPage] = React.useState(false);
-  React.useEffect(() => {
-    let active = true;
-    void listCockpitCards({ page, pageSize }).then(
-      (result) => {
-        if (active) {
-          setItems(result.data);
-          setHasNextPage(result.pagination.hasNextPage);
-          setState('ready');
-        }
-      },
-      () => active && setState('error')
-    );
-    return () => {
-      active = false;
-    };
-  }, [page, pageSize]);
+  const items = data?.data ?? [];
+  const hasNextPage = data?.pagination.hasNextPage ?? false;
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
@@ -54,7 +38,7 @@ export function CockpitCardsListPage() {
       {state === 'loading' ? (
         <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>
       ) : null}
-      {state === 'error' ? <StudioErrorState>{pt('messages.loadError')}</StudioErrorState> : null}
+      {error ? <StudioErrorState onRetry={() => void refetch()}>{pt('messages.loadError')}</StudioErrorState> : null}
       {state === 'ready' && items.length === 0 ? (
         <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
       ) : null}

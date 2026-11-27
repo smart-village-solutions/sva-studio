@@ -1,10 +1,15 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   readSessionAccessSnapshot,
   subscribeSessionAccessSnapshot,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
-import { StudioListPageTemplate, StudioLoadingState, StudioErrorState } from '@sva/studio-ui-react';
+import {
+  StudioListPageTemplate,
+  StudioLoadingState,
+  StudioErrorState,
+  useStudioTableQuery,
+} from '@sva/studio-ui-react';
 import {
   wasteEmailMonitoringPermission,
   type WasteEmailMonitoringOverview,
@@ -24,7 +29,6 @@ import {
 } from './waste-management.email-monitoring.controls.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 
-type Result = { data: WasteEmailMonitoringOverview; listKey: string; deliveryKey: string };
 const emptyData: WasteEmailMonitoringOverview = {
   subscriptions: [],
   total: 0,
@@ -41,76 +45,74 @@ const useEmailMonitoring = () => {
     deliveryPage: 1,
     refresh: 0,
   });
-  const [result, setResult] = useState<Result | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const listKey = `${selection.page}:${selection.status}:${selection.searchVersion}`;
-  const deliveryKey = `${listKey}:${selection.selected?.id}:${selection.deliveryPage}`;
-  useEffect(() => {
-    let current = true;
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    const query = {
-      page: selection.page,
-      pageSize: emailMonitoringPageSize,
-      deliveryPage: selection.deliveryPage,
-      ...(selection.selected ? { subscriptionId: selection.selected.id } : {}),
-    };
-    const request = selection.searchEmail
+  const query = { page: selection.page, pageSize: emailMonitoringPageSize };
+  const read = (
+    controls: { deliveryPage: number; subscriptionId?: string },
+    signal: AbortSignal
+  ) =>
+    selection.searchEmail
       ? searchWasteEmailMonitoring(
-          { ...query, email: selection.searchEmail },
-          { signal: controller.signal }
+          { ...query, ...controls, email: selection.searchEmail },
+          { signal }
         )
       : getWasteEmailMonitoring({
           ...query,
+          ...controls,
           ...(selection.status ? { status: selection.status } : {}),
         });
-    void request
-      .then((data) => {
-        if (current) setResult({ data, listKey, deliveryKey });
-      })
-      .catch((requestError: unknown) => {
-        if (current) {
-          setError(
-            selection.searchEmail && resolveApiErrorCode(requestError) === 'invalid_request'
-              ? 'emailMonitoring.emailSearch.invalid'
-              : 'emailMonitoring.error'
-          );
-        }
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
-      controller.abort();
-    };
-  }, [selection, listKey, deliveryKey]);
-  return { selection, setSelection, result, listKey, deliveryKey, error, loading };
+  const key = ['waste-email-monitoring', query, selection.status, selection.searchEmail];
+  const overview = useStudioTableQuery([...key, { deliveryPage: 1 }], (signal) =>
+    read({ deliveryPage: 1 }, signal)
+  );
+  const detail = {
+    deliveryPage: selection.deliveryPage,
+    ...(selection.selected ? { subscriptionId: selection.selected.id } : {}),
+  };
+  const hasDeliveryQuery = Boolean(selection.selected) || selection.deliveryPage !== 1;
+  const delivery = useStudioTableQuery(
+    [...key, detail],
+    (signal) => read(detail, signal),
+    hasDeliveryQuery
+  );
+  const list = hasDeliveryQuery ? delivery : overview;
+  const refreshVersion = useRef(selection.refresh);
+  useEffect(() => {
+    if (refreshVersion.current === selection.refresh) return;
+    refreshVersion.current = selection.refresh;
+    void list.refetch();
+  }, [list.refetch, selection.refresh]);
+  const error = list.error
+    ? selection.searchEmail && resolveApiErrorCode(list.error) === 'invalid_request'
+      ? 'emailMonitoring.emailSearch.invalid'
+      : 'emailMonitoring.error'
+    : null;
+  const data = list.data ?? overview.data ?? emptyData;
+  return {
+    selection,
+    setSelection,
+    data: hasDeliveryQuery && !delivery.data ? { ...data, deliveries: [], deliveryTotal: 0 } : data,
+    error,
+    loading: list.state === 'loading',
+  };
 };
 
 const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) => {
-  const { selection, setSelection, result, listKey, deliveryKey, error, loading } =
-    useEmailMonitoring();
-  const data = result?.listKey === listKey ? result.data : emptyData;
-  const deliveries = result?.deliveryKey === deliveryKey ? result.data.deliveries : [];
-  const deliveryTotal = result?.deliveryKey === deliveryKey ? result.data.deliveryTotal : 0;
-  const activeTotal = result?.data.activeTotal;
+  const { selection, setSelection, data, error, loading } = useEmailMonitoring();
+  const activeTotal = data.activeTotal;
   return (
     <div className="min-w-0 max-w-6xl space-y-6" aria-busy={loading}>
-      {activeTotal !== undefined && (
-        <p className="text-lg font-semibold tabular-nums" aria-live="polite">
-          {pt('emailMonitoring.activeSubscriptions', { count: activeTotal })}
-        </p>
-      )}
+      <p className="min-h-7 text-lg font-semibold tabular-nums" aria-live="polite">
+        {activeTotal === undefined
+          ? null
+          : pt('emailMonitoring.activeSubscriptions', { count: activeTotal })}
+      </p>
       <MonitoringControls pt={pt} selection={selection} onChange={setSelection} />
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.privacy')}</p>
       {error && <StudioErrorState>{pt(error)}</StudioErrorState>}
-      {loading && <StudioLoadingState>{pt('emailMonitoring.loading')}</StudioLoadingState>}
       <EmailMonitoringTables
         pt={pt}
-        data={{ ...data, deliveries, deliveryTotal }}
+        data={data}
+        loading={loading && data.subscriptions.length === 0}
         selected={selection.selected}
         page={selection.page}
         deliveryPage={selection.deliveryPage}

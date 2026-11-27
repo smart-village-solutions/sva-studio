@@ -29,7 +29,7 @@ export const isGroupActive = (location: SidebarLocation, item: SidebarGroupItem)
 
 type SidebarGroupFlyoutProps = Readonly<{
   item: SidebarGroupItem;
-  location: SidebarLocation;
+  groupId: string;
   activeChildId: string | null;
   onNavigate?: () => void;
   closeFlyout: () => void;
@@ -37,7 +37,7 @@ type SidebarGroupFlyoutProps = Readonly<{
 
 const SidebarGroupFlyout = ({
   item,
-  location: _location,
+  groupId,
   activeChildId,
   onNavigate,
   closeFlyout,
@@ -49,7 +49,7 @@ const SidebarGroupFlyout = ({
 
   return (
     <div
-      id={`sidebar-group-${item.id}`}
+      id={groupId}
       className="absolute left-full top-0 z-[100] w-64 rounded-lg border border-sidebar-border bg-card p-3 shadow-shell"
     >
       <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -73,13 +73,14 @@ const SidebarGroupFlyout = ({
 
 type SidebarGroupContentProps = Readonly<{
   item: SidebarGroupItem;
+  groupId: string;
   activeChildId: string | null;
   onNavigate?: () => void;
 }>;
 
-const SidebarGroupContent = ({ item, activeChildId, onNavigate }: SidebarGroupContentProps) => (
+const SidebarGroupContent = ({ item, groupId, activeChildId, onNavigate }: SidebarGroupContentProps) => (
   <CollapsibleContent
-    id={`sidebar-group-${item.id}`}
+    id={groupId}
     className="mt-1 ml-5 space-y-1 border-l border-sidebar-border/70 pb-1 pl-4"
   >
     {item.children.map((child) => (
@@ -120,6 +121,7 @@ export const SidebarNavItem = ({
   onOpenFlyout,
   onCloseFlyout,
 }: SidebarNavItemProps) => {
+  const groupId = React.useId();
   if (item.kind === 'link') {
     return (
       <li key={item.id}>
@@ -178,7 +180,7 @@ export const SidebarNavItem = ({
           <button
             type="button"
             className={`${getLinkClasses(isActive || isExpanded, true)} w-full`}
-            aria-controls={`sidebar-group-${item.id}`}
+            aria-controls={groupId}
             aria-expanded={isExpanded}
             aria-label={item.label}
             title={item.label}
@@ -203,7 +205,7 @@ export const SidebarNavItem = ({
           {isExpanded ? (
             <SidebarGroupFlyout
               item={item}
-              location={location}
+              groupId={groupId}
               activeChildId={activeChildId}
               onNavigate={onNavigate}
               closeFlyout={onCloseFlyout}
@@ -217,7 +219,7 @@ export const SidebarNavItem = ({
         >
           <CollapsibleTrigger
             className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
-            aria-controls={`sidebar-group-${item.id}`}
+            aria-controls={groupId}
             onPointerDown={() => {
               logInteraction('sidebar_group_pointer_down');
             }}
@@ -244,7 +246,12 @@ export const SidebarNavItem = ({
               )}
             </span>
           </CollapsibleTrigger>
-          <SidebarGroupContent item={item} activeChildId={activeChildId} onNavigate={onNavigate} />
+          <SidebarGroupContent
+            groupId={groupId}
+            item={item}
+            activeChildId={activeChildId}
+            onNavigate={onNavigate}
+          />
         </Collapsible>
       )}
     </li>

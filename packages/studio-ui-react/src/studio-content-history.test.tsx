@@ -28,6 +28,7 @@ describe('StudioContentHistory', () => {
 
     render(
       <StudioContentHistory
+        contentType="generic"
         contentId="content-1"
         loadHistory={loadHistory}
         labels={labels}
@@ -42,12 +43,13 @@ describe('StudioContentHistory', () => {
       expect(header.getAttribute('scope')).toBe('col');
     }
     expect(screen.getAllByRole('row')[1]?.textContent).toContain('UPDATED');
-    expect(loadHistory).toHaveBeenCalledWith('content-1');
+    expect(loadHistory).toHaveBeenCalledWith('content-1', expect.any(AbortSignal));
   });
 
   it('shows create, empty, and error states without exposing stale entries', async () => {
     const { rerender } = render(
       <StudioContentHistory
+        contentType="generic"
         loadHistory={vi.fn()}
         labels={labels}
         formatAction={(action) => action}
@@ -58,6 +60,7 @@ describe('StudioContentHistory', () => {
 
     rerender(
       <StudioContentHistory
+        contentType="generic"
         contentId="content-1"
         loadHistory={vi.fn().mockRejectedValue(new Error('forbidden'))}
         labels={labels}

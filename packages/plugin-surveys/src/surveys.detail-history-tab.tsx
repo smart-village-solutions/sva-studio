@@ -33,7 +33,8 @@ export function SurveyDetailHistoryTab({ contentId, pt }: SurveyDetailHistoryTab
     >
       <StudioContentHistory
         contentId={contentId}
-        loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'surveys.survey' })}
+        contentType={'surveys.survey'}
+        loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'surveys.survey', signal })}
         labels={{
           loading: pt('history.loading'),
           error: pt('history.errors.load'),

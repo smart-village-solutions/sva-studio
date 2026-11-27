@@ -87,11 +87,10 @@ describe('FaqListPage', () => {
     view.rerender(<FaqListPage />);
 
     await waitFor(() =>
-      expect(state.listFaqsMock).toHaveBeenLastCalledWith({
-        page: 1,
-        pageSize: 25,
-        languageCode: 'en',
-      })
+      expect(state.listFaqsMock).toHaveBeenLastCalledWith(
+        { page: 1, pageSize: 25, languageCode: 'en' },
+        expect.any(AbortSignal)
+      )
     );
     expect(await screen.findAllByText('English')).not.toHaveLength(0);
   });
@@ -114,7 +113,10 @@ describe('FaqListPage', () => {
     render(<FaqListPage />);
 
     expect(await screen.findByText('faq.list.empty')).toBeTruthy();
-    expect(state.listFaqsMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'fr' });
+    expect(state.listFaqsMock).toHaveBeenCalledWith(
+      { page: 1, pageSize: 25, languageCode: 'fr' },
+      expect.any(AbortSignal)
+    );
   });
 
   it('paginates forward when additional results are available', async () => {

@@ -100,12 +100,13 @@ export const resolveNewsWasteTargetOptions = (
   return [...unique.values()].sort((left, right) => left.label.localeCompare(right.label, 'de'));
 };
 
-export const loadNewsWasteMasterData = async (): Promise<NewsWasteMasterDataOverview> => {
+export const loadNewsWasteMasterData = async (signal?: AbortSignal): Promise<NewsWasteMasterDataOverview> => {
   const response = await requestMainserverJson<
     { readonly data: NewsWasteMasterDataOverview },
     Error
   >({
     url: '/api/v1/waste-management/master-data?scope=targeting',
+    init: signal ? { signal } : undefined,
     errorFactory: (_code, message) => new Error(message),
   });
   return response.data;

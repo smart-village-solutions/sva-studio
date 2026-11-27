@@ -6,6 +6,7 @@ import {
   StudioPageTitle,
   StudioPersistentFormError,
   useStudioSaveFeedback,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import React from 'react';
@@ -47,43 +48,72 @@ const emptyMembershipForm = (): MembershipFormState => ({
   validUntil: '',
 });
 
-const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
+function parseMembership(form: MembershipFormState) {
+  const validFrom = parseOptionalEditorDateTime(form.validFrom);
+  const validUntil = parseOptionalEditorDateTime(form.validUntil);
+  if (validFrom.kind === 'invalid' || validUntil.kind === 'invalid') return null;
+  return {
+    keycloakSubject: form.keycloakSubject.trim(),
+    validFrom: validFrom.kind === 'value' ? validFrom.value : undefined,
+    validUntil: validUntil.kind === 'value' ? validUntil.value : undefined,
+  };
+}
+
+async function saveGroupChanges({
+  groupId,
+  baseline,
+  formValues,
+  updateGroup,
+  assignRole,
+  removeRole,
+}: GroupDetailPageProps & { baseline: EditFormState; formValues: EditFormState } & Pick<
+    ReturnType<typeof useGroups>,
+    'updateGroup' | 'assignRole' | 'removeRole'
+  >) {
+  const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(
+    baseline.roleIds,
+    formValues.roleIds
+  );
+  const changes = {
+    ...(formValues.displayName.trim() !== baseline.displayName.trim()
+      ? { displayName: formValues.displayName.trim() }
+      : {}),
+    ...(formValues.description.trim() !== baseline.description.trim()
+      ? { description: formValues.description.trim() || null }
+      : {}),
+    ...(formValues.isActive !== baseline.isActive ? { isActive: formValues.isActive } : {}),
+  };
+  if (Object.keys(changes).length > 0 && !(await updateGroup(groupId, changes))) {
+    return false;
+  }
+
+  for (const roleId of roleIdsToAssign) {
+    const assigned = await assignRole(groupId, roleId);
+    if (!assigned) {
+      return false;
+    }
+  }
+
+  for (const roleId of roleIdsToRemove) {
+    const removed = await removeRole(groupId, roleId);
+    if (!removed) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function useCreatedGroupFeedback(
+  groupId: string,
+  ready: boolean,
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>
+) {
   const location = useLocation();
   const navigate = useNavigate();
-  const groupsApi = useGroups();
-  const rolesApi = useRoles();
-  const access = useIamResourceAccess('group');
-  const canUpdateGroup = isIamAccessAllowed(access.update);
-  const canDeleteGroup = isIamAccessAllowed(access.delete);
-  const {
-    isLoading,
-    detailError,
-    mutationError,
-    loadGroupDetail,
-    updateGroup,
-    assignRole,
-    removeRole,
-    assignMembership,
-    removeMembership,
-    deleteGroup,
-  } = groupsApi;
-  const [group, setGroup] = React.useState<IamAdminGroupDetail | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
-  const [formError, setFormError] = React.useState<string | null>(null);
-  const [formValues, setFormValues] = React.useState<EditFormState>({
-    displayName: '',
-    description: '',
-    roleIds: [],
-    isActive: true,
-  });
-  const [membershipForm, setMembershipForm] =
-    React.useState<MembershipFormState>(emptyMembershipForm);
-  const saveFeedback = useStudioSaveFeedback();
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
     if (
-      isLoading ||
-      !group ||
+      !ready ||
       initialSaveFeedbackShownRef.current ||
       !hasStudioCreatedSaveFeedback(location.state, 'groups', groupId)
     ) {
@@ -98,70 +128,106 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
       replace: true,
       state: (previous) => removeStudioSaveFeedback(previous),
     });
-  }, [group, groupId, isLoading, location.state, navigate, saveFeedback]);
+  }, [groupId, ready, location.state, navigate, saveFeedback]);
+}
+
+const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
+  const groupsApi = useGroups();
+  const rolesApi = useRoles();
+  const access = useIamResourceAccess('group');
+  const canUpdateGroup = isIamAccessAllowed(access.update);
+  const canDeleteGroup = isIamAccessAllowed(access.delete);
+  const {
+    isLoading: isGroupListLoading,
+    detailError,
+    mutationError,
+    loadGroupDetail,
+    updateGroup,
+    assignRole,
+    removeRole,
+    assignMembership,
+    removeMembership,
+    deleteGroup,
+  } = groupsApi;
+  const detailQuery = useStudioTableQuery(['iam-group-detail', groupId], (signal) =>
+    loadGroupDetail(groupId, signal)
+  );
+  const group = detailQuery.data ?? null;
+  const isLoading = isGroupListLoading || detailQuery.state === 'loading';
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [formValues, setFormValues] = React.useState<EditFormState>({
+    displayName: '',
+    description: '',
+    roleIds: [],
+    isActive: true,
+  });
+  const [membershipForm, setMembershipForm] =
+    React.useState<MembershipFormState>(emptyMembershipForm);
+  const saveFeedback = useStudioSaveFeedback();
+  const formBaseline = React.useRef<EditFormState | null>(null);
+  const hasLocalEdits = React.useRef(false);
+  useCreatedGroupFeedback(groupId, !isLoading && Boolean(group), saveFeedback);
   const setDirtyFormValues: typeof setFormValues = (value) => {
+    hasLocalEdits.current = true;
     saveFeedback.markDirty();
     setFormValues(value);
   };
 
-  const loadDetail = React.useCallback(async () => {
-    const detail = await loadGroupDetail(groupId);
-    if (!detail) {
-      return null;
-    }
-
-    setGroup(detail);
-    setFormValues({
+  const applyDetailToForm = React.useCallback((detail: IamAdminGroupDetail) => {
+    const next = {
       displayName: detail.displayName,
       description: detail.description ?? '',
       roleIds: [...detail.assignedRoleIds],
       isActive: detail.isActive,
-    });
-    return detail;
-  }, [groupId, loadGroupDetail]);
+    };
+    formBaseline.current = next;
+    hasLocalEdits.current = false;
+    setFormValues(next);
+  }, []);
 
-  React.useEffect(() => {
-    void loadDetail();
-  }, [loadDetail]);
+  const initialFormGroup = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    if (!detailQuery.isAvailable || detailQuery.state === 'error') {
+      initialFormGroup.current = null;
+      formBaseline.current = null;
+      hasLocalEdits.current = false;
+      return;
+    }
+    if (!group) return;
+    if (!hasLocalEdits.current || initialFormGroup.current !== groupId) applyDetailToForm(group);
+    initialFormGroup.current = groupId;
+  }, [applyDetailToForm, detailQuery.isAvailable, detailQuery.state, group, groupId]);
+
+  const loadDetail = React.useCallback(async () => {
+    const refreshed = await detailQuery.refresh();
+    if (refreshed && !hasLocalEdits.current) applyDetailToForm(refreshed);
+    return refreshed ?? null;
+  }, [applyDetailToForm, detailQuery.refresh]);
 
   const onEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!group || !canUpdateGroup) {
+    const baseline = formBaseline.current;
+    if (!group || !baseline || !canUpdateGroup) {
       return;
     }
 
     const operationId = saveFeedback.beginSaving();
-    const updated = await updateGroup(groupId, {
-      displayName: formValues.displayName.trim(),
-      description: formValues.description.trim() || undefined,
-      isActive: formValues.isActive,
-    });
-    if (!updated) {
+    if (
+      !(await saveGroupChanges({
+        groupId,
+        baseline,
+        formValues,
+        updateGroup,
+        assignRole,
+        removeRole,
+      }))
+    ) {
       saveFeedback.markFailed(operationId);
       return;
     }
 
-    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(
-      group.assignedRoleIds,
-      formValues.roleIds
-    );
-
-    for (const roleId of roleIdsToAssign) {
-      const assigned = await assignRole(groupId, roleId);
-      if (!assigned) {
-        saveFeedback.markFailed(operationId);
-        return;
-      }
-    }
-
-    for (const roleId of roleIdsToRemove) {
-      const removed = await removeRole(groupId, roleId);
-      if (!removed) {
-        saveFeedback.markFailed(operationId);
-        return;
-      }
-    }
-
+    hasLocalEdits.current = false;
     await loadDetail();
     saveFeedback.markSaved(operationId);
   };
@@ -173,18 +239,13 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
     }
     setFormError(null);
 
-    const validFrom = parseOptionalEditorDateTime(membershipForm.validFrom);
-    const validUntil = parseOptionalEditorDateTime(membershipForm.validUntil);
-    if (validFrom.kind === 'invalid' || validUntil.kind === 'invalid') {
+    const membership = parseMembership(membershipForm);
+    if (!membership) {
       setFormError(t('admin.groups.validation.membershipDateInvalid'));
       return;
     }
 
-    const assigned = await assignMembership(groupId, {
-      keycloakSubject: membershipForm.keycloakSubject.trim(),
-      validFrom: validFrom.kind === 'value' ? validFrom.value : undefined,
-      validUntil: validUntil.kind === 'value' ? validUntil.value : undefined,
-    });
+    const assigned = await assignMembership(groupId, membership);
     if (!assigned) {
       return;
     }

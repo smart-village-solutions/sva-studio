@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -40,11 +41,11 @@ type UseMediaLibraryResult = {
   readonly refetch: () => Promise<void>;
 };
 
+const EMPTY_ASSETS: readonly IamMediaAsset[] = [];
 const mediaLogger = createOperationLogger('media-hook', 'debug');
 
 export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResult => {
   const { refreshSession } = useAuth();
-  const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
   const [usageByAssetId, setUsageByAssetId] = React.useState<
     Readonly<Record<string, number | null>>
   >({});
@@ -52,153 +53,92 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
     Readonly<Record<string, 'loading' | 'ready' | 'unavailable'>>
   >({});
   const [isUsageLoading, setIsUsageLoading] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
-  const [limit, setLimit] = React.useState(query.limit ?? 25);
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
-  const [hasNextPage, setHasNextPage] = React.useState(false);
-  const latestRequestRef = React.useRef(0);
-
-  const refetch = React.useCallback(async () => {
-    const requestId = latestRequestRef.current + 1;
-    latestRequestRef.current = requestId;
+  const list = useStudioTableQuery(['media', query], async (signal) => {
     logBrowserOperationStart(mediaLogger, 'media_library_refetch_started', {
       operation: 'list_media',
       has_search: Boolean(query.search?.trim()),
       has_tag_filter: Boolean(query.tag?.trim()),
       visibility: query.visibility ?? null,
     });
-    setIsLoading(true);
-    setIsUsageLoading(false);
-    setUsageStatusByAssetId({});
-    setError(null);
-
     try {
       const response = await listMedia(query);
-      if (requestId !== latestRequestRef.current) {
-        return;
-      }
-      const registeredAssets = response.data.filter(isRegisteredMediaAsset);
-      const initialUsageByAssetId = Object.fromEntries(
-        response.data.map((asset) => [getMediaLibraryItemKey(asset), null] as const)
-      );
-      const initialUsageStatusByAssetId = Object.fromEntries(
-        response.data.map(
-          (asset) =>
-            [
-              getMediaLibraryItemKey(asset),
-              isRegisteredMediaAsset(asset) ? 'loading' : 'unavailable',
-            ] as const
-        )
-      );
-      setAssets(response.data);
-      setUsageByAssetId(initialUsageByAssetId);
-      setUsageStatusByAssetId(initialUsageStatusByAssetId);
-      setLimit(response.pagination.limit);
-      setNextCursor(response.pagination.nextCursor);
-      setHasNextPage(response.pagination.hasNextPage);
-      setIsLoading(false);
-      setIsUsageLoading(registeredAssets.length > 0);
       logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
         operation: 'list_media',
         item_count: response.data.length,
       });
-
-      if (registeredAssets.length === 0) {
-        return;
-      }
-
-      let remainingUsageRequests = registeredAssets.length;
-      let protectedUsageFailureHandled = false;
-
-      for (const asset of registeredAssets) {
-        void getMediaUsage(asset.id)
-          .then((usageResponse) => {
-            if (requestId !== latestRequestRef.current) {
-              return;
-            }
-
-            setUsageByAssetId((current) => ({
-              ...current,
-              [getMediaLibraryItemKey(asset)]: usageResponse.data.totalReferences,
-            }));
-            setUsageStatusByAssetId((current) => ({
-              ...current,
-              [getMediaLibraryItemKey(asset)]: 'ready',
-            }));
-          })
-          .catch(async (cause) => {
-            const resolvedError = asIamError(cause);
-            if (resolvedError.status === 401 && !protectedUsageFailureHandled) {
-              protectedUsageFailureHandled = true;
-              await refreshSession();
-            }
-
-            logBrowserOperationFailure(
-              mediaLogger,
-              'media_library_usage_load_failed',
-              resolvedError,
-              {
-                operation: 'get_media_usage',
-              }
-            );
-
-            if (requestId !== latestRequestRef.current) {
-              return;
-            }
-
-            setUsageStatusByAssetId((current) => ({
-              ...current,
-              [getMediaLibraryItemKey(asset)]: 'unavailable',
-            }));
-          })
-          .finally(() => {
-            if (requestId !== latestRequestRef.current) {
-              return;
-            }
-
-            remainingUsageRequests -= 1;
-            if (remainingUsageRequests === 0) {
-              setIsUsageLoading(false);
-            }
-          });
-      }
+      return response;
     } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (requestId !== latestRequestRef.current) {
-        return;
-      }
-      if (resolvedError.status === 401) {
-        await refreshSession();
-      }
-      setAssets([]);
-      setUsageByAssetId({});
-      setUsageStatusByAssetId({});
-      setIsUsageLoading(false);
-      setNextCursor(null);
-      setHasNextPage(false);
-      setError(resolvedError);
-      setIsLoading(false);
-      logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', resolvedError, {
+      if (signal.aborted) throw cause;
+      const error = asIamError(cause);
+      if (error.status === 401) await refreshSession();
+      logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', error, {
         operation: 'list_media',
       });
+      throw error;
     }
-  }, [refreshSession, query.cursor, query.limit, query.search, query.tag, query.visibility]);
+  });
 
+  const assets = list.data?.data ?? EMPTY_ASSETS;
   React.useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    let active = true;
+    const registeredAssets = assets.filter(isRegisteredMediaAsset);
+    setUsageByAssetId(
+      Object.fromEntries(assets.map((asset) => [getMediaLibraryItemKey(asset), null]))
+    );
+    setUsageStatusByAssetId(
+      Object.fromEntries(
+        assets.map((asset) => [
+          getMediaLibraryItemKey(asset),
+          isRegisteredMediaAsset(asset) ? 'loading' : 'unavailable',
+        ])
+      )
+    );
+    setIsUsageLoading(registeredAssets.length > 0);
+
+    let protectedUsageFailureHandled = false;
+    void Promise.all(
+      registeredAssets.map(async (asset) => {
+        const key = getMediaLibraryItemKey(asset);
+        try {
+          const usage = await getMediaUsage(asset.id);
+          if (!active) return;
+          setUsageByAssetId((current) => ({ ...current, [key]: usage.data.totalReferences }));
+          setUsageStatusByAssetId((current) => ({ ...current, [key]: 'ready' }));
+        } catch (cause) {
+          if (!active) return;
+          const error = asIamError(cause);
+          if (error.status === 401 && !protectedUsageFailureHandled) {
+            protectedUsageFailureHandled = true;
+            await refreshSession();
+          }
+          logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', error, {
+            operation: 'get_media_usage',
+          });
+          if (active) setUsageStatusByAssetId((current) => ({ ...current, [key]: 'unavailable' }));
+        }
+      })
+    ).then(() => {
+      if (active) setIsUsageLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [assets, list.dataUpdatedAt, refreshSession]);
+
+  const refetch = React.useCallback(async () => {
+    await list.refresh(true);
+  }, [list.refresh]);
 
   return {
     assets,
     usageByAssetId,
     usageStatusByAssetId,
     isUsageLoading,
-    isLoading,
-    error,
-    limit,
-    nextCursor,
-    hasNextPage,
+    isLoading: list.state === 'loading',
+    error: list.error as IamHttpError | null,
+    limit: list.data?.pagination.limit ?? query.limit ?? 25,
+    nextCursor: list.data?.pagination.nextCursor ?? null,
+    hasNextPage: list.data?.pagination.hasNextPage ?? false,
     refetch,
   };
 };

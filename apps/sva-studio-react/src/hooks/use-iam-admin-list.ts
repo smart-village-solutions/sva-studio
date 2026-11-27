@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTableInvalidation, useStudioTableQuery } from '@sva/studio-ui-react';
 
 import { asIamError, type IamHttpError } from '../lib/iam-api';
 import {
@@ -38,63 +39,42 @@ type UseIamAdminListResult<TItem> = {
   ) => Promise<boolean>;
 };
 
+const EMPTY_ITEMS: readonly never[] = [];
 const adminListLogger = createOperationLogger('iam-admin-list', 'debug');
 
 export const useIamAdminList = <TItem>(
   listItems: () => Promise<ListResponse<TItem>>,
   refreshSession: () => Promise<void> | void,
   options: {
+    resource: string;
     enabled?: boolean;
     invalidateEffectiveAccessOnMutation?: boolean;
-    onLoaded?: (response: ListResponse<TItem>) => void;
-  } = {}
+  }
 ): UseIamAdminListResult<TItem> => {
   const enabled = options.enabled ?? true;
   const invalidateEffectiveAccessOnMutation = options.invalidateEffectiveAccessOnMutation ?? false;
-  const onLoaded = options.onLoaded;
-  const [items, setItems] = React.useState<readonly TItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(enabled);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
+  const { resource } = options;
+  const invalidate = useStudioTableInvalidation();
+  const [manualError, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
-  const hasLoadedItemsRef = React.useRef(false);
-  const latestRequestRef = React.useRef(0);
   const latestRequestOutcomeRef = React.useRef<Promise<boolean> | null>(null);
 
-  const executeRefetch = React.useCallback(
-    async (requestId: number): Promise<boolean> => {
-      if (!enabled) {
-        setItems([]);
-        setIsLoading(false);
-        setError(null);
-        return false;
-      }
-
+  const list = useStudioTableQuery(
+    [resource],
+    async (signal) => {
       logBrowserOperationStart(adminListLogger, 'list_refetch_started');
-      setIsLoading(true);
-      setError(null);
-
       try {
         const response = await listItems();
-        if (requestId !== latestRequestRef.current) {
-          return (await latestRequestOutcomeRef.current) ?? false;
-        }
-        setItems(response.data);
-        hasLoadedItemsRef.current = true;
-        onLoaded?.(response);
         logBrowserOperationSuccess(
           adminListLogger,
           'list_refetch_succeeded',
-          {
-            item_count: response.data.length,
-          },
+          { item_count: response.data.length },
           'debug'
         );
-        return true;
+        return response;
       } catch (cause) {
+        if (signal.aborted) throw cause;
         const resolvedError = asIamError(cause);
-        if (requestId !== latestRequestRef.current) {
-          return (await latestRequestOutcomeRef.current) ?? false;
-        }
         if (resolvedError.status === 401) {
           await refreshSession();
           adminListLogger.info('session_refreshed_after_401', {
@@ -103,42 +83,29 @@ export const useIamAdminList = <TItem>(
             error_code: resolvedError.code,
           });
         }
-        if (!hasLoadedItemsRef.current) {
-          setItems([]);
-        }
-        setError(resolvedError);
         logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
-        return false;
-      } finally {
-        if (requestId === latestRequestRef.current) {
-          setIsLoading(false);
-        }
+        throw resolvedError;
       }
     },
-    [enabled, refreshSession, listItems, onLoaded]
+    enabled
   );
 
   const refetchWithOutcome = React.useCallback((): Promise<boolean> => {
-    const requestId = latestRequestRef.current + 1;
-    latestRequestRef.current = requestId;
-    const outcome = executeRefetch(requestId);
+    setError(null);
+    const outcome: Promise<boolean> = list
+      .refetch()
+      .then((success) =>
+        latestRequestOutcomeRef.current === outcome
+          ? success
+          : (latestRequestOutcomeRef.current ?? false)
+      );
     latestRequestOutcomeRef.current = outcome;
     return outcome;
-  }, [executeRefetch]);
+  }, [list.refetch]);
 
   const refetch = React.useCallback(async () => {
     await refetchWithOutcome();
   }, [refetchWithOutcome]);
-
-  React.useEffect(() => {
-    if (!enabled) {
-      setItems([]);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-    void refetch();
-  }, [enabled, refetch]);
 
   const runMutationWithResult = React.useCallback(
     async <TResult>(action: () => Promise<TResult>, meta: BrowserOperationLogMeta = {}) => {
@@ -149,6 +116,7 @@ export const useIamAdminList = <TItem>(
         if (invalidateEffectiveAccessOnMutation) {
           requestEffectiveAccessInvalidation();
         }
+        await invalidate([resource], false);
         await refetch();
         logBrowserOperationSuccess(adminListLogger, 'mutation_succeeded', meta);
         return result;
@@ -167,7 +135,7 @@ export const useIamAdminList = <TItem>(
         return null;
       }
     },
-    [invalidateEffectiveAccessOnMutation, refreshSession, refetch]
+    [invalidateEffectiveAccessOnMutation, invalidate, refreshSession, refetch, resource]
   );
 
   const runMutation = React.useCallback(
@@ -180,29 +148,16 @@ export const useIamAdminList = <TItem>(
     setMutationError(null);
   }, []);
 
-  return React.useMemo(
-    () => ({
-      items,
-      isLoading,
-      error,
-      mutationError,
-      refetch,
-      refetchWithOutcome,
-      clearMutationError,
-      setError,
-      runMutationWithResult,
-      runMutation,
-    }),
-    [
-      clearMutationError,
-      error,
-      isLoading,
-      items,
-      mutationError,
-      refetch,
-      refetchWithOutcome,
-      runMutation,
-      runMutationWithResult,
-    ]
-  );
+  return {
+    items: list.data?.data ?? EMPTY_ITEMS,
+    isLoading: enabled && list.state === 'loading',
+    error: enabled ? (manualError ?? (list.error as IamHttpError | null)) : null,
+    mutationError,
+    refetch,
+    refetchWithOutcome,
+    clearMutationError,
+    setError,
+    runMutationWithResult,
+    runMutation,
+  };
 };

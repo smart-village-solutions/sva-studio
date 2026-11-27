@@ -50,13 +50,14 @@ export const listVouchers = (
     poiId?: string;
     categoryId?: string;
     visible?: string;
-  }> = {}
+  }> = {},
+  signal?: AbortSignal
 ) => {
   const query = new URLSearchParams({ page: String(page), pageSize: '25', search });
   for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
   return requestMainserverJson<VoucherList>({
     url: `${base}?${query}`,
-    init: { headers: principal ? createMainserverReadHeaders(principal) : undefined },
+    init: { headers: principal ? createMainserverReadHeaders(principal) : undefined, signal },
   });
 };
 export const getVoucher = (id: string, principal: MainserverActingPrincipalType) =>

@@ -33,7 +33,7 @@ export function TourDetailPage({
   const id = useParams({ strict: false, select: (params) => (params as { id: string }).id });
   const search = normalizeListSearch(useSearch({ strict: false }));
   const result = useTourRead<{ data: TourDetail }>(`${apiPath}/${encodeURIComponent(id)}`);
-  const tour = result && 'data' in result ? result.data.data : undefined;
+  const tour = result.data?.data;
   const [editing, setEditing] = useState<{
     id: string;
     scope: string;
@@ -75,8 +75,12 @@ export function TourDetailPage({
         </Button>
       }
     >
-      {!result ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
-      {result && 'error' in result ? <StudioErrorState>{pt(result.error)}</StudioErrorState> : null}
+      {result.loading ? <StudioLoadingState>{pt('loading')}</StudioLoadingState> : null}
+      {result.error ? (
+        <StudioErrorState onRetry={tour ? () => void result.refetch() : undefined}>
+          {pt(result.error)}
+        </StudioErrorState>
+      ) : null}
       {tour ? (
         <>
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

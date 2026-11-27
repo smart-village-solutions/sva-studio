@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { normalizeListSearch, usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -7,11 +6,11 @@ import {
   StudioErrorState,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 
 import { listGenericItems } from './generic-items.api.js';
 import { GenericItemsDetailPage } from './generic-items.detail-page.js';
-import type { GenericItemListResult } from './generic-items.api-types.js';
 import { GenericItemsDataTable, GenericItemsPagination } from './generic-items.pages.parts.js';
 
 export function GenericItemsListPage() {
@@ -21,38 +20,12 @@ export function GenericItemsListPage() {
     readonly pageSize?: number;
   };
   const { page, pageSize } = normalizeListSearch(search);
-  const [result, setResult] = React.useState<GenericItemListResult>({
-    data: [],
-    pagination: { page, pageSize, hasNextPage: false },
-  });
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    let active = true;
-    setLoading(true);
+  const list = useStudioTableQuery(['generic-items', page, pageSize], () =>
     listGenericItems({ page, pageSize })
-      .then((data) => {
-        if (active) {
-          setResult(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(pt('messages.loadError'));
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [page, pageSize, pt]);
+  );
+  const result = list.data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
+  const loading = list.state === 'loading';
+  const error = list.error ? pt('messages.loadError') : null;
 
   return (
     <StudioOverviewPageTemplate
@@ -65,11 +38,11 @@ export function GenericItemsListPage() {
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
-      {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? (
+      {error ? <StudioErrorState onRetry={() => void list.refetch()}>{error}</StudioErrorState> : null}
+      {list.state === 'ready' && result.data.length === 0 ? (
         <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
       ) : null}
-      {!loading && !error && result.data.length > 0 ? (
+      {list.state === 'ready' && result.data.length > 0 ? (
         <div className="space-y-4">
           <GenericItemsDataTable data={result.data} pt={pt} />
           <GenericItemsPagination pagination={result.pagination} pt={pt} />

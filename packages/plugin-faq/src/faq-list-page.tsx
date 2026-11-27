@@ -4,6 +4,7 @@ import {
   Button,
   Input,
   StudioDataTable,
+  useStudioTableQuery,
   StudioEmptyState,
   StudioErrorState,
   StudioField,
@@ -89,7 +90,8 @@ const FaqListContent = ({
   result: FaqListResult;
   status: FaqListStatus;
 }>) => {
-  if (status === 'loading') return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
+  if (status === 'loading')
+    return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (status === 'error') return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
   if (result.data.length === 0) return <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>;
   return (
@@ -108,37 +110,21 @@ const FaqListContent = ({
   );
 };
 
-const useFaqList = (query: Readonly<{ page: number; pageSize: number; languageCode?: string }>) => {
-  const [result, setResult] = React.useState<FaqListResult>({
-    data: [],
-    pagination: { page: query.page, pageSize: query.pageSize, hasNextPage: false },
-  });
-  const [status, setStatus] = React.useState<FaqListStatus>('loading');
+function useCanonicalFaqSearch(
+  search: FaqListSearch,
+  {
+    page,
+    pageSize,
+    languageCode,
+  }: { page: number; pageSize: number; languageCode: string | undefined },
+  navigate: ReturnType<typeof useNavigate>
+) {
   React.useEffect(() => {
-    let active = true;
-    setStatus('loading');
-    void listFaqs(query).then(
-      (nextResult) => active && (setResult(nextResult), setStatus('ready')),
-      () => active && setStatus('error')
-    );
-    return () => {
-      active = false;
-    };
-  }, [query.languageCode, query.page, query.pageSize]);
-  return { result, status };
-};
-
-export const FaqListPage = () => {
-  const pt = usePluginTranslation('faq');
-  const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as FaqListSearch;
-  const page = toPage(search.page);
-  const pageSize = toPageSize(search.pageSize);
-  const languageCode = normalizeLanguageFilter(search.languageCode);
-  const { result, status } = useFaqList({ page, pageSize, languageCode });
-
-  React.useEffect(() => {
-    if (search.page === page && search.pageSize === pageSize && search.languageCode === languageCode)
+    if (
+      search.page === page &&
+      search.pageSize === pageSize &&
+      search.languageCode === languageCode
+    )
       return;
     void navigate({
       to: '/admin/faq',
@@ -151,6 +137,25 @@ export const FaqListPage = () => {
       }),
     });
   }, [languageCode, navigate, page, pageSize, search.languageCode, search.page, search.pageSize]);
+}
+
+export const FaqListPage = () => {
+  const pt = usePluginTranslation('faq');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as FaqListSearch;
+  const page = toPage(search.page);
+  const pageSize = toPageSize(search.pageSize);
+  const languageCode = normalizeLanguageFilter(search.languageCode);
+  const query = { page, pageSize, languageCode };
+  const {
+    data,
+    state: status,
+    error,
+    refetch,
+  } = useStudioTableQuery(['faqs', query], (signal) => listFaqs(query, signal));
+  const result = data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
+
+  useCanonicalFaqSearch(search, query, navigate);
 
   const navigateToPage = (nextPage: number) =>
     void navigate({
@@ -190,6 +195,11 @@ export const FaqListPage = () => {
         />
       }
     >
+      {status === 'ready' && error ? (
+        <StudioErrorState onRetry={() => void refetch()}>
+          {pt('messages.loadError')}
+        </StudioErrorState>
+      ) : null}
       <FaqListContent result={result} status={status} onPageChange={navigateToPage} pt={pt} />
     </StudioOverviewPageTemplate>
   );

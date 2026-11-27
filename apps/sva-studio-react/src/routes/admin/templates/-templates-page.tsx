@@ -161,7 +161,9 @@ export const TemplatesPage = () => {
       ) : (
         <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
       )}
-      <EmailVerificationTemplateCard mode="server"/>
+      <div hidden={!template && !loadFailed}>
+        <EmailVerificationTemplateCard mode="server" />
+      </div>
     </div>
   );
 };

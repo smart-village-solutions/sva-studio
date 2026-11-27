@@ -296,6 +296,43 @@
 
 /* Microanimations – professionelle Interaktionsfeedbacks */
 @layer components {
+  /* Select the same sidebar panel for the first paint and the hydrated viewport. */
+  .studio-desktop-sidebar {
+    @apply w-20 xl:w-72;
+
+    > [data-sidebar-panel='expanded'] {
+      @apply hidden xl:block;
+    }
+
+    > [data-sidebar-panel='compact'] {
+      @apply block xl:hidden;
+    }
+  }
+
+  html[data-sidebar-collapse='1'] .studio-desktop-sidebar {
+    @apply w-20;
+
+    > [data-sidebar-panel='expanded'] {
+      display: none;
+    }
+
+    > [data-sidebar-panel='compact'] {
+      display: block;
+    }
+  }
+
+  html[data-sidebar-collapse='0'] .studio-desktop-sidebar {
+    @apply w-72;
+
+    > [data-sidebar-panel='expanded'] {
+      display: block;
+    }
+
+    > [data-sidebar-panel='compact'] {
+      display: none;
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     /* 2. Input-Glow: Subtiler ausfahrender Ring */
     @keyframes input-glow {

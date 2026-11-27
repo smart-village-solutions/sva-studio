@@ -13,8 +13,8 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 export const useWasteToursViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteToursState();
-  const loadOverview = useWasteToursOverview(state, pt);
-  const actions = createWasteToursActions(state);
+  const { loadOverview, refreshScheduling } = useWasteToursOverview(state, pt);
+  const actions = createWasteToursActions(state, () => refreshScheduling(true));
   const mutations = createWasteToursMutationHandlers({ state, pt, loadOverview });
   const availableFractionIds = new Set(state.availableFractions.map((fraction) => fraction.id));
   const effectiveSearch =

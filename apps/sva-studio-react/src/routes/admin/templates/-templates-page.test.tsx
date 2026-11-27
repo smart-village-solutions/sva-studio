@@ -46,6 +46,20 @@ describe('TemplatesPage', () => {
     cleanup();
   });
 
+  it('reveals the verification template after the invitation section has settled', async () => {
+    let resolveInvitation: (value: { data: typeof defaultView }) => void = () => undefined;
+    const invitation = new Promise<{ data: typeof defaultView }>((resolve) => {
+      resolveInvitation = resolve;
+    });
+    api.getServerAccountInvitationTemplate.mockReturnValueOnce(invitation);
+    render(<TemplatesPage />);
+
+    expect(screen.queryByRole('heading', { name: 'E-Mail-Bestätigung' })).toBeNull();
+    resolveInvitation({ data: defaultView });
+
+    expect(await screen.findByRole('heading', { name: 'E-Mail-Bestätigung' })).toBeTruthy();
+  });
+
   it('loads the effective source and saves a revision-bound server template', async () => {
     render(<TemplatesPage />);
 

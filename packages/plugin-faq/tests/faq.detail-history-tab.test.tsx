@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 const fetchHistory = vi.fn();
 
 vi.mock('@sva/plugin-sdk', () => ({
+  usePluginTranslation: () => (key: string) => key,
   fetchIamContentHistory: (...args: unknown[]) => fetchHistory(...args),
   formatDateTimeInEditorTimeZone: (value: string) => value,
 }));

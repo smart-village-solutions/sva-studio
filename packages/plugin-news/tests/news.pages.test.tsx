@@ -1431,6 +1431,7 @@ describe('News editor pages', () => {
     await waitFor(() => {
       expect(fetchIamContentHistory).toHaveBeenCalledWith('news-1', {
         contentType: 'news.article',
+        signal: expect.any(AbortSignal),
       });
       expect(screen.getByText('Freigabe erteilt')).toBeTruthy();
     });

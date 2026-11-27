@@ -44,6 +44,7 @@ export const useRoles = (): UseRolesResult => {
   const { refreshSession } = useAuth();
   const [reconcileReport, setReconcileReport] = React.useState<RoleReconcileReport | null>(null);
   const adminList = useIamAdminList(listRoles, refreshSession, {
+    resource: 'iam-roles',
     invalidateEffectiveAccessOnMutation: true,
   });
 

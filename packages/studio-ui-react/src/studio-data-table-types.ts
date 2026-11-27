@@ -81,6 +81,7 @@ export type StudioDataTableProps<TData> = Readonly<{
   toolbarEnd?: React.ReactNode;
   footer?: React.ReactNode;
   emptyState: React.ReactNode;
+  showEmptyTable?: boolean;
   loadingState?: React.ReactNode;
   isLoading?: boolean;
   /**

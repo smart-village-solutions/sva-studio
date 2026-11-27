@@ -41,7 +41,7 @@ type UseGroupsResult = {
   readonly createGroup: (payload: CreateGroupPayload) => Promise<string | null>;
   readonly updateGroup: (groupId: string, payload: UpdateGroupPayload) => Promise<boolean>;
   readonly deleteGroup: (groupId: string) => Promise<boolean>;
-  readonly loadGroupDetail: (groupId: string) => Promise<IamAdminGroupDetail | null>;
+  readonly loadGroupDetail: (groupId: string, signal?: AbortSignal) => Promise<IamAdminGroupDetail | null>;
   readonly assignRole: (groupId: string, roleId: string) => Promise<boolean>;
   readonly removeRole: (groupId: string, roleId: string) => Promise<boolean>;
   readonly assignMembership: (
@@ -97,6 +97,7 @@ export const useGroups = (): UseGroupsResult => {
   const { refreshSession, user } = useAuth();
   const hasInstanceContext = Boolean(user?.instanceId);
   const adminList = useIamAdminList(listGroups, refreshSession, {
+    resource: 'iam-groups',
     enabled: hasInstanceContext,
     invalidateEffectiveAccessOnMutation: true,
   });
@@ -113,20 +114,21 @@ export const useGroups = (): UseGroupsResult => {
   const [detailError, setDetailError] = React.useState<IamHttpError | null>(null);
 
   const loadGroupDetail = React.useCallback(
-    async (groupId: string) => {
+    async (groupId: string, signal?: AbortSignal) => {
       setDetailError(null);
       logBrowserOperationStart(groupsLogger, 'group_detail_load_started', {
         operation: 'get_group',
       });
 
       try {
-        const response = await getGroup(groupId);
+        const response = await (signal ? getGroup(groupId, signal) : getGroup(groupId));
         logBrowserOperationSuccess(groupsLogger, 'group_detail_load_succeeded', {
           operation: 'get_group',
           group_id: groupId,
         });
         return normalizeGroupDetail(response.data);
       } catch (cause) {
+        if (signal?.aborted) throw cause;
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 401) {
           await refreshSession();
@@ -153,6 +155,7 @@ export const useGroups = (): UseGroupsResult => {
           operation: 'get_group',
           group_id: groupId,
         });
+        if (signal) throw resolvedError;
         return null;
       }
     },

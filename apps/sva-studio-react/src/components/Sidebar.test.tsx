@@ -139,9 +139,10 @@ vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => useOrganizationContextMock(),
 }));
 
-vi.mock('../providers/effective-access-provider', () => ({
-  useEffectiveAccess: () => ({ decide: decideAccessMock }),
-}));
+vi.mock('../providers/effective-access-provider', async (importOriginal) => {
+  const { evaluateUiAccess } = await importOriginal<typeof import('../providers/effective-access-provider')>();
+  return { evaluateUiAccess, useEffectiveAccess: () => ({ decide: decideAccessMock }) };
+});
 
 vi.mock('../lib/plugins', () => ({
   get studioContentTypes() {
@@ -345,6 +346,32 @@ it('zeigt den Tenant-Namen vor dem App-Titel und nutzt die Tenant-ID als Fallbac
 });
 
 describe('Sidebar', () => {
+  it('renders the document menu while the same session and organization load', () => {
+    const user = { id: 'user-1', instanceId: 'tenant-a', roles: ['editor'], assignedModules: ['media'] };
+    const initialNavigation = {
+      user,
+      organizationId: 'org-1',
+      permissions: [{ action: 'media.read', resourceType: 'media' }],
+    };
+    useAuthMock.mockReturnValue({ ...unauthenticatedAuthState, isLoading: true, hasResolvedSession: false });
+    useOrganizationContextMock.mockReturnValue({ context: null, isLoading: true });
+    useContentAccessMock.mockReturnValue(createContentAccessState({ isLoading: true, permissionActions: [] }));
+    const view = render(<Sidebar initialNavigation={initialNavigation} />);
+    const media = screen.getByRole('link', { name: 'Medien' });
+
+    useAuthMock.mockReturnValue(createAuthenticatedAuthState(user));
+    view.rerender(<Sidebar initialNavigation={initialNavigation} />);
+    expect(screen.getByRole('link', { name: 'Medien' })).toBe(media);
+
+    useOrganizationContextMock.mockReturnValue({ context: { activeOrganizationId: 'org-2' } });
+    view.rerender(<Sidebar initialNavigation={initialNavigation} />);
+    expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+
+    useOrganizationContextMock.mockReturnValue({ context: { activeOrganizationId: 'org-1' } });
+    view.rerender(<Sidebar initialNavigation={initialNavigation} />);
+    expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+  });
+
   it('keeps confirmed navigation during access refresh only for the same scope', () => {
     const user = createSidebarUser({ instanceId: 'instance-1' });
     const { rerender } = renderSidebar({
@@ -1079,6 +1106,8 @@ describe('Sidebar', () => {
       expect(screen.getByRole('button', { name: action })).toBeTruthy();
       expect(localStorageState.get('sva-studio-sidebar-collapsed')).toBe(preference);
       fireEvent.click(screen.getByRole('button', { name: action }));
+      const toggledAction = preference === '1' ? 'Seitenleiste einklappen' : 'Seitenleiste ausklappen';
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: toggledAction }));
       expect(localStorageState.get('sva-studio-sidebar-collapsed')).toBe(
         preference === '1' ? '0' : '1'
       );

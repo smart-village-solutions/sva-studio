@@ -549,7 +549,7 @@ describe('useUsers', () => {
       const { result, olderRequest, newerRequest } = await startOverlappingRequests();
 
       await act(async () => newerRequest.resolve(listResponse('newest-1', 'newest-2')));
-      expect(result.current.isLoading).toBe(false);
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.users.map((user) => user.id)).toEqual(['newest-1', 'newest-2']);
 
       await act(async () => olderRequest.resolve(listResponse('stale')));
@@ -572,7 +572,7 @@ describe('useUsers', () => {
 
       await act(async () => newerRequest.resolve(listResponse('newest')));
 
-      expect(result.current.isLoading).toBe(false);
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.error).toBeNull();
       expect(result.current.users.map((user) => user.id)).toEqual(['newest']);
     });
@@ -646,7 +646,7 @@ describe('useUsers', () => {
       );
       await act(async () => olderRequest.resolve(listResponse('stale')));
 
-      expect(result.current.isLoading).toBe(false);
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.error).toMatchObject({ code: 'database_unavailable' });
       expect(result.current.users).toEqual([]);
     });
@@ -728,7 +728,7 @@ describe('useUsers', () => {
       await result.current.refetch();
     });
 
-    expect(result.current.users).toHaveLength(1);
+    await waitFor(() => expect(result.current.users).toHaveLength(1));
     expect(result.current.mutationError).toMatchObject({
       status: 409,
       code: 'conflict',

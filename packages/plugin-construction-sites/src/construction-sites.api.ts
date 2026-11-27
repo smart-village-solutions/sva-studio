@@ -34,18 +34,20 @@ export const saveConstructionSite = (
     : client.create(body, principal, { operationId });
 export const listConstructionSites = (
   query: Record<string, string | number>,
-  principal: MainserverActingPrincipalType = 'user'
+  principal: MainserverActingPrincipalType = 'user',
+  signal?: AbortSignal
 ) =>
   requestMainserverJson<ConstructionSiteList>({
-    init: { headers: createMainserverReadHeaders(principal) },
+    init: { headers: createMainserverReadHeaders(principal), signal },
     url: `/api/v1/mainserver/construction-sites?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}`,
   });
 export const listConstructionSiteCategories = async (
-  principal: MainserverActingPrincipalType = 'user'
+  principal: MainserverActingPrincipalType = 'user',
+  signal?: AbortSignal
 ) =>
   (
     await requestMainserverJson<{ data: readonly { id: string; name: string }[] }>({
-      init: { headers: createMainserverReadHeaders(principal) },
+      init: { headers: createMainserverReadHeaders(principal), signal },
       url: '/api/v1/mainserver/categories?dataType=generic_item_construction_site',
     })
   ).data;

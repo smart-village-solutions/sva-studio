@@ -8,16 +8,14 @@ import {
   StudioErrorState,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 
 import { listPoi } from './poi.api.js';
 import { PoiDetailPage } from './poi.detail-page.js';
-import type { PoiContentItem, PoiListResult } from './poi.types.js';
+import type { PoiContentItem } from './poi.types.js';
 
 type ListSearchState = Record<string, unknown>;
-
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) =>
-  pt(fallbackKey);
 
 const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
   { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
@@ -82,12 +80,10 @@ export function PoiListPage() {
   const normalizedSearch = normalizeListSearch(search);
   const page = normalizedSearch.page;
   const pageSize = normalizedSearch.pageSize;
-  const [result, setResult] = React.useState<PoiListResult>({
-    data: [],
-    pagination: { page, pageSize, hasNextPage: false },
-  });
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const list = useStudioTableQuery(['poi', page, pageSize], () => listPoi({ page, pageSize }));
+  const result = list.data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
+  const loading = list.state === 'loading';
+  const error = list.error ? pt('messages.loadError') : null;
 
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
@@ -103,31 +99,6 @@ export function PoiListPage() {
     [navigate, result.pagination.pageSize]
   );
 
-  React.useEffect(() => {
-    let active = true;
-    setLoading(true);
-    listPoi({ page, pageSize })
-      .then((data) => {
-        if (active) {
-          setResult(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(errorMessage(pt, 'messages.loadError'));
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [page, pageSize, pt]);
-
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
@@ -139,11 +110,11 @@ export function PoiListPage() {
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
-      {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? (
+      {error ? <StudioErrorState onRetry={() => void list.refetch()}>{error}</StudioErrorState> : null}
+      {list.state === 'ready' && result.data.length === 0 ? (
         <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
       ) : null}
-      {!loading && !error && result.data.length > 0 ? (
+      {list.state === 'ready' && result.data.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
             sorting={{ mode: 'disabled' }}

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { STUDIO_TABLE_DATA_CHANGED } from './studio-table-events.js';
 import { readMainserverMutationFailureOutcome } from './mainserver-error-metadata.js';
 
 import {
@@ -39,6 +40,34 @@ describe('mainserver-request', () => {
     expect(
       readMainserverMutationFailureOutcome(Object.assign(new Error('timeout'), { httpStatus: 504 }))
     ).toBe('unknown');
+  });
+
+  it('announces successful mainserver writes and distinguishes deletions', async () => {
+    const target = new EventTarget();
+    const events: unknown[] = [];
+    target.addEventListener(STUDIO_TABLE_DATA_CHANGED, (event) => {
+      events.push((event as CustomEvent).detail);
+    });
+    vi.stubGlobal('window', target);
+    try {
+      const url = '/api/v1/mainserver/surveys/survey-1';
+      const successful = vi.fn(async () => Response.json({ data: { id: 'survey-1' } }));
+      await requestMainserverJson({ url, fetch: successful });
+      const failed = vi.fn(async () => Response.json({ error: 'forbidden' }, { status: 403 }));
+      await expect(
+        requestMainserverJson({ url, fetch: failed, init: { method: 'PATCH' } })
+      ).rejects.toThrow('forbidden');
+      expect(events).toEqual([]);
+
+      await requestMainserverJson({ url, fetch: successful, init: { method: 'PATCH' } });
+      await requestMainserverJson({ url, fetch: successful, init: { method: 'DELETE' } });
+      expect(events).toEqual([
+        { resource: 'surveys', deleted: false },
+        { resource: 'surveys', deleted: true },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('builds canonical json request headers', () => {

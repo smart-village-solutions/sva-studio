@@ -599,7 +599,7 @@ describe('shared editorial controls', () => {
     details.open = true;
     fireEvent(details, new Event('toggle'));
     await screen.findByText(labels.history.errors.load);
-    expect(state.history).toHaveBeenCalledWith('2', { contentType: 'vouchers.voucher' });
+    expect(state.history).toHaveBeenCalledWith('2', { contentType: 'vouchers.voucher', signal: expect.any(AbortSignal) });
   });
 });
 

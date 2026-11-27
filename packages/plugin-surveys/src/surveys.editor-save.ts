@@ -13,7 +13,7 @@ import {
   toSurveyMutationInput,
   type SurveyEditorMode,
 } from './surveys.editor.shared.js';
-import type { SurveyContentItem } from './surveys.types.js';
+import type { SurveyContentItem, SurveyLocalizedText } from './surveys.types.js';
 import type { SurveyEditorStatus } from './surveys.editor-logic.js';
 type SurveyEditorTranslation = (key: string) => string;
 
@@ -25,10 +25,11 @@ type SurveySaveInput = {
   readonly mode: SurveyEditorMode;
   readonly contentId?: string;
   readonly loadedItem: SurveyContentItem | null;
+  readonly readCurrentItem: () => Promise<SurveyContentItem | undefined>;
   readonly actingPrincipalType: MainserverPrincipalType;
   readonly pt: SurveyEditorTranslation;
   readonly navigateToCreatedDetail: (contentId: string) => Promise<void>;
-  readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
+  readonly setLoadedItem: (item: SurveyContentItem) => Promise<void>;
   readonly setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
   readonly saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
 };
@@ -43,10 +44,16 @@ export const createSurveyEditorSubmit = (input: SurveySaveInput) =>
         if (!canSaveSurvey(input)) return;
 
         operationId = input.saveFeedback.beginSaving();
+        const preflightError = await findEditPreflightError(input);
+        if (preflightError) {
+          input.saveFeedback.markFailed(operationId);
+          input.setStatus({ kind: 'error', text: input.pt(preflightError) });
+          return;
+        }
         const savedItem = await saveSurveyMutation(input, values);
 
         if (input.mode === 'create') input.rememberCreated(savedItem.id);
-        input.setLoadedItem(savedItem);
+        await input.setLoadedItem(savedItem);
         if (input.mode !== 'create') input.methods.reset(mapSurveyItemToFormValues(savedItem));
         else if (input.leaveGuard.acknowledgeSaved(leaveRevision))
           input.methods.reset(input.methods.getValues());
@@ -77,6 +84,49 @@ export const createSurveyEditorSubmit = (input: SurveySaveInput) =>
     },
     () => input.saveFeedback.reset()
   );
+
+async function findEditPreflightError(input: SurveySaveInput) {
+  if (input.mode !== 'edit' || !input.contentId || !input.loadedItem) return;
+  const current = await input.readCurrentItem();
+  if (!current) return 'messages.loadError';
+  if (editableSurveySnapshot(current) !== editableSurveySnapshot(input.loadedItem)) {
+    return 'messages.editConflict';
+  }
+}
+
+const orderedText = (text: SurveyLocalizedText | undefined) =>
+  Object.entries(text ?? {}).sort(([left], [right]) => left.localeCompare(right));
+
+function editableSurveySnapshot(survey: SurveyContentItem) {
+  return JSON.stringify({
+    title: orderedText(survey.title),
+    shortDescription: orderedText(survey.shortDescription),
+    description: orderedText(survey.description),
+    status: survey.status,
+    startAt: survey.startAt,
+    endAt: survey.endAt,
+    resultVisibility: survey.resultVisibility,
+    targetAreaIds: [...survey.targetAreaIds].sort(),
+    showResultsInApp: survey.showResultsInApp,
+    isAnonymous: survey.isAnonymous,
+    privacyNotice: orderedText(survey.privacyNotice),
+    transparencyNotice: orderedText(survey.transparencyNotice),
+    questions: survey.questions.map((question) => ({
+      id: question.id,
+      title: orderedText(question.title),
+      description: orderedText(question.description),
+      type: question.type,
+      required: question.required,
+      position: question.position,
+      options: question.options.map((option) => ({
+        id: option.id,
+        title: orderedText(option.title),
+        position: option.position,
+        enablesFreeText: option.enablesFreeText,
+      })),
+    })),
+  });
+}
 
 function canSaveSurvey(input: SurveySaveInput): boolean {
   if (input.mode === 'edit' && !input.contentId) {

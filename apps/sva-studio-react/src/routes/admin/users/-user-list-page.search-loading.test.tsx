@@ -144,7 +144,7 @@ describe('UserListPage search while results are loading', () => {
         ?.reject({ status: 503, code: 'database_unavailable', message: 'stale' })
     );
 
-    expect(within(screen.getByRole('table')).getByText('Max Mustermann')).toBeTruthy();
+    expect(await findInTable('Max Mustermann')).toBeTruthy();
     expect(screen.queryAllByText('Maria Meyer')).toHaveLength(0);
     expect(screen.queryByText(t('content.messages.loading'))).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -167,7 +167,7 @@ describe('UserListPage search while results are loading', () => {
       pendingSearches.get('Ma')?.resolve(listResponse('Maria Meyer', 'Max Mustermann'))
     );
 
-    expect(within(screen.getByRole('table')).getByText('Max Mustermann')).toBeTruthy();
+    expect(await findInTable('Max Mustermann')).toBeTruthy();
     expect(screen.queryAllByText('Maria Meyer')).toHaveLength(0);
     expect(screen.getByText(t('admin.users.messages.resultCount', { count: 1 }))).toBeTruthy();
   });
@@ -181,7 +181,7 @@ describe('UserListPage search while results are loading', () => {
     await waitForSearchRequest('zzz');
     await act(async () => pendingSearches.get('zzz')?.resolve(listResponse()));
 
-    const emptyMessage = screen.getByText(t('admin.users.messages.emptyState'));
+    const emptyMessage = await screen.findByText(t('admin.users.messages.emptyState'));
     expect(
       screen.getAllByRole('status').filter((status) => status.contains(emptyMessage))
     ).toHaveLength(1);

@@ -2,21 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
 
-const apiMocks = vi.hoisted(() => ({
-  getWasteManagementSchedulingOverview: vi.fn(),
-}));
-
-vi.mock('../src/waste-management.api.js', () => apiMocks);
-
 describe('createWasteToursActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('opens create and edit flows, including existing assignment links', async () => {
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
-      locationTourPickupDates: [],
-    });
+    const refreshScheduling = vi.fn(async () => undefined);
     const state = {
       schedulingOverview: { locationTourPickupDates: [] },
       masterDataOverview: {
@@ -35,12 +27,9 @@ describe('createWasteToursActions', () => {
       setMessage: vi.fn(),
       setDialogOpen: vi.fn(),
       setSelectedTour: vi.fn(),
-      setSchedulingOverview: vi.fn(),
-      setSchedulingLoadState: vi.fn(),
-      schedulingRequestRef: { current: 0 },
       setCalendarOpen: vi.fn(),
     };
-    const actions = createWasteToursActions(state as never);
+    const actions = createWasteToursActions(state as never, refreshScheduling);
     const tour = {
       id: 'tour-1',
       name: 'Tour A',
@@ -61,67 +50,30 @@ describe('createWasteToursActions', () => {
     expect(state.setDialogMode).toHaveBeenCalledWith('edit');
     expect(state.setDialogOpen).toHaveBeenCalledTimes(2);
     expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
-    expect(state.setSchedulingOverview).toHaveBeenCalledWith({ locationTourPickupDates: [] });
+    expect(refreshScheduling).toHaveBeenCalledOnce();
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
   });
 
-  it('falls back to null scheduling overview when calendar loading fails', async () => {
-    apiMocks.getWasteManagementSchedulingOverview.mockRejectedValue(new Error('boom'));
-    const state = {
-      schedulingOverview: null,
-      masterDataOverview: null,
-      setDialogMode: vi.fn(),
-      setTourForm: vi.fn(),
-      setMessage: vi.fn(),
-      setDialogOpen: vi.fn(),
-      setSelectedTour: vi.fn(),
-      setSchedulingOverview: vi.fn(),
-      setSchedulingLoadState: vi.fn(),
-      schedulingRequestRef: { current: 0 },
-      setCalendarOpen: vi.fn(),
-    };
-    const actions = createWasteToursActions(state as never);
-    const tour = {
-      id: 'tour-2',
-      name: 'Tour B',
-      wasteFractionIds: [],
-      recurrence: 'custom',
-      status: 'published',
-      createdAt: '2026-05-01T10:00:00.000Z',
-      updatedAt: '2026-05-01T10:00:00.000Z',
-    };
-
-    await actions.openCalendar(tour as never);
-
-    expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
-    expect(state.setSchedulingOverview).toHaveBeenCalledWith(null);
-    expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
-  });
-  it('opens immediately, reports loading, and ignores the previous tour response', async () => {
-    let finish: ((value: unknown) => void) | undefined;
-    apiMocks.getWasteManagementSchedulingOverview.mockImplementationOnce(
+  it('opens immediately while the shared query refreshes', async () => {
+    let finish!: (value: undefined) => void;
+    const refreshScheduling = vi.fn(
       () =>
-        new Promise((resolve) => {
+        new Promise<undefined>((resolve) => {
           finish = resolve;
         })
     );
     const state = {
-      schedulingRequestRef: { current: 0 },
       setSelectedTour: vi.fn(),
-      setSchedulingOverview: vi.fn(),
-      setSchedulingLoadState: vi.fn(),
       setCalendarOpen: vi.fn(),
     };
-    const actions = createWasteToursActions(state as never);
-    const previous = actions.openCalendar({ id: 'old' } as never);
+    const action = createWasteToursActions(state as never, refreshScheduling).openCalendar({
+      id: 'tour-2',
+    } as never);
+
+    expect(state.setSelectedTour).toHaveBeenCalledWith({ id: 'tour-2' });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
-    expect(state.setSchedulingLoadState).toHaveBeenLastCalledWith('loading');
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValueOnce({ tourDateShifts: [] });
-    await actions.openCalendar({ id: 'new' } as never);
-    expect(state.setSchedulingLoadState).toHaveBeenLastCalledWith('ready');
-    finish?.({ stale: true });
-    await previous;
-    expect(state.setSelectedTour).toHaveBeenLastCalledWith({ id: 'new' });
-    expect(state.setSchedulingOverview).toHaveBeenLastCalledWith({ tourDateShifts: [] });
+    expect(refreshScheduling).toHaveBeenCalledOnce();
+    finish(undefined);
+    await action;
   });
 });

@@ -34,6 +34,12 @@ Das System SHALL Skeleton-UI-Zustände für Sidebar, Kopfzeile und Contentbereic
 - **WHEN** der Ladezustand beendet ist
 - **THEN** werden die regulären Layout-Inhalte ohne Skeleton angezeigt
 
+#### Scenario: Navigation bei bereits sichtbarem Inhalt
+
+- **WENN** während eines internen Routenwechsels bereits Seiteninhalt sichtbar ist
+- **DANN** behält die Shell den aktuellen Inhalt bei, bis der Router die Zielseite anzeigt
+- **UND** kennzeichnet sie den Hauptbereich während des Wechsels als beschäftigt
+
 ### Requirement: Barrierefreie Grundstruktur
 
 Die Layout-Shell SHALL eine barrierefreie Grundstruktur für Navigation und Hauptinhalt bereitstellen.

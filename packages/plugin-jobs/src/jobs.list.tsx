@@ -10,6 +10,7 @@ import {
   Button,
   Select,
   StudioDataTable,
+  useStudioTableQuery,
   StudioEmptyState,
   StudioErrorState,
   StudioField,
@@ -20,7 +21,6 @@ import {
   type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
 import { jobTemporalState, type JobList } from './contract.js';
 import { resolveJobPrincipal, useJobAccess } from './jobs.access.js';
 import { listJobCategories, listJobs } from './jobs.api.js';
@@ -108,38 +108,24 @@ function ListTable({
     />
   );
 }
-function useListData(query: string, scope: string, principal: MainserverActingPrincipalType) {
-  const [result, setResult] = useState<JobList>();
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [categories, setCategories] = useState<readonly { id: string; name: string }[]>([]);
-  useEffect(() => {
-    let active = true;
-    setState('loading');
-    void listJobs(JSON.parse(query) as Record<string, string | number>, principal).then(
-      (data) => {
-        if (active) {
-          setResult(data);
-          setState('ready');
-        }
-      },
-      () => active && setState('error')
-    );
-    return () => {
-      active = false;
-    };
-  }, [query, scope, principal]);
-  useEffect(() => {
-    let active = true;
-    setCategories([]);
-    void listJobCategories(principal).then(
-      (items) => active && setCategories(items),
-      () => undefined
-    );
-    return () => {
-      active = false;
-    };
-  }, [scope, principal]);
-  return { result, state, categories };
+function useListData(
+  query: Record<string, string | number>,
+  scope: string,
+  principal: MainserverActingPrincipalType
+) {
+  const list = useStudioTableQuery(['jobs', scope, principal, query], (signal) =>
+    listJobs(query, principal, signal)
+  );
+  const categories = useStudioTableQuery(['categories', 'jobs', scope, principal], (signal) =>
+    listJobCategories(principal, signal)
+  );
+  return {
+    result: list.data,
+    state: list.state,
+    error: list.error,
+    refetch: list.refetch,
+    categories: categories.data ?? [],
+  };
 }
 function listPagination(
   result: JobList,
@@ -205,14 +191,14 @@ export function JobsListPage({
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const { page, pageSize } = normalizeListSearch(search);
   const { filters, filter, setPrincipal } = listFilters(search, navigate, pageSize);
-  const query = JSON.stringify({ ...filters, page, pageSize });
+  const query = { ...filters, page, pageSize };
   const scope = JSON.stringify([
     access.session.instanceId,
     access.session.subjectId,
     access.session.organizationId,
   ]);
   const principal = resolveJobPrincipal(search.principal, principalControl);
-  const { result, state, categories } = useListData(query, scope, principal);
+  const { result, state, error, refetch, categories } = useListData(query, scope, principal);
   const today = toDatetimeLocalValue(new Date().toISOString()).slice(0, 10);
   return (
     <StudioOverviewPageTemplate
@@ -236,10 +222,17 @@ export function JobsListPage({
         principal={principal}
         onPrincipalChange={setPrincipal}
       />
+      {state === 'ready' && error ? (
+        <StudioErrorState onRetry={() => void refetch()}>
+          {pt('messages.loadError')}
+        </StudioErrorState>
+      ) : null}
       {state === 'loading' ? (
         <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>
       ) : state === 'error' ? (
-        <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>
+        <StudioErrorState onRetry={() => void refetch()}>
+          {pt('messages.loadError')}
+        </StudioErrorState>
       ) : result ? (
         <div className="space-y-4">
           {!result.data.length ? (

@@ -21,6 +21,7 @@ Modulen der jeweiligen Bausteine.
 
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
+   - Der Provider für wirksame Berechtigungen bindet den Tabellen-QueryClient aus `@sva/studio-ui-react` an den bestätigten Zugriffskontext. Migrierte Host- und Plugin-Tabellen verwenden denselben React-Hook für ihre jeweiligen serverseitigen Datenquellen.
    - Die Vite-Composition liest für `studio` und `ssf` explizit ausgewählte installierte oder verlinkte Plugins aus `plugin-catalog.json`, prüft deren Manifest- und Package-Pfade und speist die getrennten Browser-, Descriptor-, Server- und Job-Register. Workspace-Plugins bleiben in ihren Profil-Inputs.
    - Jedes Modulpaket führt eine `publiccode.yml` mit öffentlichem Namen und lokalisierten Beschreibungen; die Vite-Composition übergibt diese Texte an die Modulübersicht. Technische Plugin- und Modul-IDs bleiben für Registrierung und IAM getrennt davon.
    - profilgebundene Auth-Composition: Das Standard-Studio bindet keinen SSF-Beitrag; das SSF-Profil bindet Account-Create-Beitrag und OIDC-Anforderungen vor Veröffentlichung des Runtime-Snapshots und verlangt dafür ein installiertes SSF-Plugin

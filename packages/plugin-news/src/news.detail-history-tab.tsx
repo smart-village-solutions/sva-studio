@@ -33,7 +33,8 @@ export function NewsDetailHistoryTab({ contentId, pt }: NewsDetailHistoryTabProp
     >
       <StudioContentHistory
         contentId={contentId}
-        loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'news.article' })}
+        contentType={'news.article'}
+        loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'news.article', signal })}
         labels={{
           loading: pt('history.loading'),
           error: pt('history.errors.load'),

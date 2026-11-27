@@ -1,7 +1,9 @@
 import React from 'react';
+import { useStudioTableQuery, useStudioTableInvalidation } from '@sva/studio-ui-react';
 import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sva/core';
 
 import {
+  asIamError,
   deleteContent,
   IamHttpError,
   listContents,
@@ -15,7 +17,6 @@ import {
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import type { ContentCredentialRecovery } from '../lib/iam-api-content-types';
-import { useIamAdminList } from './use-iam-admin-list';
 import { contentsLogger } from './use-contents.shared.js';
 import { useContentCredentialRecovery } from './use-content-credential-recovery';
 
@@ -26,12 +27,10 @@ type UseContentsResult = {
   readonly credentialRecovery?: readonly ContentCredentialRecovery[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
-  readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly refetchWithOutcome: () => Promise<boolean>;
   readonly refreshProjection: (input?: { readonly force?: boolean }) => Promise<boolean>;
   readonly refreshProjectionPending: boolean;
-  readonly clearMutationError: () => void;
   readonly archiveContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
   readonly deleteContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
 };
@@ -62,16 +61,12 @@ type UseContentsOptions = Readonly<{
   readonly enabled?: boolean;
 }>;
 
+const EMPTY_CONTENTS: readonly IamContentListItem[] = [];
 const DEFAULT_CONTENT_PAGINATION = {
   page: 1,
   pageSize: 25,
   total: 0,
 } as const satisfies ApiPagination;
-
-const reusePaginationIfUnchanged = (current: ApiPagination, next: ApiPagination): ApiPagination =>
-  current.page === next.page && current.pageSize === next.pageSize && current.total === next.total
-    ? current
-    : next;
 
 const shouldRevalidateContentProjection = (
   enabled: boolean,
@@ -194,36 +189,43 @@ export const useContents = (
 ): UseContentsResult => {
   const { refreshSession } = useAuth();
   const enabled = options.enabled ?? true;
-  const [loadedQuery, setLoadedQuery] = React.useState<IamContentListQuery | null>(null);
-  const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
-  const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
-  const listItems = React.useCallback(() => listContents(query), [query]);
-  const handleLoaded = React.useCallback(
-    (response: {
-      readonly pagination?: ApiPagination;
-      readonly metadata?: IamContentListMetadata;
-    }) => {
-      const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
-      setLoadedQuery(query);
-      setPagination((current) => reusePaginationIfUnchanged(current, nextPagination));
-      setMetadata(response.metadata ?? null);
+  const invalidate = useStudioTableInvalidation();
+  const [projectionError, setError] = React.useState<IamHttpError | null>(null);
+  const list = useStudioTableQuery(
+    ['contents', query],
+    async (signal) => {
+      try {
+        return await listContents(query, signal);
+      } catch (cause) {
+        if (signal.aborted) throw cause;
+        const error = asIamError(cause);
+        if (error.status === 401) await refreshSession();
+        throw error;
+      }
     },
-    [query]
+    enabled
   );
-  const adminList = useIamAdminList(listItems, refreshSession, {
-    enabled,
-    onLoaded: handleLoaded,
-  });
+  const { data: response } = list;
+  const contents = response?.data ?? EMPTY_CONTENTS;
+  const metadata = response?.metadata ?? null;
+  const error = enabled ? ((list.error as IamHttpError | null) ?? projectionError) : null;
 
-  React.useEffect(() => {
-    if (enabled) {
-      return;
-    }
+  React.useEffect(() => setError(null), [enabled, query]);
 
-    setLoadedQuery(null);
-    setMetadata(null);
-    setPagination(DEFAULT_CONTENT_PAGINATION);
-  }, [enabled]);
+  const refetchWithOutcome = React.useCallback(() => {
+    setError(null);
+    return list.refetch();
+  }, [list.refetch]);
+  const refetch = React.useCallback(async () => {
+    await refetchWithOutcome();
+  }, [refetchWithOutcome]);
+  const adminList = {
+    isLoading: list.isFetching,
+    error,
+    refetch,
+    refetchWithOutcome,
+    setError,
+  };
 
   const {
     credentialRecovery,
@@ -245,8 +247,16 @@ export const useContents = (
         content: IamContentListItem | undefined
       ) => Promise<'accepted' | 'skipped'>
     ): Promise<ContentBulkMutationResult> =>
-      runContentBulkMutation(input, adminList.items, adminList.refetchWithOutcome, mutateOne),
-    [adminList]
+      runContentBulkMutation(
+        input,
+        contents,
+        async () => {
+          await invalidate(['contents'], false);
+          return refetchWithOutcome();
+        },
+        mutateOne
+      ),
+    [contents, invalidate, refetchWithOutcome]
   );
 
   const archiveContents = React.useCallback(
@@ -272,19 +282,16 @@ export const useContents = (
   );
 
   return {
-    contents: adminList.items,
-    pagination,
+    contents,
+    pagination: response?.pagination ?? DEFAULT_CONTENT_PAGINATION,
     metadata,
     credentialRecovery,
-    isLoading:
-      enabled && loadedQuery !== query && (adminList.isLoading || adminList.error === null),
-    error: adminList.error,
-    mutationError: adminList.mutationError,
-    refetch: adminList.refetch,
-    refetchWithOutcome: adminList.refetchWithOutcome,
+    isLoading: enabled && list.state === 'loading' && error === null,
+    error,
+    refetch,
+    refetchWithOutcome,
     refreshProjection: refreshProjectionForList,
     refreshProjectionPending,
-    clearMutationError: adminList.clearMutationError,
     archiveContents,
     deleteContents,
   };

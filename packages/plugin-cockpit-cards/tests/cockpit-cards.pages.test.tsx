@@ -781,6 +781,7 @@ describe('cockpit cards pages', () => {
     await waitFor(() =>
       expect(state.history).toHaveBeenCalledWith('card-1', {
         contentType: 'cockpit-cards.cockpit-card',
+        signal: expect.any(AbortSignal),
       })
     );
     expect(await screen.findByText('formatted:2026-08-01')).toBeTruthy();

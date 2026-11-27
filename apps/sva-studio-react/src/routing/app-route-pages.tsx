@@ -39,7 +39,7 @@ export const ContentListRoutePage = () => {
   return (
     <div className="space-y-5">
       {resolution.kind === 'unavailable' ? (
-        <MainserverPrincipalAlert reason={resolution.reason} />
+        <MainserverPrincipalAlert reason={resolution.reason} hideLoading />
       ) : null}
       <ContentListPage
         key={JSON.stringify([

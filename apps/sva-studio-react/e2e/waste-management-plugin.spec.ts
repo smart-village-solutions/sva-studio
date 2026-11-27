@@ -270,6 +270,80 @@ test.describe('waste management plugin', () => {
   }
 
   test.describe.configure({ timeout: 120_000 });
+
+  test('restores waste fractions before the refreshed tab data arrives', async ({ page }) => {
+    const instanceId = 'de-musterhausen';
+    await mockSharedShellRequests(page, { instanceId, permissionActions: ['waste-management.read'] });
+    await mockWasteFacade(page, {
+      instanceId,
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [],
+    });
+    let returning = false;
+    let backgroundRead = false;
+    let releaseRefresh: () => void = () => undefined;
+    const refresh = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    await page.route('**/api/v1/waste-management/master-data?scope=fractions', async (route) => {
+      const refreshRead = returning;
+      if (refreshRead) {
+        backgroundRead = true;
+        await refresh;
+      }
+      await route.fulfill({
+        json: {
+          data: {
+            fractions: [
+              {
+                id: 'fraction-1',
+                name: refreshRead ? 'Karton aktualisiert' : 'Karton vorher',
+                pdfShortLabel: 'PPK',
+                color: '#000000',
+                active: true,
+                createdAt: '2026-05-10T11:00:00.000Z',
+                updatedAt: '2026-05-10T11:00:00.000Z',
+              },
+            ],
+            regions: [],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          },
+        },
+      });
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
+    await navigateClientSide(page, '/plugins/waste-management');
+    const tab = page.getByRole('tab', { name: 'Abfallarten' });
+    const panel = page.getByRole('tabpanel', { name: 'Abfallarten' });
+    try {
+      await tab.click();
+      await expect(panel.getByText('Karton vorher', { exact: true }).filter({ visible: true })).toBeVisible();
+      await page.getByRole('tab', { name: 'Touren', exact: true }).click();
+      await expect(panel).toBeHidden();
+      returning = true;
+      await tab.click();
+      await expect.poll(() => backgroundRead).toBe(true);
+      await expect(panel.getByText('Karton vorher', { exact: true }).filter({ visible: true })).toBeVisible();
+      releaseRefresh();
+      await expect(panel.getByText('Karton aktualisiert', { exact: true }).filter({ visible: true })).toBeVisible();
+    } finally {
+      releaseRefresh();
+    }
+  });
+
   test('keeps draft filters and focus local and provides sort controls across widths', async ({
     page,
   }) => {

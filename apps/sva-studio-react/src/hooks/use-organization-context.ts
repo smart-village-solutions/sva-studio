@@ -175,7 +175,7 @@ const performOrganizationSwitch = async (
 export const OrganizationContextProvider = ({
   children,
 }: Readonly<{ children: React.ReactNode }>) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const identityKey =
     isAuthenticated && user?.id && user.instanceId ? `${user.id}:${user.instanceId}` : null;
   const [contextSnapshot, setContextSnapshot] = React.useState<OrganizationSnapshot | null>(null);
@@ -307,16 +307,18 @@ export const OrganizationContextProvider = ({
 
   const context = contextSnapshot?.identityKey === identityKey ? contextSnapshot.value : null;
   const error = errorSnapshot?.identityKey === identityKey ? errorSnapshot.value : null;
+  const isContextLoading =
+    identityKey === null ? isAuthLoading : isLoading || (!context && !error && !isUpdating);
   const value = React.useMemo<OrganizationContextValue>(
     () => ({
       context,
-      isLoading,
+      isLoading: isContextLoading,
       isUpdating,
       error,
       refetch: loadContext,
       switchOrganization,
     }),
-    [context, error, isLoading, isUpdating, loadContext, switchOrganization]
+    [context, error, isContextLoading, isUpdating, loadContext, switchOrganization]
   );
 
   return React.createElement(OrganizationContext.Provider, { value }, children);

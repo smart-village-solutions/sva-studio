@@ -14,7 +14,8 @@ export function PoiDetailHistoryTab({ contentId, pt }: Readonly<{ contentId?: st
   return (
     <StudioContentHistory
       contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'poi.point-of-interest' })}
+      contentType={'poi.point-of-interest'}
+      loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'poi.point-of-interest', signal })}
       labels={{
         loading: pt('history.loading'), error: pt('history.error'), empty: pt('history.empty.title'),
         createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),

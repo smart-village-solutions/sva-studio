@@ -52,14 +52,21 @@ describe('voucher overview', () => {
       1,
       '',
       'user',
-      expect.objectContaining({ poiId: '1' })
+      expect.objectContaining({ poiId: '1' }),
+      expect.any(AbortSignal)
     );
     fireEvent.change(screen.getByLabelText('vouchers.fields.search'), {
       target: { value: 'Theater' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'vouchers.fields.search' }));
     await waitFor(() =>
-      expect(state.list).toHaveBeenLastCalledWith(1, 'Theater', 'user', expect.anything())
+      expect(state.list).toHaveBeenLastCalledWith(
+        1,
+        'Theater',
+        'user',
+        expect.anything(),
+        expect.any(AbortSignal)
+      )
     );
     fireEvent.change(screen.getByLabelText('vouchers.fields.categories'), {
       target: { value: 'category' },
@@ -69,16 +76,28 @@ describe('voucher overview', () => {
     });
     fireEvent.change(screen.getByLabelText('vouchers.fields.location'), { target: { value: '' } });
     await waitFor(() =>
-      expect(state.list).toHaveBeenLastCalledWith(1, 'Theater', 'user', {
-        search: 'Theater',
-        categoryId: 'category',
-        visible: 'false',
-        poiId: '',
-      })
+      expect(state.list).toHaveBeenLastCalledWith(
+        1,
+        'Theater',
+        'user',
+        {
+          search: 'Theater',
+          categoryId: 'category',
+          visible: 'false',
+          poiId: '',
+        },
+        expect.any(AbortSignal)
+      )
     );
     fireEvent.click(screen.getByRole('button', { name: 'vouchers.actions.next' }));
     await waitFor(() =>
-      expect(state.list).toHaveBeenLastCalledWith(2, 'Theater', 'user', expect.anything())
+      expect(state.list).toHaveBeenLastCalledWith(
+        2,
+        'Theater',
+        'user',
+        expect.anything(),
+        expect.any(AbortSignal)
+      )
     );
     await screen.findAllByText('Eintritt');
     fireEvent.click(screen.getByRole('button', { name: 'vouchers.actions.refresh' }));
@@ -102,7 +121,8 @@ describe('voucher overview', () => {
         1,
         '',
         'user',
-        expect.objectContaining({ poiId: '101' })
+        expect.objectContaining({ poiId: '101' }),
+        expect.any(AbortSignal)
       )
     );
     expect(state.locations).toHaveBeenCalledTimes(2);

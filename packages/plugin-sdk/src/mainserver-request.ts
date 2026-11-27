@@ -1,5 +1,6 @@
 import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva/core';
 import { mergeRequestHeaders } from './http-client.js';
+import { publishMainserverTableMutation } from './studio-table-events.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
 import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
 export type MainserverErrorFactory<TError extends Error> = (
@@ -157,11 +158,7 @@ const readResponseContentType = (response: Response): string | null => {
 };
 
 const isHtmlLikeContentType = (response: Response): boolean => {
-  const contentType = readResponseContentType(response);
-  if (contentType === null || contentType.length === 0) {
-    return false;
-  }
-  const normalized = contentType.toLowerCase();
+  const normalized = readResponseContentType(response)?.toLowerCase() ?? '';
   return normalized.includes('text/html') || normalized.includes('application/xhtml+xml');
 };
 
@@ -290,10 +287,11 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         fetch: input.fetch,
         signal: combinedSignal.signal,
       });
+      const method = (input.init?.method ?? 'GET').toUpperCase();
       const contextBinding = response.headers?.get(MAINSERVER_CONTEXT_BINDING_HEADER)?.trim();
       input.onResponse?.({
         url: input.url,
-        method: (input.init?.method ?? 'GET').toUpperCase(),
+        method,
         status: response.status,
         ok: response.ok,
         contentType: readResponseContentType(response),
@@ -307,7 +305,9 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
           'non_json_response'
         );
       }
-      return (await response.json()) as T;
+      const payload = (await response.json()) as T;
+      publishMainserverTableMutation(input.url, method);
+      return payload;
     } catch (error) {
       return wrapMainserverTimeoutError(error, input.errorFactory, combinedSignal.signal);
     }

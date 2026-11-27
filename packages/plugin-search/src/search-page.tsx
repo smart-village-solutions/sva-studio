@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioListPageTemplate } from '@sva/studio-ui-react';
+import { StudioListPageTemplate, useStudioTableQuery } from '@sva/studio-ui-react';
 import {
   parseSearchQuery,
   searchQueryParams,
@@ -10,48 +10,33 @@ import {
 } from './search-contract.js';
 import { SearchFeedback, SearchResultTable } from './search-results.js';
 const useSearchResults = (query: SearchQuery, contextKey: string, locale: 'de' | 'en') => {
-  const [result, setResult] = useState<SearchResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
   const queryKey = searchQueryParams(query).toString();
-  useEffect(() => setResult(null), [contextKey]);
-  useEffect(() => {
-    const controller = new AbortController();
-    let current = true;
-    setError('');
-    if (!query.q) {
-      setResult(null);
-      setLoading(false);
-      return () => controller.abort();
-    }
-    setLoading(true);
-    void fetch(`/api/v1/plugins/search/query?${queryKey}`, {
-      credentials: 'same-origin',
-      headers: { 'Accept-Language': locale },
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const payload = (await response.json()) as { data?: SearchResults; error?: string };
-        if (!response.ok || !payload.data) throw new Error(payload.error ?? 'search_unavailable');
-        if (current) setResult(payload.data);
-      })
-      .catch((failure: unknown) => {
-        if (current) {
-          setResult(null);
-          setError(failure instanceof Error ? failure.message : 'search_unavailable');
-        }
-      })
-      .finally(() => {
-        if (current) setLoading(false);
+  const list = useStudioTableQuery(
+    ['search', contextKey, locale, queryKey],
+    async (signal) => {
+      const response = await fetch(`/api/v1/plugins/search/query?${queryKey}`, {
+        credentials: 'same-origin',
+        headers: { 'Accept-Language': locale },
+        cache: 'no-store',
+        signal,
       });
-    return () => {
-      current = false;
-      controller.abort();
-    };
-  }, [queryKey, contextKey, locale, retry]);
-  return { result, loading, error, retry: () => setRetry((value) => value + 1) };
+      const payload = (await response.json()) as { data?: SearchResults; error?: string };
+      if (!response.ok || !payload.data) {
+        throw Object.assign(new Error(payload.error ?? 'search_unavailable'), {
+          status: response.status,
+        });
+      }
+      return payload.data;
+    },
+    Boolean(query.q)
+  );
+  return {
+    result: list.data ?? null,
+    loading: Boolean(query.q) && list.state === 'loading',
+    error:
+      list.error instanceof Error ? list.error.message : list.error ? 'search_unavailable' : '',
+    retry: list.refetch,
+  };
 };
 export const SearchResultsPage = ({
   contextKey = '',

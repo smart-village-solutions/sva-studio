@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 import { listNewsCategories } from './news.api.js';
 import { resolveNewsErrorMessage, type PluginTranslator } from './news.detail-page.helpers.js';
 import {
@@ -8,80 +9,45 @@ import {
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
 import type { NewsCategoryOption } from './news.types.js';
 
+const EMPTY_CATEGORY_OPTIONS: readonly NewsCategoryOption[] = [];
+
 export const useNewsDetailOptions = (pt: PluginTranslator, hasWasteTargetingAccess: boolean) => {
-  const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
-  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
-  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const [wasteOverview, setWasteOverview] = React.useState<NewsWasteMasterDataOverview | null>(
-    null
+  const categories = useStudioTableQuery(['categories', 'news-options'], () =>
+    listNewsCategories()
   );
-  const [wasteTargetingAvailability, setWasteTargetingAvailability] =
-    React.useState<WasteTargetingAvailability>('idle');
-  React.useEffect(() => {
-    let active = true;
-
-    void listNewsCategories()
-      .then((categories) => {
-        if (!active) {
-          return;
-        }
-        setCategoryOptions(categories);
-        setCategoryOptionsError(null);
-      })
-      .catch((error: unknown) => {
-        if (!active) {
-          return;
-        }
-        setCategoryOptions([]);
-        setCategoryOptionsError(
-          resolveNewsErrorMessage(pt, error, 'messages.categoryOptionsLoadError')
-        );
-      })
-      .finally(() => {
-        if (active) {
-          setCategoryOptionsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [pt]);
-
-  React.useEffect(() => {
-    if (!hasWasteTargetingAccess) {
-      setWasteOverview(null);
-      setWasteTargetingAvailability('forbidden');
-      return;
-    }
-    setWasteTargetingAvailability((current) => (current === 'forbidden' ? 'idle' : current));
-  }, [hasWasteTargetingAccess]);
-
-  const loadWasteTargetingOverview = React.useCallback(async (): Promise<boolean> => {
-    if (!hasWasteTargetingAccess) {
-      setWasteTargetingAvailability('forbidden');
-      return false;
-    }
+  const requestedTargeting = React.useRef(false);
+  const targeting = useStudioTableQuery<NewsWasteMasterDataOverview | null>(
+    ['waste', 'master-data', 'targeting'],
+    async (signal, previous) =>
+      requestedTargeting.current || previous ? loadNewsWasteMasterData(signal) : null,
+    hasWasteTargetingAccess
+  );
+  const wasteOverview = targeting.data ?? null;
+  const wasteTargetingAvailability: WasteTargetingAvailability = !hasWasteTargetingAccess
+    ? 'forbidden'
+    : targeting.error
+      ? 'load-error'
+      : wasteOverview
+        ? 'available'
+        : targeting.isFetching && requestedTargeting.current
+          ? 'loading'
+          : 'idle';
+  const loadWasteTargetingOverview = async (): Promise<boolean> => {
+    if (!hasWasteTargetingAccess) return false;
     if (wasteOverview) {
+      if (targeting.error) void targeting.refetch();
       return true;
     }
-    setWasteTargetingAvailability('loading');
-    try {
-      const overview = await loadNewsWasteMasterData();
-      setWasteOverview(overview);
-      setWasteTargetingAvailability('available');
-      return true;
-    } catch {
-      setWasteOverview(null);
-      setWasteTargetingAvailability('load-error');
-      return false;
-    }
-  }, [hasWasteTargetingAccess, wasteOverview]);
+    requestedTargeting.current = true;
+    return Boolean(await targeting.refresh(true));
+  };
 
   return {
-    categoryOptions,
-    categoryOptionsLoading,
-    categoryOptionsError,
+    categoryOptions: categories.data ?? EMPTY_CATEGORY_OPTIONS,
+    categoryOptionsLoading: categories.state === 'loading',
+    categoryOptionsError: categories.error
+      ? resolveNewsErrorMessage(pt, categories.error, 'messages.categoryOptionsLoadError')
+      : null,
     wasteOverview,
     wasteTargetingAvailability,
     loadWasteTargetingOverview,

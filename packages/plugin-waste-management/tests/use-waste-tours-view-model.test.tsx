@@ -52,7 +52,7 @@ vi.mock('../src/use-waste-tours-state.js', () => ({
 }));
 
 vi.mock('../src/use-waste-tours-overview.js', () => ({
-  useWasteToursOverview: () => loadOverviewMock,
+  useWasteToursOverview: () => ({ loadOverview: loadOverviewMock, refreshScheduling: vi.fn() }),
 }));
 
 vi.mock('../src/waste-management.tours.actions.js', () => ({
@@ -152,30 +152,7 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => ({
 }));
 
 describe('tour scheduling load state', () => {
-  it('reports success and failure and ignores a response from an obsolete context', async () => {
-    const { getWasteManagementSchedulingOverview } = await import('../src/waste-management.api.js');
-    const { loadWasteToursSchedulingOverview } =
-      await import('../src/waste-management.tours-overview.parts.js');
-    const setSchedulingOverview = vi.fn();
-    const setSchedulingLoadState = vi.fn();
-    const options = { isMounted: () => true, setSchedulingOverview, setSchedulingLoadState };
-    vi.mocked(getWasteManagementSchedulingOverview).mockResolvedValue({
-      holidayRules: [],
-      tourDateShifts: [],
-      globalDateShifts: [],
-    } as never);
-    await loadWasteToursSchedulingOverview(options);
-    expect(setSchedulingLoadState).toHaveBeenLastCalledWith('ready');
-    vi.mocked(getWasteManagementSchedulingOverview).mockRejectedValue(new Error('offline'));
-    await loadWasteToursSchedulingOverview(options);
-    expect(setSchedulingOverview).toHaveBeenLastCalledWith(null);
-    expect(setSchedulingLoadState).toHaveBeenLastCalledWith('error');
-    setSchedulingLoadState.mockClear();
-    await loadWasteToursSchedulingOverview({ ...options, isMounted: () => false });
-    expect(setSchedulingLoadState).not.toHaveBeenCalled();
-  });
-
-  it('clears prior scheduling and prevents an older reload from overwriting current state', async () => {
+  it('retains current scheduling and ignores older reloads and calendar reads', async () => {
     const api = await import('../src/waste-management.api.js');
     const { useWasteToursOverview } = await vi.importActual<
       typeof import('../src/use-waste-tours-overview.js')
@@ -196,20 +173,20 @@ describe('tour scheduling load state', () => {
     } as never);
     const { result, unmount } = renderHook(() => {
       const state = useWasteToursState();
-      const reload = useWasteToursOverview(state, (key) => key);
-      return { state, reload };
+      const { loadOverview, refreshScheduling } = useWasteToursOverview(state, (key) => key);
+      return { state, reload: loadOverview, refreshScheduling };
     });
     await waitFor(() => expect(pending).toHaveLength(1));
     await act(async () => {
       await result.current.reload();
     });
-    expect(pending).toHaveLength(2);
+    await waitFor(() => expect(pending).toHaveLength(2));
     expect(result.current.state.schedulingLoadState).toBe('loading');
     const current = { holidayRules: [], tourDateShifts: [], globalDateShifts: [] };
     await act(async () => {
       pending[1]?.(current as never);
     });
-    expect(result.current.state.schedulingLoadState).toBe('ready');
+    await waitFor(() => expect(result.current.state.schedulingLoadState).toBe('ready'));
     await act(async () => {
       pending[0]?.({ ...current, stale: true } as never);
     });
@@ -217,26 +194,30 @@ describe('tour scheduling load state', () => {
     await act(async () => {
       await result.current.reload();
     });
-    expect(result.current.state.schedulingOverview).toBeNull();
-    expect(result.current.state.schedulingLoadState).toBe('loading');
+    await waitFor(() => expect(pending).toHaveLength(3));
+    expect(result.current.state.schedulingOverview).toEqual(current);
+    expect(result.current.state.schedulingLoadState).toBe('ready');
     const { createWasteToursActions } = await vi.importActual<
       typeof import('../src/waste-management.tours.actions.js')
     >('../src/waste-management.tours.actions.js');
     let calendarRequest: Promise<void> | undefined;
     act(() => {
-      calendarRequest = createWasteToursActions(result.current.state).openCalendar({
-        id: 'other-tour',
-      } as never);
+      calendarRequest = createWasteToursActions(result.current.state, () =>
+        result.current.refreshScheduling(true)
+      ).openCalendar({ id: 'other-tour' } as never);
     });
     expect(result.current.state.calendarOpen).toBe(true);
+    await waitFor(() => expect(pending).toHaveLength(4));
     await act(async () => {
-      pending[3]?.(current as never);
+      pending[3]?.({ ...current, calendar: true } as never);
       await calendarRequest;
     });
     await act(async () => {
       pending[2]?.({ ...current, stale: true } as never);
     });
-    expect(result.current.state.schedulingOverview).toEqual(current);
+    await waitFor(() =>
+      expect(result.current.state.schedulingOverview).toEqual({ ...current, calendar: true })
+    );
     expect(result.current.state.schedulingLoadState).toBe('ready');
     unmount();
   });

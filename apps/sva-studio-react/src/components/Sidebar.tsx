@@ -10,18 +10,21 @@ import React from 'react';
 import { Sheet, SheetContent } from './ui/sheet';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from '../lib/theme';
 import { SidebarPanel } from './sidebar-panel';
-import { useSidebarAccess } from './sidebar-access';
+import { useSidebarAccess, type DocumentNavigation } from './sidebar-access';
 import { useSidebarSections } from './sidebar-sections';
 import type { SidebarLeafItem } from './sidebar-model';
 
 type SidebarProps = Readonly<{
+  initialNavigation?: DocumentNavigation;
   isLoading?: boolean;
+  showChangelogLink?: boolean;
   isMobileOpen?: boolean;
   onMobileOpenChange?: (open: boolean) => void;
 }>;
 
-const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
+
 const COMMUNITY_URL = 'https://verwaltungen-havelland.humhub.smart-village.app/s/sva-community/';
 const HELP_DOCUMENTATION_URL =
   'https://smart-village-solutions.github.io/sva-studio-user-documentation/';
@@ -31,35 +34,59 @@ const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/
  * Rendert die Seitenleiste inklusive Navigation, Collapse und mobilem Drawer.
  */
 export default function Sidebar({
+  initialNavigation,
   isLoading = false,
+  showChangelogLink = false,
   isMobileOpen = false,
   onMobileOpenChange,
 }: SidebarProps) {
-  const access = useSidebarAccess();
+  const access = useSidebarAccess(initialNavigation);
   const { user, canAccessExperimentalFeatures } = access;
   const organization = useOrganizationContext();
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
-  const [collapsePreference, setCollapsePreference] = React.useState<boolean | null>(null);
-  const [compactDesktop, setCompactDesktop] = React.useState(false);
-  const isCollapsed = collapsePreference ?? compactDesktop;
+  const [desktopCollapsed, setDesktopCollapsed] = React.useState<boolean | null>(null);
+  const desktopSidebar = React.useRef<HTMLElement>(null);
+  const restoreToggleFocus = React.useRef(false);
+
+  React.useLayoutEffect(() => {
+    if (restoreToggleFocus.current) {
+      desktopSidebar.current?.querySelector<HTMLElement>('[data-sidebar-toggle]')?.focus();
+      restoreToggleFocus.current = false;
+    }
+  }, [desktopCollapsed]);
 
   React.useEffect(() => {
-    if (globalThis.window === undefined) {
-      return;
+    const { documentElement } = document;
+    const media = window.matchMedia('(min-width: 1280px)');
+    const updateViewport = () => {
+      const preference = documentElement.dataset.sidebarCollapse;
+      setDesktopCollapsed(preference === undefined ? !media.matches : preference === '1');
+    };
+    try {
+      const preference = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+      if (preference === '1' || preference === '0') {
+        documentElement.dataset.sidebarCollapse = preference;
+      } else {
+        delete documentElement.dataset.sidebarCollapse;
+      }
+    } catch {
+      // The current tab can still toggle the sidebar when storage is disabled.
     }
-    const preference = globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
-    setCollapsePreference(preference === '1' ? true : preference === '0' ? false : null);
-    const media = globalThis.window.matchMedia('(min-width: 1280px)');
-    const updateViewport = () => setCompactDesktop(!media.matches);
     updateViewport();
     media.addEventListener('change', updateViewport);
     return () => media.removeEventListener('change', updateViewport);
   }, []);
 
-  const toggleCollapsed = () => {
-    const next = !isCollapsed;
-    setCollapsePreference(next);
-    globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next ? '1' : '0');
+  const toggleCollapsed = (next: boolean) => {
+    restoreToggleFocus.current = true;
+    const preference = next ? '1' : '0';
+    document.documentElement.dataset.sidebarCollapse = preference;
+    setDesktopCollapsed(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, preference);
+    } catch {
+      // The layout change remains active for this document.
+    }
   };
 
   const currentSections = useSidebarSections(access);
@@ -100,7 +127,7 @@ export default function Sidebar({
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(
     () => [
-      ...(user
+      ...(user || showChangelogLink
         ? [
             {
               kind: 'link' as const,
@@ -144,26 +171,35 @@ export default function Sidebar({
           ]
         : []),
     ],
-    [canAccessExperimentalFeatures, user]
+    [canAccessExperimentalFeatures, showChangelogLink, user]
   );
 
   return (
     <>
       <aside
+        ref={desktopSidebar}
         aria-label={t('shell.sidebar.ariaLabel')}
-        className={`relative z-[90] hidden shrink-0 overflow-visible border-r border-sidebar-border bg-sidebar transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:block lg:h-screen ${
-          collapsePreference === null ? 'lg:w-20 xl:w-72' : isCollapsed ? 'lg:w-20' : 'lg:w-72'
-        }`}
+        className="studio-desktop-sidebar relative z-[90] hidden shrink-0 overflow-visible border-r border-sidebar-border bg-sidebar transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:block lg:h-screen"
       >
-        <SidebarPanel
-          isLoading={isLoading}
-          sections={sections}
-          footerItems={footerItems}
-          isCollapsed={isCollapsed}
-          tenantName={tenantName}
-          allowCollapse
-          onToggleCollapsed={toggleCollapsed}
-        />
+        {[false, true].map((isCollapsed) =>
+          desktopCollapsed === null || desktopCollapsed === isCollapsed ? (
+            <div
+              key={String(isCollapsed)}
+              data-sidebar-panel={isCollapsed ? 'compact' : 'expanded'}
+              className="h-full"
+            >
+              <SidebarPanel
+                isLoading={isLoading}
+                sections={sections}
+                footerItems={footerItems}
+                isCollapsed={isCollapsed}
+                tenantName={tenantName}
+                allowCollapse
+                onToggleCollapsed={() => toggleCollapsed(!isCollapsed)}
+              />
+            </div>
+          ) : null
+        )}
       </aside>
       <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange ?? (() => undefined)}>
         <SheetContent

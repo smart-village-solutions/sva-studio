@@ -179,6 +179,65 @@ beforeEach(() => {
  * Testet das Rendering der AppShell in regulären und Loading-Zuständen.
  */
 describe('AppShell', () => {
+  it('reserves the sidebar while the session loads without exposing navigation', async () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = <AppShell currentPathname="/admin/content">Inhalt</AppShell>;
+    const view = render(page);
+
+    expect(view.container.querySelector('aside[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.queryByText('Sidebar Ready')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
+
+    useAuthMock.mockReturnValue({ ...auth, hasResolvedSession: true });
+    view.rerender(<AppShell currentPathname="/admin/content">Inhalt</AppShell>);
+    expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
+    expect(view.container.querySelector('aside[aria-hidden="true"]')).toBeNull();
+
+    useAuthMock.mockReturnValue({ ...auth, user: null, isAuthenticated: false });
+    view.rerender(<AppShell currentPathname="/admin/content">Inhalt</AppShell>);
+    expect(view.container.querySelector('aside')).toBeNull();
+  });
+
+  it('shows the verified navigation on Overview while the browser session loads', async () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = (
+      <AppShell currentPathname="/" initiallyAuthenticated>
+        Übersicht
+      </AppShell>
+    );
+    const view = render(page);
+
+    expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
+
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      hasResolvedSession: true,
+    });
+    view.rerender(
+      <AppShell currentPathname="/" initiallyAuthenticated>
+        Übersicht
+      </AppShell>
+    );
+    expect(screen.queryByText('Sidebar Ready')).toBeNull();
+  });
+
   it('rendert Sidebar und Main-Landmark', async () => {
     render(<AppShell currentPathname="/admin/users/123">Inhalt</AppShell>);
 
@@ -360,6 +419,28 @@ describe('AppShell', () => {
     expect(within(main).queryByText('Inhalt')).toBeNull();
   });
 
+  it('preserves the mounted content during navigation', () => {
+    const renderShell = (isNavigating: boolean) => (
+      <AppShell isNavigating={isNavigating}>
+        <input aria-label="Entwurf" defaultValue="Ursprünglicher Text" />
+      </AppShell>
+    );
+    const view = render(renderShell(false));
+    const draft = screen.getByRole<HTMLInputElement>('textbox', { name: 'Entwurf' });
+    draft.value = 'Bearbeiteter Text';
+
+    view.rerender(renderShell(true));
+
+    expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByLabelText('Inhalt lädt')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Entwurf' })).toBe(draft);
+    expect(draft.value).toBe('Bearbeiteter Text');
+
+    view.rerender(renderShell(false));
+    expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('false');
+    expect(screen.getByRole('textbox', { name: 'Entwurf' })).toBe(draft);
+  });
+
   it('versteckt die Sidebar fuer nicht eingeloggte Nutzer', () => {
     useAuthMock.mockReturnValue({
       user: null,
@@ -380,6 +461,34 @@ describe('AppShell', () => {
     expect(screen.queryByLabelText('Seitenleiste')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
     expect(screen.getByRole('main')).toBeTruthy();
+  });
+
+  it('shows contextual help from the verified document session until the browser resolves it', () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = (
+      <AppShell currentPathname="/" documentationPageId="home.overview" initiallyAuthenticated>
+        <div>Startseite</div>
+      </AppShell>
+    );
+    const view = render(page);
+    expect(screen.getByTestId('contextual-help')).toBeTruthy();
+
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      hasResolvedSession: true,
+    });
+    view.rerender(React.cloneElement(page));
+    expect(screen.queryByTestId('contextual-help')).toBeNull();
   });
 
   it('zeigt die kontextuelle Hilfe nicht fuer anonyme Nutzer', async () => {

@@ -73,6 +73,8 @@ export const pluginSurveysContentEnTranslations = {
     loadError: 'Survey could not be loaded.',
     createError: 'Survey could not be created.',
     updateError: 'Survey could not be saved.',
+    editConflict:
+      'This survey has changed since you opened it. Your draft is still here. Copy your changes and reopen the survey before saving.',
     createSuccess: 'Survey was created.',
     updateSuccess: 'Survey was saved.',
     missingContentId: 'No survey id available.',

@@ -139,6 +139,7 @@ describe('AccountPrivacyPage', () => {
     const headers = screen.getAllByRole('columnheader').map((header) => header.textContent?.trim());
     expect(headers).toEqual(['Typ', 'Erstellungsdatum', 'Status', 'Letzte Änderung', 'ID', 'Aktionen']);
 
+    await screen.findByText('req-2');
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.textContent).toContain('req-2');
     expect(rows[1]?.textContent).not.toContain('Rechteänderung');

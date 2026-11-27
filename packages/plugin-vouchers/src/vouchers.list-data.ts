@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
+import { useStudioTableQuery, type MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import {
   listVoucherCategories,
   listVoucherLocations,
   listVouchers,
-  type VoucherList,
 } from './vouchers.api.js';
 import { useVoucherAccess } from './vouchers.access.js';
 export function useVoucherList(principalControl?: MainserverPrincipalControlModel) {
@@ -24,28 +23,12 @@ export function useVoucherList(principalControl?: MainserverPrincipalControlMode
     poiId: params.poiId ?? '',
   });
   const [search, setSearch] = useState('');
-  const [result, setResult] = useState<VoucherList | null>(null);
   const { locations, categories } = useVoucherChoices(principal);
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    let current = true;
-    setState('loading');
-    void listVouchers(page, query.search, principal, query).then(
-      (value) => {
-        if (current) {
-          setResult(value);
-          setState('ready');
-        }
-      },
-      () => {
-        if (current) setState('error');
-      }
-    );
-    return () => {
-      current = false;
-    };
-  }, [page, query, revision, principal]);
+  const list = useStudioTableQuery(['vouchers', principal, page, query], (signal) =>
+    listVouchers(page, query.search, principal, query, signal)
+  );
+  const result = list.data ?? null;
+  const { state } = list;
   const filter = (key: 'categoryId' | 'visible' | 'poiId', value: string) => {
     setPage(1);
     setQuery((previous) => ({ ...previous, [key]: value }));
@@ -61,8 +44,8 @@ export function useVoucherList(principalControl?: MainserverPrincipalControlMode
     locations,
     categories,
     state,
-    revision,
-    setRevision,
+    refetch: list.refetch,
+    error: list.error,
     t,
     access,
     filter,

@@ -13,6 +13,7 @@ const routeState = vi.hoisted(() => ({
   params: {} as Record<string, unknown>,
   search: {} as Record<string, unknown>,
   normalizeIamTab: vi.fn((tab: unknown) => `iam:${String(tab ?? '')}`),
+  useLoaderData: vi.fn<(...args: unknown[]) => unknown>(),
   normalizeOrganizationDetailTab: vi.fn((tab: unknown) => `organization:${String(tab ?? '')}`),
   normalizeRoleDetailTab: vi.fn((tab: unknown) => `role:${String(tab ?? '')}`),
   authUser: null as null | {
@@ -102,8 +103,10 @@ vi.mock('../routes/app-configuration/-editor', () => ({
   AppConfigurationEditor: () => <h1>App-Konfiguration</h1>,
 }));
 
-vi.mock('@tanstack/react-router', () => ({
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  lazyRouteComponent: (await importOriginal<typeof import('@tanstack/react-router')>()).lazyRouteComponent,
   useBlocker: () => ({ status: 'idle', proceed: undefined, reset: undefined }),
+  useLoaderData: routeState.useLoaderData,
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),
@@ -760,6 +763,7 @@ describe('appRouteBindings', () => {
   beforeEach(() => {
     routeState.params = {};
     routeState.search = {};
+    routeState.useLoaderData.mockReset();
     routeState.normalizeIamTab.mockClear();
     routeState.normalizeOrganizationDetailTab.mockClear();
     routeState.normalizeRoleDetailTab.mockClear();
@@ -826,6 +830,8 @@ describe('appRouteBindings', () => {
 
   it('opens the App-Konfiguration editor directly on its own Studio route', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
+    expect(appRouteBindings.appConfiguration.preload).toBeTypeOf('function');
+    await appRouteBindings.appConfiguration.preload?.();
     render(<appRouteBindings.appConfiguration />);
 
     expect(await screen.findByRole('heading', { name: 'App-Konfiguration' })).toBeTruthy();
@@ -1245,10 +1251,18 @@ describe('appRouteBindings', () => {
       organizations: [],
     };
     routeState.enabledMainserverMutationActions = ['news.update', 'news.delete'];
+    routeState.organizationContextIsLoading = true;
 
     const { appRouteBindings } = await import('./app-route-bindings');
 
-    render(<appRouteBindings.content />);
+    const view = render(<appRouteBindings.content />);
+
+    expect(screen.getByRole('status').textContent).toBe('Author context loading');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
+
+    routeState.organizationContextIsLoading = false;
+    view.rerender(<appRouteBindings.content />);
 
     expect(screen.getByText('Author context unavailable')).toBeTruthy();
     expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBeNull();
@@ -1789,6 +1803,20 @@ describe('appRouteBindings', () => {
     );
   });
 
+  it('can preload the changelog route before rendering its server releases', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.useLoaderData.mockReturnValue([
+      { tag: 'studio-v1.4.0', name: 'Studio 1.4.0', publishedAt: '2026-11-13T17:57:57Z', body: '' },
+    ]);
+
+    expect(appRouteBindings.changelog.preload).toBeTypeOf('function');
+    await appRouteBindings.changelog.preload?.();
+    render(<appRouteBindings.changelog />);
+
+    expect(screen.getByRole('heading', { name: 'Studio 1.4.0', level: 2 })).toBeTruthy();
+    expect(screen.queryByText('Interfaces loading fallback')).toBeNull();
+  });
+
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
@@ -1807,8 +1835,23 @@ describe('appRouteBindings', () => {
       tab: 'members',
     };
 
+    for (const binding of [
+      appRouteBindings.interfaces,
+      appRouteBindings.adminGroups,
+      appRouteBindings.adminGroupDetail,
+      appRouteBindings.adminOrganizations,
+      appRouteBindings.adminOrganizationDetail,
+      appRouteBindings.adminRoles,
+      appRouteBindings.adminUserDetail,
+      appRouteBindings.monitoring,
+      appRouteBindings.monitoringJobs,
+      appRouteBindings.monitoringJobDetail,
+    ]) {
+      expect(binding.preload).toBeTypeOf('function');
+      await binding.preload?.();
+    }
+
     render(<appRouteBindings.interfaces />);
-    expect(screen.getByText('Interfaces loading fallback')).toBeTruthy();
     await waitFor(() => expect(screen.getByTestId('interfaces-page')).toBeTruthy());
     cleanup();
 

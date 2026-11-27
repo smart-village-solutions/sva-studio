@@ -90,7 +90,7 @@ function VoucherFilters({
       </StudioField>
       <Button
         variant="secondary"
-        onClick={() => s.setRevision((value) => value + 1)}
+        onClick={() => void s.refetch()}
         disabled={s.state === 'loading'}
       >
         {s.t('actions.refresh')}
@@ -211,7 +211,11 @@ export function VouchersListPage({
       toolbar={<VoucherFilters s={s} />}
     >
       {s.state === 'loading' && <StudioLoadingState>{s.t('messages.loading')}</StudioLoadingState>}
-      {s.state === 'error' && <StudioErrorState>{s.t('messages.error')}</StudioErrorState>}
+      {s.error ? (
+        <StudioErrorState onRetry={() => void s.refetch()}>
+          {s.t('messages.error')}
+        </StudioErrorState>
+      ) : null}
       {s.state !== 'loading' && (
         <>
           <VoucherTable s={s} />

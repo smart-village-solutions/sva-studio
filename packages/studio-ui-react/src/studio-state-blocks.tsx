@@ -1,5 +1,7 @@
 import * as React from 'react';
+import { usePluginTranslation } from '@sva/plugin-sdk/plugin-translations';
 
+import { Button } from './button.js';
 import { cn } from './utils.js';
 
 export type StudioStateBlockProps = Readonly<{
@@ -49,10 +51,25 @@ export function StudioEmptyState({ children, className }: StudioBasicStateProps)
   return <StudioStateBlock className={className}>{children}</StudioStateBlock>;
 }
 
-export function StudioErrorState({ children, className }: StudioBasicStateProps) {
-  return (
+export function StudioErrorState({
+  children,
+  className,
+  onRetry,
+}: StudioBasicStateProps & Readonly<{ onRetry?: () => void }>) {
+  const t = usePluginTranslation('shared');
+  const status = (
     <p role="status" aria-live="polite" className={cn('text-sm text-destructive', className)}>
       {children}
     </p>
+  );
+  return onRetry ? (
+    <div className="flex flex-wrap items-center gap-2">
+      {status}
+      <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
+        {t('errorFallback.retry')}
+      </Button>
+    </div>
+  ) : (
+    status
   );
 }

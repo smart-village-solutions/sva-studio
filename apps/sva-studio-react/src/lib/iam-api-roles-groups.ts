@@ -35,8 +35,8 @@ export const listKeycloakRoles = async (): Promise<ApiListResponse<IamKeycloakRe
 export const listGroups = async (): Promise<ApiListResponse<IamAdminGroupListItem>> =>
   requestJson<ApiListResponse<IamAdminGroupListItem>>('/api/v1/iam/groups');
 
-export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdminGroupDetail>> =>
-  requestJson<ApiItemResponse<IamAdminGroupDetail>>(`/api/v1/iam/groups/${groupId}`);
+export const getGroup = async (groupId: string, signal?: AbortSignal): Promise<ApiItemResponse<IamAdminGroupDetail>> =>
+  requestJson<ApiItemResponse<IamAdminGroupDetail>>(`/api/v1/iam/groups/${groupId}`, signal ? { signal } : undefined);
 
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');

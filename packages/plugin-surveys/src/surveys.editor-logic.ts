@@ -4,6 +4,7 @@ import { type UseFormReturn } from 'react-hook-form';
 import {
   useStudioEditorLeaveGuard,
   useStudioSaveFeedback,
+  useStudioTableQuery,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 
@@ -23,98 +24,6 @@ export type SurveyEditorStatus =
   { kind: 'success'; text: string } | { kind: 'error'; text: string } | null;
 
 type SurveyEditorTranslation = (key: string) => string;
-
-type SurveyEditorLoaderInput = Readonly<{
-  mode: SurveyEditorMode;
-  contentId?: string;
-  methods: UseFormReturn<SurveyDetailFormValues>;
-  pt: SurveyEditorTranslation;
-  setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
-  setResourceAccess: React.Dispatch<React.SetStateAction<Readonly<Record<string, boolean>>>>;
-  actingPrincipalType: MainserverPrincipalType;
-}>;
-
-const useSurveyEditorLoader = ({
-  mode,
-  contentId,
-  methods,
-  pt,
-  setStatus,
-  setIsLoading,
-  setLoadedItem,
-  setResourceAccess,
-  actingPrincipalType,
-}: SurveyEditorLoaderInput) => {
-  const loadedContentIdRef = React.useRef<string | undefined>(undefined);
-  React.useEffect(() => {
-    if (mode !== 'edit') {
-      loadedContentIdRef.current = undefined;
-      setStatus(null);
-      setIsLoading(false);
-      setLoadedItem(null);
-      methods.reset(createDefaultSurveyDetailFormValues());
-      return;
-    }
-
-    if (!contentId) {
-      setStatus({ kind: 'error', text: pt('messages.missingContentId') });
-      setLoadedItem(null);
-      methods.reset(createDefaultSurveyDetailFormValues());
-      setIsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    const refreshesAccessOnly = loadedContentIdRef.current === contentId;
-    if (!refreshesAccessOnly) {
-      setIsLoading(true);
-      setStatus(null);
-    }
-
-    void getSurveyDetail(contentId, actingPrincipalType)
-      .then((detail) => {
-        if (cancelled) return;
-        setResourceAccess(detail.access);
-        if (refreshesAccessOnly) return;
-        const item = detail.data;
-        setLoadedItem(item);
-        methods.reset(mapSurveyItemToFormValues(item));
-        loadedContentIdRef.current = contentId;
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          if (refreshesAccessOnly) setResourceAccess({});
-          else {
-            setLoadedItem(null);
-            methods.reset(createDefaultSurveyDetailFormValues());
-            setStatus({
-              kind: 'error',
-              text: getSurveyEditorErrorMessage(error, pt('messages.loadError')),
-            });
-          }
-        }
-      })
-      .finally(() => {
-        if (!cancelled && !refreshesAccessOnly) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => void (cancelled = true);
-  }, [
-    actingPrincipalType,
-    contentId,
-    methods,
-    mode,
-    pt,
-    setIsLoading,
-    setLoadedItem,
-    setResourceAccess,
-    setStatus,
-  ]);
-};
 
 function useSurveyCreateGuard(
   mode: SurveyEditorMode,
@@ -140,6 +49,73 @@ function useSurveyCreateGuard(
   return { createdContentIdRef, createdContentId, rememberCreated, leaveGuard };
 }
 
+function useSurveyFormBaseline(
+  editing: boolean,
+  contentId: string | undefined,
+  detail: Pick<
+    ReturnType<typeof useStudioTableQuery<Awaited<ReturnType<typeof getSurveyDetail>>>>,
+    'data' | 'isAvailable' | 'error'
+  >,
+  methods: UseFormReturn<SurveyDetailFormValues>
+) {
+  const [formBaseline, setFormBaseline] = React.useState<SurveyContentItem | null>(null);
+  const lastDetail = React.useRef<typeof detail.data>(undefined);
+  const isDirty = methods.formState.isDirty;
+  const shouldClearForm =
+    !editing || !contentId || !detail.isAvailable || (!detail.data && Boolean(detail.error));
+  React.useLayoutEffect(() => {
+    if (!shouldClearForm) return;
+    lastDetail.current = undefined;
+    setFormBaseline(null);
+    methods.reset(createDefaultSurveyDetailFormValues());
+  }, [contentId, shouldClearForm, methods]);
+  React.useLayoutEffect(() => {
+    if (shouldClearForm || !detail.data || lastDetail.current === detail.data) return;
+    lastDetail.current = detail.data;
+    const item = detail.data.data;
+    if (formBaseline?.id === contentId && isDirty) return;
+    setFormBaseline(item);
+    methods.reset(mapSurveyItemToFormValues(item));
+  }, [contentId, detail.data, formBaseline?.id, isDirty, methods, shouldClearForm]);
+  return { formBaseline, setFormBaseline };
+}
+
+function useInitialSaveFeedback(
+  isDirty: boolean,
+  isLoading: boolean,
+  initiallySaved: boolean,
+  onInitialSavedConsumed: (() => Promise<void>) | undefined,
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>
+) {
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [isDirty, saveFeedback.markDirty]);
+  React.useEffect(() => {
+    if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void onInitialSavedConsumed?.();
+  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
+}
+
+function getSurveyLoadStatus(
+  editing: boolean,
+  contentId: string | undefined,
+  error: unknown,
+  pt: SurveyEditorTranslation
+): SurveyEditorStatus {
+  if (editing && !contentId) return { kind: 'error', text: pt('messages.missingContentId') };
+  return error
+    ? { kind: 'error', text: getSurveyEditorErrorMessage(error, pt('messages.loadError')) }
+    : null;
+}
+
 export const useSurveyEditorController = ({
   mode,
   contentId,
@@ -160,38 +136,33 @@ export const useSurveyEditorController = ({
   actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
-  const [isLoading, setIsLoading] = React.useState(mode === 'edit');
-  const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
-  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
+  const editing = mode === 'edit';
+  const detail = useStudioTableQuery(
+    ['surveys', 'detail', contentId, actingPrincipalType],
+    () => {
+      if (!contentId) throw new Error('missing_content_id');
+      return getSurveyDetail(contentId, actingPrincipalType);
+    },
+    editing && Boolean(contentId)
+  );
+  const { formBaseline, setFormBaseline } = useSurveyFormBaseline(
+    editing,
+    contentId,
+    detail,
+    methods
+  );
+  const isLoading = editing && Boolean(contentId) && detail.state === 'loading';
+  const loadStatus = getSurveyLoadStatus(editing, contentId, detail.error, pt);
   const saveFeedback = useStudioSaveFeedback();
   const { createdContentIdRef, createdContentId, rememberCreated, leaveGuard } =
     useSurveyCreateGuard(mode, methods);
-  const initialSaveFeedbackShownRef = React.useRef(false);
-  React.useEffect(() => {
-    if (methods.formState.isDirty) {
-      saveFeedback.markDirty();
-    }
-  }, [methods.formState.isDirty, saveFeedback.markDirty]);
-  useSurveyEditorLoader({
-    mode,
-    contentId,
-    methods,
-    pt,
-    setStatus,
-    setIsLoading,
-    setLoadedItem,
-    setResourceAccess,
-    actingPrincipalType,
-  });
-  React.useEffect(() => {
-    if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
-      return;
-    }
-
-    initialSaveFeedbackShownRef.current = true;
-    saveFeedback.showSaved();
-    void onInitialSavedConsumed?.();
-  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
+  useInitialSaveFeedback(
+    methods.formState.isDirty,
+    isLoading,
+    initiallySaved,
+    onInitialSavedConsumed,
+    saveFeedback
+  );
   const submit = createSurveyEditorSubmit({
     methods,
     leaveGuard,
@@ -199,11 +170,15 @@ export const useSurveyEditorController = ({
     rememberCreated,
     mode,
     contentId,
-    loadedItem,
+    loadedItem: detail.data && formBaseline?.id === contentId ? formBaseline : null,
+    readCurrentItem: async () => (await detail.refresh(true))?.data,
     actingPrincipalType,
     pt,
     navigateToCreatedDetail,
-    setLoadedItem,
+    setLoadedItem: async (item) => {
+      setFormBaseline(item);
+      if (detail.data) await detail.replaceData({ ...detail.data, data: item });
+    },
     setStatus,
     saveFeedback,
   });
@@ -211,10 +186,10 @@ export const useSurveyEditorController = ({
   return {
     createdContentId,
     isLoading,
-    loadedItem,
-    resourceAccess,
+    loadedItem: detail.data?.data ?? (editing ? null : formBaseline),
+    resourceAccess: detail.error ? {} : (detail.data?.access ?? {}),
     saveStatus: saveFeedback.status,
-    status,
+    status: status ?? loadStatus,
     submit,
   };
 };

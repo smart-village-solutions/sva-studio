@@ -78,10 +78,12 @@ test('search header, results, filters and mobile entry use the existing plugin',
   await expect(
     page.getByRole('status').filter({ hasText: '20 Ergebnisse (+ 30 ohne passende Berechtigung)' })
   ).toBeVisible();
-  await page.getByLabel('Inhaltstyp', { exact: true }).click();
+  const typeFilter = page.getByLabel('Inhaltstyp', { exact: true });
+  await typeFilter.click();
   await page.getByRole('checkbox', { name: 'Nachrichten', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Nachrichten entfernen' })).toBeVisible();
-  await page.getByLabel('Inhaltstyp', { exact: true }).click();
+  await typeFilter.press('Escape');
+  await typeFilter.click();
   await page.getByRole('checkbox', { name: 'Veranstaltungen', exact: true }).click();
   await expect(page.locator('main').getByRole('searchbox')).toHaveCount(0);
   await expect(header.getByRole('searchbox')).toHaveValue('Kultur');

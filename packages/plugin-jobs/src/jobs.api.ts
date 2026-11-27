@@ -26,16 +26,18 @@ export const saveJob = (
     : client.create(body, principal, { operationId });
 export const listJobs = (
   query: Record<string, string | number>,
-  principal: MainserverActingPrincipalType = 'user'
+  principal: MainserverActingPrincipalType = 'user',
+  signal?: AbortSignal
 ) =>
   requestMainserverJson<JobList>({
-    init: { headers: createMainserverReadHeaders(principal) },
+    init: { headers: createMainserverReadHeaders(principal), signal },
     url: `/api/v1/mainserver/jobs?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}`,
   });
-export const listJobCategories = async (principal: MainserverActingPrincipalType = 'user') =>
+export const listJobCategories = async (principal: MainserverActingPrincipalType = 'user',
+  signal?: AbortSignal) =>
   (
     await requestMainserverJson<{ data: readonly { id: string; name: string }[] }>({
-      init: { headers: createMainserverReadHeaders(principal) },
+      init: { headers: createMainserverReadHeaders(principal), signal },
       url: '/api/v1/mainserver/categories?dataType=generic_item_job',
     })
   ).data;

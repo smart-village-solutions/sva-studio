@@ -60,6 +60,7 @@ export const SidebarPanel = ({
               size="icon"
               variant="secondary"
               className="absolute right-0 top-1/2 z-[100] hidden h-9 w-9 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
+              data-sidebar-toggle
               aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
               onClick={onToggleCollapsed}
             >

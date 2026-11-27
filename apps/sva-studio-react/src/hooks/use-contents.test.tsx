@@ -515,8 +515,7 @@ describe('useContents', () => {
 
       await waitFor(() => {
         expect(result.current.error).toBe(protectedError);
-        expect(result.current.contents).toHaveLength(1);
-        expect(result.current.contents[0]?.id).toBe('content-1');
+        expect(result.current.contents).toEqual([]);
       });
 
       expect(authMockValue.refreshSession).toHaveBeenCalledTimes(

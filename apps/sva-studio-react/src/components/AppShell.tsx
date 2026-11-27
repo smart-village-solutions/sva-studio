@@ -9,6 +9,8 @@ import React from 'react';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
+import Sidebar from './Sidebar';
+import type { DocumentNavigation } from './sidebar-access';
 import { t } from '../i18n';
 import { redirectRolelessUser } from '../lib/auth-navigation';
 import { studioPlugins } from '../lib/plugins';
@@ -23,10 +25,13 @@ type AppShellProps = Readonly<{
   children: React.ReactNode;
   currentPathname?: string;
   isLoading?: boolean;
+  isNavigating?: boolean;
   isMobileSidebarOpen?: boolean;
   onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
   documentationPageId?: string;
+  initiallyAuthenticated?: boolean;
+  initialNavigation?: DocumentNavigation;
 }>;
 
 const LazyRuntimeHealthIndicator = React.lazy(async () => {
@@ -36,12 +41,16 @@ const LazyRuntimeHealthIndicator = React.lazy(async () => {
   };
 });
 
-const LazySidebar = React.lazy(async () => {
-  const module = await import('./Sidebar');
-  return {
-    default: module.default,
-  };
-});
+const sidebarPlaceholder = (
+  <aside
+    aria-hidden="true"
+    className="hidden shrink-0 space-y-2 border-r border-sidebar-border bg-sidebar px-3 pt-24 lg:sticky lg:top-0 lg:block lg:h-screen lg:w-20 xl:w-72"
+  >
+    <span className="block h-11 animate-skeleton rounded-xl" />
+    <span className="block h-11 animate-skeleton rounded-xl" />
+    <span className="block h-11 animate-skeleton rounded-xl" />
+  </aside>
+);
 
 const LazyPermissionsDegradedBanner = React.lazy(async () => {
   const module = await import('./PermissionsDegradedBanner');
@@ -103,36 +112,20 @@ const LegalTextAcceptanceDialogSlot = ({
   return <DialogComponent pathname={pathname} />;
 };
 
-/**
- * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
- *
- * @param props - Konfiguration des Shell-Layouts.
- * @param props.children - Inhaltsbereich der aktuellen Route.
- * @param props.isLoading - Aktiviert Skeleton-Anzeige im Contentbereich.
- * @param props.sidebarSlot - Optionaler Ersatz für die Standard-Sidebar.
- */
-export default function AppShell({
-  children,
-  currentPathname = '/',
-  isLoading = false,
-  isMobileSidebarOpen = false,
-  onMobileSidebarOpenChange,
-  sidebarSlot,
-  documentationPageId,
-}: AppShellProps) {
+function useRoleAssignmentPending(auth: ReturnType<typeof useAuth>) {
   const {
     user,
-    isAuthenticated,
-    isLoading: isAuthLoading,
+    isAuthenticated: authenticated,
+    isLoading: isLoading,
     hasResolvedSession,
     isRecoveringSession,
     error: authError,
-  } = useAuth();
+  } = auth;
   const effectiveAccess = useEffectiveAccess();
   const showRoleAssignmentPending =
-    isAuthenticated &&
+    authenticated &&
     hasResolvedSession &&
-    !isAuthLoading &&
+    !isLoading &&
     !isRecoveringSession &&
     !authError &&
     user?.permissionStatus === 'ok' &&
@@ -148,16 +141,41 @@ export default function AppShell({
       redirectRolelessUser(rolelessRedirectUrl);
     }
   }, [showRoleAssignmentPending, rolelessRedirectUrl]);
+  return showRoleAssignmentPending;
+}
+
+/**
+ * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
+ *
+ * @param props - Konfiguration des Shell-Layouts.
+ * @param props.children - Inhaltsbereich der aktuellen Route.
+ * @param props.isLoading - Aktiviert Skeleton-Anzeige im Contentbereich.
+ * @param props.isNavigating - Markiert den vorhandenen Inhalt während eines Routenwechsels als beschäftigt.
+ * @param props.sidebarSlot - Optionaler Ersatz für die Standard-Sidebar.
+ */
+export default function AppShell({
+  children,
+  currentPathname = '/',
+  isLoading = false,
+  isNavigating = false,
+  isMobileSidebarOpen = false,
+  onMobileSidebarOpenChange,
+  sidebarSlot,
+  documentationPageId,
+  initiallyAuthenticated = false,
+  initialNavigation,
+}: AppShellProps) {
+  const auth = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = auth;
+  const showRoleAssignmentPending = useRoleAssignmentPending(auth);
   const [isHydrated, setIsHydrated] = React.useState(false);
-  const showSidebar =
-    isAuthenticated &&
-    !isAuthLoading &&
-    !studioPlugins.some((plugin) =>
-      plugin.routes.some(
-        (route) => route.path === currentPathname && route.layout === 'content-only'
-      )
-    );
-  const showBreadcrumbs = isHydrated && currentPathname !== '/';
+  const hasSidebarLayout = !studioPlugins.some((plugin) =>
+    plugin.routes.some((route) => route.path === currentPathname && route.layout === 'content-only')
+  );
+  const hasInitialSession = initiallyAuthenticated && isAuthLoading && !auth.hasResolvedSession;
+  const showAuthenticatedNavigation = isAuthenticated || hasInitialSession;
+  const showSidebar = hasSidebarLayout && showAuthenticatedNavigation;
+  const showBreadcrumbs = currentPathname !== '/';
   const showLegalTextAcceptanceDialog = shouldRenderLegalTextAcceptanceDialog({
     isHydrated,
     isAuthenticated,
@@ -171,14 +189,16 @@ export default function AppShell({
     <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
       {showSidebar
         ? (sidebarSlot ?? (
-            <React.Suspense fallback={null}>
-              <LazySidebar
-                isMobileOpen={isMobileSidebarOpen}
-                onMobileOpenChange={onMobileSidebarOpenChange}
-              />
-            </React.Suspense>
+            <Sidebar
+              initialNavigation={initialNavigation}
+              showChangelogLink={hasInitialSession}
+              isMobileOpen={isMobileSidebarOpen}
+              onMobileOpenChange={onMobileSidebarOpenChange}
+            />
           ))
-        : null}
+        : hasSidebarLayout && isAuthLoading
+          ? sidebarPlaceholder
+          : null}
       <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
         <Header
           isMobileNavigationOpen={isMobileSidebarOpen}
@@ -190,8 +210,13 @@ export default function AppShell({
           id="main-content"
           tabIndex={-1}
           className="flex min-h-0 flex-1 flex-col bg-background px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8 lg:pt-6"
-          aria-busy={isLoading}
+          aria-busy={isLoading || isNavigating}
         >
+          {showBreadcrumbs ? (
+            <div className="mb-4">
+              <AppBreadcrumbs pathname={currentPathname} />
+            </div>
+          ) : null}
           {isLoading ? (
             <section aria-label={t('shell.content.loadingLabel')} className="space-y-4">
               <span role="status" aria-live="polite" className="sr-only">
@@ -215,7 +240,6 @@ export default function AppShell({
             </section>
           ) : (
             <div className="space-y-4">
-              {showBreadcrumbs ? <AppBreadcrumbs pathname={currentPathname} /> : null}
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
@@ -234,7 +258,7 @@ export default function AppShell({
               {documentationPageId ? (
                 <ContextualHelpBoundary
                   key={documentationPageId}
-                  enabled={isAuthenticated}
+                  enabled={showAuthenticatedNavigation}
                   pageId={documentationPageId}
                 >
                   <div className="space-y-4">{children}</div>

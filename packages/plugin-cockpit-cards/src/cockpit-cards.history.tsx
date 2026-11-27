@@ -17,8 +17,9 @@ export function CockpitCardsHistory({ contentId }: Readonly<{ contentId: string 
   return (
     <StudioContentHistory
       contentId={contentId}
-      loadHistory={(id) =>
-        fetchIamContentHistory(id, { contentType: 'cockpit-cards.cockpit-card' })
+      contentType={'cockpit-cards.cockpit-card'}
+      loadHistory={(id, signal) =>
+        fetchIamContentHistory(id, { contentType: 'cockpit-cards.cockpit-card', signal })
       }
       labels={{
         loading: pt('history.loading'),

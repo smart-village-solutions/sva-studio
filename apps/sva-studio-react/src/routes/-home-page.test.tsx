@@ -68,20 +68,24 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: 'SVA Studio' })).toBeNull();
   });
 
-  it('announces session loading as a status', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: false,
-      isLoading: true,
-      error: null,
-      sessionRecoveryFailed: false,
-      isDevAuthAvailable: false,
-      loginWithDevAuth: vi.fn(),
-    });
+  it.each([false, true])(
+    'announces session loading with verified initial session %s',
+    (initiallyAuthenticated) => {
+      useAuthMock.mockReturnValue({
+        isAuthenticated: false,
+        isLoading: true,
+        error: null,
+        sessionRecoveryFailed: false,
+        isDevAuthAvailable: false,
+        loginWithDevAuth: vi.fn(),
+      });
 
-    render(<HomePage />);
+      render(<HomePage initiallyAuthenticated={initiallyAuthenticated} />);
 
-    expect(screen.getByRole('status').textContent).toContain('Sitzung wird geladen');
-  });
+      expect(screen.getByRole('status').textContent).toContain('Sitzung wird geladen');
+      expect(Boolean(screen.queryByText(t('home.hero.eyebrow')))).toBe(initiallyAuthenticated);
+    }
+  );
 
   it('shows action cards without loading individual PR entries', () => {
     const fetchMock = vi.fn();

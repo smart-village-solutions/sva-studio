@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { flexRender, type RowData } from '@tanstack/react-table';
-import type { LegacyTable } from '@tanstack/react-table/legacy';
+import type { RowData } from '@tanstack/react-table';
+import type { LegacyRow, LegacyTable } from '@tanstack/react-table/legacy';
 
 import { Checkbox } from './checkbox.js';
 import { getAriaSort, renderHeaderCellContent } from './studio-data-table-cells.js';
@@ -12,6 +12,7 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   table: LegacyTable<TData>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hasRows: boolean;
+  showTable: boolean;
   isLoading: boolean;
   loadingState: React.ReactNode;
   emptyState: React.ReactNode;
@@ -25,6 +26,12 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   mobileSortingControls: React.ReactNode;
   footerContent: React.ReactNode;
 }>;
+
+function renderCell<TData extends RowData>(cell: ReturnType<LegacyRow<TData>['getVisibleCells']>[number]) {
+  // Studio column callbacks return elements. Evaluating them keeps those elements mounted when column definitions change.
+  const render = cell.column.columnDef.cell;
+  return typeof render === 'function' ? render(cell.getContext()) : render;
+}
 
 function StudioDataTableWide<TData extends RowData>({
   table,
@@ -72,7 +79,7 @@ function StudioDataTableWide<TData extends RowData>({
                   const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                   return (
                     <td key={cell.id} className={cn('px-3 py-3 align-top', meta?.className)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {renderCell(cell)}
                     </td>
                   );
                 })}
@@ -133,7 +140,7 @@ function StudioDataTableCompact<TData extends RowData>({
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {meta?.mobileLabel}
                     </span>
-                    <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    <div>{renderCell(cell)}</div>
                   </div>
                 );
               })}
@@ -149,6 +156,7 @@ export function StudioDataTableView<TData extends RowData>({
   table,
   containerRef,
   hasRows,
+  showTable,
   isLoading,
   loadingState,
   emptyState,
@@ -162,7 +170,7 @@ export function StudioDataTableView<TData extends RowData>({
   mobileSortingControls,
   footerContent,
 }: StudioDataTableViewProps<TData>) {
-  const showRows = hasRows && !isLoading;
+  const renderTable = showTable && !isLoading;
   let statusContent: React.ReactNode = null;
   if (isLoading) {
     statusContent = loadingState;
@@ -174,14 +182,14 @@ export function StudioDataTableView<TData extends RowData>({
   // mounted so search fields and filters keep their value and focus; only the result area changes.
   return (
     <div
-      ref={showRows ? containerRef : undefined}
+      ref={renderTable ? containerRef : undefined}
       className={cn(
         'rounded-xl border border-border bg-card shadow-shell',
-        showRows && 'overflow-hidden'
+        renderTable && 'overflow-hidden'
       )}
-      aria-busy={showRows ? 'false' : undefined}
-      data-selected-rows={showRows ? selectedRowCount : undefined}
-      data-layout={showRows ? (isCompact ? 'compact' : 'wide') : undefined}
+      aria-busy={renderTable ? 'false' : undefined}
+      data-selected-rows={renderTable ? selectedRowCount : undefined}
+      data-layout={renderTable ? (isCompact ? 'compact' : 'wide') : undefined}
     >
       {toolbarContent}
       {/* The live region stays mounted so that screen readers reliably announce loading and
@@ -199,7 +207,7 @@ export function StudioDataTableView<TData extends RowData>({
       {/* Result area, marked busy while loading. The live region above stays outside of it so
           the loading announcement is not suppressed. */}
       <div aria-busy={isLoading || undefined}>
-        {showRows ? (
+        {renderTable ? (
           <>
             <StudioDataTableWide
               table={table}

@@ -76,6 +76,7 @@ export const getWasteManagementHistoryOverview = async (input: {
 export const getWasteManagementMasterDataOverview = async (input?: {
   readonly scope?: 'fractions' | 'locations';
   readonly fresh?: boolean;
+  readonly signal?: AbortSignal;
 }): Promise<WasteManagementMasterDataOverview> => {
   const url = new URL('/api/v1/waste-management/master-data', 'https://studio.invalid');
   if (input?.scope) {
@@ -85,9 +86,11 @@ export const getWasteManagementMasterDataOverview = async (input?: {
   const load = () =>
     requestWasteManagementItem<WasteManagementMasterDataOverview>({
       url: `${url.pathname}${url.search}`,
-      init: input?.fresh ? { cache: 'no-store' } : undefined,
+      init: input?.fresh || input?.signal ? { cache: 'no-store', signal: input.signal } : undefined,
     });
-  return input?.fresh ? load() : requestWasteManagementRead(`master-data:${url.search}`, load);
+  return input?.fresh || input?.signal
+    ? load()
+    : requestWasteManagementRead(`master-data:${url.search}`, load);
 };
 
 const appendCollectionLocationFilters = (
@@ -104,7 +107,8 @@ const appendCollectionLocationFilters = (
 };
 
 export const getWasteCollectionLocationPage = async (
-  query: WasteCollectionLocationQuery
+  query: WasteCollectionLocationQuery,
+  signal?: AbortSignal
 ): Promise<WasteCollectionLocationPage> => {
   const url = new URL('/api/v1/waste-management/collection-locations', 'https://studio.invalid');
   appendCollectionLocationFilters(url.searchParams, query);
@@ -114,11 +118,12 @@ export const getWasteCollectionLocationPage = async (
   if (query.tourStatus) url.searchParams.set('tourStatus', query.tourStatus);
   url.searchParams.set('page', String(query.page));
   url.searchParams.set('pageSize', String(query.pageSize));
-  return requestWasteManagementRead(`collection-locations:${url.search}`, async () =>
+  const load = () =>
     requestWasteManagementItem<WasteCollectionLocationPage>({
       url: `${url.pathname}${url.search}`,
-    })
-  );
+      ...(signal ? { init: { signal } } : {}),
+    });
+  return signal ? load() : requestWasteManagementRead(`collection-locations:${url.search}`, load);
 };
 
 export const getWasteCollectionLocationIds = async (
@@ -139,22 +144,27 @@ export const getWasteCollectionLocationIds = async (
   return response.ids;
 };
 
-export const getWasteManagementToursOverview = async (): Promise<WasteManagementToursOverview> =>
-  requestWasteManagementRead('tours', async () =>
+export const getWasteManagementToursOverview = async (
+  signal?: AbortSignal
+): Promise<WasteManagementToursOverview> => {
+  const load = () =>
     requestWasteManagementItem<WasteManagementToursOverview>({
       url: '/api/v1/waste-management/tours',
-    })
-  );
+      ...(signal ? { init: { signal } } : {}),
+    });
+  return signal ? load() : requestWasteManagementRead('tours', load);
+};
 
 export const getWasteManagementSchedulingOverview = async (input?: {
   readonly fresh?: boolean;
+  readonly signal?: AbortSignal;
 }): Promise<WasteManagementSchedulingOverview> => {
   const load = () =>
     requestWasteManagementItem<WasteManagementSchedulingOverview>({
       url: '/api/v1/waste-management/scheduling',
-      init: input?.fresh ? { cache: 'no-store' } : undefined,
+      init: input?.fresh || input?.signal ? { cache: 'no-store', signal: input.signal } : undefined,
     });
-  return input?.fresh ? load() : requestWasteManagementRead('scheduling', load);
+  return input?.fresh || input?.signal ? load() : requestWasteManagementRead('scheduling', load);
 };
 
 export const getWasteEmailMonitoring = (

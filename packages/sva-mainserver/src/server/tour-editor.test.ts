@@ -23,7 +23,7 @@ vi.mock('./mutation-principal.js', () => ({
 import snapshot from '../generated/schema.snapshot.json';
 import type { MainserverMutationActor } from './mutation-principal-types.js';
 import type { ServiceContext } from './service-internals/service-context.js';
-import { editableTourDocument, updateTourDocument } from './tour-editor-contract.js';
+import { editableTourDocument, editTourDocument } from './tour-editor-contract.js';
 import { createTourEditor, handleTourUpdate } from './tour-editor.js';
 
 const actor = {
@@ -77,7 +77,7 @@ describe('tour editor', () => {
   it('matches the Mainserver snapshot for editable reads and optimistic updates', () => {
     const schema = buildClientSchema(snapshot.data as unknown as IntrospectionQuery);
     expect(validate(schema, parse(editableTourDocument))).toEqual([]);
-    expect(validate(schema, parse(updateTourDocument))).toEqual([]);
+    expect(validate(schema, parse(editTourDocument))).toEqual([]);
   });
 
   it('reads and writes in the credential scope and sends only the declared patch once', async () => {
@@ -90,7 +90,7 @@ describe('tour editor', () => {
     const saved = { ...tour, revision: 'r2' };
     execute
       .mockResolvedValueOnce({ editableTour: tour })
-      .mockResolvedValueOnce({ updateTour: saved })
+      .mockResolvedValueOnce({ createTour: { editorialSnapshot: saved } })
       .mockResolvedValueOnce({ editableTour: saved });
 
     const response = await update({ expectedRevision: 'r1', patch });
@@ -107,14 +107,18 @@ describe('tour editor', () => {
     );
     expect(execute.mock.calls.map(([operation]) => operation.operationName)).toEqual([
       'SvaMainserverEditableTour',
-      'SvaMainserverUpdateTour',
+      'SvaMainserverEditTour',
       'SvaMainserverEditableTour',
     ]);
     expect(execute.mock.calls[1]?.[0]).toMatchObject({
-      variables: { id: '42', expectedRevision: 'r1', patch },
+      variables: { id: '42', expectedRevision: 'r1', ...patch },
       allowRetry: false,
     });
-    expect(execute.mock.calls[1]?.[0].variables.patch).toEqual(patch);
+    expect(execute.mock.calls[1]?.[0].variables).toEqual({
+      id: '42',
+      expectedRevision: 'r1',
+      ...patch,
+    });
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'succeeded',
@@ -228,7 +232,7 @@ describe('tour editor', () => {
     const { execute, update } = setup();
     execute
       .mockResolvedValueOnce({ editableTour: tour })
-      .mockResolvedValueOnce({ updateTour: { ...tour, revision: 'r2' } })
+      .mockResolvedValueOnce({ createTour: { editorialSnapshot: { ...tour, revision: 'r2' } } })
       .mockRejectedValueOnce(new Error('Readback unavailable'));
 
     const response = await update({ expectedRevision: 'r1', patch: { name: 'Other' } });
@@ -247,7 +251,7 @@ describe('tour editor', () => {
     );
     expect(
       execute.mock.calls.filter(
-        ([operation]) => operation.operationName === 'SvaMainserverUpdateTour'
+        ([operation]) => operation.operationName === 'SvaMainserverEditTour'
       )
     ).toHaveLength(1);
   });

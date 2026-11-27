@@ -1044,7 +1044,7 @@ describe('NewsDetailPage', () => {
       });
     fireEvent.click(await screen.findByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/hoerbeitrag' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));

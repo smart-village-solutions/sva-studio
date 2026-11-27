@@ -27,6 +27,7 @@ vi.mock('./app-translations-deepl.js', () => ({
   translateDeepLValues: state.translate,
 }));
 import { appTranslationServiceHandler } from './app-translations-service.js';
+import { readSsfTranslationConfig, verifySsfTranslationLocales } from './app-translations-ssf.js';
 const binding = {
   issuer: 'https://identity.example/realms/test',
   clientId: 'main-server',
@@ -98,6 +99,50 @@ const configureSsfPilot = (instanceId = 'de-town') => {
   vi.stubEnv('SVA_SSF_TRANSLATION_API_KEY', 'a'.repeat(64));
   vi.stubEnv('SVA_SSF_TRANSLATION_LOCALES', 'en,pl,ja');
 };
+
+describe('SSF pilot configuration and discovery', () => {
+  it.each([
+    ['SVA_SSF_TRANSLATION_API_KEY', undefined],
+    ['SVA_SSF_TRANSLATION_API_KEY', 'short'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'invalid'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'http://ssf.example'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'https://ssf.example/untrusted-path'],
+    ['SVA_SSF_TRANSLATION_LOCALES', 'pl,pl'],
+    ['SVA_SSF_TRANSLATION_LOCALES', 'de'],
+  ])('rejects invalid configured value for %s before dispatch', (name, value) => {
+    configureSsfPilot();
+    vi.stubEnv(name, value);
+    expect(() => readSsfTranslationConfig('de-town')).toThrow(
+      'ssf_translation_configuration_invalid'
+    );
+  });
+
+  it.each([
+    { languages: ['de', 'en', 'pl', 'ja'], available: true },
+    { languages: ['en', 'pl', 'ja'], available: false },
+    { languages: ['de', 'en', 'pl'], available: false },
+  ])('checks German and every configured pilot target', async ({ languages, available }) => {
+    configureSsfPilot();
+    const config = readSsfTranslationConfig('de-town');
+    if (!config) throw new Error('expected test configuration');
+    const fetchSsf = vi.fn().mockResolvedValue(Response.json({ languages }));
+    vi.stubGlobal('fetch', fetchSsf);
+    const discovery = verifySsfTranslationLocales(config);
+    if (available) {
+      await expect(discovery).resolves.toEqual(['en', 'pl', 'ja']);
+      expect(fetchSsf).toHaveBeenCalledWith(
+        'https://ssf.example/api/v1/languages',
+        expect.objectContaining({
+          method: 'GET',
+          redirect: 'error',
+          headers: expect.objectContaining({ 'X-API-Key': config.key }),
+        })
+      );
+    } else {
+      await expect(discovery).rejects.toThrow('ssf_translation_languages_unavailable');
+    }
+  });
+});
 
 describe('technical app translation', () => {
   it('dispatches the configured pilot to SSF v1 and restores its HTML markers', async () => {

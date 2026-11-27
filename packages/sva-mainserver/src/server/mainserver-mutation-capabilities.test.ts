@@ -23,6 +23,8 @@ describe('Mainserver mutation capabilities', () => {
     expect(isMainserverMutationCapabilityEnabled('categories.delete')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('news.update')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('surveys.create')).toBe(true);
+    expect(isMainserverMutationCapabilityEnabled('tours.update')).toBe(true);
+    expect(getEnabledMainserverMutationCapabilities()).toContain('tours.update');
   });
 
   it('fails closed for unconfirmed survey mutations', () => {

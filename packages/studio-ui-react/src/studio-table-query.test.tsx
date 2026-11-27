@@ -1,7 +1,11 @@
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { notifyStudioTableDataChanged } from '@sva/plugin-sdk/studio-table-events';
 import { afterEach, expect, it, vi } from 'vitest';
-import { StudioTableQueryProvider, useStudioTableQuery } from './studio-table-query.js';
+import {
+  StudioTableQueryProvider,
+  useStudioTableInvalidation,
+  useStudioTableQuery,
+} from './studio-table-query.js';
 
 afterEach(cleanup);
 
@@ -197,4 +201,88 @@ it('shares an in-flight request, retains an empty result on failure, and isolate
   view.rerender(route(<Table filter="filtered" />));
   expect(screen.queryByText(/no rows/)).toBeNull();
   expect(await screen.findByText('filtered row')).toBeTruthy();
+});
+
+it('keeps a mutation result when its background read resolves late and ignores obsolete write callbacks', async () => {
+  let complete!: (rows: string) => void;
+  const previous = new Promise<string>((resolve) => {
+    complete = resolve;
+  });
+  const read = vi
+    .fn<(signal: AbortSignal) => Promise<string>>()
+    .mockReturnValueOnce(previous)
+    .mockResolvedValue('another filter');
+  const { result, rerender } = renderHook(
+    ({ filter }) => useStudioTableQuery(['table', filter], read),
+    { initialProps: { filter: 'first' } }
+  );
+  await waitFor(() => expect(read).toHaveBeenCalledOnce());
+  const writeFirstFilter = result.current.replaceData;
+  await act(async () => writeFirstFilter('saved rows'));
+
+  expect(read.mock.calls[0]?.[0].aborted).toBe(true);
+  await waitFor(() => expect(result.current.data).toBe('saved rows'));
+  await act(async () => complete('late rows'));
+  expect(result.current.data).toBe('saved rows');
+
+  rerender({ filter: 'second' });
+  await waitFor(() => expect(result.current.data).toBe('another filter'));
+  await act(async () => writeFirstFilter('wrong filter'));
+  expect(result.current.data).toBe('another filter');
+});
+
+it('replaces a pending read on explicit refresh and clears the result on access denial', async () => {
+  const read = vi
+    .fn<(signal: AbortSignal) => Promise<string>>()
+    .mockImplementationOnce(() => new Promise(() => undefined))
+    .mockResolvedValueOnce('current rows')
+    .mockRejectedValueOnce('temporary failure')
+    .mockRejectedValueOnce(new Error('unauthorized'));
+  const { result } = renderHook(() => useStudioTableQuery(['table'], read));
+  await waitFor(() => expect(read).toHaveBeenCalledOnce());
+
+  await act(async () => {
+    expect(await result.current.refresh(true)).toBe('current rows');
+  });
+  expect(read.mock.calls[0]?.[0].aborted).toBe(true);
+  await waitFor(() => expect(result.current.data).toBe('current rows'));
+
+  await act(async () => {
+    expect(await result.current.refetch()).toBe(false);
+  });
+  await waitFor(() => expect(result.current.error).toBe('temporary failure'));
+  expect(result.current.data).toBe('current rows');
+
+  await act(async () => {
+    expect(await result.current.refetch()).toBe(false);
+  });
+  await waitFor(() => expect(result.current.state).toBe('error'));
+  expect(result.current.data).toBeUndefined();
+});
+
+it('can invalidate a resource without starting an active read until explicitly refreshed', async () => {
+  const read = vi
+    .fn<() => Promise<string>>()
+    .mockResolvedValueOnce('before mutation')
+    .mockResolvedValueOnce('after mutation');
+  const { result } = renderHook(
+    () => ({
+      list: useStudioTableQuery(['media', 1], read),
+      invalidate: useStudioTableInvalidation(),
+    }),
+    {
+      wrapper: ({ children }) => (
+        <StudioTableQueryProvider scope={1}>{children}</StudioTableQueryProvider>
+      ),
+    }
+  );
+  await waitFor(() => expect(result.current.list.data).toBe('before mutation'));
+  await act(async () => result.current.invalidate(['media'], false));
+  expect(read).toHaveBeenCalledOnce();
+  expect(result.current.list.data).toBe('before mutation');
+
+  await act(async () => {
+    expect(await result.current.list.refetch()).toBe(true);
+  });
+  await waitFor(() => expect(result.current.list.data).toBe('after mutation'));
 });

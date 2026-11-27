@@ -93,11 +93,16 @@ const ReleaseEntry = ({
   );
 };
 
-export const ChangelogPage = () => {
+export const ChangelogPage = ({
+  initialReleases,
+}: Readonly<{ initialReleases?: StudioReleaseNotes }>) => {
   const { locale } = useLocale();
   const [attempt, setAttempt] = React.useState(0);
-  const [state, setState] = React.useState<LoadState>({ kind: 'loading' });
+  const [state, setState] = React.useState<LoadState>(() =>
+    initialReleases ? { kind: 'ready', releases: initialReleases } : { kind: 'loading' }
+  );
   React.useEffect(() => {
+    if (initialReleases) return;
     const controller = new AbortController();
     setState({ kind: 'loading' });
     void fetch('/api/studio/releases', { signal: controller.signal, credentials: 'same-origin' })
@@ -110,7 +115,7 @@ export const ChangelogPage = () => {
         if (!controller.signal.aborted) setState({ kind: 'error' });
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, initialReleases]);
 
   return (
     <section className="space-y-6">

@@ -28,6 +28,7 @@ type AppShellProps = Readonly<{
   onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
   documentationPageId?: string;
+  initiallyAuthenticated?: boolean;
 }>;
 
 const LazyRuntimeHealthIndicator = React.lazy(async () => {
@@ -165,6 +166,7 @@ export default function AppShell({
   onMobileSidebarOpenChange,
   sidebarSlot,
   documentationPageId,
+  initiallyAuthenticated = false,
 }: AppShellProps) {
   const auth = useAuth();
   const { isAuthenticated, isLoading: isAuthLoading } = auth;
@@ -173,8 +175,10 @@ export default function AppShell({
   const hasSidebarLayout = !studioPlugins.some((plugin) =>
     plugin.routes.some((route) => route.path === currentPathname && route.layout === 'content-only')
   );
-  const showSidebar = hasSidebarLayout && isAuthenticated && !isAuthLoading;
-  const showBreadcrumbs = isHydrated && currentPathname !== '/';
+  const showChangelogLink = initiallyAuthenticated && isAuthLoading;
+  const showSidebar =
+    hasSidebarLayout && ((isAuthenticated && !isAuthLoading) || showChangelogLink);
+  const showBreadcrumbs = currentPathname !== '/';
   const showLegalTextAcceptanceDialog = shouldRenderLegalTextAcceptanceDialog({
     isHydrated,
     isAuthenticated,
@@ -190,6 +194,7 @@ export default function AppShell({
         ? (sidebarSlot ?? (
             <React.Suspense fallback={sidebarPlaceholder}>
               <LazySidebar
+                showChangelogLink={showChangelogLink}
                 isMobileOpen={isMobileSidebarOpen}
                 onMobileOpenChange={onMobileSidebarOpenChange}
               />
@@ -211,6 +216,11 @@ export default function AppShell({
           className="flex min-h-0 flex-1 flex-col bg-background px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8 lg:pt-6"
           aria-busy={isLoading || isNavigating}
         >
+          {showBreadcrumbs ? (
+            <div className="mb-4">
+              <AppBreadcrumbs pathname={currentPathname} />
+            </div>
+          ) : null}
           {isLoading ? (
             <section aria-label={t('shell.content.loadingLabel')} className="space-y-4">
               <span role="status" aria-live="polite" className="sr-only">
@@ -234,7 +244,6 @@ export default function AppShell({
             </section>
           ) : (
             <div className="space-y-4">
-              {showBreadcrumbs ? <AppBreadcrumbs pathname={currentPathname} /> : null}
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>

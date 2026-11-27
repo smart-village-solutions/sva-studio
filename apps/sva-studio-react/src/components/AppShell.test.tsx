@@ -205,6 +205,39 @@ describe('AppShell', () => {
     expect(view.container.querySelector('aside')).toBeNull();
   });
 
+  it('shows the verified navigation on Overview while the browser session loads', async () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = (
+      <AppShell currentPathname="/" initiallyAuthenticated>
+        Übersicht
+      </AppShell>
+    );
+    const view = render(page);
+
+    expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
+
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      hasResolvedSession: true,
+    });
+    view.rerender(
+      <AppShell currentPathname="/" initiallyAuthenticated>
+        Übersicht
+      </AppShell>
+    );
+    expect(screen.queryByText('Sidebar Ready')).toBeNull();
+  });
+
   it('rendert Sidebar und Main-Landmark', async () => {
     render(<AppShell currentPathname="/admin/users/123">Inhalt</AppShell>);
 

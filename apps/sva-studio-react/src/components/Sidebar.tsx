@@ -17,6 +17,7 @@ import type { SidebarLeafItem } from './sidebar-model';
 
 type SidebarProps = Readonly<{
   isLoading?: boolean;
+  showChangelogLink?: boolean;
   isMobileOpen?: boolean;
   onMobileOpenChange?: (open: boolean) => void;
 }>;
@@ -32,6 +33,7 @@ const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/
  */
 export default function Sidebar({
   isLoading = false,
+  showChangelogLink = false,
   isMobileOpen = false,
   onMobileOpenChange,
 }: SidebarProps) {
@@ -100,7 +102,7 @@ export default function Sidebar({
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(
     () => [
-      ...(user
+      ...(user || showChangelogLink
         ? [
             {
               kind: 'link' as const,
@@ -144,7 +146,7 @@ export default function Sidebar({
           ]
         : []),
     ],
-    [canAccessExperimentalFeatures, user]
+    [canAccessExperimentalFeatures, showChangelogLink, user]
   );
 
   return (

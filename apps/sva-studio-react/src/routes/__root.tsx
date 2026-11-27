@@ -24,6 +24,7 @@ import {
   readDocumentPluginRouteScope,
   type PluginRouteScope,
 } from '../lib/plugin-route-scope';
+import type { StudioReleaseNotes } from '../lib/studio-release-notes.shared';
 import { createThemeBootstrapScript } from '../lib/theme';
 import {
   FALLOW_BROWSER_BEACON_META_NAME,
@@ -83,12 +84,38 @@ export const resolveServerFallowBrowserBeaconKey = createServerOnlyFn(() => {
     : '';
 });
 
+export const loadDocumentSession = createServerOnlyFn(async () => {
+  const { getRequest, setResponseHeader } = await import('@tanstack/react-start/server');
+  const request = getRequest();
+  // The SSR navigation can depend on the session. Do not reuse the document for another user.
+  setResponseHeader('Cache-Control', 'private, no-store');
+  if (!request.headers.has('cookie')) return {};
+  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
+  const response = await withAuthenticatedUser(request, async () => {
+    const pathname = new URL(request.url).pathname.replace(/\/$/, '');
+    if (pathname !== '/changelog') return new Response(null, { status: 204 });
+    const { loadStudioReleaseNotes } = await import('../lib/studio-release-notes.server');
+    const releases = await loadStudioReleaseNotes().catch(() => undefined);
+    return releases ? Response.json(releases) : new Response(null, { status: 204 });
+  });
+
+  if (!response.ok) return {};
+  const initialSession = { initiallyAuthenticated: true };
+  if (response.status === 204) return initialSession;
+  return { ...initialSession, changelogReleases: (await response.json()) as StudioReleaseNotes };
+});
+
 /** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
     await ensureRootSdkInitialized();
+    const [pluginRouteScope, session] = await Promise.all([
+      resolveRootPluginRouteScope(),
+      loadDocumentSession(),
+    ]);
     return {
-      pluginRouteScope: await resolveRootPluginRouteScope(),
+      ...session,
+      pluginRouteScope,
       studioBranding: resolveServerStudioBranding(),
       studioParentDomain: resolveServerStudioParentDomain(),
       fallowBrowserBeaconKey: resolveServerFallowBrowserBeaconKey(),
@@ -102,7 +129,9 @@ export const loadRootData = async () => {
   };
 };
 
-type RootLoaderData = {
+export type RootLoaderData = {
+  readonly initiallyAuthenticated?: boolean;
+  readonly changelogReleases?: StudioReleaseNotes;
   readonly pluginRouteScope: PluginRouteScope;
   readonly studioBranding: StudioBranding;
   readonly studioParentDomain: string;
@@ -248,6 +277,9 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                   <ThemeProvider>
                     <AppShell
                       currentPathname={currentPathname}
+                      initiallyAuthenticated={
+                        (rootLoaderData as RootLoaderData | undefined)?.initiallyAuthenticated
+                      }
                       isNavigating={isHydrated && isNavigating}
                       isMobileSidebarOpen={isMobileSidebarOpen}
                       onMobileSidebarOpenChange={setIsMobileSidebarOpen}

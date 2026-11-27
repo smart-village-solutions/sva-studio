@@ -182,7 +182,9 @@ const HomeAuthErrorBanner = ({
   </Alert>
 );
 
-export const HomePage = () => {
+export const HomePage = ({
+  initiallyAuthenticated = false,
+}: Readonly<{ initiallyAuthenticated?: boolean }>) => {
   const navigate = useNavigate();
   const { appName, profile: brandingProfile } = useStudioBranding();
   const {
@@ -247,28 +249,29 @@ export const HomePage = () => {
     !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
+  const showAuthenticatedHero = isAuthenticated || (isLoading && initiallyAuthenticated);
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
       <section className="bg-[radial-gradient(circle_at_top,_rgba(0,90,158,0.18),_transparent_34%),linear-gradient(to_bottom,_rgba(241,246,252,0.98),_rgba(255,255,255,0.99)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(74,132,188,0.22),_transparent_30%),linear-gradient(to_bottom,_rgba(10,16,24,1),_rgba(13,20,30,0.98)_38%,_rgb(var(--background))_100%)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-16 sm:pb-20 sm:pt-20">
           <div
             className={
-              isAuthenticated
+              showAuthenticatedHero
                 ? 'flex flex-col gap-6 lg:max-w-3xl'
                 : 'flex flex-col items-center gap-8 rounded-[2rem] border border-border/50 bg-background/80 px-6 py-10 text-center shadow-[0_24px_70px_rgba(0,90,158,0.1)] backdrop-blur-sm dark:border-border/60 dark:bg-card/75 dark:shadow-[0_30px_80px_rgba(4,16,32,0.42)] sm:px-10 sm:py-12'
             }
           >
             <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-              {isAuthenticated ? t('home.hero.eyebrow') : t('home.hero.anonymousEyebrow')}
+              {showAuthenticatedHero ? t('home.hero.eyebrow') : t('home.hero.anonymousEyebrow')}
             </p>
-            <div className={isAuthenticated ? 'space-y-4' : 'max-w-3xl space-y-5'}>
+            <div className={showAuthenticatedHero ? 'space-y-4' : 'max-w-3xl space-y-5'}>
               <StudioPageTitle
                 withAccessory
                 className="text-4xl tracking-tight sm:text-5xl md:text-6xl"
               >
                 {appName}
               </StudioPageTitle>
-              {isAuthenticated ? (
+              {showAuthenticatedHero ? (
                 <>
                   <p className="max-w-2xl text-lg text-muted-foreground">
                     {t('home.hero.subtitle')}

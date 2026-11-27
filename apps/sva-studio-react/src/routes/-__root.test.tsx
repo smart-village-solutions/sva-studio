@@ -7,6 +7,26 @@ const useRouterStateMock = vi.fn();
 const useMatchesMock = vi.fn();
 const activeLocaleMock = vi.hoisted(() => ({ value: 'de' }));
 
+const documentSessionMocks = vi.hoisted(() => ({
+  getRequest: vi.fn<() => Request>(),
+  setResponseHeader: vi.fn(),
+  withAuthenticatedUser: vi.fn(),
+  loadStudioReleaseNotes: vi.fn(),
+}));
+
+vi.mock('@tanstack/react-start/server', () => ({
+  getRequest: documentSessionMocks.getRequest,
+  setResponseHeader: documentSessionMocks.setResponseHeader,
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  withAuthenticatedUser: documentSessionMocks.withAuthenticatedUser,
+}));
+
+vi.mock('../lib/studio-release-notes.server', () => ({
+  loadStudioReleaseNotes: documentSessionMocks.loadStudioReleaseNotes,
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   HeadContent: () => null,
   Outlet: () => <div data-testid="outlet" />,
@@ -200,6 +220,47 @@ describe('root route document', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it('only prepares navigation and Changelog data for a verified document session', async () => {
+    const { loadDocumentSession } = await import('./__root');
+    const request = (path: string, headers?: HeadersInit) =>
+      ({ url: `https://studio.test${path}`, headers: new Headers(headers) }) as Request;
+    const cookie = { cookie: 'session=test' };
+
+    documentSessionMocks.getRequest.mockReturnValue(request('/'));
+    documentSessionMocks.withAuthenticatedUser.mockClear();
+    documentSessionMocks.loadStudioReleaseNotes.mockClear();
+    await expect(loadDocumentSession()).resolves.toEqual({});
+    expect(documentSessionMocks.withAuthenticatedUser).not.toHaveBeenCalled();
+    expect(documentSessionMocks.setResponseHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store'
+    );
+
+    documentSessionMocks.getRequest.mockReturnValue(request('/changelog', cookie));
+    documentSessionMocks.withAuthenticatedUser.mockResolvedValueOnce(
+      new Response(null, { status: 401 })
+    );
+    await expect(loadDocumentSession()).resolves.toEqual({});
+    expect(documentSessionMocks.loadStudioReleaseNotes).not.toHaveBeenCalled();
+
+    documentSessionMocks.withAuthenticatedUser.mockImplementation(
+      (_request: Request, handler: () => Promise<Response>) => handler()
+    );
+    documentSessionMocks.getRequest.mockReturnValue(request('/', cookie));
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
+    expect(documentSessionMocks.loadStudioReleaseNotes).not.toHaveBeenCalled();
+
+    documentSessionMocks.getRequest.mockReturnValue(request('/changelog/', cookie));
+    documentSessionMocks.loadStudioReleaseNotes.mockResolvedValueOnce([]);
+    await expect(loadDocumentSession()).resolves.toEqual({
+      initiallyAuthenticated: true,
+      changelogReleases: [],
+    });
+
+    documentSessionMocks.loadStudioReleaseNotes.mockRejectedValueOnce(new Error('offline'));
+    await expect(loadDocumentSession()).resolves.toEqual({ initiallyAuthenticated: true });
   });
 
   it('restores public root configuration during client navigation', async () => {

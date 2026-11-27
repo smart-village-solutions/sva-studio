@@ -18,6 +18,17 @@ afterEach(() => {
 });
 
 describe('ChangelogPage', () => {
+  it('shows server-rendered releases on the first render without fetching them again', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ChangelogPage initialReleases={[release]} />);
+
+    expect(screen.getByRole('heading', { name: 'Studio 1.4.0', level: 2 })).toBeTruthy();
+    expect(screen.queryByText(t('shell.changelog.loading'))).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('shows loading, release metadata, notes and source links', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json([release])));
     render(<ChangelogPage />);

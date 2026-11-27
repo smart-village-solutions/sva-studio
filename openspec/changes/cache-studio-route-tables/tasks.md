@@ -25,3 +25,5 @@
 - Nach dem Frontend-Review zu #2292 sind elf Chromium-Fälle grün. Zusätzlich zu den Rückwechsel-Fällen prüfen sie den Platz der Seitenleiste beim vollständigen Neuladen, die Rückkehr nach einer Medienlöschung und die Schnittstellenreaktion auf 403 und 503. Integrationstests prüfen ausstehende Abrufe bei Mutation und Organisationswechsel sowie konkurrierende Änderungen in Gruppen- und Umfrageformularen.
 
 - Vor dem Speichern einer Umfrage wird der aktuelle bearbeitbare Stand geprüft. Die Regressionstests prüfen hinzugefügte Antwortoptionen und umbenannte Fragen bei blockiertem Hintergrundabruf. Im Konfliktfall bleiben die lokalen Änderungen sichtbar.
+
+- Beim vollständigen Reload liefern Übersicht, Changelog, Inhalte, Medien, Schnittstellen und Konto mit verifizierter Sitzung die Grundnavigation im ersten HTML. Unterseiten liefern auch den Breadcrumb. Das Changelog rendert seinen Server-Cache im Dokument. Fachlisten laden beim vollständigen Reload weiterhin anhand der bestätigten Abfrage und der aktuellen Rechte. Die Abnahme der ersten Datenanzeige für alle aktiven Profile bleibt offen.

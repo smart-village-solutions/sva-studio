@@ -5,7 +5,7 @@ import {
   normalizeRoleDetailTab,
   normalizeOrganizationDetailTab,
 } from '@sva/routing/route-search';
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { useLoaderData, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 import NotFound from '../components/NotFound';
 
@@ -35,6 +35,7 @@ import { InvitationTemplatePage } from '../routes/admin/users/-invitation-templa
 import { UserListPage } from '../routes/admin/users/-user-list-page';
 import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
+import type { RootLoaderData } from '../routes/__root';
 import { HomePage } from '../routes/-home-page';
 import { PlaceholderPage } from '../routes/-placeholder-page';
 
@@ -174,9 +175,25 @@ const AccountPrivacyDetailRoutePage = () => (
   <AccountPrivacyDetailPage caseId={readStringParam(useParams({ strict: false }).caseId)} />
 );
 
+const HomeRoutePage = () => {
+  const initiallyAuthenticated = useLoaderData({
+    from: '__root__',
+    select: (data) => (data as RootLoaderData | undefined)?.initiallyAuthenticated,
+  });
+  return <HomePage initiallyAuthenticated={initiallyAuthenticated} />;
+};
+
+const ChangelogRoutePage = () => {
+  const initialReleases = useLoaderData({
+    from: '__root__',
+    select: (data) => (data as RootLoaderData | undefined)?.changelogReleases,
+  });
+  return renderLazyPage(LazyChangelogPage, { initialReleases });
+};
+
 export const coreAppRouteBindings = {
-  home: HomePage,
-  changelog: () => renderLazyPage(LazyChangelogPage),
+  home: HomeRoutePage,
+  changelog: ChangelogRoutePage,
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   accountPrivacyDetail: AccountPrivacyDetailRoutePage,

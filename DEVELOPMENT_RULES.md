@@ -640,6 +640,18 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 
 Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Optimierungen, sondern Entwurfsanforderungen bei der Erstellung neuer oder wesentlich geänderter produktiver Dateien. Die nachfolgenden Coverage- und Komplexitäts-Gates dienen der Bestätigung dieses Anspruchs, nicht als primäre Stelle seiner erstmaligen Entdeckung.
 
+### SOLID als Entwurfsleitlinie
+
+Bei neuer oder wesentlich geänderter Logik nutzen wir SOLID, um Zuständigkeiten, Verträge und Abhängigkeiten klar zu halten.
+
+- **Single Responsibility** · Jede Fachregel hat einen klaren Eigentümer. Fachlogik, Transport und Darstellung bleiben getrennt, wenn sie sich unabhängig ändern.
+- **Open/Closed** · Wenn eine weitere Variante konkret benötigt wird, nutzen wir zuerst den bestehenden Erweiterungspunkt.
+- **Liskov Substitution** · Austauschbare Implementierungen erfüllen denselben Verhaltensvertrag, auch bei leeren Ergebnissen und Fehlern.
+- **Interface Segregation** · Aufrufer erhalten nur die Funktionen und Daten, die sie für ihre Aufgabe benötigen.
+- **Dependency Inversion** · Fachlogik verwendet schmale, typisierte Verträge. Die Anwendung bindet konkrete Infrastruktur am Einstiegspunkt ein.
+
+Neue Abstraktionen brauchen einen konkreten Bedarf und folgen der [Anti-Ausdehnungsregel aus Abschnitt 1.7](#anti-ausdehnungsregel).
+
 ### ✅ REQUIRED
 
 - Neue oder wesentlich erweiterte produktive Dateien sind von Anfang an so zu entwerfen, dass sie mit gezielten Tests gut abdeckbar bleiben und keine unnötige strukturelle Komplexität aufbauen.

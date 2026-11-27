@@ -125,6 +125,7 @@ export const SearchResultTable = ({
         ariaLabel={pt('table.caption')}
         caption={pt('table.caption')}
         data={result?.items ?? []}
+        showEmptyTable={Boolean(query.q)}
         columns={resultColumns(pt)}
         getRowId={(item) => `${item.contentType}:${item.id}`}
         selectionMode="none"

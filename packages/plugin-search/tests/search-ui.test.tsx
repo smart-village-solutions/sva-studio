@@ -84,7 +84,8 @@ describe('search interface', () => {
     expect(screen.getByRole('button', { name: 'search.table.title' })).toBe(sorting);
     expect(screen.getByLabelText('search.type')).toBe(filter);
     expect(document.activeElement).toBe(sorting);
-    expect(screen.getByRole('table', { name: 'search.table.caption' })).toBeTruthy();
+    const table = screen.getByRole('table', { name: 'search.table.caption' });
+    expect(within(table).queryByRole('link', { name: 'Allowed city article' })).toBeNull();
     view.rerender(<SearchResultsPage contextKey="org2" />);
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
     expect(screen.queryByText('Allowed city article')).toBeNull();

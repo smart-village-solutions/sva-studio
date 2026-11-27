@@ -44,6 +44,7 @@ export function StudioDataTable<TData extends RowData>({
   toolbarEnd,
   footer,
   emptyState,
+  showEmptyTable = false,
   loadingState,
   isLoading = false,
   keepToolbarWhileLoading = false,
@@ -114,7 +115,7 @@ export function StudioDataTable<TData extends RowData>({
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasRows, isLoading]);
+  }, [hasRows, isLoading, showEmptyTable]);
 
   React.useEffect(() => {
     if (isLoading) return;
@@ -231,6 +232,7 @@ export function StudioDataTable<TData extends RowData>({
       table={table}
       containerRef={containerRef}
       hasRows={hasRows}
+      showTable={hasRows || showEmptyTable}
       isLoading={isLoading}
       loadingState={loadingState ?? labels.loading}
       emptyState={emptyState}

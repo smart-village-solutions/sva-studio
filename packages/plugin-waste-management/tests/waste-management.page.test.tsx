@@ -1448,7 +1448,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getAllByText('Restmüll').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Restmüll')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Biomüll')).toBeNull();
 
     const searchInput = screen.getByRole<HTMLInputElement>('searchbox', {
@@ -1506,9 +1506,12 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
-      target: { value: 'Papier' },
-    });
+    fireEvent.change(
+      await screen.findByLabelText('wasteManagement.masterData.fractions.fields.name'),
+      {
+        target: { value: 'Papier' },
+      }
+    );
     fireEvent.change(
       screen.getByLabelText('wasteManagement.masterData.fractions.fields.description'),
       {
@@ -1600,9 +1603,12 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
-      target: { value: 'Papier' },
-    });
+    fireEvent.change(
+      await screen.findByLabelText('wasteManagement.masterData.fractions.fields.name'),
+      {
+        target: { value: 'Papier' },
+      }
+    );
     fireEvent.change(
       screen.getByLabelText('wasteManagement.masterData.fractions.fields.pdfShortLabel'),
       {
@@ -1704,9 +1710,12 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
-      target: { value: 'Papier' },
-    });
+    fireEvent.change(
+      await screen.findByLabelText('wasteManagement.masterData.fractions.fields.name'),
+      {
+        target: { value: 'Papier' },
+      }
+    );
     fireEvent.change(
       screen.getByLabelText('wasteManagement.masterData.fractions.fields.pdfShortLabel'),
       {
@@ -2090,7 +2099,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Restmüll Nord')).toBeTruthy();
+    expect(await screen.findByText('Restmüll Nord')).toBeTruthy();
     expect(screen.queryByText('Wöchentliche Innenstadt-Tour')).toBeNull();
     expect(screen.queryByText('Biomüll Süd')).toBeNull();
   });
@@ -2404,7 +2413,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.name'), {
+    fireEvent.change(await screen.findByLabelText('wasteManagement.tours.fields.name'), {
       target: { value: 'Papier Mitte' },
     });
     fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.recurrence'), {
@@ -2476,7 +2485,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getAllByText('Feiertagsverschiebung').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Feiertagsverschiebung')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Vorverlegt')).toBeNull();
   });
 
@@ -2767,7 +2776,7 @@ describe('WasteManagementPage', () => {
     });
 
     fireEvent.change(
-      screen.getByLabelText('wasteManagement.scheduling.global.fields.originalDate'),
+      await screen.findByLabelText('wasteManagement.scheduling.global.fields.originalDate'),
       {
         target: { value: '2026-01-01' },
       }
@@ -2789,7 +2798,7 @@ describe('WasteManagementPage', () => {
     });
     fireEvent.change(tourSearch, { target: { value: 'Nord' } });
     expect(screen.queryByRole('checkbox', { name: 'Papier' })).toBeNull();
-    fireEvent.click(screen.getByText('Restmüll Nord'));
+    fireEvent.click(await screen.findByText('Restmüll Nord'));
     fireEvent.change(tourSearch, { target: { value: 'Süd' } });
     fireEvent.click(screen.getByText('Bioabfall Süd'));
     fireEvent.click(

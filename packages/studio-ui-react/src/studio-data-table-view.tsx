@@ -12,6 +12,7 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   table: LegacyTable<TData>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hasRows: boolean;
+  showTable: boolean;
   isLoading: boolean;
   loadingState: React.ReactNode;
   emptyState: React.ReactNode;
@@ -155,6 +156,7 @@ export function StudioDataTableView<TData extends RowData>({
   table,
   containerRef,
   hasRows,
+  showTable,
   isLoading,
   loadingState,
   emptyState,
@@ -168,7 +170,7 @@ export function StudioDataTableView<TData extends RowData>({
   mobileSortingControls,
   footerContent,
 }: StudioDataTableViewProps<TData>) {
-  const showRows = hasRows && !isLoading;
+  const renderTable = showTable && !isLoading;
   let statusContent: React.ReactNode = null;
   if (isLoading) {
     statusContent = loadingState;
@@ -180,14 +182,14 @@ export function StudioDataTableView<TData extends RowData>({
   // mounted so search fields and filters keep their value and focus; only the result area changes.
   return (
     <div
-      ref={showRows ? containerRef : undefined}
+      ref={renderTable ? containerRef : undefined}
       className={cn(
         'rounded-xl border border-border bg-card shadow-shell',
-        showRows && 'overflow-hidden'
+        renderTable && 'overflow-hidden'
       )}
-      aria-busy={showRows ? 'false' : undefined}
-      data-selected-rows={showRows ? selectedRowCount : undefined}
-      data-layout={showRows ? (isCompact ? 'compact' : 'wide') : undefined}
+      aria-busy={renderTable ? 'false' : undefined}
+      data-selected-rows={renderTable ? selectedRowCount : undefined}
+      data-layout={renderTable ? (isCompact ? 'compact' : 'wide') : undefined}
     >
       {toolbarContent}
       {/* The live region stays mounted so that screen readers reliably announce loading and
@@ -205,7 +207,7 @@ export function StudioDataTableView<TData extends RowData>({
       {/* Result area, marked busy while loading. The live region above stays outside of it so
           the loading announcement is not suppressed. */}
       <div aria-busy={isLoading || undefined}>
-        {showRows ? (
+        {renderTable ? (
           <>
             <StudioDataTableWide
               table={table}

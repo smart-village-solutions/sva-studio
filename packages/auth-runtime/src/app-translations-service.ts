@@ -13,6 +13,11 @@ import { withIamAppDb } from './db.js';
 import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
 import { getDeepLSetupStatus, translateDeepLValues } from './app-translations-deepl.js';
+import {
+  readSsfTranslationConfig,
+  selectSsfTranslationTarget,
+  translateSsfValues,
+} from './app-translations-ssf.js';
 import { translateStaticHtml } from './app-translations-static-html.js';
 import { consumeRateLimit } from './shared/rate-limit.js';
 import {
@@ -135,6 +140,21 @@ const readAccess = async (
     return result.rows.length === 1 ? result.rows[0] : null;
   });
   if (!scope) return null;
+  const ssf = readSsfTranslationConfig(instanceId);
+  if (ssf) {
+    const targetCode = selectSsfTranslationTarget(ssf, targetLocale);
+    if (!targetCode) return null;
+    return {
+      binding: binding.data,
+      connection,
+      scope,
+      providerVersion: ['ssf', ssf.origin, ...ssf.locales],
+      pilotKey: ssf.key,
+      targetCode,
+      translate: (values: readonly CatalogValue[], signal: AbortSignal) =>
+        translateSsfValues(ssf, targetCode, values, signal),
+    };
+  }
   const provider = await loadDefaultExternalInterfaceRecord(instanceId, 'deepl');
   const settings = provider ? readDeepLSettings(provider.publicConfig) : undefined;
   if (
@@ -149,7 +169,16 @@ const readAccess = async (
     settings.englishVariant,
     settings.availableLanguages
   );
-  return { binding: binding.data, connection, scope, provider, settings, targetCode };
+  return {
+    binding: binding.data,
+    connection,
+    scope,
+    providerVersion: ['deepl', provider.id, provider.updatedAt, settings.credentialRevision],
+    pilotKey: undefined,
+    targetCode,
+    translate: (values: readonly CatalogValue[], signal: AbortSignal) =>
+      translateDeepLValues(provider, targetCode, values, signal),
+  };
 };
 
 type TranslationServiceInput = z.infer<typeof requestSchema>;
@@ -188,9 +217,8 @@ const accessUnchanged = (
   current.scope.generation === access.scope.generation &&
   current.connection.id === access.connection.id &&
   JSON.stringify(current.connection.updatedAt) === JSON.stringify(access.connection.updatedAt) &&
-  current.provider.id === access.provider.id &&
-  JSON.stringify(current.provider.updatedAt) === JSON.stringify(access.provider.updatedAt) &&
-  current.settings.credentialRevision === access.settings.credentialRevision &&
+  JSON.stringify(current.providerVersion) === JSON.stringify(access.providerVersion) &&
+  current.pilotKey === access.pilotKey &&
   current.targetCode === access.targetCode;
 const translationFailureIsTerminal = (error: unknown): boolean =>
   (error instanceof Error &&
@@ -270,15 +298,8 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
     const translated =
       input.profileId === 'static-html-v1'
-        ? await translateStaticHtml(
-            access.provider,
-            access.targetCode,
-            input.entries[0].text,
-            signal
-          )
-        : await translateDeepLValues(
-            access.provider,
-            access.targetCode,
+        ? await translateStaticHtml(access.translate, input.entries[0].text, signal)
+        : await access.translate(
             input.entries.map((entry) => entry.text),
             signal
           );

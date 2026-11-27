@@ -9,6 +9,8 @@ import {
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import { z } from 'zod';
 import { revealField } from './iam-account-management/encryption.js';
+import { readResponse, translateProtectedValues } from './app-translations-provider-values.js';
+export { readResponse } from './app-translations-provider-values.js';
 
 export const deepLApiOrigin = (plan: 'free' | 'pro'): string =>
   plan === 'free' ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
@@ -76,34 +78,6 @@ export const getDeepLSetupStatus = (record: SetupRecord | null): DeepLSetupStatu
     return result('languages_required');
   return result('ready');
 };
-export const readResponse = async (response: Response, limit = 262144): Promise<unknown> => {
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('deepl_invalid_response');
-  let size = 0;
-  const chunks: Uint8Array[] = [];
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        await reader.cancel();
-        throw new Error('deepl_invalid_response');
-      }
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.length;
-    }
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown;
-  } catch {
-    throw new Error('deepl_invalid_response');
-  }
-};
-
 const translationBody = (targetCode: string, text: string[]) =>
   JSON.stringify({ text, source_lang: 'DE', target_lang: targetCode });
 export const assertDeepLRequestSize = (
@@ -129,18 +103,6 @@ const fail = (code: string, retryable = false): never => {
   });
 };
 
-const restoreTranslation = (translated: string, tokens: string[], prefix: string): string => {
-  let text = translated;
-  if (/\{\{|\}\}|<[^>]*>/.test(text)) fail('deepl_invalid_response');
-  for (const [tokenIndex, token] of tokens.entries()) {
-    const sentinel = `${prefix}${tokenIndex + 1}Z`;
-    if (text.split(sentinel).length !== 2) fail('deepl_invalid_response');
-    text = text.replace(sentinel, () => token);
-  }
-  if (text.includes(prefix) || /\{\{|\}\}/.test(text.replace(/\{\{[A-Za-z][A-Za-z0-9_]*\}\}/g, '')))
-    fail('deepl_invalid_response');
-  return text;
-};
 const translateBatch = async (
   settings: NonNullable<ReturnType<typeof readDeepLSettings>>,
   key: string,
@@ -209,43 +171,13 @@ export const translateDeepLValues = async (
     throw Object.assign(new Error('catalog_setup_required'), {
       cause: { retry: { kind: 'terminal' } },
     });
-  const prefix = `SVA${globalThis.crypto.randomUUID().replaceAll('-', '')}X`;
-  const units = values.flatMap((value) => (typeof value === 'string' ? [value] : [...value]));
-  if (!units.length || units.some((text) => text.includes(prefix))) fail('invalid_catalog');
   assertDeepLRequestSize(targetCode, values);
-  // Protect every occurrence, including repeated placeholders and literal markup.
-  const protectedUnits = units
-    .map((text) => {
-      const tokens: string[] = [];
-      const protectedText = text.replace(/\{\{[A-Za-z][A-Za-z0-9_]*\}\}|<[^>]*>/g, (token) => {
-        tokens.push(token);
-        return `${prefix}${tokens.length}Z`;
-      });
-      return { text: protectedText, tokens };
-    })
-    .map((unit, index) => ({ ...unit, index }))
-    .filter((unit) => unit.text.length > 0);
-  const bodyFor = (text: string[]) => translationBody(targetCode, text);
-  const translated: string[] = Array(units.length).fill('');
-  let cursor = 0;
-  while (cursor < protectedUnits.length) {
-    const batch: string[] = [];
-    while (cursor + batch.length < protectedUnits.length && batch.length < 50) {
-      const next = protectedUnits[cursor + batch.length]!.text;
-      if (new TextEncoder().encode(bodyFor([...batch, next])).length > 102400) break;
-      batch.push(next);
-    }
-    const result = await translateBatch(settings, key, targetCode, batch, signal, fetchImpl);
-    for (const [index, entry] of result.entries()) {
-      const unit = protectedUnits[cursor + index]!;
-      translated[unit.index] = restoreTranslation(entry.text, unit.tokens, prefix);
-    }
-    cursor += batch.length;
-  }
-  let offset = 0;
-  return values.map((value) =>
-    typeof value === 'string'
-      ? translated[offset++]!
-      : translated.slice(offset, (offset += value.length))
-  );
+  return translateProtectedValues(values, {
+    maxItems: 50,
+    fits: (texts) => new TextEncoder().encode(translationBody(targetCode, texts)).length <= 102400,
+    translate: async (texts) =>
+      (await translateBatch(settings, key, targetCode, texts, signal, fetchImpl)).map(
+        ({ text }) => text
+      ),
+  });
 };

@@ -14,6 +14,7 @@ import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { selectAppTranslationSetupCredentials } from './app-translations-setup-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
+import { readSsfTranslationConfig, verifySsfTranslationLocales } from './app-translations-ssf.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
 import {
   appTranslationLanguageNames,
@@ -186,9 +187,16 @@ export const synchronizeAppTranslationNews = async (
   ).toString();
   const url = await resolveIdentityUrl(String(connection.publicConfig.graphqlBaseUrl));
   if (!url) throw new Error('mainserver_identity_unavailable');
-  const provider = await readDeepLSetupStatus(instanceId);
-  const locales =
-    lifecycle.operation !== 'suspend' && provider.ready ? [...provider.selectedLocales].sort() : [];
+  let locales: string[] = [];
+  if (lifecycle.operation !== 'suspend') {
+    const ssf = readSsfTranslationConfig(instanceId);
+    if (ssf) {
+      locales = [...(await verifySsfTranslationLocales(ssf))].sort();
+    } else {
+      const provider = await readDeepLSetupStatus(instanceId);
+      if (provider.ready) locales = [...provider.selectedLocales].sort();
+    }
+  }
   const newsEnabled = locales.length > 0;
   const languageNames = appTranslationLanguageNames(locales);
   const generation = lifecycle.generation;

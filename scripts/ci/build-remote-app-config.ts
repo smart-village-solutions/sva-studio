@@ -55,6 +55,7 @@ export const buildRemoteAppConfig = (input: {
   overrides: string;
   busApiAdminToken?: string;
   meiliSearchKey?: string;
+  ssfTranslationApiKey?: string;
 }) => {
   const profile = parseRemoteConfigLayer(input.environment, 'Remote-Profil', input.profile);
   const overrides = new Map(
@@ -74,6 +75,16 @@ export const buildRemoteAppConfig = (input: {
         `${key} ohne Zeilenumbrueche oder aeussere Leerzeichen setzen.`
       );
     overrides.set(key, value);
+  }
+  if (input.ssfTranslationApiKey) {
+    if (input.environment !== 'staging' || !/^[a-f0-9]{64}$/u.test(input.ssfTranslationApiKey))
+      fail(
+        input.environment,
+        'PROMOTE_CONFIG_INVALID',
+        'The SSF translation credential requires staging and a 64-digit hexadecimal key.',
+        'Set SVA_SSF_TRANSLATION_API_KEY in the protected staging environment.'
+      );
+    overrides.set('SVA_SSF_TRANSLATION_API_KEY', input.ssfTranslationApiKey);
   }
   if (
     input.environment !== 'staging' &&
@@ -107,7 +118,12 @@ export const buildRemoteAppConfig = (input: {
   const requiredKeys = merged.has('MEILI_SOURCES')
     ? [...requiredRemoteConfigKeys, 'MEILI_URL', 'MEILI_SEARCH_KEY']
     : requiredRemoteConfigKeys;
-  const missing = requiredKeys.filter((key) => !merged.has(key));
+  const missing = [
+    ...requiredKeys,
+    ...(profile.values.has('SVA_SSF_TRANSLATION_INSTANCE_ID')
+      ? ['SVA_SSF_TRANSLATION_API_KEY']
+      : []),
+  ].filter((key) => !merged.has(key));
   if (missing.length > 0)
     fail(
       input.environment,
@@ -213,6 +229,7 @@ export const runBuildRemoteAppConfig = (
       overrides: [protectedOverrides, ...stagingBeaconOverrides].join('\n'),
       busApiAdminToken: env.BUS_API_ADMIN_TOKEN,
       meiliSearchKey: env.MEILI_SEARCH_KEY,
+      ssfTranslationApiKey: env.SVA_SSF_TRANSLATION_API_KEY,
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });

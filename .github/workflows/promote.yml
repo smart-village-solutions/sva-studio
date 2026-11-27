@@ -387,6 +387,7 @@ jobs:
           MEILI_SEARCH_KEY: ${{ secrets.MEILI_SEARCH_KEY }}
           FALLOW_BROWSER_INGEST_KEY: ${{ secrets.FALLOW_BROWSER_INGEST_KEY }}
           BEACON_API_KEY: ${{ secrets.BEACON_API_KEY }}
+          SVA_SSF_TRANSLATION_API_KEY: ${{ secrets.SVA_SSF_TRANSLATION_API_KEY }}
         run: |
           set -euo pipefail
           umask 077

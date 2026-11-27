@@ -49,12 +49,59 @@ const assertRemoteSource = (environment: RemoteEnvironment, sourcePath: string) 
   }
 };
 
+const ssfTranslationKeys = [
+  'SVA_SSF_TRANSLATION_INSTANCE_ID',
+  'SVA_SSF_TRANSLATION_ORIGIN',
+  'SVA_SSF_TRANSLATION_LOCALES',
+  'SVA_SSF_TRANSLATION_API_KEY',
+] as const;
+
+const validateSsfTranslation = (
+  environment: RemoteEnvironment,
+  values: ReadonlyMap<string, string>
+): void => {
+  if (!ssfTranslationKeys.some((key) => values.has(key))) return;
+  const nextAction =
+    'Configure the SSF pilot profile and its protected staging credential together.';
+  if (environment !== 'staging')
+    fail(
+      environment,
+      'PROMOTE_CONFIG_SOURCE_FORBIDDEN',
+      'The SSF pilot is staging-only.',
+      nextAction
+    );
+  if (ssfTranslationKeys.some((key) => !values.get(key)))
+    fail(
+      environment,
+      'PROMOTE_CONFIG_REQUIRED_KEY_MISSING',
+      'The SSF pilot configuration is incomplete.',
+      nextAction
+    );
+  const origin = URL.parse(values.get(ssfTranslationKeys[1]) ?? '');
+  const locales = (values.get(ssfTranslationKeys[2]) ?? '').split(',');
+  if (
+    !origin ||
+    origin.protocol !== 'https:' ||
+    origin.href !== `${origin.origin}/` ||
+    !/^[a-f0-9]{64}$/u.test(values.get(ssfTranslationKeys[3]) ?? '') ||
+    locales.some((locale) => !['en', 'pl', 'ja'].includes(locale)) ||
+    new Set(locales).size !== locales.length
+  )
+    fail(
+      environment,
+      'PROMOTE_CONFIG_INVALID',
+      'The SSF pilot configuration is invalid.',
+      nextAction
+    );
+};
+
 export const buildRemoteAppConfig = (input: {
   environment: RemoteEnvironment;
   profile: string;
   overrides: string;
   busApiAdminToken?: string;
   meiliSearchKey?: string;
+  ssfTranslationApiKey?: string;
 }) => {
   const profile = parseRemoteConfigLayer(input.environment, 'Remote-Profil', input.profile);
   const overrides = new Map(
@@ -64,6 +111,7 @@ export const buildRemoteAppConfig = (input: {
   for (const [key, value] of [
     ['BUS_API_ADMIN_TOKEN', input.busApiAdminToken],
     ['MEILI_SEARCH_KEY', input.meiliSearchKey],
+    ['SVA_SSF_TRANSLATION_API_KEY', input.ssfTranslationApiKey],
   ] as const) {
     if (!value) continue;
     if (value !== value.trim() || /[\r\n]/u.test(value))
@@ -104,6 +152,7 @@ export const buildRemoteAppConfig = (input: {
       );
   }
   const merged = new Map([...profile.values, ...overrides]);
+  validateSsfTranslation(input.environment, merged);
   const requiredKeys = merged.has('MEILI_SOURCES')
     ? [...requiredRemoteConfigKeys, 'MEILI_URL', 'MEILI_SEARCH_KEY']
     : requiredRemoteConfigKeys;
@@ -213,6 +262,7 @@ export const runBuildRemoteAppConfig = (
       overrides: [protectedOverrides, ...stagingBeaconOverrides].join('\n'),
       busApiAdminToken: env.BUS_API_ADMIN_TOKEN,
       meiliSearchKey: env.MEILI_SEARCH_KEY,
+      ssfTranslationApiKey: env.SVA_SSF_TRANSLATION_API_KEY,
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });

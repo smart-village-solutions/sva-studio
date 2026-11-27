@@ -27,6 +27,7 @@ vi.mock('./app-translations-deepl.js', () => ({
   translateDeepLValues: state.translate,
 }));
 import { appTranslationServiceHandler } from './app-translations-service.js';
+import { readSsfTranslationConfig, verifySsfTranslationLocales } from './app-translations-ssf.js';
 const binding = {
   issuer: 'https://identity.example/realms/test',
   clientId: 'main-server',
@@ -87,8 +88,142 @@ beforeEach(() => {
   state.rate.mockReturnValue(null);
   state.translate.mockResolvedValue(['News', '<p>Hello</p>']);
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+const configureSsfPilot = (instanceId = 'de-town') => {
+  vi.stubEnv('SVA_SSF_TRANSLATION_INSTANCE_ID', instanceId);
+  vi.stubEnv('SVA_SSF_TRANSLATION_ORIGIN', 'https://ssf.example');
+  vi.stubEnv('SVA_SSF_TRANSLATION_API_KEY', 'a'.repeat(64));
+  vi.stubEnv('SVA_SSF_TRANSLATION_LOCALES', 'en,pl,ja');
+};
+
+describe('SSF pilot configuration and discovery', () => {
+  it.each([
+    ['SVA_SSF_TRANSLATION_API_KEY', undefined],
+    ['SVA_SSF_TRANSLATION_API_KEY', 'short'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'invalid'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'http://ssf.example'],
+    ['SVA_SSF_TRANSLATION_ORIGIN', 'https://ssf.example/untrusted-path'],
+    ['SVA_SSF_TRANSLATION_LOCALES', 'pl,pl'],
+    ['SVA_SSF_TRANSLATION_LOCALES', 'de'],
+  ])('rejects invalid configured value for %s before dispatch', (name, value) => {
+    configureSsfPilot();
+    vi.stubEnv(name, value);
+    expect(() => readSsfTranslationConfig('de-town')).toThrow(
+      'ssf_translation_configuration_invalid'
+    );
+  });
+
+  it.each([
+    { languages: ['de', 'en', 'pl', 'ja'], available: true },
+    { languages: ['en', 'pl', 'ja'], available: false },
+    { languages: ['de', 'en', 'pl'], available: false },
+  ])('checks German and every configured pilot target', async ({ languages, available }) => {
+    configureSsfPilot();
+    const config = readSsfTranslationConfig('de-town');
+    if (!config) throw new Error('expected test configuration');
+    const fetchSsf = vi.fn().mockResolvedValue(Response.json({ languages }));
+    vi.stubGlobal('fetch', fetchSsf);
+    const discovery = verifySsfTranslationLocales(config);
+    if (available) {
+      await expect(discovery).resolves.toEqual(['en', 'pl', 'ja']);
+      expect(fetchSsf).toHaveBeenCalledWith(
+        'https://ssf.example/api/v1/languages',
+        expect.objectContaining({
+          method: 'GET',
+          redirect: 'error',
+          headers: expect.objectContaining({ 'X-API-Key': config.key }),
+        })
+      );
+    } else {
+      await expect(discovery).rejects.toThrow('ssf_translation_languages_unavailable');
+    }
+  });
+});
+
 describe('technical app translation', () => {
+  it('dispatches the configured pilot to SSF v1 and restores its HTML markers', async () => {
+    configureSsfPilot();
+    const fetchSsf = vi.fn(async (_url: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as { text: string[] };
+      return Response.json({
+        source_lang: 'de',
+        target_lang: 'en',
+        translations: body.text.map((text) => ({
+          text: text.replace('Nachricht', 'News').replace('Hallo', 'Hello'),
+        })),
+      });
+    });
+    vi.stubGlobal('fetch', fetchSsf);
+    const response = await appTranslationServiceHandler(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).entries).toEqual([
+      { key: 'title', text: 'News', format: 'plain' },
+      { key: 'contentBlocks.0.body', text: '<p>Hello</p>', format: 'html' },
+    ]);
+    expect(fetchSsf).toHaveBeenCalledOnce();
+    const [url, options] = fetchSsf.mock.calls[0]!;
+    expect(url).toBe('https://ssf.example/api/v1/translate');
+    expect(new Headers(options.headers).get('x-api-key')).toBe('a'.repeat(64));
+    expect(String(options.body)).toMatch(/SVA[0-9a-f]{32}X1ZHalloSVA[0-9a-f]{32}X2Z/);
+    expect(state.translate).not.toHaveBeenCalled();
+  });
+
+  it('uses the existing provider for an instance outside the SSF pilot', async () => {
+    configureSsfPilot('de-other-town');
+    const fetchSsf = vi.fn();
+    vi.stubGlobal('fetch', fetchSsf);
+    expect((await appTranslationServiceHandler(request())).status).toBe(200);
+    expect(state.translate).toHaveBeenCalledOnce();
+    expect(fetchSsf).not.toHaveBeenCalled();
+  });
+
+  it('splits static content across ordered SSF batches', async () => {
+    configureSsfPilot();
+    const fetchSsf = vi.fn(async (_url: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as { text: string[] };
+      return Response.json({
+        source_lang: 'de',
+        target_lang: 'en',
+        translations: body.text.map((text) => ({ text: text.replace('Absatz', 'Paragraph') })),
+      });
+    });
+    vi.stubGlobal('fetch', fetchSsf);
+    const paragraphs = Array.from({ length: 11 }, (_, index) => `<p>Absatz ${index}</p>`).join('');
+    const response = await appTranslationServiceHandler(
+      request({
+        ...payload(),
+        profileId: 'static-html-v1',
+        entries: [{ key: 'content', text: paragraphs, format: 'html' }],
+      })
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).entries[0].text).toBe(
+      paragraphs.replaceAll('Absatz', 'Paragraph')
+    );
+    expect(
+      fetchSsf.mock.calls.map(([, options]) => JSON.parse(String(options.body)).text.length)
+    ).toEqual([10, 1]);
+  });
+
+  it.each([
+    { upstream: 413, status: 502, retryable: false },
+    { upstream: 502, status: 503, retryable: true },
+    { upstream: 503, status: 503, retryable: true },
+  ])(
+    'preserves retry semantics for SSF status $upstream',
+    async ({ upstream, status, retryable }) => {
+      configureSsfPilot();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({}, { status: upstream })));
+      const response = await appTranslationServiceHandler(request());
+      expect(response.status).toBe(status);
+      expect((await response.json()).retryable).toBe(retryable);
+    }
+  );
+
   it.each(['', ' \n\t'])(
     'rejects empty optional entries before provider work (%j)',
     async (text) => {

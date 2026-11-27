@@ -90,6 +90,8 @@ const configKeys = [
   'SVA_PUBLIC_HOST',
   'SVA_QUANTUM_NO_PRE_PULL',
   'SVA_REGISTRY',
+  'SVA_SSF_TRANSLATION_INSTANCE_ID',
+  'SVA_SSF_TRANSLATION_LOCALES',
   'SVA_TENANT_REALM_OVERRIDES',
 ] as const;
 
@@ -119,6 +121,7 @@ const secretValueKeys = [
   'S3_ACCESS_KEY_ID',
   'S3_SECRET_ACCESS_KEY',
   'SVA_MAINSERVER_CLIENT_SECRET',
+  'SVA_SSF_TRANSLATION_API_KEY',
   'SSF_PLUGIN_RUNTIME_DB_PASSWORD',
   'SSF_PLUGIN_ROOT_DB_PASSWORD',
   'SVA_STUDIO_SSF_DATABASE_URL',
@@ -129,6 +132,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   ...Object.fromEntries(configKeys.map((key) => [key, { kind: 'config' as const }])),
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
   BUS_API_BASE_URL: { kind: 'config', type: 'url' },
+  SVA_SSF_TRANSLATION_ORIGIN: { kind: 'config', type: 'url' },
   SVA_MANAGED_MAPSTICK_URL: { kind: 'config', type: 'url' },
   SVA_IVCAMPUS_PILOT_ORIGIN: { kind: 'config', type: 'url' },
   MEILI_URL: { kind: 'config', type: 'url' },

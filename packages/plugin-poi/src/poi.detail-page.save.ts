@@ -112,12 +112,16 @@ const savePoiWithMedia = async (
   { requiresReferenceSync, instanceId, mediaUsages, setMediaSavePhaseKey }: SaveInput,
   saveContent: ReturnType<typeof createPoiSaveContent>
 ) => {
-  return requiresReferenceSync
+  const hasLinkedAudio = mediaUsages.some(
+    (usage) => usage.assetId && usage.additionalData?.contentType === 'audio'
+  );
+  return requiresReferenceSync || hasLinkedAudio
     ? await saveContentWithHostMediaReferences({
         fetch: globalThis.fetch.bind(globalThis),
         saveContent,
         getTargetId: (saved) => saved.id,
         targetType: 'poi.point-of-interest',
+        ...(hasLinkedAudio ? { requirePreparedReferences: true } : {}),
         instanceId,
         references: mediaUsages.flatMap((usage) =>
           usage.assetId

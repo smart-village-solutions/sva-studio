@@ -44,6 +44,7 @@ export { defineMediaPickerDefinition } from './media-picker.js';
 export type { ContentMediaUploadPhase, HostMediaFieldOption } from './content-ui-utils.js';
 // prettier-ignore
 export { compactOptionalString, contentMediaUploadPhaseMessageKey, findHostMediaReferenceAssetId, getHostMediaAssetPersistentUrl, isSupportedContentMediaUploadFile, readHostMediaAssetCopyright, readHostMediaAssetFileName, readHostMediaAssetTitle, toHostMediaFieldOptions } from './content-ui-utils.js';
+export { isMp3UploadFile } from './content-ui-utils.js';
 export {
   formatDateTimeInEditorTimeZone,
   formatTechnicalDateTimeInEditorTimeZone,

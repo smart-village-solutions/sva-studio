@@ -71,6 +71,7 @@ export function NewsContentMediaSection({
               >
                 <option value="">{pt('values.mediaContentTypes.unspecified')}</option>
                 <option value="image">{pt('values.mediaContentTypes.image')}</option>
+                <option value="audio">{pt('values.mediaContentTypes.audio')}</option>
               </Select>
             </StudioField>
           )}

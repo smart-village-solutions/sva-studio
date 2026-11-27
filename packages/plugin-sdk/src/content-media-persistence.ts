@@ -1,5 +1,6 @@
 import { readMainserverMutationFailureOutcome } from './mainserver-error-metadata.js';
 import type { FetchLike } from './http-client.js';
+import { isMp3UploadFile } from './content-ui-utils.js';
 import {
   getHostMediaDelivery,
   replaceHostMediaReferences,
@@ -101,6 +102,7 @@ type ContentMediaSaveInput<TSaved> = Readonly<{
   readonly targetType: string;
   readonly references: readonly HostMediaReferenceSelection[];
   readonly drafts?: readonly ContentMediaLocalDraft[];
+  readonly requirePreparedReferences?: boolean;
   readonly instanceId?: string;
   readonly onPhaseChange?: (phase: ContentMediaSavePhase) => void;
 }>;
@@ -129,18 +131,19 @@ const prepareLocalMediaDrafts = async <TSaved>(
   input: ContentMediaSaveInput<TSaved>,
   operationId: string
 ): Promise<readonly ContentMediaDraftResolution[]> => {
-  input.onPhaseChange?.('uploading');
+  if (input.drafts?.length) input.onPhaseChange?.('uploading');
   const resolutions: ContentMediaDraftResolution[] = [];
   for (const draft of [...(input.drafts ?? [])].sort(
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
   )) {
+    const mediaType = isMp3UploadFile(draft.file) ? 'audio' : 'image';
     const uploaded = await uploadHostMediaFile({
       fetch: input.fetch,
       file: draft.file,
       metadata: draft.metadata,
       editing: draft.editing,
       visibility: 'public',
-      mediaType: 'image',
+      mediaType,
       instanceId: input.instanceId,
       uploadContext: 'content-save',
       contentSaveOperationId: operationId,
@@ -151,6 +154,8 @@ const prepareLocalMediaDrafts = async <TSaved>(
       assetId: uploaded.assetId,
       instanceId: input.instanceId,
     });
+    if (mediaType === 'audio' && delivery.isPublicUrl !== true)
+      throw new Error('audio_public_delivery_unavailable');
     resolutions.push({
       draftId: draft.draftId,
       assetId: uploaded.assetId,
@@ -218,7 +223,7 @@ const handleLocalMediaSaveFailure = async <TSaved>(
   );
 };
 
-const saveWithLocalDrafts = async <TSaved>(
+const saveWithPreparedReferences = async <TSaved>(
   input: ContentMediaSaveInput<TSaved>
 ): Promise<ContentMediaReferenceSyncResult<TSaved>> => {
   const operation = await createHostMediaContentSaveOperation({
@@ -275,7 +280,9 @@ const saveWithLocalDrafts = async <TSaved>(
 export const saveContentWithHostMediaReferences = async <TSaved>(
   input: ContentMediaSaveInput<TSaved>
 ): Promise<ContentMediaReferenceSyncResult<TSaved>> =>
-  input.drafts?.length ? saveWithLocalDrafts(input) : saveWithoutLocalDrafts(input);
+  input.drafts?.length || input.requirePreparedReferences
+    ? saveWithPreparedReferences(input)
+    : saveWithoutLocalDrafts(input);
 
 export type ContentMediaReferenceAlignment = Readonly<{
   assetId?: string;

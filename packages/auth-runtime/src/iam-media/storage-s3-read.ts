@@ -46,6 +46,8 @@ export const readS3MediaObject = async (
 ) => {
   if (isMediaQuarantineKey(input.storageKey)) {
     const object = await statS3MediaObject(client, bucket, input.storageKey);
+    if (input.maxBytes !== undefined && object.byteSize > input.maxBytes)
+      throw new MediaStorageSizeLimitError();
     if (object.byteSize > mediaScanLimits.maxBytes) throw new MediaStorageUnavailableError();
   }
   const response = await client.send(

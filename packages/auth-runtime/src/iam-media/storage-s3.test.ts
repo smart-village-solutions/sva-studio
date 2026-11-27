@@ -70,6 +70,17 @@ describe('media storage s3 adapter', () => {
     ).rejects.toBeInstanceOf(MediaStorageUnavailableError);
     expect(send).toHaveBeenCalledOnce();
   });
+  it('rejects a quarantined object that exceeds the authorized upload size before collection', async () => {
+    const send = vi.fn(async () => ({ ContentLength: 4 }));
+    await expect(
+      readS3MediaObject({ send } as unknown as S3Client, 'intake', {
+        instanceId: 'tenant-a',
+        storageKey: '.quarantine/tenant-a/asset/session',
+        maxBytes: 3,
+      })
+    ).rejects.toThrow('media_storage_size_limit');
+    expect(send).toHaveBeenCalledOnce();
+  });
   it('maps missing object metadata separately from storage connection failures', async () => {
     const missing = Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } });
     const failed = new Error('connection failed');

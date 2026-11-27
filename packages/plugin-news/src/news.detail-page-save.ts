@@ -1,7 +1,6 @@
 import { ContentMediaSaveError } from '@sva/plugin-sdk/content-media';
 import * as React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
   readMainserverMutationFailureOutcome,
@@ -29,7 +28,7 @@ import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
 import { didDeclineGlobalPush, newsSaveErrorStatus } from './news.detail-page.helpers.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
-import { addNewsCreatedSaveFeedback, newsSaveSuccessStatus } from './news.save-feedback.js';
+import { newsSaveSuccessStatus, useCreatedNewsNavigation } from './news.save-feedback.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 const persistNewsDetailContent = async ({
@@ -85,12 +84,16 @@ const persistNewsDetailContent = async ({
       { createNews, updateNews }
     );
   };
-  const result = requiresReferenceSync
+  const hasLinkedAudio = mediaUsages.some(
+    (usage) => usage.assetId && usage.additionalData?.contentType === 'audio'
+  );
+  const result = requiresReferenceSync || hasLinkedAudio
     ? await saveContentWithHostMediaReferences({
         fetch: globalThis.fetch.bind(globalThis),
         saveContent,
         getTargetId: (saved) => saved.id,
         targetType: NEWS_CONTENT_TYPE,
+        ...(hasLinkedAudio ? { requirePreparedReferences: true } : {}),
         references: mediaUsages.flatMap((usage) => {
           const reference = contentMediaUsageToReference(usage);
           return reference ? [reference] : [];
@@ -122,21 +125,6 @@ type NewsDetailSaveOptions = NewsSaveRecoveryOptions &
     retryCreatedContentId: string | null;
     pendingSave: PendingNewsSave | null;
   }>;
-
-function useCreatedNewsNavigation() {
-  const navigate = useNavigate();
-  const navigateToCreatedDetail = React.useCallback(
-    (createdContentId: string) =>
-      navigate({
-        to: '/admin/news/$id',
-        params: { id: createdContentId },
-        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
-      }),
-    [navigate]
-  );
-
-  return navigateToCreatedDetail;
-}
 
 const completeNewsDetailSave = async (
   options: NewsDetailSaveOptions,

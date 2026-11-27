@@ -83,7 +83,7 @@ export const readAuthorizedMediaEditingAsset = async (
     );
     if (protectedDenied) return protectedDenied;
   }
-  if (!isMediaAssetReady(asset)) {
+  if (!isMediaAssetReady(asset) || asset.mediaType !== 'image') {
     return createApiError(
       409,
       'conflict',

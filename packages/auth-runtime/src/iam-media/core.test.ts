@@ -136,6 +136,9 @@ describe('media http handlers', () => {
     'deletes only owned editing files before finalizing content abandonment (shared source: %s)',
     async (sharedSource) => {
       const service = createService();
+      service.getContentSaveOperation.mockResolvedValue({
+        id: 'operation-1', targetType: 'tours.tour', targetId: '42', status: 'uploading',
+      });
       const storageKey = 'tenant-a/originals/asset-1.jpg';
       const editingSourceKey = '.protected/tenant-a/asset-1/source.jpg';
       const intakeKeys = [
@@ -156,10 +159,11 @@ describe('media http handlers', () => {
       const deleteObject = vi.fn(
         async (_input: { storageKey: string; instanceId: string }) => undefined
       );
+      const authorizeAction = vi.fn(allowAuthorization);
       const handlers = createMediaHttpHandlers({
         withMediaService: async (_id, work) => work(service as never),
         storagePort: { deleteObject } as never,
-        authorizeAction: allowAuthorization,
+        authorizeAction,
         createId: () => 'id',
         now: () => new Date().toISOString(),
         emitAuditEvent,
@@ -186,6 +190,10 @@ describe('media http handlers', () => {
       expect((await handlers.abandonContentSaveOperation(request(), createContext())).status).toBe(
         200
       );
+      expect(authorizeAction).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'media.reference.manage', resource: { targetType: 'tours.tour', targetId: '42' },
+      }));
+      expect(authorizeAction).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'media.create' }));
       const expectedKeys = [
         storageKey,
         'tenant-a/variants/asset-1/thumbnail.webp',
@@ -1379,6 +1387,53 @@ describe('media http handlers', () => {
     });
     expect(service.upsertAsset).toHaveBeenCalled();
     expect(service.upsertUploadSession).toHaveBeenCalled();
+  });
+
+  it('requires quarantine and retains the size limit for audio when image scanning is disabled', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    try {
+      const service = createService();
+      const prepareUpload = vi.fn(async () => ({
+        uploadUrl: 'https://uploads.example.test/put',
+        method: 'PUT' as const,
+        storageKey: '.quarantine/tenant-a/asset-1/upload-1',
+        expiresAt: '2026-04-29T20:00:00.000Z',
+      }));
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instanceId, work) => work(service as never),
+        storagePort: { prepareUpload } as never,
+        authorizeAction: allowAuthorization,
+        createId: vi.fn().mockReturnValueOnce('asset-1').mockReturnValueOnce('upload-1'),
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent,
+      });
+      const initialize = (mimeType: string, byteSize: number, mediaType = 'audio') =>
+        handlers.initializeUpload(
+          new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+            method: 'POST',
+            body: JSON.stringify({ mediaType, mimeType, byteSize }),
+          }),
+          createContext()
+        );
+
+      expect((await initialize('audio/wav', 100)).status).toBe(400);
+      expect((await initialize('audio/mp3', 100, 'image')).status).toBe(400);
+      expect((await initialize('audio/mpeg', 64 * 1024 * 1024 + 1)).status).toBe(413);
+      expect(prepareUpload).not.toHaveBeenCalled();
+
+      expect((await initialize('audio/mpeg', 100)).status).toBe(201);
+      expect(prepareUpload).toHaveBeenCalledExactlyOnceWith({
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        mediaType: 'audio',
+        mimeType: 'audio/mpeg',
+        byteSize: 100,
+        requireScan: true,
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('binds content-editor uploads to an owned provisional save operation', async () => {

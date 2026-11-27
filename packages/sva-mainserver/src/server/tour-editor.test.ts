@@ -1,5 +1,6 @@
 import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
 const state = vi.hoisted(() => ({
   reserve: vi.fn(),
@@ -8,10 +9,12 @@ const state = vi.hoisted(() => ({
   finalize: vi.fn(),
   fail: vi.fn(),
   access: vi.fn(),
+  validateAudio: vi.fn(),
 }));
 vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserve,
   completeIdempotency: state.complete,
+  canUseEditorialAudioSources: state.validateAudio,
 }));
 vi.mock('./mutation-principal.js', () => ({
   authorizeMainserverExistingContent: state.authorize,
@@ -41,7 +44,11 @@ const tour = {
   lengthKm: 3,
   dataProvider: { id: 'provider', name: 'Mainserver' },
   geometryTourData: [{ latitude: null, longitude: 13 }],
-  tourStops: [{ id: '18', name: 'Stop', description: null, geoLocation: null }],
+  mediaContents: [],
+  tourStops: [{
+    id: '18', name: 'Stop', description: null, geoLocation: null,
+    mediaContents: [], inheritedPoiMediaContents: [],
+  }],
 };
 const request = (body: unknown) =>
   new Request('https://studio.test/api/v1/mainserver/tours/42', {
@@ -62,7 +69,10 @@ const setup = () => {
   return {
     execute,
     editor,
-    update: (body: unknown) => handleTourUpdate(request(body), actor, '42', editor),
+    update: (body: unknown) =>
+      handleTourUpdate(request(body), actor, '42', editor, {
+        user: { id: 'subject', instanceId: 'tenant' },
+      } as AuthenticatedRequestContext),
   };
 };
 
@@ -71,9 +81,58 @@ beforeEach(() => {
   state.reserve.mockResolvedValue({ status: 'reserved' });
   state.authorize.mockResolvedValue({});
   state.access.mockResolvedValue({ 'tours.read': true, 'tours.update': true });
+  state.validateAudio.mockResolvedValue(true);
 });
 
 describe('tour editor', () => {
+  it('validates changed audio across the tour and all stations in one claim and strips media ids', async () => {
+    const { execute, update } = setup();
+    const audio = { contentType: 'audio' as const, sourceUrl: { url: 'https://audio.test/tour.mp3' } };
+    const stationAudio = { ...audio, sourceUrl: { url: 'https://audio.test/station.mp3' } };
+    const unchanged = { ...audio, sourceUrl: { url: 'https://audio.test/existing.mp3' } };
+    const [station] = tour.tourStops;
+    const before = { ...tour, tourStops: [{ ...station, mediaContents: [{ ...unchanged, id: '55' }] }] };
+    const saved = {
+      ...before, revision: 'r2', mediaContents: [{ ...audio, id: '101' }],
+      tourStops: [{
+        ...station, mediaContents: [{ ...stationAudio, id: '102' }, { ...unchanged, id: '55' }],
+      }],
+    };
+    execute
+      .mockResolvedValueOnce({ editableTour: before })
+      .mockResolvedValueOnce({ createTour: { editorialSnapshot: saved } })
+      .mockResolvedValueOnce({ editableTour: saved });
+    const response = await update({
+      expectedRevision: 'r1',
+      patch: {
+        mediaContents: [{ ...audio, id: '100' }],
+        tourStops: [{ id: '18', mediaContents: [{ ...stationAudio, id: '102' }, unchanged] }],
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(state.validateAudio).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      instanceId: 'tenant', targetType: 'tours.tour', targetId: '42',
+      urls: [audio.sourceUrl.url, stationAudio.sourceUrl.url],
+    }));
+    const { variables } = execute.mock.calls[1]?.[0];
+    expect(variables.mediaContents).toEqual([audio]);
+    expect(variables.tourStops).toEqual([{ id: '18', mediaContents: [stationAudio, unchanged] }]);
+  });
+
+  it('rejects an ineligible managed station audio source before any provider write', async () => {
+    const { execute, update } = setup();
+    execute.mockResolvedValueOnce({ editableTour: tour });
+    state.validateAudio.mockResolvedValue(false);
+    const response = await update({
+      expectedRevision: 'r1',
+      patch: { tourStops: [{ id: '18', mediaContents: [{
+        contentType: 'audio', sourceUrl: { url: 'https://cdn.test/private.mp3' },
+      }] }] },
+    });
+    expect(response.status).toBe(400);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it('matches the Mainserver snapshot for editable reads and optimistic updates', () => {
     const schema = buildClientSchema(snapshot.data as unknown as IntrospectionQuery);
     expect(validate(schema, parse(editableTourDocument))).toEqual([]);

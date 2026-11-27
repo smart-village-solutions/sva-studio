@@ -6,7 +6,7 @@ import {
 } from './upload-preparation.js';
 import type { MediaAssetRecord } from '@sva/data-repositories';
 
-import { mediaMetadataTextFields } from '@sva/media';
+import { mediaMetadataTextFields, mediaScanLimits } from '@sva/media';
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { getMediaScanEnabled } from '../runtime-secrets.js';
@@ -87,6 +87,7 @@ const initializeNewUpload = async (input: {
     mediaType: input.data.mediaType,
     mimeType: input.data.mimeType,
     byteSize: input.data.byteSize,
+    ...(input.data.mediaType === 'audio' ? { requireScan: true } : {}),
     ...(input.data.editing ? { privateInput: true } : {}),
   });
   const sourceUpload = await prepareSourceUpload(
@@ -198,13 +199,16 @@ export const initializeUpload = async (
     return mapAuthorizationFailure(authorization);
   }
 
-  if ((getMediaScanEnabled() || parsed.data.editing) && parsed.data.byteSize > 64 * 1024 * 1024) {
+  if (
+    (getMediaScanEnabled() || parsed.data.editing || parsed.data.mediaType === 'audio') &&
+    parsed.data.byteSize > mediaScanLimits.maxBytes
+  ) {
     return createApiError(
       413,
       'invalid_request',
       'Die Datei überschreitet das Scan-Limit von 64 MiB.',
       getRequestId(),
-      { reason: 'upload_size_exceeded', maxBytes: 64 * 1024 * 1024 }
+      { reason: 'upload_size_exceeded', maxBytes: mediaScanLimits.maxBytes }
     );
   }
   const source = await resolveEditingSource(deps, ctx, instanceId, parsed.data);

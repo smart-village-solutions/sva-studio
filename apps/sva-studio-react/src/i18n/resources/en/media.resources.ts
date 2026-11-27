@@ -5,13 +5,15 @@ import {
 
 export const mediaENResources = {
   picker: {
+    mediaLinkHint: 'Paste the direct link to the media file.',
+    mediaUrl: 'Media URL',
     linkHint:
       'Paste the direct link to the image. You can add further image details in the content after confirming.',
     url: 'Image URL',
-    urlUpgradedToHttps: 'The image URL was upgraded to HTTPS.',
+    urlUpgradedToHttps: 'The URL was upgraded to HTTPS.',
     urlInsecureHttp: 'This HTTP address is unencrypted. Your browser may block the image.',
     urlHttpsUnavailable: 'No working HTTPS version was found. Please use a complete image link.',
-    urlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
+    urlInvalid: 'The URL is invalid or not suitable for permanent storage.',
     preview: 'Linked image preview',
     previewUnavailable: 'Preview unavailable. A valid image link can still be used.',
     cancel: 'Cancel',
@@ -274,12 +276,12 @@ export const mediaENResources = {
       description:
         'Drag files here or click “Select files” to prepare the upload flow inside Studio.',
       regionLabel: 'Upload quick access',
-      supportLabel: 'Supports:',
+      supportLabel: 'JPEG, PNG, WebP and MP3',
     },
     upload: {
       initializing: 'Preparing upload …',
       uploading: 'Uploading file …',
-      finalizing: 'Processing image …',
+      finalizing: 'Processing file …',
       processingTimeout:
         'Processing is taking longer. The image continues processing in the background and remains visible in the library.',
       processingFailed: 'The image could not be processed.',

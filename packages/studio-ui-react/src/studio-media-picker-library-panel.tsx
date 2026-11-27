@@ -24,6 +24,7 @@ export type StudioMediaPickerLibraryPanelProps = Readonly<{
     onRetry: () => void | Promise<unknown>;
   }>;
   assets: readonly StudioMediaPickerAssetSummary[];
+  allowAudio?: boolean | 'only';
   searchValue: string;
   onSearchValueChange: (value: string) => void;
   onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
@@ -61,7 +62,7 @@ const useLibrarySearch = (searchValue: string, tag: string, serverSearch: boolea
           if (abort.signal.aborted) return;
           setRemoteAssets(
             items
-              .filter((item) => item.mimeType?.startsWith('image/'))
+              .filter((item) => item.mimeType?.startsWith('image/') || item.mimeType === 'audio/mpeg')
               .map((item) => ({
                 id: item.id,
                 title:
@@ -110,7 +111,10 @@ const MediaLibraryAsset = ({
       className="space-y-3 rounded-xl border border-border/60 bg-card/90 p-4 shadow-sm"
     >
       <div className={studioMediaPickerPreviewClassName}>
-        <StudioMediaPreview alt={asset.title} url={asset.previewUrl} />
+        <StudioMediaPreview
+          alt={asset.title}
+          url={asset.mimeType === 'audio/mpeg' ? undefined : asset.previewUrl}
+        />
       </div>
       <div className="space-y-1">
         <p className="line-clamp-1 text-sm font-semibold text-foreground">{asset.title}</p>
@@ -164,6 +168,7 @@ const LibraryFeedback = ({
 };
 
 export const StudioMediaPickerLibraryPanel = ({
+  allowAudio = false,
   assets,
   libraryStatus,
   isAssetSelectable,
@@ -183,9 +188,11 @@ export const StudioMediaPickerLibraryPanel = ({
   const loading = serverSearch ? searchLoading : libraryStatus?.loading === true;
   const failed = serverSearch ? searchFailed : libraryStatus?.error === true;
   const query = normalizeStudioMediaPickerSearchValue(searchValue);
-  const filteredAssets = serverSearch
-    ? (remoteAssets ?? [])
-    : assets.filter((asset) => matchesLibrarySearch(asset, query));
+  const filteredAssets = (
+    serverSearch ? (remoteAssets ?? []) : assets.filter((asset) => matchesLibrarySearch(asset, query))
+  ).filter((asset) =>
+    allowAudio === 'only' ? asset.mimeType === 'audio/mpeg' : allowAudio || asset.mimeType !== 'audio/mpeg'
+  );
 
   return (
     <div className="space-y-5">

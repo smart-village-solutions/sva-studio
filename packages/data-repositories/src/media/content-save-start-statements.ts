@@ -104,7 +104,7 @@ WITH eligible_operation AS (
   WHERE id = $1::uuid
     AND instance_id = $2
     AND actor_subject = $3
-    AND status IN ('preparing', 'uploading', 'saving_content', 'abandon_pending')
+    AND status IN ('preparing', 'uploading')
   FOR UPDATE
 ), deleted AS (
   DELETE FROM iam.media_content_save_operation_references

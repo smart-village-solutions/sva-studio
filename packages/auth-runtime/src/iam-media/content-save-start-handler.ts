@@ -46,12 +46,6 @@ export const createContentSaveOperation = async (
   const scope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
   if (!scope.ok) return scope.response;
   const { instanceId } = scope;
-  const createAuthorization = await deps.authorizeAction({
-    ctx,
-    instanceId,
-    action: 'media.create',
-  });
-  if (!createAuthorization.ok) return mapAuthorizationFailure(createAuthorization);
   const referenceAuthorization = await deps.authorizeAction({
     ctx,
     instanceId,

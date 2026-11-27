@@ -5,19 +5,23 @@ import { Button } from './button.js';
 import { ContentMediaUrlField } from './content-media-url-field.js';
 import { isPersistableManualContentMediaUrl } from './content-media-url.js';
 
+type LinkPanelProps = Readonly<{
+  value: string;
+  onChange: (url: string) => void;
+  onCancel: () => void;
+  onConfirm: (url: string) => void;
+  disabled: boolean;
+  allowAudio?: boolean;
+}>;
+
 export const StudioMediaPickerLinkPanel = ({
   value,
   onChange,
   onCancel,
   onConfirm,
   disabled,
-}: Readonly<{
-  value: string;
-  onChange: (url: string) => void;
-  onCancel: () => void;
-  onConfirm: (url: string) => void;
-  disabled: boolean;
-}>) => {
+  allowAudio = false,
+}: LinkPanelProps) => {
   const t = useContentMediaTranslation();
   const id = React.useId();
   React.useEffect(() => {
@@ -32,14 +36,17 @@ export const StudioMediaPickerLinkPanel = ({
     <div className="flex min-h-0 min-w-0 flex-col gap-4">
       <div className="min-h-0 overflow-y-auto pr-1">
         <fieldset disabled={disabled} className="min-w-0 space-y-4 border-0 p-0">
-          <p className="text-sm text-muted-foreground">{t('picker.linkHint')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t(allowAudio ? 'picker.mediaLinkHint' : 'picker.linkHint')}
+          </p>
           <ContentMediaUrlField
             usageId={id}
             value={value}
             onUpdate={(patch) => onChange(patch.persistentUrl ?? '')}
             onValidityChange={setValid}
+            probeImage={!allowAudio}
             labels={{
-              fields: { url: t('picker.url') },
+              fields: { url: t(allowAudio ? 'picker.mediaUrl' : 'picker.url') },
               urlFeedback: {
                 upgradedToHttps: t('picker.urlUpgradedToHttps'),
                 insecureHttp: t('picker.urlInsecureHttp'),
@@ -48,20 +55,22 @@ export const StudioMediaPickerLinkPanel = ({
               },
             }}
           />
-          <div className="flex h-64 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/20">
-            {showPreview ? (
-              <img
-                src={url}
-                alt={t('picker.preview')}
-                className="h-full w-full object-contain"
-                onError={() => setFailedPreviewUrl(url)}
-              />
-            ) : (
-              <p role="status" className="px-4 text-center text-sm text-muted-foreground">
-                {t('picker.previewUnavailable')}
-              </p>
-            )}
-          </div>
+          {!allowAudio ? (
+            <div className="flex h-64 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/20">
+              {showPreview ? (
+                <img
+                  src={url}
+                  alt={t('picker.preview')}
+                  className="h-full w-full object-contain"
+                  onError={() => setFailedPreviewUrl(url)}
+                />
+              ) : (
+                <p role="status" className="px-4 text-center text-sm text-muted-foreground">
+                  {t('picker.previewUnavailable')}
+                </p>
+              )}
+            </div>
+          ) : null}
         </fieldset>
       </div>
       <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border pt-4">

@@ -37,6 +37,11 @@ export const toHostMediaFieldOptions = (
 export const isSupportedContentMediaUploadFile = (file: File): boolean =>
   supportedContentMediaUploadMimeTypes.has(file.type);
 
+export const isMp3UploadFile = (file: File): boolean =>
+  file.type === 'audio/mpeg' ||
+  file.type === 'audio/mp3' ||
+  ((!file.type || file.type === 'application/octet-stream') && /\.mp3$/iu.test(file.name));
+
 export const contentMediaUploadPhaseMessageKey = (
   phase: ContentMediaUploadPhase
 ): string | null => {

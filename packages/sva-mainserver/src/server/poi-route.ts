@@ -4,6 +4,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { errorJson, isResponse, json, matchRequestRoute, parseJsonObjectBody } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
+import { validateEditorialAudio } from './editorial-audio.js';
 import {
   deleteSvaMainserverPoi,
   changeSvaMainserverPoiVisibility,
@@ -49,7 +50,7 @@ const handleCollectionCreate = async (
   return runMainserverMutationWithFailureFinalization({
     actor,
     operation: async () => {
-      const result = await createPoiContent(request, actor);
+      const result = await createPoiContent(request, actor, ctx);
       if (isResponse(result)) {
         return result;
       }
@@ -130,6 +131,11 @@ const handleItemUpdate = async (
         logSuccess('mainserver_poi_visibility_update', route.itemId);
         return json({ data: { ...existing.data, visible: parsed.visible, status: parsed.visible ? 'published' : 'draft' } });
       }
+      await validateEditorialAudio(
+        { request, ctx, instanceId: actor.instanceId, targetType: POI_CONTENT_TYPE, targetId: route.itemId },
+        parsed.mediaContents,
+        existing?.data.mediaContents
+      );
       const result = {
         data: await updateSvaMainserverPoi({
           ...actor,

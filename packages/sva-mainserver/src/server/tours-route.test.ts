@@ -183,6 +183,8 @@ describe('Studio tour editor routes', () => {
         resource: { contentType: 'tours.tour', contentId: '1' },
       })
     );
-    expect(state.update).toHaveBeenCalledWith(patch, organizationActor, '1', expect.anything());
+    expect(state.update).toHaveBeenCalledWith(
+      patch, organizationActor, '1', expect.anything(), expect.objectContaining({ user: expect.anything() })
+    );
   });
 });

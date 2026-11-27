@@ -12,7 +12,7 @@ import {
 
 describe('media type contracts', () => {
   it('publishes the canonical literal value sets for runtime consumers', () => {
-    expect(mediaLiterals.types).toEqual(['image']);
+    expect(mediaLiterals.types).toEqual(['image', 'audio']);
     expect(mediaLiterals.visibilities).toEqual(['public', 'protected']);
     expect(mediaLiterals.uploadStatuses).toEqual([
       'pending',

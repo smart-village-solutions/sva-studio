@@ -117,6 +117,7 @@ export const createGraphqlExecutor = (input: {
                 Authorization: `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
                 ...buildForwardHeaders(),
+                ...(operation.editorialAudio ? { 'X-SVA-Editorial-Audio': 'true' } : {}),
               },
               body: JSON.stringify({
                 operationName: operation.operationName,

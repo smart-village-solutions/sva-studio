@@ -17,7 +17,19 @@ import { useEffect, useState } from 'react';
 import { toursPath } from './descriptor.js';
 import { TourBasisFields, TourRouteFields } from './tour-create-fields.js';
 import { Stations } from './tour-create-stations.js';
-import { buildTourEdit, editableStops, routeValue, type EditableTour } from './tour-edit-data.js';
+import {
+  buildTourEdit,
+  editableStops,
+  routeValue,
+  tourAudioTarget,
+  type EditableTour,
+} from './tour-edit-data.js';
+import {
+  serializeTourAudio,
+  TourAudioFields,
+  TourAudioPicker,
+  useTourAudio,
+} from './tour-audio.js';
 import { useTourSave } from './tour-save.js';
 
 type EditProps = {
@@ -62,33 +74,52 @@ function useEditableTour(id: string, principal: MainserverPrincipalControlModel[
   return result;
 }
 
-function EditForm({
-  snapshot,
-  saved,
-  canSave,
-  onSaved,
-  principalControl,
-}: {
+type EditFormProps = {
   snapshot: EditorData;
   saved: boolean;
   canSave: boolean;
   onSaved: (tour: EditableTour) => void;
   principalControl: MainserverPrincipalControlModel;
-}) {
-  const pt = usePluginTranslation('tours');
+};
+
+function useEditTourForm({ snapshot, principalControl, canSave, onSaved }: EditFormProps) {
   const { tour, contextBinding } = snapshot;
   const [stops, setStops] = useState(() => editableStops(tour));
-  const { principal, busy, dirty, error, submit, markChanged } = useTourSave<EditableTour>({
+  const markAudioChanged: () => void = () => save.markChanged();
+  const audio = useTourAudio(tour, canSave, markAudioChanged);
+  const targets = [tourAudioTarget, ...stops.map(({ key }) => key)];
+  const usages = audio.usagesFor(targets);
+  const save = useTourSave<EditableTour>({
     url: `/api/v1/mainserver/tours/${encodeURIComponent(tour.id)}`,
     method: 'PATCH',
     principalControl,
     contextBinding,
-    buildBody: (form) => {
-      const update = buildTourEdit(form, stops, tour);
+    media: {
+      usages,
+      instanceId: audio.mediaInstanceId,
+      syncReferences: audio.shouldSync(targets),
+    },
+    buildBody: (form, resolutions) => {
+      const update = buildTourEdit(
+        form,
+        stops,
+        tour,
+        serializeTourAudio(audio.audio, targets, resolutions)
+      );
       return Object.keys(update.patch).length > 0 ? update : undefined;
     },
     onSaved,
   });
+  return { audio, stops, setStops, save };
+}
+
+function EditForm(props: EditFormProps) {
+  const { snapshot, saved, canSave, principalControl } = props;
+  const { tour } = snapshot;
+  const pt = usePluginTranslation('tours');
+  const { audio, stops, setStops, save } = useEditTourForm(props);
+  const { principal, busy, dirty, error, submit, markChanged, referenceSyncPending } = save;
+  const storedStops = new Map(tour.tourStops.map((stop) => [stop.id, stop]));
   return (
     <StudioDetailPageTemplate
       title={tour.name || pt('edit')}
@@ -118,7 +149,7 @@ function EditForm({
       >
         {error ? <StudioErrorState>{pt(error)}</StudioErrorState> : null}
         {saved && !dirty ? <p role="status">{pt('saved')}</p> : null}
-        <fieldset disabled={busy || !canSave} className="space-y-5">
+        <fieldset disabled={busy || referenceSyncPending || !canSave} className="space-y-5">
           <TourBasisFields
             pt={pt}
             busy={busy}
@@ -128,6 +159,7 @@ function EditForm({
             onDescriptionChange={markChanged}
           />
           <TourRouteFields pt={pt} initialRoute={routeValue(tour)} />
+          <TourAudioFields editor={audio} target={tourAudioTarget} />
           <Stations
             pt={pt}
             stops={stops}
@@ -135,8 +167,18 @@ function EditForm({
               markChanged();
               setStops(next);
             }}
+            renderAudio={(stop) => (
+              <TourAudioFields
+                editor={audio}
+                target={stop.key}
+                inherited={
+                  stop.id ? storedStops.get(stop.id)?.inheritedPoiMediaContents : undefined
+                }
+              />
+            )}
           />
         </fieldset>
+        <TourAudioPicker editor={audio} />
       </form>
     </StudioDetailPageTemplate>
   );

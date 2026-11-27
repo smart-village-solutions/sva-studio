@@ -944,6 +944,71 @@ describe('news.detail-form', () => {
     ).not.toHaveProperty('height');
   });
 
+  it('adds audio to the editorial block and preserves later blocks through form validation', () => {
+    const image = {
+      contentType: 'image',
+      width: 640,
+      payload: { focusPoint: { x: 0.2, y: 0.8 } },
+      sourceUrl: { url: 'https://example.org/second.jpg', description: 'Rathaus' },
+    };
+    const laterAudio = {
+      contentType: 'audio',
+      captionText: 'Zweiter Beitrag',
+      copyright: 'Stadtarchiv',
+      sourceUrl: { url: 'https://example.org/second.mp3' },
+    };
+    const values = mapNewsItemToDetailFormValues({
+      ...sampleItem,
+      contentBlocks: [
+        ...(sampleItem.contentBlocks ?? []),
+        {
+          title: 'Zweiter Block',
+          intro: 'Unveränderter Einstieg',
+          body: '<p>Unveränderter Text</p>',
+          mediaContents: [image, laterAudio],
+        },
+      ],
+    });
+    values.contentMedia.push({
+      contentType: 'audio',
+      captionText: 'Hörbeitrag',
+      copyright: 'Stadt',
+      height: '',
+      width: '',
+      sourceUrl: { url: 'https://example.org/first.mp3' },
+    });
+
+    const mutation = mapNewsDetailFormValuesToMutation(newsDetailFormSchema.parse(values), 'edit');
+
+    expect(mutation.contentBlocks).toEqual([
+      {
+        title: sampleItem.title,
+        intro: 'Kurzer Einstieg',
+        body: '<p>Ausfuehrlicher Inhalt</p>',
+        mediaContents: [
+          { contentType: 'image', sourceUrl: { url: 'https://example.org/image.jpg' } },
+          {
+            contentType: 'audio',
+            captionText: 'Hörbeitrag',
+            copyright: 'Stadt',
+            sourceUrl: { url: 'https://example.org/first.mp3' },
+          },
+        ],
+      },
+      {
+        title: 'Zweiter Block',
+        intro: 'Unveränderter Einstieg',
+        body: '<p>Unveränderter Text</p>',
+        mediaContents: [image, laterAudio],
+      },
+    ]);
+    const reopened = mapNewsItemToDetailFormValues({ ...sampleItem, contentBlocks: mutation.contentBlocks });
+    expect(reopened.contentMedia[1]).toMatchObject({
+      contentType: 'audio',
+      sourceUrl: { url: 'https://example.org/first.mp3' },
+    });
+  });
+
   it('derives dirty tabs and character counts from simplified and compatibility-driven fields', () => {
     expect(
       deriveDirtyNewsDetailTabs({

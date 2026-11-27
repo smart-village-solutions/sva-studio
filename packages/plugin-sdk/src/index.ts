@@ -223,6 +223,7 @@ export {
   saveContentWithHostMediaReferences,
   initializeHostMediaUpload,
   isSupportedContentMediaUploadFile,
+  isMp3UploadFile,
   completeHostMediaUpload,
   uploadHostMediaFile,
   waitForHostMediaUpload,

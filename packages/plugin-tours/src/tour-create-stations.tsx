@@ -87,14 +87,46 @@ function StationFields({
   );
 }
 
+function StationActions({
+  pt,
+  first,
+  last,
+  moveUp,
+  moveDown,
+  remove,
+}: {
+  pt: Translate;
+  first: boolean;
+  last: boolean;
+  moveUp: () => void;
+  moveDown: () => void;
+  remove: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="secondary" disabled={first} onClick={moveUp}>
+        {pt('moveUp')}
+      </Button>
+      <Button type="button" variant="secondary" disabled={last} onClick={moveDown}>
+        {pt('moveDown')}
+      </Button>
+      <Button type="button" variant="secondary" onClick={remove}>
+        {pt('removeStop')}
+      </Button>
+    </div>
+  );
+}
+
 export function Stations({
   pt,
   stops,
   setStops,
+  renderAudio,
 }: {
   pt: Translate;
   stops: Stop[];
   setStops: (next: Stop[]) => void;
+  renderAudio?: (stop: Stop) => ReactNode;
 }) {
   const [pendingRemoval, setPendingRemoval] = useState<Stop>();
   const remove = (stop: Stop) => setStops(stops.filter(({ key }) => key !== stop.key));
@@ -118,31 +150,15 @@ export function Stations({
               number={index + 1}
               onChange={(patch) => change(index, patch)}
             >
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={index === 0}
-                  onClick={() => move(index, index - 1)}
-                >
-                  {pt('moveUp')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={index === stops.length - 1}
-                  onClick={() => move(index, index + 1)}
-                >
-                  {pt('moveDown')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}
-                >
-                  {pt('removeStop')}
-                </Button>
-              </div>
+              {renderAudio?.(stop)}
+              <StationActions
+                pt={pt}
+                first={index === 0}
+                last={index === stops.length - 1}
+                moveUp={() => move(index, index - 1)}
+                moveDown={() => move(index, index + 1)}
+                remove={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}
+              />
             </StationFields>
           </li>
         ))}

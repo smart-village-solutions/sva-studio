@@ -1,7 +1,10 @@
 import { markProcessingFailure } from './upload-finalization.js';
 import sharp from 'sharp';
-import { fileTypeFromBuffer } from 'file-type';
-import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
+import {
+  MediaStorageSizeLimitError,
+  MediaStorageUnavailableError,
+  type MediaStoragePort,
+} from './storage-port.js';
 import type { MediaService } from './service.js';
 import { cleanupReplacedClaimVariants, createMediaVariants } from './processing-variants.js';
 import { MediaScanError, scanConfiguredMedia } from './clamav.js';
@@ -11,8 +14,7 @@ import {
   mediaProcessingPrefix,
 } from './storage-key-paths.js';
 import { getMediaEditingIntakeKeys, prepareMediaEditingData } from './processing-editing.js';
-
-const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+import { readOriginalUpload } from './processing-original.js';
 
 export type MediaUploadProcessingFailureCode =
   | 'upload_session_not_found'
@@ -96,6 +98,7 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
     const quarantined = isMediaQuarantineKey(uploadSession.storageKey);
+    const audio = asset.mediaType === 'audio';
     const privateIntake = isPrivateMediaStorageKey(uploadSession.storageKey);
     const privateOutput = privateIntake && asset.visibility === 'protected';
 
@@ -132,36 +135,27 @@ export const createMediaUploadProcessingService = (deps: {
       );
 
     try {
-      const object = await deps.storagePort.readObject({
+      const object = await readOriginalUpload({
+        storage: deps.storagePort,
         instanceId: input.instanceId,
-        storageKey: String(uploadSession.storageKey),
+        upload: uploadSession,
+        mimeType: asset.mimeType,
+        audio,
+        quarantined,
       });
-      if (object.byteSize > Number(uploadSession.byteSize)) {
-        throw new Error('upload_size_mismatch');
-      }
-
-      const detectedFileType = await fileTypeFromBuffer(object.body);
-      const detectedMimeType =
-        detectedFileType?.mime ?? object.contentType ?? String(asset.mimeType);
-      if (!ALLOWED_IMAGE_MIME_TYPES.has(detectedMimeType) || detectedMimeType !== asset.mimeType) {
-        return markProcessingFailure({
-          deps,
-          claimToken: input.claimToken,
-          asset,
-          uploadSession,
-          errorCode: 'invalid_media_content',
-        });
-      }
+      const detectedMimeType = object.mimeType;
 
       // The intake path fixes the scan contract at initialization. Legacy public
       // upload URLs remain writable and cannot receive an immutable scan proof.
       if (quarantined) await scanConfiguredMedia(object.body);
 
-      const editing = await prepareMediaEditingData({
-        asset,
-        storage: deps.storagePort,
-        scanRequired: quarantined,
-      });
+      const editing = audio
+        ? undefined
+        : await prepareMediaEditingData({
+            asset,
+            storage: deps.storagePort,
+            scanRequired: quarantined,
+          });
       const renderedFormat =
         detectedMimeType === 'image/jpeg'
           ? 'jpeg'
@@ -172,24 +166,27 @@ export const createMediaUploadProcessingService = (deps: {
         ? await sharp(object.body, { failOn: 'error' }).rotate().toFormat(renderedFormat).toBuffer()
         : object.body;
 
-      const metadata = await sharp(renderedBody, { failOn: 'error' }).rotate().metadata();
+      const metadata = audio
+        ? undefined
+        : await sharp(renderedBody, { failOn: 'error' }).rotate().metadata();
       const technical = {
         ...(asset.technical ?? {}),
         ...(quarantined ? { scanStatus: 'clean' } : {}),
-        width: metadata.width,
-        height: metadata.height,
+        ...(metadata ? { width: metadata.width, height: metadata.height } : {}),
         contentType: detectedMimeType,
         etag: object.etag,
       };
 
-      const variantsToPersist = await createMediaVariants({
-        body: renderedBody,
-        asset,
-        instanceId: input.instanceId,
-        claimToken: input.claimToken,
-        createId: deps.createId,
-        privateOutput,
-      });
+      const variantsToPersist = audio
+        ? []
+        : await createMediaVariants({
+            body: renderedBody,
+            asset,
+            instanceId: input.instanceId,
+            claimToken: input.claimToken,
+            createId: deps.createId,
+            privateOutput,
+          });
 
       let variantBytes = 0;
       persistenceStarted = true;
@@ -206,7 +203,7 @@ export const createMediaUploadProcessingService = (deps: {
         });
       }
       if (privateIntake) {
-        publishedOriginalKey = `${mediaProcessingPrefix(input.instanceId, asset.id, input.claimToken, privateOutput)}original.${detectedFileType?.ext ?? 'bin'}`;
+        publishedOriginalKey = `${mediaProcessingPrefix(input.instanceId, asset.id, input.claimToken, privateOutput)}original.${object.extension}`;
         await deps.storagePort.writeObject({
           instanceId: input.instanceId,
           storageKey: publishedOriginalKey,
@@ -307,7 +304,8 @@ export const createMediaUploadProcessingService = (deps: {
         asset,
         uploadSession,
         errorCode:
-          error instanceof Error && error.message === 'upload_size_mismatch'
+          error instanceof MediaStorageSizeLimitError ||
+          (error instanceof Error && error.message === 'upload_size_mismatch')
             ? 'upload_size_exceeded'
             : 'invalid_media_content',
       });

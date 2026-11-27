@@ -11,68 +11,50 @@ import { useState } from 'react';
 
 import { tourDetailPath, toursPath } from './descriptor.js';
 import { TourBasisFields, TourRouteFields } from './tour-create-fields.js';
+import {
+  serializeTourAudio,
+  TourAudioFields,
+  TourAudioPicker,
+  useTourAudio,
+} from './tour-audio.js';
+import { buildTourDraft, tourAudioTarget } from './tour-edit-data.js';
 import { TourMediaFields } from './tour-create-media.js';
 import { Stations, type Stop } from './tour-create-stations.js';
-import { parsePoint, parseRoute } from './tour-coordinates.js';
 import { useTourSave } from './tour-save.js';
 
 const api = '/api/v1/mainserver/tours';
-const buildDraft = (form: FormData, stops: readonly Stop[]) => {
-  const field = (name: string) => String(form.get(name) ?? '').trim() || undefined;
-  const route = parseRoute(field('route') ?? '');
-  const category = field('category');
-  const company = field('operator');
-  const media = field('media');
-  const address = { street: field('street'), city: field('city'), zip: field('zip') };
-  const contact = { email: field('email'), phone: field('phone') };
-  return {
-    name: field('name'),
-    lengthKm: Number(field('length')),
-    visible: false as const,
-    description: field('description'),
-    ...(category ? { categories: [{ id: category }] } : {}),
-    ...(Object.values(address).some(Boolean) ? { addresses: [address] } : {}),
-    ...(Object.values(contact).some(Boolean) ? { contact } : {}),
-    ...(company ? { operatingCompany: { name: company } } : {}),
-    ...(media
-      ? {
-          mediaContents: [
-            {
-              contentType: 'image',
-              sourceUrl: { url: media },
-              copyright: field('copyright'),
-              captionText: field('caption'),
-            },
-          ],
-        }
-      : {}),
-    ...(route.length ? { geometryTourData: route } : {}),
-    tourStops: stops.map((stop) => ({
-      name: stop.name.trim(),
-      description: stop.description.trim() || undefined,
-      ...(stop.latitude || stop.longitude
-        ? { location: { geoLocation: parsePoint(stop.latitude, stop.longitude) } }
-        : {}),
-    })),
-  };
-};
+function useTourDraft(principalControl?: MainserverPrincipalControlModel, instanceId?: string) {
+  const [stops, setStops] = useState<Stop[]>([]);
+  const navigate = useNavigate();
+  const markAudioChanged: () => void = () => save.markChanged();
+  const audio = useTourAudio(undefined, true, markAudioChanged, instanceId);
+  const targets = [tourAudioTarget, ...stops.map(({ key }) => key)];
+  const usages = audio.usagesFor(targets);
+  const save = useTourSave<{ id: string }>({
+    url: api,
+    method: 'POST',
+    principalControl,
+    media: {
+      usages,
+      instanceId: audio.mediaInstanceId,
+      syncReferences: audio.shouldSync(targets),
+    },
+    buildBody: (form, resolutions) =>
+      buildTourDraft(form, stops, serializeTourAudio(audio.audio, targets, resolutions)),
+    onSaved: async (data) => {
+      await navigate({ to: tourDetailPath, params: { id: data.id } });
+    },
+  });
+  return { audio, stops, setStops, save };
+}
 
 export function TourCreatePage({
   principalControl,
   instanceId,
 }: Readonly<{ principalControl?: MainserverPrincipalControlModel; instanceId?: string }>) {
   const pt = usePluginTranslation('tours');
-  const [stops, setStops] = useState<Stop[]>([]);
-  const navigate = useNavigate();
-  const { principal, busy, error, submit, markChanged } = useTourSave<{ id: string }>({
-    url: api,
-    method: 'POST',
-    principalControl,
-    buildBody: (form) => buildDraft(form, stops),
-    onSaved: async (data) => {
-      await navigate({ to: tourDetailPath, params: { id: data.id } });
-    },
-  });
+  const { audio, stops, setStops, save } = useTourDraft(principalControl, instanceId);
+  const { principal, busy, error, submit, markChanged, referenceSyncPending } = save;
 
   return (
     <StudioDetailPageTemplate
@@ -101,7 +83,7 @@ export function TourCreatePage({
         {error ? (
           <StudioErrorState>{pt(error === 'saveError' ? 'createError' : error)}</StudioErrorState>
         ) : null}
-        <fieldset disabled={busy} className="space-y-5">
+        <fieldset disabled={busy || referenceSyncPending} className="space-y-5">
           <TourBasisFields
             pt={pt}
             busy={busy}
@@ -117,9 +99,12 @@ export function TourCreatePage({
               markChanged();
               setStops(nextStops);
             }}
+            renderAudio={(stop) => <TourAudioFields editor={audio} target={stop.key} />}
           />
           <TourMediaFields pt={pt} instanceId={instanceId} />
+          <TourAudioFields editor={audio} target={tourAudioTarget} />
         </fieldset>
+        <TourAudioPicker editor={audio} />
       </form>
     </StudioDetailPageTemplate>
   );

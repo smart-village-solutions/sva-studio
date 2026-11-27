@@ -58,6 +58,27 @@ describe('media picker tag search', () => {
     expect(screen.getByText('Empty')).toBeTruthy();
   });
 
+  it('exposes MP3 only to pickers that opt in', () => {
+    const props = {
+      assets: [
+        { id: 'image', title: 'Museum photo', fileName: 'photo.jpg', mimeType: 'image/jpeg' },
+        { id: 'audio', title: 'Guided walk', fileName: 'walk.mp3', mimeType: 'audio/mpeg' },
+      ],
+      searchValue: '',
+      onSearchValueChange: vi.fn(),
+      onSelectAsset: vi.fn(),
+      labels: { searchLabel: 'Search', empty: 'Empty', select: 'Select' },
+    };
+    const { rerender } = render(<StudioMediaPickerLibraryPanel {...props} />);
+    expect(screen.queryByText('walk.mp3')).toBeNull();
+    rerender(<StudioMediaPickerLibraryPanel {...props} allowAudio />);
+    expect(screen.getByText('walk.mp3')).toBeTruthy();
+    expect(screen.getByText('photo.jpg')).toBeTruthy();
+    rerender(<StudioMediaPickerLibraryPanel {...props} allowAudio="only" />);
+    expect(screen.getByText('walk.mp3')).toBeTruthy();
+    expect(screen.queryByText('photo.jpg')).toBeNull();
+  });
+
   it('queries the server for a tag rather than filtering only the initial page', async () => {
     const fetch = vi.fn(async () =>
       Response.json({

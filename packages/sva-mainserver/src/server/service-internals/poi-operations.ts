@@ -212,6 +212,7 @@ const writePoiWithConfig = async (
       ...input,
       document: createDraft ? svaMainserverCreatePoiDraftDocument : svaMainserverCreatePoiDocument,
       operationName: createDraft ? 'SvaMainserverCreatePoiDraft' : 'SvaMainserverCreatePoi',
+      editorialAudio: true,
       variables: {
         ...buildPoiMutationVariables(input),
         ...(forceNewPoi ? { forceCreate: true } : {}),

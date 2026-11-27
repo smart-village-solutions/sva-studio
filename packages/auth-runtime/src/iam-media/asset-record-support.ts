@@ -65,7 +65,7 @@ export const asMediaAsset = (
   }
   return {
     ...asset,
-    mediaType: 'image',
+    mediaType: asset.mediaType === 'audio' ? 'audio' : 'image',
     visibility: asMediaVisibility(asset.visibility),
     uploadStatus: asMediaUploadStatus(asset.uploadStatus),
     processingStatus: asMediaProcessingStatus(asset.processingStatus),

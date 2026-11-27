@@ -154,7 +154,9 @@ const retryExistingUpload = async (
     ...(input.data.editing || isPrivateMediaStorageKey(uploadSession.storageKey)
       ? { privateInput: true }
       : {}),
-    ...(isMediaQuarantineKey(uploadSession.storageKey) ? { requireScan: true } : {}),
+    ...(input.data.mediaType === 'audio' || isMediaQuarantineKey(uploadSession.storageKey)
+      ? { requireScan: true }
+      : {}),
   });
   const sourceUpload = await prepareSourceUpload(
     storagePort,

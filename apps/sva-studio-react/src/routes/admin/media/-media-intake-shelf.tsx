@@ -1,3 +1,4 @@
+import { isMp3UploadFile, isSupportedContentMediaUploadFile } from '@sva/plugin-sdk';
 import { MediaIntakePanel } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -9,9 +10,8 @@ type MediaIntakeShelfProps = {
   readonly onFileSelected: (file: File) => void;
 };
 
-const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
-const isSupportedUploadFile = (file: File) => acceptedMimeTypes.has(file.type);
+const isSupportedUploadFile = (file: File) =>
+  isSupportedContentMediaUploadFile(file) || isMp3UploadFile(file);
 
 const uploadErrorMessage = (error: IamHttpError | Error | null) => {
   const permissionMessage = getStudioPermissionDenialMessage(error);
@@ -58,7 +58,7 @@ export const MediaIntakeShelf = ({ phase, error, onFileSelected }: MediaIntakeSh
 
   return (
     <MediaIntakePanel
-      accept="image/jpeg,image/png,image/webp"
+      accept="image/jpeg,image/png,image/webp,audio/mpeg,.mp3"
       browseActionLabel={t('media.actions.selectFiles')}
       description={t('media.library.quickIntake.description')}
       inputTestId="media-upload-input"

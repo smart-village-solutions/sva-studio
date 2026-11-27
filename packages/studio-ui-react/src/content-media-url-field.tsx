@@ -20,13 +20,14 @@ type ContentMediaUrlFieldProps = Readonly<{
     fields: Pick<ContentMediaUsageBlockLabels['fields'], 'url'>;
   };
   onValidityChange?: (valid: boolean) => void;
+  probeImage?: boolean;
   onUpdate: (patch: ContentMediaUsagePatch) => void;
 }>;
 
 const joinIds = (...ids: readonly (string | undefined)[]) =>
   ids.filter(Boolean).join(' ') || undefined;
 
-const useContentMediaUrlField = ({ onUpdate }: ContentMediaUrlFieldProps) => {
+const useContentMediaUrlField = ({ onUpdate, probeImage = true }: ContentMediaUrlFieldProps) => {
   const [feedback, setFeedback] = React.useState<UrlFeedback>(null);
   const validationSequence = React.useRef(0);
   React.useEffect(
@@ -53,6 +54,13 @@ const useContentMediaUrlField = ({ onUpdate }: ContentMediaUrlFieldProps) => {
     if (inspection.kind === 'invalid') {
       if (inspection.value !== nextValue) onUpdate({ persistentUrl: inspection.value });
       setFeedback('invalid');
+      return;
+    }
+    if (!probeImage) {
+      onUpdate({
+        persistentUrl: inspection.httpFallback ? inspection.value : inspection.httpsCandidate,
+      });
+      setFeedback(inspection.httpFallback ? 'http' : 'upgraded');
       return;
     }
 

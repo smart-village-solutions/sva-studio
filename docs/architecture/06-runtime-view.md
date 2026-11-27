@@ -71,6 +71,8 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 9. Der Editor speichert zuerst den Fachinhalt und erhält dadurch die stabile Ziel-ID. Erst danach ersetzt er die Referenzliste idempotent.
 10. Scheitert nur der Referenzschritt, bleibt der Fachinhalt gespeichert. Die UI weist den Teilfehler aus und wiederholt ausschließlich das Referenz-Replacement.
 
+MP3-Uploads verwenden verpflichtend den privaten Intake und den bestehenden Scanner. Nach erfolgreicher Formatprüfung und Scan schreibt der Worker die unveränderten Audio-Bytes als claim-isoliertes Original. Der Bildeditor und die Bildderivate sind auf Bild-Assets beschränkt. Vor dem Provider-Write prüft der Host neue verwaltete Audioquellen auf Mandant, Freigabe und eine vorbereitete Referenz in der laufenden Content-Speicheroperation. Auch Bibliotheksauswahlen ohne lokalen Upload verwenden dafür dieselbe Operation. Direkte externe URLs werden für redaktionelle Saves ohne Download geprüft.
+
 Die Medienbibliothek liest registrierte Datenbank-Assets und Objekte aus genau einem extern pro Tenant isolierten Bucket. Beide Quellen werden in derselben binären S3-Storage-Key-Reihenfolge ab einem filtergebundenen, versionierten Cursor gelesen. Der Cursor wird nur bis zum kleineren, von beiden begrenzten Quellen sicher gelesenen Scan-Stand vorgeschoben; ausgefilterte Varianten können ihn daher fortschreiben, aber keine noch ungelesenen Objekte überspringen. Registrierte Assets gewinnen bei gleichen Storage-Keys; eine exakte Gesamtzahl wird bewusst nicht ermittelt.
 
 Für Uploads aus Content-Editoren gilt ergänzend:

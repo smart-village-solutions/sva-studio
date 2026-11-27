@@ -1868,7 +1868,7 @@ CREATE TABLE iam.media_assets (
     CONSTRAINT media_assets_editing_source_not_self_chk CHECK (((editing_source_asset_id IS NULL) OR (editing_source_asset_id <> id))),
     CONSTRAINT media_assets_editing_source_private_chk CHECK (((editing_source_key IS NULL) OR starts_with(editing_source_key, (('.protected/'::text || instance_id) || '/'::text)) OR starts_with(editing_source_key, (('.quarantine/'::text || instance_id) || '/'::text)))),
     CONSTRAINT media_assets_lifecycle_status_chk CHECK ((lifecycle_status = ANY (ARRAY['provisional'::text, 'active'::text]))),
-    CONSTRAINT media_assets_media_type_chk CHECK ((media_type = 'image'::text)),
+    CONSTRAINT media_assets_media_type_chk CHECK ((media_type = ANY (ARRAY['image'::text, 'audio'::text]))),
     CONSTRAINT media_assets_processing_status_chk CHECK ((processing_status = ANY (ARRAY['pending'::text, 'ready'::text, 'failed'::text]))),
     CONSTRAINT media_assets_provisional_ownership_chk CHECK ((((lifecycle_status = 'active'::text) AND (provisional_operation_id IS NULL) AND (provisional_owner_subject IS NULL) AND (provisional_draft_id IS NULL) AND (provisional_expires_at IS NULL)) OR ((lifecycle_status = 'provisional'::text) AND (provisional_operation_id IS NOT NULL) AND (provisional_owner_subject IS NOT NULL) AND (provisional_draft_id IS NOT NULL) AND (provisional_expires_at IS NOT NULL)))),
     CONSTRAINT media_assets_upload_status_chk CHECK ((upload_status = ANY (ARRAY['pending'::text, 'validated'::text, 'processed'::text, 'failed'::text, 'blocked'::text]))),
@@ -1909,6 +1909,7 @@ CREATE TABLE iam.media_content_save_operations (
     lease_expires_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    editorial_write_claimed_at timestamp with time zone,
     CONSTRAINT media_content_save_operations_status_chk CHECK ((status = ANY (ARRAY['preparing'::text, 'uploading'::text, 'saving_content'::text, 'content_saved'::text, 'committed'::text, 'abandon_pending'::text, 'abandoned'::text, 'outcome_unknown'::text, 'reconciliation_required'::text]))),
     CONSTRAINT media_content_save_operations_target_chk CHECK ((((status = ANY (ARRAY['content_saved'::text, 'committed'::text])) AND (target_id IS NOT NULL)) OR (status <> ALL (ARRAY['content_saved'::text, 'committed'::text]))))
 );

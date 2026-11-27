@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import sharp from 'sharp';
 import { scanConfiguredMedia, MediaScanError } from './clamav.js';
+import { mp3WithId3, mp3WithoutTags } from '../../tests/iam-media-mp3.test-fixtures.js';
 
 import {
   createMediaUploadProcessingHandler,
@@ -39,14 +40,34 @@ const session = {
   replacedClaimToken: 'claim-old',
 };
 
-const setup = async () => {
-  const body = await sharp({ create: { width: 24, height: 24, channels: 3, background: 'red' } })
-    .jpeg()
-    .toBuffer();
+const setup = async (audio?: Buffer, storedMime = 'audio/mpeg', quarantined = true) => {
+  const body =
+    audio ??
+    (await sharp({ create: { width: 24, height: 24, channels: 3, background: 'red' } })
+      .jpeg()
+      .toBuffer());
+  const uploadAsset = audio
+    ? {
+        ...asset,
+        storageKey: quarantined ? '.quarantine/tenant-a/asset-1/session' : asset.storageKey,
+        mediaType: 'audio',
+        mimeType: 'audio/mpeg',
+        byteSize: body.length,
+      }
+    : asset;
+  const uploadSession = audio
+    ? {
+        ...session,
+        storageKey: uploadAsset.storageKey,
+        mimeType: uploadAsset.mimeType,
+        byteSize: body.length,
+        replacedClaimToken: undefined,
+      }
+    : session;
   const service = {
-    getUploadSessionById: vi.fn(async () => session),
-    getAssetById: vi.fn(async () => asset),
-    claimUploadSession: vi.fn(async () => session),
+    getUploadSessionById: vi.fn(async () => uploadSession),
+    getAssetById: vi.fn(async () => uploadAsset),
+    claimUploadSession: vi.fn(async () => uploadSession),
     lockUploadSessionClaim: vi.fn(async () => true),
     lockOpenContentSaveOperationForUpload: vi.fn(async () => true),
     tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
@@ -56,7 +77,11 @@ const setup = async () => {
   };
   const storage = {
     listObjects: vi.fn(async () => ({ items: [], nextCursor: null })),
-    readObject: vi.fn(async () => ({ body, byteSize: body.length, contentType: 'image/jpeg' })),
+    readObject: vi.fn(async () => ({
+      body,
+      byteSize: body.length,
+      contentType: audio ? storedMime : 'image/jpeg',
+    })),
     writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({ byteSize: body.length })),
     deleteObject: vi.fn(),
   };
@@ -82,6 +107,91 @@ const setup = async () => {
 };
 
 describe('media processing job', () => {
+  it.each([mp3WithId3, mp3WithoutTags])(
+    'publishes a scanned MP3 as an immutable original without image variants',
+    async (body) => {
+      vi.mocked(scanConfiguredMedia).mockClear();
+      const { service, storage, run } = await setup(body);
+
+      await run();
+
+      expect(storage.readObject).toHaveBeenCalledWith({
+        instanceId,
+        storageKey: '.quarantine/tenant-a/asset-1/session',
+        maxBytes: body.length,
+      });
+      expect(scanConfiguredMedia).toHaveBeenCalledExactlyOnceWith(body);
+      expect(storage.writeObject).toHaveBeenCalledExactlyOnceWith({
+        instanceId,
+        storageKey: 'tenant-a/variants/asset-1/claim-new/original.mp3',
+        body,
+        contentType: 'audio/mpeg',
+      });
+      expect(service.upsertAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mediaType: 'audio',
+          processingStatus: 'ready',
+          technical: expect.objectContaining({ scanStatus: 'clean', variantBytes: 0 }),
+        })
+      );
+      expect(service.upsertVariant).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['a truncated ID3 tag', Buffer.from('494433030000007f7f7f', 'hex'), 'audio/mpeg', true],
+    ['a truncated frame', mp3WithoutTags.subarray(0, 20), 'audio/mpeg', true],
+    ['incorrect object MIME', mp3WithoutTags, 'image/jpeg', true],
+    ['an unquarantined upload', mp3WithoutTags, 'audio/mpeg', false],
+  ] as const)(
+    'rejects %s before scanning or publishing',
+    async (_label, body, mime, quarantined) => {
+      vi.mocked(scanConfiguredMedia).mockClear();
+      const { service, storage, run } = await setup(body, mime, quarantined);
+
+      await expect(run()).rejects.toThrow('invalid_media_content');
+
+      expect(scanConfiguredMedia).not.toHaveBeenCalled();
+      expect(storage.writeObject).not.toHaveBeenCalled();
+      expect(service.tryApplyStorageUsageWithinQuota).not.toHaveBeenCalled();
+    }
+  );
+
+  it('never publishes an MP3 when the scanner is unavailable', async () => {
+    vi.mocked(scanConfiguredMedia).mockRejectedValueOnce(
+      new MediaScanError('media_scan_unavailable')
+    );
+    const { service, storage, context, run } = await setup(mp3WithoutTags);
+    context.job.attempts = context.job.maxAttempts - 1;
+
+    await expect(run()).rejects.toThrow('media_processing_unavailable');
+
+    expect(storage.writeObject).not.toHaveBeenCalled();
+    expect(service.tryApplyStorageUsageWithinQuota).not.toHaveBeenCalled();
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processingStatus: 'failed',
+        technical: expect.objectContaining({ lastError: { code: 'media_scan_unavailable' } }),
+      })
+    );
+  });
+
+  it('rejects audio that exceeds the authorized size after transfer', async () => {
+    vi.mocked(scanConfiguredMedia).mockClear();
+    const { storage, run } = await setup(mp3WithoutTags);
+    const oversized = Buffer.concat([mp3WithoutTags, Buffer.from([0])]);
+    storage.readObject.mockResolvedValueOnce({
+      body: oversized,
+      byteSize: oversized.length,
+      contentType: 'audio/mpeg',
+    });
+
+    await expect(run()).rejects.toThrow('upload_size_exceeded');
+
+    expect(scanConfiguredMedia).not.toHaveBeenCalled();
+    expect(storage.writeObject).not.toHaveBeenCalled();
+  });
+
   it('records the rejected asset in the scan failure audit without quota booking', async () => {
     const { service, run, emitAuditEvent } = await setup();
     service.getUploadSessionById.mockResolvedValue({

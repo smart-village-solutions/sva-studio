@@ -5,6 +5,7 @@ import type { MediaContentSaveOperationRow } from './rows.js';
 import { mapContentSaveOperationRow } from './rows.js';
 import { lockReferenceAssetsStatement } from './storage-reference-statements.js';
 import {
+  claimEditorialMediaWriteStatement,
   markContentSaveOperationContentSavedStatement,
   markContentSaveOperationSavingContentStatement,
   markContentSaveOperationOutcomeUnknownStatement,
@@ -26,6 +27,7 @@ export const createContentSaveMethods = (
   | 'replaceContentSaveOperationReferences'
   | 'markContentSaveOperationContentSaved'
   | 'markContentSaveOperationSavingContent'
+  | 'claimEditorialMediaWrite'
   | 'markContentSaveOperationOutcomeUnknown'
 > => ({
   async createContentSaveOperation(input: MediaContentSaveOperationRecord) {
@@ -75,6 +77,12 @@ export const createContentSaveMethods = (
     input: Parameters<MediaRepository['markContentSaveOperationSavingContent']>[0]
   ) {
     const result = await executor.execute(markContentSaveOperationSavingContentStatement(input));
+    return result.rowCount > 0;
+  },
+  async claimEditorialMediaWrite(
+    input: Parameters<MediaRepository['claimEditorialMediaWrite']>[0]
+  ) {
+    const result = await executor.execute(claimEditorialMediaWriteStatement(input));
     return result.rowCount > 0;
   },
   async markContentSaveOperationOutcomeUnknown(

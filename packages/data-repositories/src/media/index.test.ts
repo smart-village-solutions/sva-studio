@@ -980,6 +980,29 @@ describe('media repository', () => {
     ]);
   });
 
+  it('claims a managed write against the prepared operation references and target', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ id: contentSaveOperationRow.id }]]);
+    const assetId = '00000000-0000-4000-8000-000000000002';
+    await expect(
+      createMediaRepository(executor).claimEditorialMediaWrite({
+        ...contentSaveIdentity,
+        targetType: 'news.article',
+        targetId: '99',
+        assetIds: [assetId],
+      })
+    ).resolves.toBe(true);
+    expect(statements[0]?.text).toContain('iam.media_content_save_operation_references');
+    expect(statements[0]?.text).toContain('editorial_write_claimed_at IS NULL');
+    expect(statements[0]?.values).toEqual([
+      contentSaveIdentity.operationId,
+      contentSaveIdentity.instanceId,
+      contentSaveIdentity.actorSubject,
+      'news.article',
+      '99',
+      [assetId],
+    ]);
+  });
+
   it('executes and maps every content-save lifecycle repository transition', async () => {
     const { executor, statements } = createQueuedExecutor([
       [contentSaveOperationRow],

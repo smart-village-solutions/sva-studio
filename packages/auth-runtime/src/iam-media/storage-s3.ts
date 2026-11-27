@@ -39,6 +39,7 @@ const mimeTypeExtensions: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'audio/mpeg': 'mp3',
 };
 
 const resolveObjectExtension = (mimeType: string): string => mimeTypeExtensions[mimeType] ?? 'bin';

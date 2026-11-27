@@ -150,6 +150,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
         ...input,
         document: svaMainserverCreateNewsDocument,
         operationName: 'SvaMainserverCreateNews',
+        editorialAudio: true,
         variables: buildNewsMutationVariables(input),
       },
       config

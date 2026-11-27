@@ -16,6 +16,8 @@ import {
 import { enqueueStudioJobWithClient } from '../plugin-operations/runner-queue.js';
 import { createMediaService } from './service.js';
 import { createMediaHttpHandlers } from './core.js';
+import { scanConfiguredMedia } from './clamav.js';
+import { mp3WithId3 } from '../../tests/iam-media-mp3.test-fixtures.js';
 import type { withMediaUploadJobRepositories } from './repository.js';
 import {
   createMediaUploadProcessingHandler,
@@ -25,6 +27,11 @@ import {
 const containerName = `sva-media-processing-contract-${process.pid}`;
 const adminPassword = 'media-fixture-password';
 const database = 'sva_studio';
+
+vi.mock('./clamav.js', async (original) => ({
+  ...(await original<typeof import('./clamav.js')>()),
+  scanConfiguredMedia: vi.fn(async () => undefined),
+}));
 
 // Opt-in: creates and removes its own PostgreSQL container, never uses configured application databases.
 describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
@@ -147,6 +154,8 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       await pool.query('ALTER TABLE iam.media_assets ADD UNIQUE (instance_id, id)');
       await pool.query(`ALTER TABLE iam.media_assets ADD FOREIGN KEY (instance_id, editing_source_asset_id)
         REFERENCES iam.media_assets(instance_id, id) ON DELETE RESTRICT`);
+      await pool.query(`ALTER TABLE iam.media_content_save_operation_references ADD FOREIGN KEY (asset_id)
+        REFERENCES iam.media_assets(id) ON DELETE RESTRICT`);
       await pool.query('CREATE UNIQUE INDEX ON iam.media_variants (asset_id, variant_key)');
       await pool.query('CREATE UNIQUE INDEX ON iam.studio_jobs (instance_id, idempotency_key)');
     }, 120_000);
@@ -215,6 +224,90 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       }
       throw new Error('fixture_expected_asset_lock');
     };
+
+    it('applies the additive audio migration to an existing image and finalizes MP3 once', async () => {
+      const migration = readFileSync(
+        new URL('../../../data/migrations/0123_iam_media_audio.sql', import.meta.url),
+        'utf8'
+      );
+      const [up, down] = migration.split('-- +goose Down');
+      await pool.query(down!);
+      await pool.query(up!);
+      expect(
+        (await withRepositories(tenant, ({ media }) => media.getAssetById(tenant, assetId)))
+          ?.mediaType
+      ).toBe('image');
+      const audioId = randomUUID();
+      const audioSessionId = randomUUID();
+      const storageKey = `.quarantine/${tenant}/${audioId}/${audioSessionId}`;
+      const body = mp3WithId3;
+      const mimeType = 'audio/mpeg';
+      await withRepositories(tenant, async ({ media }) => {
+        await media.upsertAsset({
+          id: audioId,
+          instanceId: tenant,
+          storageKey,
+          mediaType: 'audio',
+          mimeType,
+          byteSize: body.length,
+          visibility: 'public',
+          uploadStatus: 'pending',
+          processingStatus: 'pending',
+          metadata: {},
+          technical: {},
+        });
+        await media.upsertUploadSession({
+          id: audioSessionId,
+          assetId: audioId,
+          instanceId: tenant,
+          storageKey,
+          mimeType,
+          byteSize: body.length,
+          status: 'pending',
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        });
+      });
+      await scheduleMediaUploadProcessing(
+        { instanceId: tenant, uploadSessionId: audioSessionId },
+        withRepositories
+      );
+      const job = await withRepositories(tenant, ({ jobs }) =>
+        jobs.getJobById(tenant, audioSessionId)
+      );
+      const writeObject = vi.fn(async () => ({ byteSize: body.length }));
+      const handler = createMediaUploadProcessingHandler({
+        withMediaService: (instanceId, work) =>
+          withRepositories(instanceId, ({ media }) => work(media)),
+        resolveStoragePort: async () =>
+          ({
+            listObjects: async () => ({ items: [] }),
+            readObject: async () => ({ body, byteSize: body.length, contentType: mimeType }),
+            writeObject,
+            deleteObject: async () => undefined,
+          }) as never,
+        createId: randomUUID,
+        emitAuditEvent: vi.fn(),
+        getJobAttempts: async () => 1,
+      });
+      const context = { job, progressReporter: { reportProgress: vi.fn() } };
+      await handler(context as never);
+      await handler(context as never);
+      const persisted = await withRepositories(tenant, ({ media }) =>
+        media.getAssetById(tenant, audioId)
+      );
+      expect(persisted).toMatchObject({
+        mediaType: 'audio',
+        mimeType,
+        processingStatus: 'ready',
+        technical: { scanStatus: 'clean', variantBytes: 0 },
+      });
+      expect(persisted?.storageKey).toMatch(/\/original\.mp3$/);
+      expect(scanConfiguredMedia).toHaveBeenCalledExactlyOnceWith(body);
+      expect(writeObject).toHaveBeenCalledOnce();
+      const usage = await withRepositories(tenant, ({ media }) => media.getStorageUsage(tenant));
+      expect(usage?.assetCount).toBe(1);
+      expect(Number(usage?.totalBytes)).toBe(body.length);
+    });
 
     it.each(['metadata', 'delete'] as const)(
       'reads the latest locked asset after a concurrent %s transaction commits',
@@ -407,28 +500,196 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       }
     });
 
-    it('blocks deletion for a real content operation reference', async () => {
+    it('releases prepared MP3 references after commit and allows deletion after unlinking', async () => {
       const source = await readyAsset();
       const operationId = randomUUID();
+      const identity = { instanceId: tenant, operationId, actorSubject: 'actor' };
+      const target = { instanceId: tenant, targetType: 'news', targetId: operationId };
       await withRepositories(tenant, async ({ media }) => {
+        await media.upsertAsset({
+          ...source,
+          mediaType: 'audio',
+          mimeType: 'audio/mpeg',
+          technical: { scanStatus: 'clean' },
+        });
         await media.createContentSaveOperation({
           id: operationId,
-          instanceId: tenant,
-          actorSubject: 'actor',
-          targetType: 'news',
+          ...target,
+          actorSubject: identity.actorSubject,
           status: 'preparing',
           expiresAt: new Date(Date.now() + 60000).toISOString(),
         });
         expect(
           await media.replaceContentSaveOperationReferences({
-            instanceId: tenant,
-            operationId,
-            actorSubject: 'actor',
-            references: [{ id: randomUUID(), assetId: source.id, role: 'teaser_image' }],
+            ...identity,
+            references: [{ id: randomUUID(), assetId: source.id, role: 'gallery_item' }],
           })
         ).toBe(true);
         expect(await media.claimAssetDeletion(tenant, source.id)).toBe(false);
+        expect(await media.markContentSaveOperationSavingContent(identity)).toBe(true);
+        expect(
+          await media.replaceContentSaveOperationReferences({ ...identity, references: [] })
+        ).toBe(false);
+        expect(await media.claimAssetDeletion(tenant, source.id)).toBe(false);
+        expect(await media.commitContentSaveOperation(identity)).toBe(false);
+        expect(
+          await media.markContentSaveOperationContentSaved({
+            ...identity,
+            targetId: target.targetId,
+          })
+        ).toBe(true);
+        expect(await media.commitContentSaveOperation(identity)).toBe(true);
+        expect(await media.claimAssetDeletion(tenant, source.id)).toBe(false);
+        expect(await media.getContentSaveOperation(identity)).toMatchObject({
+          status: 'committed',
+        });
       });
+      expect(
+        (
+          await pool.query(
+            'SELECT id FROM iam.media_content_save_operation_references WHERE operation_id = $1',
+            [operationId]
+          )
+        ).rows
+      ).toEqual([]);
+
+      await withRepositories(tenant, async ({ media }) => {
+        await media.replaceReferences({ ...target, references: [] });
+        expect(await media.commitContentSaveOperation(identity)).toBe(true);
+        expect(await media.claimAssetDeletion(tenant, source.id)).toBe(true);
+        expect(await media.finalizeAssetDeletion(tenant, source.id)).toBe(true);
+      });
+    });
+
+    it.each(['saving_content', 'outcome_unknown'] as const)(
+      'claims a managed editorial write from %s only once and binds the verified edit target',
+      async (status) => {
+        const source = await readyAsset();
+        const operationId = randomUUID();
+        const identity = { instanceId: tenant, operationId, actorSubject: 'actor' };
+        const claim = {
+          ...identity,
+          targetType: 'news',
+          targetId: 'news-1',
+          assetIds: [source.id],
+        };
+        await withRepositories(tenant, async ({ media }) => {
+          await media.createContentSaveOperation({
+            id: operationId,
+            instanceId: tenant,
+            actorSubject: identity.actorSubject,
+            targetType: claim.targetType,
+            status: 'preparing',
+            expiresAt: new Date(Date.now() + 60000).toISOString(),
+          });
+          expect(
+            await media.replaceContentSaveOperationReferences({
+              ...identity,
+              references: [{ id: randomUUID(), assetId: source.id, role: 'gallery_item' }],
+            })
+          ).toBe(true);
+          expect(await media.claimEditorialMediaWrite(claim)).toBe(false);
+          expect(await media.markContentSaveOperationSavingContent(identity)).toBe(true);
+          if (status === 'outcome_unknown') {
+            expect(await media.markContentSaveOperationOutcomeUnknown(identity)).toBe(true);
+          }
+          expect(await media.claimEditorialMediaWrite({ ...claim, actorSubject: 'another' })).toBe(
+            false
+          );
+          expect(await media.claimEditorialMediaWrite({ ...claim, targetType: 'poi' })).toBe(false);
+          expect(
+            await media.claimEditorialMediaWrite({ ...claim, assetIds: [source.id, randomUUID()] })
+          ).toBe(false);
+        });
+        const results = await Promise.all(
+          [claim, { ...claim, targetId: 'news-2' }].map((candidate) =>
+            withRepositories(tenant, ({ media }) => media.claimEditorialMediaWrite(candidate))
+          )
+        );
+        expect(results.filter(Boolean)).toHaveLength(1);
+        const winner = results[0] ? 'news-1' : 'news-2';
+        const loser = results[0] ? 'news-2' : 'news-1';
+        await withRepositories(tenant, async ({ media }) => {
+          expect(await media.claimEditorialMediaWrite({ ...claim, targetId: winner })).toBe(false);
+          expect(await media.getContentSaveOperation(identity)).toMatchObject({ targetId: winner });
+          expect(
+            await media.markContentSaveOperationContentSaved({ ...identity, targetId: loser })
+          ).toBe(false);
+          expect(
+            await media.markContentSaveOperationContentSaved({ ...identity, targetId: winner })
+          ).toBe(true);
+          expect(await media.commitContentSaveOperation(identity)).toBe(true);
+        });
+      }
+    );
+
+    it('keeps permanent and prepared references when an incomplete commit is rejected', async () => {
+      const source = await readyAsset();
+      const operationId = randomUUID();
+      const identity = { instanceId: tenant, operationId, actorSubject: 'actor' };
+      const target = { instanceId: tenant, targetType: 'news', targetId: operationId };
+      const oldReferenceId = randomUUID();
+      const preparedId = randomUUID();
+      const provisionalId = randomUUID();
+      await withRepositories(tenant, async ({ media }) => {
+        await media.replaceReferences({
+          ...target,
+          references: [{ ...target, id: oldReferenceId, assetId: source.id, role: 'teaser_image' }],
+        });
+        await media.createContentSaveOperation({
+          id: operationId,
+          ...target,
+          actorSubject: identity.actorSubject,
+          status: 'preparing',
+          expiresAt: new Date(Date.now() + 60000).toISOString(),
+        });
+        await media.upsertAsset({
+          ...source,
+          id: provisionalId,
+          storageKey: `${tenant}/${provisionalId}.mp3`,
+          mediaType: 'audio',
+          mimeType: 'audio/mpeg',
+          lifecycleStatus: 'provisional',
+          provisionalOperationId: operationId,
+          provisionalOwnerSubject: identity.actorSubject,
+          provisionalDraftId: randomUUID(),
+          provisionalExpiresAt: new Date(Date.now() + 60000).toISOString(),
+        });
+        expect(
+          await media.replaceContentSaveOperationReferences({
+            ...identity,
+            references: [{ id: preparedId, assetId: source.id, role: 'gallery_item' }],
+          })
+        ).toBe(true);
+        expect(
+          await media.markContentSaveOperationContentSaved({
+            ...identity,
+            targetId: target.targetId,
+          })
+        ).toBe(true);
+        expect(await media.commitContentSaveOperation(identity)).toBe(false);
+        expect(await media.getContentSaveOperation(identity)).toMatchObject({
+          status: 'content_saved',
+        });
+        expect(await media.getAssetById(tenant, provisionalId)).toMatchObject({
+          lifecycleStatus: 'provisional',
+        });
+      });
+      expect(
+        (
+          await pool.query('SELECT id FROM iam.media_references WHERE target_id = $1', [
+            target.targetId,
+          ])
+        ).rows
+      ).toEqual([{ id: oldReferenceId }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT id FROM iam.media_content_save_operation_references WHERE operation_id = $1',
+            [operationId]
+          )
+        ).rows
+      ).toEqual([{ id: preparedId }]);
     });
 
     it.each(['variantBytes', 'variantTotalBytes'])(

@@ -104,6 +104,7 @@ vi.mock('../routes/app-configuration/-editor', () => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useBlocker: () => ({ status: 'idle', proceed: undefined, reset: undefined }),
+  useLoaderData: () => undefined,
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),

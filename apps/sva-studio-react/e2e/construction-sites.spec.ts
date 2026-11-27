@@ -124,13 +124,16 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await navigateClientSide(page, '/admin/construction-sites/new');
   await expect(page.getByRole('heading', { name: 'Baustelle anlegen', exact: true })).toBeVisible();
   await expect(page.getByRole('tablist')).toHaveCount(0);
-  await page.locator('#cs-title').fill('Brückenbau');
-  await page.locator('#cs-dates-0-dateEnd').fill('2026-12-20');
-  await page.locator('#cs-dates-0-dateStart').fill('2026-11-15');
-  await expect(page.locator('#cs-dates-0-dateEnd')).toHaveValue('20.12.2026');
+  // The drawing control becomes enabled after the editor mounts on the client.
   await expect(page.getByRole('button', { name: 'Strecke zeichnen', exact: true })).toBeEnabled({
     timeout: 15000,
   });
+  const title = page.locator('#cs-title');
+  await title.fill('Brückenbau');
+  await page.locator('#cs-dates-0-dateEnd').fill('2026-12-20');
+  await page.locator('#cs-dates-0-dateStart').fill('2026-11-15');
+  await expect(page.locator('#cs-dates-0-dateEnd')).toHaveValue('20.12.2026');
+  await expect(title).toHaveValue('Brückenbau');
   await page.getByRole('button', { name: 'Standort setzen', exact: true }).click();
   const locationCanvas = page.getByRole('region', { name: 'Baustellenkarte' }).locator('canvas');
   await locationCanvas.click({ position: { x: 70, y: 50 } });

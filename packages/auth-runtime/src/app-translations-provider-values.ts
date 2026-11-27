@@ -32,7 +32,7 @@ export const readResponse = async (response: Response, limit = 262144): Promise<
 
 export const translationFailureIsTerminal = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
-  const cause = error.cause as { retry?: { kind?: unknown } } | undefined;
+  const cause = 'cause' in error ? (error.cause as { retry?: { kind?: unknown } }) : undefined;
   return (
     cause?.retry?.kind === 'terminal' ||
     [

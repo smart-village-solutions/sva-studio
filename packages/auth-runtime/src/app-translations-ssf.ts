@@ -69,7 +69,7 @@ const ssfRequest = async (
   } catch (error) {
     if (error instanceof InvalidProviderResponse)
       throw terminal('ssf_translation_invalid_response');
-    throw new Error('ssf_translation_unavailable', { cause: error });
+    throw error;
   }
 };
 

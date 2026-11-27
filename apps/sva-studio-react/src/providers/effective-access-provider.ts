@@ -7,6 +7,7 @@ import {
 } from '@sva/iam-core';
 import React from 'react';
 import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
+import { StudioTableQueryProvider } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -29,6 +30,7 @@ import {
 
 export type EffectiveAccessContextValue = Readonly<{
   snapshot: EffectiveAccessSnapshot;
+  isCurrent: boolean;
   permissionActions: readonly string[];
   unscopedPermissionActions: readonly string[];
   decide: (requirement: UiAccessRequirement) => UiAccessDecision;
@@ -301,11 +303,13 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
 
   const assignedModulesKey = (auth.user?.assignedModules ?? []).join('\u0000');
   const platformRolesKey = (auth.user?.roles ?? []).join('\u0000');
-  const currentScopeKey = [
-    auth.user?.id ?? '',
-    auth.user?.instanceId ?? '',
-    organizationContext.context?.activeOrganizationId ?? '',
-  ].join('\u0000');
+  const currentScopeKey = JSON.stringify([
+    auth.user?.id,
+    auth.user?.instanceId,
+    organizationContext.context?.activeOrganizationId,
+    assignedModulesKey,
+    platformRolesKey,
+  ]);
 
   useLoadEffectiveAccessSnapshot({
     auth,
@@ -342,20 +346,31 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
       globalThis.removeEventListener(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, invalidate);
   }, [invalidate]);
 
+  const snapshotIsCurrent =
+    snapshot.generation === generationRef.current &&
+    resolvedScopeKeyRef.current === currentScopeKey &&
+    resolvedInvalidationGenerationRef.current === invalidationGeneration;
+
   usePublishSessionAccessSnapshot(
     snapshot,
     auth.user?.roles,
     auth.user?.id,
     auth.user?.instanceId,
     organizationContext.context?.activeOrganizationId ?? null,
-    snapshot.generation === generationRef.current &&
-      resolvedScopeKeyRef.current === currentScopeKey &&
-      resolvedInvalidationGenerationRef.current === invalidationGeneration
+    snapshotIsCurrent
   );
 
+  const isCurrent =
+    snapshotIsCurrent &&
+    !auth.isLoading &&
+    !auth.isRecoveringSession &&
+    !organizationContext.isLoading &&
+    !organizationContext.isUpdating &&
+    !organizationContext.error;
   const value = React.useMemo<EffectiveAccessContextValue>(
     () => ({
       snapshot,
+      isCurrent,
       permissionActions: collectPermissionActions(snapshot),
       unscopedPermissionActions: collectGloballyAllowedPermissionActions(snapshot),
       decide: (requirement) =>
@@ -367,10 +382,17 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
       invalidate,
       retry,
     }),
-    [auth.isAuthenticated, invalidate, retry, snapshot]
+    [auth.isAuthenticated, invalidate, isCurrent, retry, snapshot]
   );
 
-  return React.createElement(EffectiveAccessContext.Provider, { value }, children);
+  return React.createElement(
+    EffectiveAccessContext.Provider,
+    { value },
+    React.createElement(
+      StudioTableQueryProvider,
+      { scope: isCurrent && snapshot.status === 'ready' ? snapshot.generation : null, children }
+    )
+  );
 };
 
 export const useEffectiveAccess = (): EffectiveAccessContextValue => {

@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { flexRender, type RowData } from '@tanstack/react-table';
-import type { LegacyTable } from '@tanstack/react-table/legacy';
+import type { RowData } from '@tanstack/react-table';
+import type { LegacyRow, LegacyTable } from '@tanstack/react-table/legacy';
 
 import { Checkbox } from './checkbox.js';
 import { getAriaSort, renderHeaderCellContent } from './studio-data-table-cells.js';
@@ -25,6 +25,12 @@ type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   mobileSortingControls: React.ReactNode;
   footerContent: React.ReactNode;
 }>;
+
+function renderCell<TData extends RowData>(cell: ReturnType<LegacyRow<TData>['getVisibleCells']>[number]) {
+  // Studio column callbacks return elements. Evaluating them keeps those elements mounted when column definitions change.
+  const render = cell.column.columnDef.cell;
+  return typeof render === 'function' ? render(cell.getContext()) : render;
+}
 
 function StudioDataTableWide<TData extends RowData>({
   table,
@@ -72,7 +78,7 @@ function StudioDataTableWide<TData extends RowData>({
                   const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                   return (
                     <td key={cell.id} className={cn('px-3 py-3 align-top', meta?.className)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {renderCell(cell)}
                     </td>
                   );
                 })}
@@ -133,7 +139,7 @@ function StudioDataTableCompact<TData extends RowData>({
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {meta?.mobileLabel}
                     </span>
-                    <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    <div>{renderCell(cell)}</div>
                   </div>
                 );
               })}

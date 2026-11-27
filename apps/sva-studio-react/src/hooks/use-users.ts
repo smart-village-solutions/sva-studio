@@ -5,6 +5,7 @@ import type {
   IamUserListItem,
 } from '@sva/core';
 import React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -81,35 +82,18 @@ const DEFAULT_FILTERS: UserFilters = {
   includeTechnicalAccounts: false,
 };
 
+const EMPTY_USERS: readonly IamUserListItem[] = [];
 const usersLogger = createOperationLogger('users-hook', 'debug');
-
-/**
- * Starts a tracked list request. The returned check only passes while the hook is mounted
- * and no newer list request has been started, so slower responses for an outdated query
- * cannot overwrite the current results, error or loading state.
- */
-const startListRequest = (
-  latestRequestIdRef: React.RefObject<number>,
-  isMountedRef: React.RefObject<boolean>
-): (() => boolean) => {
-  const requestId = ++latestRequestIdRef.current;
-  return () => isMountedRef.current && requestId === latestRequestIdRef.current;
-};
 
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const { refreshSession } = useAuth();
   const isMountedRef = React.useRef(false);
-  const latestListRequestIdRef = React.useRef(0);
 
   const [filters, setFilters] = React.useState<UserFilters>({
     ...DEFAULT_FILTERS,
     ...initial,
   });
   const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search);
-  const [users, setUsers] = React.useState<readonly IamUserListItem[]>([]);
-  const [total, setTotal] = React.useState(0);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
@@ -139,35 +123,18 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     };
   }, [filters.search]);
 
-  const loadUsers = React.useCallback(async () => {
-    const isCurrentRequest = startListRequest(latestListRequestIdRef, isMountedRef);
-    logBrowserOperationStart(usersLogger, 'user_list_refetch_started', {
-      operation: 'list_users',
-      page: filters.page,
-      page_size: filters.pageSize,
-      search: debouncedSearch || undefined,
-      status: filters.status,
-      role: filters.role || undefined,
-    });
-    if (isMountedRef.current) {
-      setIsLoading(true);
-      setError(null);
-    }
-
+  const query = {
+    page: filters.page,
+    pageSize: filters.pageSize,
+    search: debouncedSearch || undefined,
+    status: filters.status === 'all' ? undefined : filters.status,
+    role: filters.role || undefined,
+    includeTechnicalAccounts: filters.includeTechnicalAccounts,
+  };
+  const list = useStudioTableQuery(['iam-users', query], async (signal) => {
+    logBrowserOperationStart(usersLogger, 'user_list_refetch_started', { operation: 'list_users' });
     try {
-      const response = await listUsers({
-        page: filters.page,
-        pageSize: filters.pageSize,
-        search: debouncedSearch || undefined,
-        status: filters.status === 'all' ? undefined : filters.status,
-        role: filters.role || undefined,
-        includeTechnicalAccounts: filters.includeTechnicalAccounts,
-      });
-
-      if (isCurrentRequest()) {
-        setUsers(response.data);
-        setTotal(response.pagination.total);
-      }
+      const response = await listUsers(query);
       logBrowserOperationSuccess(
         usersLogger,
         'user_list_refetch_succeeded',
@@ -178,57 +145,36 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         },
         'debug'
       );
+      return response;
     } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401) {
+      if (signal.aborted) throw cause;
+      const error = asIamError(cause);
+      if (error.status === 401) {
         await refreshSession();
         usersLogger.info('session_refreshed_after_401', {
           operation: 'list_users',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
+          status: error.status,
+          error_code: error.code,
         });
       }
-      if (isCurrentRequest()) {
-        setUsers([]);
-        setTotal(0);
-        setError(resolvedError);
-      }
-      logBrowserOperationFailure(usersLogger, 'user_list_refetch_failed', resolvedError, {
+      logBrowserOperationFailure(usersLogger, 'user_list_refetch_failed', error, {
         operation: 'list_users',
       });
-    } finally {
-      if (isCurrentRequest()) {
-        setIsLoading(false);
-      }
+      throw error;
     }
-  }, [
-    debouncedSearch,
-    filters.page,
-    filters.pageSize,
-    filters.role,
-    filters.status,
-    filters.includeTechnicalAccounts,
-    refreshSession,
-  ]);
-
-  // Reloads after mutations, sync or external updates must use the query that is current
-  // when the reload starts, not the one captured when the triggering action began.
+  });
+  const users = list.data?.data ?? EMPTY_USERS;
+  const total = list.data?.pagination.total ?? 0;
+  const isLoading = list.state === 'loading';
+  const error = list.error as IamHttpError | null;
+  const loadUsers = React.useCallback(async () => {
+    await list.refetch();
+  }, [list.refetch]);
   const loadCurrentUsersRef = React.useRef(loadUsers);
   React.useEffect(() => {
     loadCurrentUsersRef.current = loadUsers;
   }, [loadUsers]);
   const reloadUsers = React.useCallback(() => loadCurrentUsersRef.current(), []);
-
-  React.useEffect(() => {
-    loadUsers().catch((cause) => {
-      const resolvedError = asIamError(cause);
-      usersLogger.error('background_user_list_refresh_failed', {
-        operation: 'list_users',
-        error_code: resolvedError.code,
-        status: resolvedError.status,
-      });
-    });
-  }, [loadUsers]);
 
   React.useEffect(
     () =>

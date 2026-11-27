@@ -30,7 +30,7 @@ describe('useIamAdminList', () => {
       .mockReturnValueOnce(firstRefresh.promise)
       .mockReturnValueOnce(latestRefresh.promise);
     const refreshSession = vi.fn();
-    const { result } = renderHook(() => useIamAdminList(listItems, refreshSession));
+    const { result } = renderHook(() => useIamAdminList(listItems, refreshSession, { resource: 'test' }));
 
     await waitFor(() => expect(result.current.items).toEqual(['initial']));
 
@@ -49,6 +49,6 @@ describe('useIamAdminList', () => {
     });
 
     expect(result.current.items).toEqual(['initial']);
-    expect(result.current.error?.message).toBe('latest refresh failed');
+    await waitFor(() => expect(result.current.error?.message).toBe('latest refresh failed'));
   });
 });

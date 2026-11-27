@@ -1,6 +1,7 @@
 import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
 
 import React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import { fetchWithRequestTimeout } from '../../lib/iam-api';
 
@@ -29,6 +30,8 @@ import {
   type IamPermissionsResponse,
 } from './-iam.models';
 
+const EMPTY_PERMISSIONS: readonly EffectivePermission[] = [];
+
 const collectOrganizationOptions = (permissions: readonly EffectivePermission[]) => {
   const organizationIds = new Set<string>();
   for (const permission of permissions) {
@@ -56,53 +59,37 @@ const usePermissionsState = ({
   const [actingAsUserId, setActingAsUserId] = React.useState('');
   const [queryText, setQueryText] = React.useState('');
   const [selectedOrganizationIds, setSelectedOrganizationIds] = React.useState<string[]>([]);
-  const [permissions, setPermissions] = React.useState<readonly EffectivePermission[]>([]);
-  const [permissionSubject, setPermissionSubject] = React.useState<
-    IamPermissionsResponse['subject'] | null
-  >(null);
-  const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(false);
-  const [permissionsError, setPermissionsError] = React.useState<string | null>(null);
+  const path = buildPermissionsPath({
+    instanceId,
+    organizationId: organizationId.trim() || undefined,
+    actingAsUserId: actingAsUserId.trim() || undefined,
+  });
+  const [debouncedPath, setDebouncedPath] = React.useState(path);
   React.useEffect(() => {
-    if (
-      !cockpitEnabled ||
-      !canAccessCockpit ||
-      !instanceId ||
-      activeTab !== 'rights' ||
-      !allowedTabs.includes('rights')
-    ) {
-      return;
-    }
+    const timer = window.setTimeout(() => setDebouncedPath(path), FILTER_REQUEST_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [path]);
 
-    let active = true;
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
+  const active =
+    cockpitEnabled &&
+    canAccessCockpit &&
+    Boolean(instanceId) &&
+    activeTab === 'rights' &&
+    allowedTabs.includes('rights');
+  const list = useStudioTableQuery(
+    ['iam-effective-permissions', path],
+    async (signal) => {
+      const meta = { operation: 'load_permissions', instance_id: instanceId };
       logBrowserOperationStart(iamViewerLogger, 'iam_permissions_load_started', {
-        operation: 'load_permissions',
-        instance_id: instanceId,
+        ...meta,
         organization_id: organizationId.trim() || undefined,
         acting_as_user_id: actingAsUserId.trim() || undefined,
       });
-      setIsLoadingPermissions(true);
-      setPermissionsError(null);
-
       try {
-        const response = await fetchWithRequestTimeout(
-          buildPermissionsPath({
-            instanceId,
-            organizationId: organizationId.trim() || undefined,
-            actingAsUserId: actingAsUserId.trim() || undefined,
-          }),
-          undefined,
-          {
-            signal: controller.signal,
-            timeoutMs: 10_000,
-          }
-        );
-
-        if (!active || controller.signal.aborted) {
-          return;
-        }
-
+        const response = await fetchWithRequestTimeout(path, undefined, {
+          signal,
+          timeoutMs: 10_000,
+        });
         if (!response.ok) {
           if (response.status === 401) {
             await refreshSession();
@@ -112,72 +99,40 @@ const usePermissionsState = ({
             });
           }
           const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
-          setPermissions([]);
-          setPermissionSubject(null);
-          setPermissionsError(payload?.error ?? `http_${response.status}`);
-          logBrowserOperationFailure(
-            iamViewerLogger,
-            'iam_permissions_load_failed',
-            new Error(payload?.error ?? `http_${response.status}`),
-            {
-              operation: 'load_permissions',
-              instance_id: instanceId,
-              status: response.status,
-            }
-          );
-          return;
+          throw Object.assign(new Error(payload?.error ?? `http_${response.status}`), {
+            status: response.status,
+          });
         }
-
         const payload = (await response.json()) as IamPermissionsResponse;
-        setPermissions(payload.permissions);
-        setPermissionSubject(payload.subject);
         logBrowserOperationSuccess(
           iamViewerLogger,
           'iam_permissions_load_succeeded',
           {
-            operation: 'load_permissions',
-            instance_id: instanceId,
+            ...meta,
             permission_count: payload.permissions.length,
           },
           'debug'
         );
-      } catch (error) {
-        if (!active || controller.signal.aborted) {
-          logBrowserOperationAbort(iamViewerLogger, 'iam_permissions_load_aborted', {
-            operation: 'load_permissions',
-            instance_id: instanceId,
-          });
-          return;
+        return payload;
+      } catch (cause) {
+        if (signal.aborted) {
+          logBrowserOperationAbort(iamViewerLogger, 'iam_permissions_load_aborted', meta);
+        } else {
+          logBrowserOperationFailure(iamViewerLogger, 'iam_permissions_load_failed', cause, meta);
         }
-        setPermissions([]);
-        setPermissionSubject(null);
-        setPermissionsError(error instanceof Error ? error.message : String(error));
-        logBrowserOperationFailure(iamViewerLogger, 'iam_permissions_load_failed', error, {
-          operation: 'load_permissions',
-          instance_id: instanceId,
-        });
-      } finally {
-        if (active) {
-          setIsLoadingPermissions(false);
-        }
+        throw cause;
       }
-    }, FILTER_REQUEST_DEBOUNCE_MS);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [
-    actingAsUserId,
-    activeTab,
-    allowedTabs,
-    canAccessCockpit,
-    cockpitEnabled,
-    instanceId,
-    refreshSession,
-    organizationId,
-  ]);
+    },
+    active && path === debouncedPath
+  );
+  const permissions = list.data?.permissions ?? EMPTY_PERMISSIONS;
+  const permissionSubject = list.data?.subject ?? null;
+  const isLoadingPermissions = active && list.state === 'loading';
+  const permissionsError = list.error
+    ? list.error instanceof Error
+      ? list.error.message
+      : String(list.error)
+    : null;
 
   const filteredPermissions = React.useMemo(
     () =>

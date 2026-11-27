@@ -165,11 +165,11 @@ describe('construction site editorial UI', () => {
       />
     );
     await waitFor(() =>
-      expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'organization')
+      expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'organization', expect.any(AbortSignal))
     );
     fireEvent.change(screen.getByLabelText('Handeln als'), { target: { value: 'user' } });
-    await waitFor(() => expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'user'));
-    expect(state.categories).toHaveBeenLastCalledWith('user');
+    await waitFor(() => expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'user', expect.any(AbortSignal)));
+    await waitFor(() => expect(state.categories).toHaveBeenLastCalledWith('user', expect.any(AbortSignal)));
   });
   it('opens the media details and focuses the actual invalid URL field from the error summary', async () => {
     state.realMedia = true;
@@ -334,7 +334,8 @@ describe('construction site editorial UI', () => {
     expect(screen.getAllByText('01.11.2026').length).toBeGreaterThan(0);
     expect(state.list).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'Verkehr', page: 2 }),
-      'organization'
+      'organization',
+      expect.any(AbortSignal)
     );
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     const navigation = state.navigate.mock.calls[0]?.[0];
@@ -471,6 +472,7 @@ describe('construction site editorial UI', () => {
     expect(screen.getByText('Sichtbarkeit geändert')).toBeTruthy();
     expect(state.history).toHaveBeenCalledWith('42', {
       contentType: 'construction-sites.construction-site',
+      signal: expect.any(AbortSignal),
     });
     expect(screen.getByText('legacy date')).toBeTruthy();
   });

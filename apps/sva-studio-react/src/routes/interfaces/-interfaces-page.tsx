@@ -143,6 +143,9 @@ export const InterfacesPage = () => {
       {errorMessage && !showBlockingLoadError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
+          <Button type="button" variant="secondary" onClick={() => void refresh()}>
+            {t('interfaces.actions.reload')}
+          </Button>
         </Alert>
       ) : null}
 
@@ -220,7 +223,7 @@ export const InterfacesPage = () => {
         />
       ) : null}
 
-      {editState.mode !== 'closed' ? (
+      {hasLoadedInterfacesContext && editState.mode !== 'closed' ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
@@ -265,7 +268,7 @@ export const InterfacesPage = () => {
       ) : null}
 
       <TypePickerDialog
-        open={pickerOpen}
+        open={hasLoadedInterfacesContext && pickerOpen}
         availableTypes={availableTypes}
         selectedType={pickerType}
         onSelectType={setPickerType}
@@ -274,7 +277,7 @@ export const InterfacesPage = () => {
       />
 
       <StudioDestructiveActionDialog
-        open={pendingDelete !== null}
+        open={hasLoadedInterfacesContext && pendingDelete !== null}
         title={t('interfaces.edit.deleteConfirmTitle')}
         description={t('interfaces.edit.deleteConfirmDescription', {
           name: pendingDelete?.name ?? '',

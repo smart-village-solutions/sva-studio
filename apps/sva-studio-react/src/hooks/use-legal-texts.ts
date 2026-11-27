@@ -32,6 +32,7 @@ type UseLegalTextsResult = {
 export const useLegalTexts = (): UseLegalTextsResult => {
   const { refreshSession } = useAuth();
   const adminList = useIamAdminList(listLegalTexts, refreshSession, {
+    resource: 'iam-legal-texts',
     invalidateEffectiveAccessOnMutation: true,
   });
 

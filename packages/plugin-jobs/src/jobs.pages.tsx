@@ -17,7 +17,8 @@ function JobHistory({ id }: Readonly<{ id: string }>) {
   return (
     <StudioContentHistory
       contentId={id}
-      loadHistory={(contentId) => fetchIamContentHistory(contentId, { contentType: JOBS_TYPE })}
+      contentType={JOBS_TYPE}
+      loadHistory={(contentId, signal) => fetchIamContentHistory(contentId, { contentType: JOBS_TYPE, signal })}
       labels={{
         loading: pt('history.loading'),
         error: pt('history.error'),

@@ -1,4 +1,7 @@
-import * as React from 'react';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+
+import { Button } from './button.js';
+import { useStudioTableQuery } from './studio-table-query.js';
 
 import { StudioEmptyState, StudioLoadingState } from './studio-state-blocks.js';
 
@@ -27,7 +30,8 @@ export type StudioContentHistoryLabels = Readonly<{
 
 export type StudioContentHistoryProps = Readonly<{
   contentId?: string;
-  loadHistory: (contentId: string) => Promise<readonly StudioContentHistoryEntry[]>;
+  contentType: string;
+  loadHistory: (contentId: string, signal: AbortSignal) => Promise<readonly StudioContentHistoryEntry[]>;
   labels: StudioContentHistoryLabels;
   formatAction: (action: string) => string;
   formatDate: (value: string) => string;
@@ -75,6 +79,7 @@ const HistoryTable = ({ entries, labels, formatAction, formatDate, formatField }
 
 export function StudioContentHistory({
   contentId,
+  contentType,
   loadHistory,
   labels,
   formatAction,
@@ -82,40 +87,17 @@ export function StudioContentHistory({
   formatField = (field) => field,
   formatError = () => labels.error,
 }: StudioContentHistoryProps) {
-  const [entries, setEntries] = React.useState<readonly StudioContentHistoryEntry[]>([]);
-  const [state, setState] = React.useState<'loading' | 'error' | 'ready'>(contentId ? 'loading' : 'ready');
-  const [errorMessage, setErrorMessage] = React.useState(labels.error);
-  const loadHistoryRef = React.useRef(loadHistory);
-  const formatErrorRef = React.useRef(formatError);
-  loadHistoryRef.current = loadHistory;
-  formatErrorRef.current = formatError;
-
-  React.useEffect(() => {
-    if (!contentId) {
-      setEntries([]);
-      setState('ready');
-      return;
-    }
-    let active = true;
-    setEntries([]);
-    setState('loading');
-    setErrorMessage(labels.error);
-    void loadHistoryRef.current(contentId).then(
-      (nextEntries) => {
-        if (!active) return;
-        setEntries([...nextEntries].sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
-        setState('ready');
-      },
-      (error) => {
-        if (!active) return;
-        setErrorMessage(formatErrorRef.current(error));
-        setState('error');
-      }
-    );
-    return () => {
-      active = false;
-    };
-  }, [contentId, labels.error]);
+  const t = usePluginTranslation('shared');
+  const history = useStudioTableQuery(
+    ['content-history', contentType, contentId],
+    async (signal) => {
+      if (!contentId) return [];
+      const entries = await loadHistory(contentId, signal);
+      return [...entries].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    },
+    Boolean(contentId)
+  );
+  const { data: entries, state, error } = history;
 
   if (!contentId) return <StudioEmptyState>{labels.createHint}</StudioEmptyState>;
 
@@ -127,13 +109,18 @@ export function StudioContentHistory({
         </p>
       ) : null}
       {state === 'loading' ? <StudioLoadingState>{labels.loading}</StudioLoadingState> : null}
-      {state === 'error' ? (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage}
-        </p>
+      {error ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p role="alert" className="text-sm text-destructive">
+            {formatError(error)}
+          </p>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void history.refetch()}>
+            {t('errorFallback.retry')}
+          </Button>
+        </div>
       ) : null}
-      {state === 'ready' && entries.length === 0 ? <StudioEmptyState>{labels.empty}</StudioEmptyState> : null}
-      {state === 'ready' && entries.length > 0 ? (
+      {entries?.length === 0 ? <StudioEmptyState>{labels.empty}</StudioEmptyState> : null}
+      {entries && entries.length > 0 ? (
         <HistoryTable
           entries={entries}
           labels={labels}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { StudioEditorLeaveGuardProvider, StudioTableQueryProvider } from '@sva/studio-ui-react';
+import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,6 +31,7 @@ const pt = (key: string): string =>
 
 describe('useSurveyEditorController', () => {
   afterEach(() => {
+    cleanup();
     vi.clearAllMocks();
   });
 
@@ -357,6 +358,84 @@ describe('useSurveyEditorController', () => {
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
 
+  it.each(['added questions and options', 'renamed question'] as const)(
+    'blocks a cached edit when the server has %s and preserves the draft',
+    async (change) => {
+      const option = { id: 'option-1', title: { de: 'Alt' }, position: 0, enablesFreeText: false };
+      const question = {
+        id: 'question-1',
+        title: { de: 'Frage' },
+        type: 'SINGLE_CHOICE',
+        required: false,
+        position: 0,
+        options: [option],
+      };
+      const original = {
+        id: 'survey-1',
+        title: { de: 'Bestandsumfrage' },
+        status: 'DRAFT',
+        isAnonymous: false,
+        resultVisibility: 'NONE',
+        showResultsInApp: false,
+        targetAreaIds: [],
+        questions: [question],
+      };
+      const updated = {
+        ...original,
+        questions:
+          change === 'renamed question'
+            ? [{ ...question, title: { de: 'Remote umbenannt' } }]
+            : [
+                {
+                  ...question,
+                  options: [option, { ...option, id: 'option-new', title: { de: 'Neu' } }],
+                },
+                { ...question, id: 'question-new', title: { de: 'Neue Frage' } },
+              ],
+      };
+      let finishRefresh!: (value: typeof updated) => void;
+      const refresh = new Promise<typeof updated>((resolve) => {
+        finishRefresh = resolve;
+      });
+      getSurveyMock
+        .mockResolvedValueOnce(original)
+        .mockReturnValueOnce(refresh)
+        .mockResolvedValueOnce(updated);
+      let current!: {
+        methods: ReturnType<typeof useForm<SurveyDetailFormValues>>;
+        controller: ReturnType<typeof useSurveyEditorController>;
+      };
+      function Editor() {
+        const methods = useForm<SurveyDetailFormValues>({ defaultValues: createEmptyFormValues() });
+        const controller = useSurveyEditorController({
+          mode: 'edit',
+          contentId: 'survey-1',
+          methods,
+          pt,
+          navigateToCreatedDetail: async () => undefined,
+          actingPrincipalType: 'user',
+        });
+        current = { methods, controller };
+        return null;
+      }
+      const route = (show: boolean) => (
+        <StudioTableQueryProvider scope={1}>{show ? <Editor /> : null}</StudioTableQueryProvider>
+      );
+      const view = render(route(true));
+      await waitFor(() => expect(current.methods.getValues('title')).toBe('Bestandsumfrage'));
+      view.rerender(route(false));
+      view.rerender(route(true));
+      act(() => current.methods.setValue('title', 'Lokale Änderung', { shouldDirty: true }));
+      await waitFor(() => expect(getSurveyMock).toHaveBeenCalledTimes(2));
+      await act(async () => current.controller.submit());
+      expect(updateSurveyMock).not.toHaveBeenCalled();
+      expect(current.controller.status).toEqual({ kind: 'error', text: 'messages.editConflict' });
+      expect(current.methods.getValues('title')).toBe('Lokale Änderung');
+      await act(async () => finishRefresh(updated));
+      expect(current.methods.getValues('title')).toBe('Lokale Änderung');
+    }
+  );
+
   it('refreshes resource access without resetting local edits when the acting principal changes', async () => {
     getSurveyMock.mockResolvedValue({
       id: 'survey-1',
@@ -401,9 +480,11 @@ describe('useSurveyEditorController', () => {
 
     rerender({ actingPrincipalType: 'organization' });
 
-    await waitFor(() => expect(getSurveyMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => {
+      expect(getSurveyMock).toHaveBeenCalledTimes(2);
+      expect(result.current.loadedItem?.id).toBe('survey-1');
+    });
     expect(methodsRef?.getValues('title')).toBe('Lokale Änderung');
-    expect(result.current.loadedItem?.id).toBe('survey-1');
   });
 
   it('creates surveys, reports success, and navigates back to the content list', async () => {

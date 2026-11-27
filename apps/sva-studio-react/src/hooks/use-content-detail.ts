@@ -1,5 +1,6 @@
 import React from 'react';
-import type { IamContentDetail, IamContentHistoryEntry } from '@sva/core';
+import type { IamContentHistoryEntry } from '@sva/core';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -22,73 +23,54 @@ import {
   type UseContentDetailResult,
 } from './use-contents.shared.js';
 
+const EMPTY_HISTORY: readonly IamContentHistoryEntry[] = [];
+
 export const useContentDetail = (contentId: string | null): UseContentDetailResult => {
   const { refreshSession } = useAuth();
-  const [content, setContent] = React.useState<IamContentDetail | null>(null);
-  const [history, setHistory] = React.useState<readonly IamContentHistoryEntry[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
-  const refetch = React.useCallback(async () => {
-    if (!contentId) {
-      setContent(null);
-      setHistory([]);
-      setError(null);
-      setIsLoading(false);
-      return false;
-    }
+  const detail = useStudioTableQuery(
+    ['content-history', contentId],
+    async (signal) => {
+      if (!contentId) throw new Error('missing_content_id');
 
-    logBrowserOperationStart(contentsLogger, 'content_detail_refetch_started', {
-      operation: 'get_content_detail',
-      content_id: contentId,
-    });
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [contentResponse, historyResponse] = await Promise.all([
-        getContent(contentId),
-        getContentHistory(contentId),
-      ]);
-      setContent({
-        ...contentResponse.data,
-        history: historyResponse.data,
-      });
-      setHistory(historyResponse.data);
-      logBrowserOperationSuccess(contentsLogger, 'content_detail_refetch_succeeded', {
+      logBrowserOperationStart(contentsLogger, 'content_detail_refetch_started', {
         operation: 'get_content_detail',
         content_id: contentId,
-        history_count: historyResponse.data.length,
       });
-      return true;
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401) {
-        await refreshSession();
-        contentsLogger.info(SESSION_REFRESHED_EVENT, {
+      try {
+        const [contentResponse, historyResponse] = await Promise.all([
+          getContent(contentId, { signal }),
+          getContentHistory(contentId, signal),
+        ]);
+        logBrowserOperationSuccess(contentsLogger, 'content_detail_refetch_succeeded', {
           operation: 'get_content_detail',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
+          content_id: contentId,
+          history_count: historyResponse.data.length,
+        });
+        return { ...contentResponse.data, history: historyResponse.data };
+      } catch (cause) {
+        if (signal.aborted) throw cause;
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          contentsLogger.info(SESSION_REFRESHED_EVENT, {
+            operation: 'get_content_detail',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+            content_id: contentId,
+          });
+        }
+        logBrowserOperationFailure(contentsLogger, 'content_detail_refetch_failed', resolvedError, {
+          operation: 'get_content_detail',
           content_id: contentId,
         });
+        throw resolvedError;
       }
-      setContent(null);
-      setHistory([]);
-      setError(resolvedError);
-      logBrowserOperationFailure(contentsLogger, 'content_detail_refetch_failed', resolvedError, {
-        operation: 'get_content_detail',
-        content_id: contentId,
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [contentId, refreshSession]);
-
-  React.useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    },
+    Boolean(contentId)
+  );
+  const { refetch, refresh } = detail;
 
   const runMutation = React.useCallback(
     async (payload: UpdateContentPayload) => {
@@ -102,7 +84,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       });
       try {
         await updateContent(contentId, payload);
-        await refetch();
+        await refresh(true);
         logBrowserOperationSuccess(contentsLogger, 'content_update_succeeded', {
           operation: 'update_content',
           content_id: contentId,
@@ -130,14 +112,14 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         return false;
       }
     },
-    [contentId, refreshSession, refetch]
+    [contentId, refreshSession, refresh]
   );
 
   return {
-    content,
-    history,
-    isLoading,
-    error,
+    content: detail.data ?? null,
+    history: detail.data?.history ?? EMPTY_HISTORY,
+    isLoading: Boolean(contentId) && detail.state === 'loading',
+    error: detail.error as IamHttpError | null,
     mutationError,
     refetch,
     clearMutationError: () => setMutationError(null),

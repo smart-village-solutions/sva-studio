@@ -54,7 +54,10 @@ export function TourDetailContent({
       <StudioDetailCard title={pt('history')}>
         <StudioContentHistory
           contentId={tour.id}
-          loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'tours.tour' })}
+          contentType="tours.tour"
+          loadHistory={(id, signal) =>
+            fetchIamContentHistory(id, { contentType: 'tours.tour', signal })
+          }
           labels={{
             loading: pt('loading'),
             error: pt('historyError'),

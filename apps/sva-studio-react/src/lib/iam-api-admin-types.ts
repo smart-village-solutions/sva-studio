@@ -51,7 +51,7 @@ export type CreateGroupPayload = {
 
 export type UpdateGroupPayload = {
   readonly displayName?: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly roleIds?: readonly string[];
   readonly isActive?: boolean;
 };

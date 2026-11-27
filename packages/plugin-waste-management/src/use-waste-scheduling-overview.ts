@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useStudioTableInvalidation, useStudioTableQuery } from '@sva/studio-ui-react';
+import { useCallback, useLayoutEffect } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -11,63 +12,50 @@ import type { WasteSchedulingState } from './use-waste-scheduling-state.js';
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Translate) => {
-  const ptRef = useRef(pt);
-  const isMountedRef = useRef(false);
-  ptRef.current = pt;
   const { setAvailableTours, setError, setLoading, setLocationOverview, setOverview } = state;
-
-  const loadOverview = useCallback(
-    async () => {
-      try {
-        const schedulingResponse = await getWasteManagementSchedulingOverview();
-        if (!isMountedRef.current) return;
-        setOverview(schedulingResponse);
-        setError(null);
-        void (async () => {
-          try {
-            const [toursResponse, locationsResponse] = await Promise.allSettled([
-              getWasteManagementToursOverview(),
-              getWasteManagementMasterDataOverview({ scope: 'locations' }),
-            ]);
-            if (isMountedRef.current) {
-              setAvailableTours(
-                toursResponse.status === 'fulfilled' ? toursResponse.value.tours : []
-              );
-              setLocationOverview(
-                locationsResponse.status === 'fulfilled' ? locationsResponse.value : null
-              );
-            }
-          } catch {
-            if (isMountedRef.current) {
-              setAvailableTours([]);
-              setLocationOverview(null);
-            }
-          }
-        })();
-      } catch (loadError) {
-        if (!isMountedRef.current) return;
-        const code = resolveApiErrorCode(loadError);
-        setAvailableTours([]);
-        setLocationOverview(null);
-        setError(
-          code === 'forbidden'
-            ? ptRef.current('scheduling.messages.loadForbidden')
-            : ptRef.current('scheduling.messages.loadError')
-        );
-      } finally {
-        if (isMountedRef.current) setLoading(false);
-      }
-    },
-    [setAvailableTours, setError, setLoading, setLocationOverview, setOverview]
+  const invalidate = useStudioTableInvalidation();
+  const scheduling = useStudioTableQuery(['waste', 'scheduling'], (signal) =>
+    getWasteManagementSchedulingOverview({ signal })
+  );
+  const tours = useStudioTableQuery(['waste', 'tours'], (signal) =>
+    getWasteManagementToursOverview(signal)
+  );
+  const locations = useStudioTableQuery(['waste', 'master-data', 'locations'], (signal) =>
+    getWasteManagementMasterDataOverview({ scope: 'locations', signal })
   );
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    void loadOverview();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadOverview]);
+  useLayoutEffect(() => {
+    setOverview(scheduling.data ?? null);
+    setAvailableTours(tours.data?.tours ?? []);
+    setLocationOverview(locations.data ?? null);
+    setLoading(scheduling.state === 'loading');
+    setError(
+      scheduling.error
+        ? pt(
+            resolveApiErrorCode(scheduling.error) === 'forbidden'
+              ? 'scheduling.messages.loadForbidden'
+              : 'scheduling.messages.loadError'
+          )
+        : null
+    );
+  }, [
+    locations.data,
+    pt,
+    scheduling.data,
+    scheduling.error,
+    scheduling.state,
+    setAvailableTours,
+    setError,
+    setLoading,
+    setLocationOverview,
+    setOverview,
+    tours.data,
+  ]);
 
-  return loadOverview;
+  return useCallback(async () => {
+    await invalidate(['waste'], false);
+    await scheduling.refetch();
+    void tours.refetch();
+    void locations.refetch();
+  }, [invalidate, locations.refetch, scheduling.refetch, tours.refetch]);
 };

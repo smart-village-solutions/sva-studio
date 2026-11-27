@@ -1,5 +1,6 @@
 import type { MediaInventoryScanReport } from '@sva/media';
 import type { ApiItemResponse, StudioJobStatus } from '@sva/core';
+import { notifyStudioTableDataChanged } from '@sva/plugin-sdk';
 
 import { IAM_HEADERS, patchJson, postJson, requestJson } from './iam-http-client';
 
@@ -99,6 +100,9 @@ export const deleteMedia = async (assetId: string): Promise<ApiItemResponse<{ id
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/media/${assetId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
+  }).then((response) => {
+    notifyStudioTableDataChanged('media', true);
+    return response;
   });
 
 export const startMediaInventoryScan = (payload: { limit: number; cursor?: string }) =>

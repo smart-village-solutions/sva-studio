@@ -1245,10 +1245,18 @@ describe('appRouteBindings', () => {
       organizations: [],
     };
     routeState.enabledMainserverMutationActions = ['news.update', 'news.delete'];
+    routeState.organizationContextIsLoading = true;
 
     const { appRouteBindings } = await import('./app-route-bindings');
 
-    render(<appRouteBindings.content />);
+    const view = render(<appRouteBindings.content />);
+
+    expect(screen.getByRole('status').textContent).toBe('Author context loading');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
+
+    routeState.organizationContextIsLoading = false;
+    view.rerender(<appRouteBindings.content />);
 
     expect(screen.getByText('Author context unavailable')).toBeTruthy();
     expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBeNull();

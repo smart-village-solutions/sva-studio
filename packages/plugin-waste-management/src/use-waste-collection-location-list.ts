@@ -3,7 +3,8 @@ import type {
   WasteCollectionLocationQuery,
   WasteCollectionLocationSelectionFilter,
 } from '@sva/waste-management-contracts';
-import { useCallback, useEffect, useRef } from 'react';
+import { useStudioTableInvalidation, useStudioTableQuery } from '@sva/studio-ui-react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
   getWasteCollectionLocationIds,
@@ -94,54 +95,31 @@ const useCollectionLocationPageLoader = (
   pt: Translate,
   search: WasteManagementSearchParams
 ) => {
-  const requestSequence = useRef(0);
-  const ptRef = useRef(pt);
-  ptRef.current = pt;
   const { setCollectionLocationListError, setCollectionLocationPage } = state;
-  const loadList = useCallback(async () => {
-    if (!isActiveLocationList(search)) {
-      requestSequence.current += 1;
-      setCollectionLocationListError(null);
-      return;
-    }
-    const sequence = ++requestSequence.current;
-    setCollectionLocationPage(null);
-    try {
-      const page = await getWasteCollectionLocationPage(toQuery(search));
-      if (sequence !== requestSequence.current) return;
-      setCollectionLocationPage(page);
-      setCollectionLocationListError(null);
-    } catch (loadError) {
-      if (sequence !== requestSequence.current) return;
-      const code = resolveApiErrorCode(loadError);
-      setCollectionLocationListError(
-        code === 'forbidden'
-          ? ptRef.current('masterData.messages.loadForbidden')
-          : ptRef.current('masterData.messages.loadError')
-      );
-    }
-  }, [
-    search.cityId,
-    search.locationStreetId,
-    search.locationHouseNumberId,
-    search.locationSortDirection,
-    search.locationSortMode,
-    search.locationYear,
-    search.locationTourStatus,
-    search.locationsView,
-    search.masterDataTab,
-    search.page,
-    search.pageSize,
-    search.q,
-    search.regionId,
-    search.status,
-    search.tab,
-    search.tourId,
-    setCollectionLocationPage,
-    setCollectionLocationListError,
-  ]);
+  const query = toQuery(search);
+  const invalidate = useStudioTableInvalidation();
+  const list = useStudioTableQuery(
+    ['waste', 'collection-locations', query],
+    (signal) => getWasteCollectionLocationPage(query, signal),
+    isActiveLocationList(search)
+  );
+  useLayoutEffect(() => {
+    setCollectionLocationPage(list.data ?? null);
+    setCollectionLocationListError(
+      list.error
+        ? pt(
+            resolveApiErrorCode(list.error) === 'forbidden'
+              ? 'masterData.messages.loadForbidden'
+              : 'masterData.messages.loadError'
+          )
+        : null
+    );
+  }, [list.data, list.error, pt, setCollectionLocationListError, setCollectionLocationPage]);
 
-  return loadList;
+  return useCallback(async () => {
+    await invalidate(['waste', 'collection-locations'], false);
+    await list.refetch();
+  }, [invalidate, list.refetch]);
 };
 
 export const useWasteCollectionLocationList = (
@@ -170,10 +148,6 @@ export const useWasteCollectionLocationList = (
     search.tourId,
     clearFilteredLocationIds,
   ]);
-
-  useEffect(() => {
-    void loadList();
-  }, [loadList]);
 
   const refreshList = useCallback(async () => {
     clearFilteredLocationIds();

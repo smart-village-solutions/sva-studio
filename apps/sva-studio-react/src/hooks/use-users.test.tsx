@@ -728,7 +728,7 @@ describe('useUsers', () => {
       await result.current.refetch();
     });
 
-    expect(result.current.users).toHaveLength(1);
+    await waitFor(() => expect(result.current.users).toHaveLength(1));
     expect(result.current.mutationError).toMatchObject({
       status: 409,
       code: 'conflict',

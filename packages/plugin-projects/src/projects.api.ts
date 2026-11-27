@@ -34,8 +34,8 @@ const projectsClient = createMainserverCrudClient<
     }),
 });
 
-export const listProjects = (query: ProjectListQuery): Promise<ProjectListResult> =>
-  projectsClient.list(query);
+export const listProjects = (query: ProjectListQuery, signal?: AbortSignal): Promise<ProjectListResult> =>
+  projectsClient.list(query, signal);
 
 export const getProject = (contentId: string): Promise<ProjectContentItem> =>
   projectsClient.get(contentId);

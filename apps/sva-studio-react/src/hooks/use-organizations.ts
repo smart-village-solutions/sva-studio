@@ -1,5 +1,6 @@
 import type { IamOrganizationDetail, IamOrganizationListItem } from '@sva/core';
 import React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -34,6 +35,7 @@ const DEFAULT_FILTERS: OrganizationFilters = {
   sortDirection: 'asc',
 };
 
+const EMPTY_ORGANIZATIONS: readonly IamOrganizationListItem[] = [];
 const organizationsLogger = createOperationLogger('organizations-hook', 'debug');
 const SESSION_REFRESHED_EVENT = 'session_refreshed_after_401';
 
@@ -59,21 +61,11 @@ export const useOrganizations = (
     ...initial,
   });
   const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search);
-  const [organizations, setOrganizations] = React.useState<readonly IamOrganizationListItem[]>([]);
-  const [total, setTotal] = React.useState(0);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const [selectedOrganization, setSelectedOrganization] =
     React.useState<IamOrganizationDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
-  const organizationsRef = React.useRef(organizations);
-  const totalRef = React.useRef(total);
-  const listRequestIdRef = React.useRef(0);
   const detailRequestIdRef = React.useRef(0);
-
-  organizationsRef.current = organizations;
-  totalRef.current = total;
 
   React.useEffect(() => {
     organizationsLogger.debug('organization_list_query_changed', {
@@ -92,96 +84,65 @@ export const useOrganizations = (
     };
   }, [filters.search]);
 
+  const query = {
+    page: filters.page,
+    pageSize: filters.pageSize,
+    search: debouncedSearch || undefined,
+    organizationType: filters.organizationType === 'all' ? undefined : filters.organizationType,
+    status: filters.status === 'all' ? undefined : filters.status,
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection,
+  };
+  const list = useStudioTableQuery(['iam-organizations', query], async (signal) => {
+    const meta = { operation: 'list_organizations' };
+    logBrowserOperationStart(organizationsLogger, 'organization_list_refetch_started', meta);
+    try {
+      const response = await listOrganizations(query);
+      logBrowserOperationSuccess(
+        organizationsLogger,
+        'organization_list_refetch_succeeded',
+        {
+          ...meta,
+          item_count: response.data.length,
+          total: response.pagination.total,
+        },
+        'debug'
+      );
+      return response;
+    } catch (cause) {
+      if (signal.aborted) throw cause;
+      const error = asIamError(cause);
+      if (error.status === 401) {
+        await refreshSession();
+        organizationsLogger.info(SESSION_REFRESHED_EVENT, {
+          ...meta,
+          status: error.status,
+          error_code: error.code,
+        });
+      }
+      logBrowserOperationFailure(
+        organizationsLogger,
+        'organization_list_refetch_failed',
+        error,
+        meta
+      );
+      throw error;
+    }
+  });
+  const organizations = list.data?.data ?? EMPTY_ORGANIZATIONS;
+  const total = list.data?.pagination.total ?? 0;
+  const isLoading = list.state === 'loading';
+  const queryKey = JSON.stringify(query);
+  const [silentRefreshQuery, setSilentRefreshQuery] = React.useState<string | null>(null);
+  const error =
+    silentRefreshQuery === queryKey && list.data ? null : (list.error as IamHttpError | null);
   const loadOrganizations = React.useCallback(
     async (options?: { preserveStateOnError?: boolean }) => {
-      const requestId = ++listRequestIdRef.current;
-      logBrowserOperationStart(organizationsLogger, 'organization_list_refetch_started', {
-        operation: 'list_organizations',
-        page: filters.page,
-        page_size: filters.pageSize,
-        search: debouncedSearch || undefined,
-        organization_type: filters.organizationType,
-        status: filters.status,
-      });
-      setIsLoading(true);
-      if (!options?.preserveStateOnError) {
-        setError(null);
-      }
-      try {
-        const response = await listOrganizations({
-          page: filters.page,
-          pageSize: filters.pageSize,
-          search: debouncedSearch || undefined,
-          organizationType:
-            filters.organizationType === 'all' ? undefined : filters.organizationType,
-          status: filters.status === 'all' ? undefined : filters.status,
-          sortBy: filters.sortBy,
-          sortDirection: filters.sortDirection,
-        });
-        if (requestId !== listRequestIdRef.current) {
-          return true;
-        }
-        setOrganizations(response.data);
-        setTotal(response.pagination.total);
-        logBrowserOperationSuccess(
-          organizationsLogger,
-          'organization_list_refetch_succeeded',
-          {
-            operation: 'list_organizations',
-            item_count: response.data.length,
-            total: response.pagination.total,
-          },
-          'debug'
-        );
-        return true;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-          organizationsLogger.info(SESSION_REFRESHED_EVENT, {
-            operation: 'list_organizations',
-            status: resolvedError.status,
-            error_code: resolvedError.code,
-          });
-        }
-        if (requestId !== listRequestIdRef.current) {
-          return false;
-        }
-        if (!options?.preserveStateOnError) {
-          setOrganizations([]);
-          setTotal(0);
-          setError(resolvedError);
-        }
-        logBrowserOperationFailure(
-          organizationsLogger,
-          'organization_list_refetch_failed',
-          resolvedError,
-          {
-            operation: 'list_organizations',
-          }
-        );
-        return false;
-      } finally {
-        if (requestId === listRequestIdRef.current) {
-          setIsLoading(false);
-        }
-      }
+      setSilentRefreshQuery(options?.preserveStateOnError ? queryKey : null);
+      return list.refetch();
     },
-    [
-      debouncedSearch,
-      filters.organizationType,
-      filters.page,
-      filters.pageSize,
-      filters.status,
-      filters.sortBy,
-      filters.sortDirection,
-      refreshSession,
-    ]
+    [list.refetch, queryKey]
   );
-
-  React.useEffect(() => {
-    void loadOrganizations();
-  }, [loadOrganizations]);
 
   const loadOrganization = React.useCallback(
     async (organizationId: string, options?: { readonly preserveMutationError?: boolean }) => {
@@ -251,16 +212,10 @@ export const useOrganizations = (
         organization_id: options?.organizationId,
       });
       try {
-        const previousOrganizations = organizationsRef.current;
-        const previousTotal = totalRef.current;
         const result = await action();
         requestEffectiveAccessInvalidation();
         if (options?.reload !== false) {
-          const reloaded = await loadOrganizations({ preserveStateOnError: true });
-          if (!reloaded) {
-            setOrganizations(previousOrganizations);
-            setTotal(previousTotal);
-          }
+          await loadOrganizations({ preserveStateOnError: true });
           if (options?.organizationId) {
             await loadOrganization(options.organizationId);
           }

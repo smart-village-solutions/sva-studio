@@ -34,6 +34,14 @@ type ApiErrorResponse = Readonly<{
 
 const DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
 
+export const STUDIO_TABLE_DATA_CHANGED = 'studio:table-data-changed';
+
+export function notifyStudioTableDataChanged(resource: string, deleted = false) {
+  globalThis.window?.dispatchEvent(
+    new CustomEvent(STUDIO_TABLE_DATA_CHANGED, { detail: { resource, deleted } })
+  );
+}
+
 const isApiErrorResponse = (value: unknown): value is ApiErrorResponse =>
   typeof value === 'object' && value !== null;
 
@@ -307,7 +315,13 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
           'non_json_response'
         );
       }
-      return (await response.json()) as T;
+      const payload = (await response.json()) as T;
+      const method = (input.init?.method ?? 'GET').toUpperCase();
+      const match = /\/api\/v1\/mainserver\/([\w-]+)(?:\/|\?|$)/.exec(input.url);
+      if (match?.[1] && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+        notifyStudioTableDataChanged(match[1], method === 'DELETE');
+      }
+      return payload;
     } catch (error) {
       return wrapMainserverTimeoutError(error, input.errorFactory, combinedSignal.signal);
     }

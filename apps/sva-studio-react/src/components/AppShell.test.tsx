@@ -179,6 +179,32 @@ beforeEach(() => {
  * Testet das Rendering der AppShell in regulären und Loading-Zuständen.
  */
 describe('AppShell', () => {
+  it('reserves the sidebar while the session loads without exposing navigation', async () => {
+    const auth = useAuthMock();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      hasResolvedSession: false,
+    });
+    const page = <AppShell currentPathname="/admin/content">Inhalt</AppShell>;
+    const view = render(page);
+
+    expect(view.container.querySelector('aside[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.queryByText('Sidebar Ready')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
+
+    useAuthMock.mockReturnValue({ ...auth, hasResolvedSession: true });
+    view.rerender(<AppShell currentPathname="/admin/content">Inhalt</AppShell>);
+    expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
+    expect(view.container.querySelector('aside[aria-hidden="true"]')).toBeNull();
+
+    useAuthMock.mockReturnValue({ ...auth, user: null, isAuthenticated: false });
+    view.rerender(<AppShell currentPathname="/admin/content">Inhalt</AppShell>);
+    expect(view.container.querySelector('aside')).toBeNull();
+  });
+
   it('rendert Sidebar und Main-Landmark', async () => {
     render(<AppShell currentPathname="/admin/users/123">Inhalt</AppShell>);
 
@@ -358,6 +384,28 @@ describe('AppShell', () => {
     expect(within(main).getByLabelText('Inhalt lädt')).toBeTruthy();
     expect(main.getAttribute('aria-busy')).toBe('true');
     expect(within(main).queryByText('Inhalt')).toBeNull();
+  });
+
+  it('preserves the mounted content during navigation', () => {
+    const renderShell = (isNavigating: boolean) => (
+      <AppShell isNavigating={isNavigating}>
+        <input aria-label="Entwurf" defaultValue="Ursprünglicher Text" />
+      </AppShell>
+    );
+    const view = render(renderShell(false));
+    const draft = screen.getByRole<HTMLInputElement>('textbox', { name: 'Entwurf' });
+    draft.value = 'Bearbeiteter Text';
+
+    view.rerender(renderShell(true));
+
+    expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByLabelText('Inhalt lädt')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Entwurf' })).toBe(draft);
+    expect(draft.value).toBe('Bearbeiteter Text');
+
+    view.rerender(renderShell(false));
+    expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('false');
+    expect(screen.getByRole('textbox', { name: 'Entwurf' })).toBe(draft);
   });
 
   it('versteckt die Sidebar fuer nicht eingeloggte Nutzer', () => {

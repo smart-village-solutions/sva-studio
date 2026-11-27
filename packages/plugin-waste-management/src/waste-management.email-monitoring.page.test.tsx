@@ -300,7 +300,7 @@ describe('email monitoring page', () => {
       target: { value: 'pending' },
     });
     await screen.findByText('emailMonitoring.empty');
-    expect(screen.getByText('Aktive E-Mail-Abos 2')).toBeTruthy();
+    expect(await screen.findByText('Aktive E-Mail-Abos 2')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
     await screen.findByText('Aktive E-Mail-Abos 0');
   });
@@ -488,7 +488,7 @@ describe('email monitoring page', () => {
       expect(document.activeElement).toBe(heading);
       await act(async () => finish());
       expect(document.activeElement).toBe(heading);
-      if (outcome === 'failure') expect(screen.getByText('emailMonitoring.error')).toBeTruthy();
+      if (outcome === 'failure') expect(await screen.findByText('emailMonitoring.error')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.close' }));
       expect(document.activeElement).toBe(
         screen.getByRole('heading', { name: 'emailMonitoring.subscriptions' })

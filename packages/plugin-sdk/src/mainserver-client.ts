@@ -296,9 +296,10 @@ export const createMainserverCrudClient = <
   });
 
   return {
-    list: async (query: MainserverListQuery): Promise<TListResult> => {
+    list: async (query: MainserverListQuery, signal?: AbortSignal): Promise<TListResult> => {
       const response = await requestMainserverJson<TListResponse, TError>({
         url: buildMainserverListUrl(options.basePath, query),
+        ...(signal ? { init: { signal } } : {}),
         fetch: options.fetch,
         errorFactory: options.errorFactory,
       });

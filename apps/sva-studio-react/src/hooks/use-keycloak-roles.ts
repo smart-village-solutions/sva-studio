@@ -14,7 +14,7 @@ export const useKeycloakRoles = (
   refetch: () => Promise<void>;
 }> => {
   const { refreshSession } = useAuth();
-  const list = useIamAdminList(listKeycloakRoles, refreshSession, { enabled });
+  const list = useIamAdminList(listKeycloakRoles, refreshSession, { enabled, resource: 'iam-keycloak-roles' });
   const [hasStartedEnabledLoad, setHasStartedEnabledLoad] = React.useState(false);
 
   React.useEffect(() => {

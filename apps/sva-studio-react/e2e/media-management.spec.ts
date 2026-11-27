@@ -311,6 +311,76 @@ test.describe('media management', () => {
     await mockSharedShellRequests(page);
   });
 
+  test('does not show a deleted asset while the returning library request is pending', async ({
+    page,
+  }) => {
+    const asset: MediaAssetRecord = {
+      id: 'deleted-asset',
+      instanceId: 'de-musterhausen',
+      storageKey: 'test/deleted.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 100,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: { title: 'Bild zum Löschen' },
+      technical: {},
+      createdAt: '2026-11-18T12:00:00Z',
+      updatedAt: '2026-11-18T12:00:00Z',
+    };
+    const remaining = {
+      ...asset,
+      id: 'remaining-asset',
+      storageKey: 'test/remaining.jpg',
+      metadata: { title: 'Verbleibendes Bild' },
+    };
+    const state = {
+      assets: [asset, remaining],
+      usageByAssetId: {
+        [asset.id]: { assetId: asset.id, totalReferences: 0, references: [] },
+        [remaining.id]: { assetId: remaining.id, totalReferences: 0, references: [] },
+      },
+    };
+    let deleted = false;
+    let waitingForLibrary = false;
+    let releaseLibrary!: () => void;
+    const library = new Promise<void>((resolve) => {
+      releaseLibrary = resolve;
+    });
+    await page.route('**/api/v1/iam/media**', async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === `/api/v1/iam/media/${asset.id}` && route.request().method() === 'DELETE') {
+        deleted = true;
+        state.assets = [remaining];
+        await route.fulfill({ json: { data: { id: asset.id } } });
+        return;
+      }
+      if (deleted && path === '/api/v1/iam/media') {
+        waitingForLibrary = true;
+        await library;
+      }
+      await routeMediaRequests(route, state);
+    });
+    page.on('dialog', (dialog) => dialog.accept());
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/media');
+    await expect(page.getByRole('link').filter({ hasText: 'Bild zum Löschen' })).toBeVisible();
+    await page.getByRole('link').filter({ hasText: 'Bild zum Löschen' }).click();
+    await expect(page.getByRole('heading', { name: 'Bild zum Löschen' })).toBeVisible();
+    await page.getByText('Weitere Informationen', { exact: true }).click();
+    try {
+      await page.getByRole('button', { name: 'Medium löschen' }).click();
+      await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
+      await expect.poll(() => waitingForLibrary).toBe(true);
+      await expect(page.getByText('Bild zum Löschen', { exact: true })).toHaveCount(0);
+      releaseLibrary();
+      await expect(page.getByText('Verbleibendes Bild', { exact: true })).toBeVisible();
+    } finally {
+      releaseLibrary();
+    }
+  });
+
   test('uploads a file from the media library and opens the detail workspace afterwards', async ({
     page,
   }) => {

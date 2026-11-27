@@ -3,7 +3,11 @@ import {
   type IamMainserverReadiness,
   type IamOrganizationContextOption,
 } from '@sva/core';
-import { Button, type MainserverPrincipalControlModel } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioLoadingState,
+  type MainserverPrincipalControlModel,
+} from '@sva/studio-ui-react';
 import React from 'react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useOrganizationContext } from '../hooks/use-organization-context';
@@ -125,17 +129,17 @@ export const useMainserverPrincipalControl = () => {
 
 export const MainserverPrincipalAlert = ({
   reason,
-}: Readonly<{ reason: 'context_loading' | 'context_unavailable' }>) => (
-  <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-    <AlertDescription>
-      {t(
-        reason === 'context_loading'
-          ? 'content.principal.contextLoading'
-          : 'content.principal.contextUnavailable'
-      )}
-    </AlertDescription>
-  </Alert>
-);
+  hideLoading = false,
+}: Readonly<{ reason: 'context_loading' | 'context_unavailable'; hideLoading?: boolean }>) =>
+  reason === 'context_loading' ? (
+    <StudioLoadingState className={hideLoading ? 'sr-only' : undefined}>
+      {t('content.principal.contextLoading')}
+    </StudioLoadingState>
+  ) : (
+    <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+      <AlertDescription>{t('content.principal.contextUnavailable')}</AlertDescription>
+    </Alert>
+  );
 
 export const MainserverPrincipalBoundary = ({
   children,

@@ -6,6 +6,7 @@ import {
   StudioPageTitle,
   StudioPersistentFormError,
   useStudioSaveFeedback,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import React from 'react';
@@ -56,7 +57,7 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
   const canUpdateGroup = isIamAccessAllowed(access.update);
   const canDeleteGroup = isIamAccessAllowed(access.delete);
   const {
-    isLoading,
+    isLoading: isGroupListLoading,
     detailError,
     mutationError,
     loadGroupDetail,
@@ -67,7 +68,11 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
     removeMembership,
     deleteGroup,
   } = groupsApi;
-  const [group, setGroup] = React.useState<IamAdminGroupDetail | null>(null);
+  const detailQuery = useStudioTableQuery(['iam-group-detail', groupId], (signal) =>
+    loadGroupDetail(groupId, signal)
+  );
+  const group = detailQuery.data ?? null;
+  const isLoading = isGroupListLoading || detailQuery.state === 'loading';
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [formValues, setFormValues] = React.useState<EditFormState>({
@@ -79,6 +84,8 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
   const [membershipForm, setMembershipForm] =
     React.useState<MembershipFormState>(emptyMembershipForm);
   const saveFeedback = useStudioSaveFeedback();
+  const formBaseline = React.useRef<EditFormState | null>(null);
+  const hasLocalEdits = React.useRef(false);
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
     if (
@@ -100,51 +107,67 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
     });
   }, [group, groupId, isLoading, location.state, navigate, saveFeedback]);
   const setDirtyFormValues: typeof setFormValues = (value) => {
+    hasLocalEdits.current = true;
     saveFeedback.markDirty();
     setFormValues(value);
   };
 
-  const loadDetail = React.useCallback(async () => {
-    const detail = await loadGroupDetail(groupId);
-    if (!detail) {
-      return null;
-    }
-
-    setGroup(detail);
-    setFormValues({
+  const applyDetailToForm = React.useCallback((detail: IamAdminGroupDetail) => {
+    const next = {
       displayName: detail.displayName,
       description: detail.description ?? '',
       roleIds: [...detail.assignedRoleIds],
       isActive: detail.isActive,
-    });
-    return detail;
-  }, [groupId, loadGroupDetail]);
+    };
+    formBaseline.current = next;
+    hasLocalEdits.current = false;
+    setFormValues(next);
+  }, []);
 
-  React.useEffect(() => {
-    void loadDetail();
-  }, [loadDetail]);
+  const initialFormGroup = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    if (!detailQuery.isAvailable || detailQuery.state === 'error') {
+      initialFormGroup.current = null;
+      formBaseline.current = null;
+      hasLocalEdits.current = false;
+      return;
+    }
+    if (!group) return;
+    if (!hasLocalEdits.current || initialFormGroup.current !== groupId) applyDetailToForm(group);
+    initialFormGroup.current = groupId;
+  }, [applyDetailToForm, detailQuery.isAvailable, detailQuery.state, group, groupId]);
+
+  const loadDetail = React.useCallback(async () => {
+    const refreshed = await detailQuery.refresh();
+    if (refreshed && !hasLocalEdits.current) applyDetailToForm(refreshed);
+    return refreshed ?? null;
+  }, [applyDetailToForm, detailQuery.refresh]);
 
   const onEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!group || !canUpdateGroup) {
+    const baseline = formBaseline.current;
+    if (!group || !baseline || !canUpdateGroup) {
       return;
     }
 
     const operationId = saveFeedback.beginSaving();
-    const updated = await updateGroup(groupId, {
-      displayName: formValues.displayName.trim(),
-      description: formValues.description.trim() || undefined,
-      isActive: formValues.isActive,
-    });
-    if (!updated) {
+    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(
+      baseline.roleIds,
+      formValues.roleIds
+    );
+    const changes = {
+      ...(formValues.displayName.trim() !== baseline.displayName.trim()
+        ? { displayName: formValues.displayName.trim() }
+        : {}),
+      ...(formValues.description.trim() !== baseline.description.trim()
+        ? { description: formValues.description.trim() || null }
+        : {}),
+      ...(formValues.isActive !== baseline.isActive ? { isActive: formValues.isActive } : {}),
+    };
+    if (Object.keys(changes).length > 0 && !(await updateGroup(groupId, changes))) {
       saveFeedback.markFailed(operationId);
       return;
     }
-
-    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(
-      group.assignedRoleIds,
-      formValues.roleIds
-    );
 
     for (const roleId of roleIdsToAssign) {
       const assigned = await assignRole(groupId, roleId);
@@ -162,6 +185,7 @@ const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
       }
     }
 
+    hasLocalEdits.current = false;
     await loadDetail();
     saveFeedback.markSaved(operationId);
   };

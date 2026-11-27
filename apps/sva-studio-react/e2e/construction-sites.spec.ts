@@ -10,6 +10,111 @@ test.use({
   storageState: { cookies: [], origins: [] },
   launchOptions: { args: ['--enable-unsafe-swiftshader'] },
 });
+
+for (const { resource, contentType, navigation, menuLabel } of [
+  { resource: 'construction-sites', contentType: 'construction-sites.construction-site', navigation: 'browser back', menuLabel: 'Baustellen' },
+  { resource: 'construction-sites', contentType: 'construction-sites.construction-site', navigation: 'sidebar', menuLabel: 'Baustellen' },
+  { resource: 'jobs', contentType: 'jobs.job', navigation: 'sidebar', menuLabel: 'Stellenanzeigen' },
+] as const) {
+  test(`shows previously loaded ${resource} rows while refreshing after ${navigation}`, async ({
+    page,
+  }) => {
+    await mockSharedShellRequests(page);
+    await page.route('**/auth/me', (route) =>
+      route.fulfill({
+        json: {
+          user: {
+            id: 'kc-editor-1',
+            name: 'Editor One',
+            email: 'editor@example.com',
+            instanceId: 'de-musterhausen',
+            assignedModules: [resource],
+            roles: ['editor'],
+            permissionActions: [`${resource}.read`],
+          },
+        },
+      })
+    );
+    await page.route('**/iam/me/permissions?**', (route) =>
+      route.fulfill({
+        json: {
+          instanceId: 'de-musterhausen',
+          permissions: [{ action: `${resource}.read`, resourceType: resource }],
+        },
+      })
+    );
+    await page.route('**/api/v1/mainserver/categories?**', (route) =>
+      route.fulfill({ json: { data: [] } })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+      route.fulfill({ json: { enabledActions: [] } })
+    );
+    let returning = false;
+    let backgroundRead = false;
+    let releaseRefresh: () => void = () => undefined;
+    const refresh = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    await page.route(`**/api/v1/mainserver/${resource}?**`, async (route) => {
+      const refreshRead = returning;
+      if (refreshRead) {
+        backgroundRead = true;
+        await refresh;
+      }
+      await route.fulfill({
+        json: {
+          data: [
+            {
+              id: '42',
+              genericType: resource === 'jobs' ? 'Job' : 'ConstructionSite',
+              title: refreshRead ? 'Brückenbau aktualisiert' : 'Brückenbau vorher',
+              visible: true,
+              input: {
+                direction: '',
+                cause: '',
+                restrictions: [],
+                dates: [],
+                locations: [],
+                companies: [],
+                employmentType: 'full_time',
+                publicationDate: '2026-11-01',
+              },
+              updatedAt: '2026-11-01T12:00:00Z',
+            },
+          ],
+          pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+        },
+      });
+    });
+    const path = `/admin/content?type=${contentType}&page=1`;
+    await gotoHomeAsAuthenticatedUser(page);
+    try {
+      await navigateClientSide(page, path);
+      await expect(page.getByRole('row', { name: /Brückenbau vorher/ })).toBeVisible();
+      await page.getByRole('complementary').getByRole('link', { name: 'Übersicht' }).click();
+      await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+      returning = true;
+      if (navigation === 'browser back') {
+        await page.goBack();
+      } else {
+        const sidebar = page.getByRole('complementary');
+        const contentGroup = sidebar.getByRole('button', { name: 'Inhalte', exact: true });
+        if ((await contentGroup.getAttribute('aria-expanded')) === 'false')
+          await contentGroup.click();
+        await sidebar.getByRole('link', { name: menuLabel, exact: true }).click();
+      }
+      await expect.poll(() => backgroundRead).toBe(true);
+      await expect(page.getByRole('row', { name: /Brückenbau vorher/ })).toBeVisible();
+      await page.getByRole('link', { name: 'Brückenbau vorher' }).focus();
+      await expect(page.getByRole('link', { name: 'Brückenbau vorher' })).toBeFocused();
+      releaseRefresh();
+      await expect(page.getByRole('link', { name: 'Brückenbau aktualisiert' })).toBeFocused();
+    } finally {
+      releaseRefresh();
+    }
+  });
+}
+
 test('draws and edits construction site geometry and roundtrips the existing record', async ({
   page,
 }) => {

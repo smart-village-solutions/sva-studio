@@ -14,7 +14,8 @@ export function EventsDetailHistoryTab({ contentId, pt }: Readonly<{ contentId?:
   return (
     <StudioContentHistory
       contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'events.event-record' })}
+      contentType={'events.event-record'}
+      loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'events.event-record', signal })}
       labels={{
         loading: pt('history.loading'), error: pt('history.error'), empty: pt('history.empty.title'),
         createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),

@@ -13,7 +13,8 @@ const actionKey = (action: string) =>
 export const GenericItemsDetailHistoryTab = ({ contentId, pt }: Readonly<{ contentId?: string; pt: Translate }>) => (
   <StudioContentHistory
     contentId={contentId}
-    loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'generic-items.generic-item' })}
+    contentType={'generic-items.generic-item'}
+    loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'generic-items.generic-item', signal })}
     labels={{
       loading: pt('history.loading'), error: pt('history.error'), empty: pt('history.empty'),
       createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),

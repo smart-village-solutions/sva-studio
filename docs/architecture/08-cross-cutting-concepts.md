@@ -9,6 +9,10 @@ Der Auth-Runtime-Snapshot transportiert einen optionalen, typisierten Account-Cr
 Dieser Abschnitt sammelt übergreifende Konzepte, die mehrere Bausteine
 gleichzeitig beeinflussen.
 
+## Zwischenspeicher für Tabellen
+
+Migrierte Tabellen verwenden TanStack Query im Arbeitsspeicher des Browsers. Die Abfragekennung enthält den bestätigten Zugriffskontext, die Ressource und ihre Abfrageparameter. Nach 30 Sekunden Inaktivität werden Ergebnisse verworfen. Konto-, Organisations- und Berechtigungswechsel verwerfen die Abfragen des vorherigen Kontexts. Autorisierungsfehler verwerfen das betroffene Ergebnis. Der Zwischenspeicher wird weder im initialen HTML noch in Web Storage abgelegt und ersetzt keine serverseitige Berechtigungsprüfung.
+
 ## Gemeinsamer Abgleich der App-Konfiguration
 
 Bestätigte Zielentscheidung vom 15. November 2026 zu [#2180](https://github.com/smart-village-solutions/sva-studio/issues/2180). Der Gesamtabgleich ist noch nicht vollständig implementiert; der vorhandene Waste-Writer erfüllt diesen Zielvertrag noch nicht vollständig.

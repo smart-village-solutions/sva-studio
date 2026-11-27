@@ -17,6 +17,10 @@
    Ein vorübergehender Fehler von `/iam/me/permissions` wird einmal erneut abgefragt. Bei bleibendem Fehler behält das Abfallmodul URL und Tab, zeigt jedoch keine geschützten Bedienelemente; die bestehende globale Aktion „Neu laden“ prüft die Rechte erneut.
 6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
 
+## Tabellen beim Routenwechsel
+
+Beim Öffnen einer migrierten Tabelle verwendet Studio das vorhandene Ergebnis für denselben bestätigten Zugriffskontext und dieselbe Abfrage. Der Browser aktualisiert die Ansicht im Hintergrund. Ohne vorheriges Ergebnis verwendet die Tabelle ihren lokalen Erstladezustand. Die Serverantwort liefert Zeilen und Pagination gemeinsam. Bestehende Router-Guards prüfen den Zugriff auf die Route und die Fach-API prüft jeden Abruf.
+
 ## Scopegebundene Plugin-Routenmaterialisierung
 
 1. Der Plugin-Loader validiert Tier, Namespace und vollständige Access-Anforderung von Route, Navigation, Action und referenziertem Server-Handler gemeinsam. Ein Server-Handler ohne eigene Access-Anforderung wird bereits vor der Snapshot-Veröffentlichung abgelehnt.

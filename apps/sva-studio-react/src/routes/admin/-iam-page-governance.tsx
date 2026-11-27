@@ -5,6 +5,7 @@ import {
   StudioDataTable,
   type StudioColumnDef,
   type StudioDataTableSortingLabels,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 
 import React from 'react';
@@ -44,6 +45,8 @@ import {
 } from './-iam-page-shared';
 import { mapGovernanceTypeToTranslationKey } from './-iam.models';
 
+const EMPTY_CASES: readonly IamGovernanceCaseListItem[] = [];
+
 export const useGovernanceTabState = ({
   activeTab,
   allowedTabs,
@@ -55,9 +58,6 @@ export const useGovernanceTabState = ({
   canAccessCockpit: boolean;
   cockpitEnabled: boolean;
 }>) => {
-  const [items, setItems] = React.useState<readonly IamGovernanceCaseListItem[]>([]);
-  const [total, setTotal] = React.useState(0);
-  const [error, setError] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState<GovernanceCasesQuery>({
     page: 1,
     pageSize: 25,
@@ -65,73 +65,55 @@ export const useGovernanceTabState = ({
     sortBy: 'createdAt',
     sortDirection: 'desc',
   });
-  const [isLoading, setIsLoading] = React.useState(false);
   const requestQuery = React.useMemo(
     () => ({ ...query, search: query.search?.trim() ?? '' }),
     [query]
   );
 
+  const [debounced, setDebounced] = React.useState(requestQuery);
   React.useEffect(() => {
-    if (
-      !cockpitEnabled ||
-      !canAccessCockpit ||
-      activeTab !== 'governance' ||
-      !allowedTabs.includes('governance')
-    ) {
-      return;
-    }
+    const timer = window.setTimeout(() => setDebounced(requestQuery), FILTER_REQUEST_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [requestQuery]);
 
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      logBrowserOperationStart(iamViewerLogger, 'iam_governance_load_started', {
-        operation: 'list_governance_cases',
-      });
-      setIsLoading(true);
-      setError(null);
-
-      listGovernanceCases(requestQuery, { signal: controller.signal })
-        .then((response) => {
-          if (controller.signal.aborted) {
-            return;
-          }
-          setItems(response.data);
-          setTotal(response.pagination.total);
-          logBrowserOperationSuccess(
-            iamViewerLogger,
-            'iam_governance_load_succeeded',
-            {
-              operation: 'list_governance_cases',
-              item_count: response.data.length,
-            },
-            'debug'
-          );
-        })
-        .catch((nextError) => {
-          if (isAbortError(nextError) || controller.signal.aborted) {
-            logBrowserOperationAbort(iamViewerLogger, 'iam_governance_load_aborted', {
-              operation: 'list_governance_cases',
-            });
-            return;
-          }
-          setItems([]);
-          setTotal(0);
-          setError(nextError instanceof Error ? nextError.message : String(nextError));
-          logBrowserOperationFailure(iamViewerLogger, 'iam_governance_load_failed', nextError, {
-            operation: 'list_governance_cases',
-          });
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            setIsLoading(false);
-          }
-        });
-    }, FILTER_REQUEST_DEBOUNCE_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, requestQuery]);
+  const active =
+    cockpitEnabled &&
+    canAccessCockpit &&
+    activeTab === 'governance' &&
+    allowedTabs.includes('governance');
+  const list = useStudioTableQuery(
+    ['iam-governance-cases', requestQuery],
+    async (signal) => {
+      const meta = { operation: 'list_governance_cases' };
+      logBrowserOperationStart(iamViewerLogger, 'iam_governance_load_started', meta);
+      try {
+        const response = await listGovernanceCases(requestQuery, { signal });
+        logBrowserOperationSuccess(
+          iamViewerLogger,
+          'iam_governance_load_succeeded',
+          {
+            ...meta,
+            item_count: response.data.length,
+          },
+          'debug'
+        );
+        return response;
+      } catch (cause) {
+        if (signal.aborted || isAbortError(cause)) {
+          logBrowserOperationAbort(iamViewerLogger, 'iam_governance_load_aborted', meta);
+        } else {
+          logBrowserOperationFailure(iamViewerLogger, 'iam_governance_load_failed', cause, meta);
+        }
+        throw cause;
+      }
+    },
+    active && debounced === requestQuery
+  );
+  const items = list.data?.data ?? EMPTY_CASES;
+  const total = list.data?.pagination.total ?? 0;
+  const isLoading = active && list.state === 'loading';
+  const error =
+    list.error instanceof Error ? list.error.message : list.error ? String(list.error) : null;
 
   const statusOptions = React.useMemo(
     () => buildSelectOptions([...items.map((item) => item.status), query.status]),

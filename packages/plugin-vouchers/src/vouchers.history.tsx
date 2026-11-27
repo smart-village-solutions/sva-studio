@@ -21,8 +21,9 @@ export function VoucherHistory({
       {open && (
         <StudioContentHistory
           contentId={id}
-          loadHistory={(contentId) =>
-            fetchIamContentHistory(contentId, { contentType: 'vouchers.voucher' })
+          contentType={'vouchers.voucher'}
+          loadHistory={(contentId, signal) =>
+            fetchIamContentHistory(contentId, { contentType: 'vouchers.voucher', signal })
           }
           labels={{
             loading: t('history.loading'),

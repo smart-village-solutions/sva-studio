@@ -12,7 +12,8 @@ export function ProjectHistoryTab({
   return (
     <StudioContentHistory
       contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'projects.project' })}
+      contentType={'projects.project'}
+      loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'projects.project', signal })}
       labels={{
         loading: pt('history.loading'),
         error: pt('history.error'),

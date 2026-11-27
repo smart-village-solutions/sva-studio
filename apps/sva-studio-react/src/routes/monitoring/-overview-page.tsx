@@ -2,6 +2,7 @@ import type { AuthorizePerformanceRunResult } from '@sva/iam-core';
 import {
   Button,
   StudioListPageTemplate,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -210,37 +211,14 @@ export const MonitoringOverviewPage = () => {
   const writeDecision = useAccessDecision(MONITORING_WRITE_REQUIREMENT);
   const canStartAuthorizeRun = writeDecision.status === 'allowed';
   const [form, setForm] = React.useState<AuthorizePerformanceFormState>(INITIAL_FORM_STATE);
-  const [isLoadingLatest, setIsLoadingLatest] = React.useState(true);
   const [isRunning, setIsRunning] = React.useState(false);
-  const [result, setResult] = React.useState<AuthorizePerformanceRunResult | null>(null);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
-
-  React.useEffect(() => {
-    let active = true;
-
-    void getLatestAuthorizePerformanceRun()
-      .then((latestResult) => {
-        if (!active) {
-          return;
-        }
-        setResult(latestResult);
-      })
-      .catch((loadError: unknown) => {
-        if (!active) {
-          return;
-        }
-        setError(asIamError(loadError));
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingLatest(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [submitError, setSubmitError] = React.useState<IamHttpError | null>(null);
+  const latest = useStudioTableQuery(['iam-authorize-performance'], (signal) =>
+    getLatestAuthorizePerformanceRun({ signal })
+  );
+  const isLoadingLatest = latest.state === 'loading';
+  const result = latest.data;
+  const error = submitError ?? (latest.error ? asIamError(latest.error) : null);
 
   const handleChange =
     (key: keyof AuthorizePerformanceFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,16 +235,15 @@ export const MonitoringOverviewPage = () => {
       return;
     }
     setIsRunning(true);
-    setError(null);
+    setSubmitError(null);
 
     try {
       const nextResult = await startAuthorizePerformanceRun(toSubmitPayload(form));
-      setResult(nextResult);
-    } catch (submitError) {
-      setError(asIamError(submitError));
+      await latest.replaceData(nextResult);
+    } catch (cause) {
+      setSubmitError(asIamError(cause));
     } finally {
       setIsRunning(false);
-      setIsLoadingLatest(false);
     }
   };
 
@@ -287,6 +264,11 @@ export const MonitoringOverviewPage = () => {
         {error ? (
           <Alert className="border-destructive/40 text-destructive">
             <AlertDescription>{describeAuthorizeError(error)}</AlertDescription>
+            {latest.error ? (
+              <Button variant="secondary" onClick={() => void latest.refetch()}>
+                {t('shared.errorFallback.retry')}
+              </Button>
+            ) : null}
           </Alert>
         ) : null}
 

@@ -13,6 +13,7 @@ import {
   resolveMainserverPrincipalOptions,
   Select,
   StudioDataTable,
+  useStudioTableQuery,
   StudioEmptyState,
   StudioErrorState,
   StudioField,
@@ -24,47 +25,31 @@ import {
   type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useConstructionSiteAccess } from './construction-sites.access.js';
 import { listConstructionSiteCategories, listConstructionSites } from './construction-sites.api.js';
 import { ListFilters, listFilters } from './construction-sites.list-filters.js';
 import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
 
-function useListData(query: string, scope: string, principal: MainserverActingPrincipalType) {
-  const [result, setResult] = useState<ConstructionSiteList>();
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [categories, setCategories] = useState<readonly { id: string; name: string }[]>([]);
-  useEffect(() => {
-    let active = true;
-    setState('loading');
-    void listConstructionSites(
-      JSON.parse(query) as Record<string, string | number>,
-      principal
-    ).then(
-      (data) => {
-        if (active) {
-          setResult(data);
-          setState('ready');
-        }
-      },
-      () => active && setState('error')
-    );
-    return () => {
-      active = false;
-    };
-  }, [query, scope, principal]);
-  useEffect(() => {
-    let active = true;
-    setCategories([]);
-    void listConstructionSiteCategories(principal).then(
-      (items) => active && setCategories(items),
-      () => undefined
-    );
-    return () => {
-      active = false;
-    };
-  }, [scope, principal]);
-  return { result, state, categories };
+function useListData(
+  query: Record<string, string | number>,
+  scope: string,
+  principal: MainserverActingPrincipalType
+) {
+  const list = useStudioTableQuery(['construction-sites', scope, principal, query], (signal) =>
+    listConstructionSites(query, principal, signal)
+  );
+  const categories = useStudioTableQuery(
+    ['categories', 'construction-sites', scope, principal],
+    (signal) => listConstructionSiteCategories(principal, signal)
+  );
+  return {
+    result: list.data,
+    state: list.state,
+    error: list.error,
+    refetch: list.refetch,
+    categories: categories.data ?? [],
+  };
 }
 type Translator = ReturnType<typeof usePluginTranslation>;
 function listColumns(
@@ -185,7 +170,7 @@ export function ConstructionSitesListPage({
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const { page, pageSize } = normalizeListSearch(search);
   const { filters, filter } = listFilters(search, navigate, pageSize);
-  const query = JSON.stringify({ ...filters, page, pageSize });
+  const query = { ...filters, page, pageSize };
   const scope = JSON.stringify([
     access.session.instanceId,
     access.session.subjectId,
@@ -198,7 +183,7 @@ export function ConstructionSitesListPage({
     principalControl?.kind === 'selectable'
       ? selectedPrincipal
       : (principalControl?.value ?? 'user');
-  const { result, state, categories } = useListData(query, scope, principal);
+  const { result, state, error, refetch, categories } = useListData(query, scope, principal);
   const today = toDatetimeLocalValue(new Date().toISOString()).slice(0, 10);
   const navigatePage = (nextPage: number, nextPageSize: number) =>
     void navigate({
@@ -214,6 +199,11 @@ export function ConstructionSitesListPage({
   return (
     <StudioListPageTemplate title={pt('list.title')} description={pt('list.description')}>
       {listPrincipal(principalControl, principal, setPrincipal, pt)}
+      {state === 'ready' && error ? (
+        <StudioErrorState onRetry={() => void refetch()}>
+          {pt('messages.loadError')}
+        </StudioErrorState>
+      ) : null}
       <section aria-busy={state === 'loading'} aria-label={pt('list.title')}>
         <StudioDataTable
           sorting={{ mode: 'disabled' }}
@@ -225,7 +215,9 @@ export function ConstructionSitesListPage({
             state === 'loading' ? (
               <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>
             ) : state === 'error' ? (
-              <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>
+              <StudioErrorState onRetry={() => void refetch()}>
+                {pt('messages.loadError')}
+              </StudioErrorState>
             ) : (
               <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
             )

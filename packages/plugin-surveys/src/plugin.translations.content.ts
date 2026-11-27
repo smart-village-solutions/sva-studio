@@ -76,6 +76,8 @@ export const pluginSurveysContentTranslations = {
     loadError: 'Umfrage konnte nicht geladen werden.',
     createError: 'Umfrage konnte nicht angelegt werden.',
     updateError: 'Umfrage konnte nicht gespeichert werden.',
+    editConflict:
+      'Die Umfrage wurde seit dem Öffnen geändert. Ihr Entwurf ist weiterhin sichtbar. Kopieren Sie Ihre Änderungen und öffnen Sie die Umfrage vor dem Speichern erneut.',
     createSuccess: 'Umfrage wurde angelegt.',
     updateSuccess: 'Umfrage wurde gespeichert.',
     missingContentId: 'Keine Umfrage-ID vorhanden.',

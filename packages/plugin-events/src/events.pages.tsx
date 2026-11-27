@@ -12,17 +12,15 @@ import {
   StudioErrorState,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  useStudioTableQuery,
 } from '@sva/studio-ui-react';
 
 import { listEvents } from './events.api.js';
 import { formatDateOnlyForEditor, isValidDateOnlyValue } from './events.date-only.js';
 import { EventsDetailPage } from './events.detail-page.js';
-import type { EventContentItem, EventListResult } from './events.types.js';
+import type { EventContentItem } from './events.types.js';
 
 type ListSearchState = Record<string, unknown>;
-
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) =>
-  pt(fallbackKey);
 
 const updateListSearchPage = (
   current: ListSearchState,
@@ -47,12 +45,12 @@ export function EventsListPage() {
     readonly pageSize?: number;
   };
   const { page, pageSize } = normalizeListSearch(search);
-  const [result, setResult] = React.useState<EventListResult>({
-    data: [],
-    pagination: { page, pageSize, hasNextPage: false },
-  });
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const list = useStudioTableQuery(['events', page, pageSize], () =>
+    listEvents({ page, pageSize })
+  );
+  const result = list.data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
+  const loading = list.state === 'loading';
+  const error = list.error ? pt('messages.loadError') : null;
 
   React.useEffect(() => {
     if (search.page === page && search.pageSize === pageSize) {
@@ -68,31 +66,6 @@ export function EventsListPage() {
     ).catch(() => undefined);
   }, [navigate, page, pageSize, search.page, search.pageSize]);
 
-  React.useEffect(() => {
-    let active = true;
-    setLoading(true);
-    listEvents({ page, pageSize })
-      .then((data) => {
-        if (active) {
-          setResult(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(errorMessage(pt, 'messages.loadError'));
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [page, pageSize, pt]);
-
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
@@ -104,11 +77,11 @@ export function EventsListPage() {
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
-      {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? (
+      {error ? <StudioErrorState onRetry={() => void list.refetch()}>{error}</StudioErrorState> : null}
+      {list.state === 'ready' && result.data.length === 0 ? (
         <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
       ) : null}
-      {!loading && !error && result.data.length > 0 ? (
+      {list.state === 'ready' && result.data.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
             sorting={{ mode: 'disabled' }}

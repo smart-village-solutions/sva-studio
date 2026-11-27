@@ -64,7 +64,7 @@ describe('useRolePermissions', () => {
 
     const { result } = renderHook(() => useRolePermissions());
 
-    expect(useIamAdminListMock).toHaveBeenCalledWith(expect.any(Function), authMockValue.refreshSession);
+    expect(useIamAdminListMock).toHaveBeenCalledWith(expect.any(Function), authMockValue.refreshSession, { resource: 'iam-role-permissions' });
     expect(result.current).toEqual({
       permissions: items,
       isLoading: true,

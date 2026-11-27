@@ -8,6 +8,7 @@ import type {
   IamContentOwnershipTransferResult,
   TransferIamContentOwnershipInput,
 } from '@sva/core';
+import { notifyStudioTableDataChanged } from '@sva/plugin-sdk';
 
 import { IAM_HEADERS, patchJson, postJson, requestJson } from './iam-http-client';
 
@@ -52,8 +53,11 @@ const createContentListParams = (query: IamContentListQuery): URLSearchParams =>
   return params;
 };
 
-export const listContents = (query: IamContentListQuery): Promise<IamContentListResponse> =>
-  requestJson<IamContentListResponse>(`/api/v1/iam/contents?${createContentListParams(query)}`);
+export const listContents = (
+  query: IamContentListQuery,
+  signal?: AbortSignal
+): Promise<IamContentListResponse> =>
+  requestJson<IamContentListResponse>(`/api/v1/iam/contents?${createContentListParams(query)}`, signal ? { signal } : undefined);
 
 export const listContentSelection = (query: IamContentListQuery): Promise<{ data: readonly ContentSelectionItem[] }> => {
   const params = createContentListParams(query);
@@ -89,20 +93,30 @@ export const getMainserverMutationCapabilities = async (): Promise<
 
 export const getContent = async (
   contentId: string,
-  options: Readonly<{ contentType?: string }> = {}
+  options: Readonly<{ contentType?: string; signal?: AbortSignal }> = {}
 ): Promise<ApiItemResponse<IamContentDetail>> => {
   const contentTypeQuery = options.contentType
     ? `?contentType=${encodeURIComponent(options.contentType)}`
     : '';
   return requestJson<ApiItemResponse<IamContentDetail>>(
-    `/api/v1/iam/contents/${encodeURIComponent(contentId)}${contentTypeQuery}`
+    `/api/v1/iam/contents/${encodeURIComponent(contentId)}${contentTypeQuery}`,
+    options.signal ? { signal: options.signal } : undefined
   );
 };
 
 export const getContentHistory = async (
-  contentId: string
+  contentId: string,
+  signal?: AbortSignal
 ): Promise<ApiListResponse<IamContentHistoryEntry>> =>
-  requestJson<ApiListResponse<IamContentHistoryEntry>>(`/api/v1/iam/contents/${contentId}/history`);
+  requestJson<ApiListResponse<IamContentHistoryEntry>>(
+    `/api/v1/iam/contents/${contentId}/history`,
+    signal ? { signal } : undefined
+  );
+
+const notifyContentsChanged = <T>(response: T): T => {
+  notifyStudioTableDataChanged('contents');
+  return response;
+};
 
 export const createContent = async (
   payload: CreateContentPayload
@@ -111,7 +125,7 @@ export const createContent = async (
     '/api/v1/iam/contents',
     payload,
     true
-  );
+  ).then(notifyContentsChanged);
 
 export const updateContent = async (
   contentId: string,
@@ -120,12 +134,15 @@ export const updateContent = async (
   patchJson<ApiItemResponse<IamContentDetail>, UpdateContentPayload>(
     `/api/v1/iam/contents/${contentId}`,
     payload
-  );
+  ).then(notifyContentsChanged);
 
 export const deleteContent = async (contentId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/contents/${contentId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
+  }).then((response) => {
+    notifyStudioTableDataChanged('contents', true);
+    return response;
   });
 
 export const listContentOwnershipTargets = async (
@@ -157,4 +174,4 @@ export const transferContentOwnership = async (
   postJson<ApiItemResponse<IamContentOwnershipTransferResult>, TransferIamContentOwnershipInput>(
     `/api/v1/iam/contents/${encodeURIComponent(contentId)}/transfer-ownership`,
     payload
-  );
+  ).then(notifyContentsChanged);

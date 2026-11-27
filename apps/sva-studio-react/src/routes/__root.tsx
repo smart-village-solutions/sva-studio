@@ -188,13 +188,14 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       : undefined
   );
   const routeDocumentation = resolveActiveRouteDocumentation(matches);
-  const isRouterPending = useRouterState({
+  const isNavigating = useRouterState({
     select: (state) =>
+      Boolean(state.resolvedLocation) &&
       (state.status === 'pending' || state.isLoading) &&
       state.location.href !== state.resolvedLocation?.href,
   });
   const currentPathname = useRouterState({
-    select: (state) => state.location.pathname,
+    select: (state) => state.resolvedLocation?.pathname ?? state.location.pathname,
   });
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
@@ -247,7 +248,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                   <ThemeProvider>
                     <AppShell
                       currentPathname={currentPathname}
-                      isLoading={isHydrated && isRouterPending}
+                      isNavigating={isHydrated && isNavigating}
                       isMobileSidebarOpen={isMobileSidebarOpen}
                       onMobileSidebarOpenChange={setIsMobileSidebarOpen}
                       documentationPageId={

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTableInvalidation, useStudioTableQuery } from '@sva/studio-ui-react';
 import {
   instanceBusKeyExpiresAt,
   type InstanceBusKey,
@@ -37,6 +38,7 @@ const isSimpleEmail = (value: string): boolean => {
 };
 const yearEnd = () =>
   `${new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric' }).format(new Date())}-12-31`;
+const EMPTY_KEYS: readonly InstanceBusKey[] = [];
 const useBusKeysState = (props: BusKeysProps) => {
   const { instanceId } = props;
   const mounted = React.useRef(false);
@@ -45,10 +47,9 @@ const useBusKeysState = (props: BusKeysProps) => {
   const reloadButtonRef = React.useRef<HTMLButtonElement>(null);
   const revokeButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const pendingFocusRef = React.useRef<HTMLButtonElement | null>(null);
-  const [keys, setKeys] = React.useState<InstanceBusKey[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [manualLoading, setLoading] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [mutationError, setError] = React.useState<string | null>(null);
   const [auditWarning, setAuditWarning] = React.useState(false);
   const [formOpen, setFormOpen] = React.useState(false);
   const [secret, setSecret] = React.useState<InstanceBusKeyCreated | null>(null);
@@ -62,6 +63,20 @@ const useBusKeysState = (props: BusKeysProps) => {
   const [copyError, setCopyError] = React.useState(false);
   const [confirmClose, setConfirmClose] = React.useState(false);
   const [requestId, setRequestId] = React.useState<string | undefined>();
+  const invalidate = useStudioTableInvalidation();
+  const list = useStudioTableQuery(['instance-bus-keys', instanceId], async () => {
+    const { data } = await listInstanceBusKeys(instanceId);
+    return data.filter((key) => key.label === instanceId);
+  });
+  const keys = list.data ?? EMPTY_KEYS;
+  const loading = manualLoading || list.state === 'loading';
+  const error =
+    mutationError ??
+    (list.error
+      ? list.error instanceof IamHttpError && list.error.code === 'bus_not_configured'
+        ? 'notConfigured'
+        : 'loadError'
+      : null);
   const expiresAt = instanceBusKeyExpiresAt(validThrough);
 
   const focusAction = (preferred: HTMLButtonElement | null) => {
@@ -80,29 +95,15 @@ const useBusKeysState = (props: BusKeysProps) => {
   }, [busy, loading]);
 
   const load = async () => {
-    try {
-      const { data } = await listInstanceBusKeys(instanceId);
-      if (mounted.current) setKeys(data.filter((key) => key.label === instanceId));
-    } catch (failure) {
-      if (mounted.current)
-        setError(
-          (existing) =>
-            existing ??
-            (failure instanceof IamHttpError && failure.code === 'bus_not_configured'
-              ? 'notConfigured'
-              : 'loadError')
-        );
-    } finally {
-      if (mounted.current) setLoading(false);
-    }
+    await invalidate(['instance-bus-keys', instanceId], false);
+    await list.refetch();
+    if (mounted.current) setLoading(false);
   };
   React.useEffect(() => {
     mounted.current = true;
-    void load();
     return () => {
       mounted.current = false;
     };
-    // This child is remounted for every instance; no cross-instance request can update it.
   }, [instanceId]);
 
   const copy = async () => {
@@ -137,7 +138,6 @@ const useBusKeysState = (props: BusKeysProps) => {
     revokeButtonRef,
     pendingFocusRef,
     keys,
-    setKeys,
     loading,
     setLoading,
     busy,

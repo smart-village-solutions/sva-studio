@@ -40,8 +40,9 @@ export const listFaqs = (
     readonly page: number;
     readonly pageSize: number;
     readonly languageCode?: string;
-  }>
-) => client.list(query);
+  }>,
+  signal?: AbortSignal
+) => client.list(query, signal);
 export const getFaq = (id: string) => client.get(id);
 export const getFaqDetail = (id: string, actingPrincipalType?: MainserverActingPrincipalType) =>
   client.getDetail(id, actingPrincipalType);

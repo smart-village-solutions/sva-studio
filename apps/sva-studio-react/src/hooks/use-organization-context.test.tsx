@@ -74,8 +74,38 @@ describe('useOrganizationContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMockValue.isAuthenticated = true;
+    authMockValue.isLoading = false;
     authMockValue.user.id = 'admin-1';
     authMockValue.user.instanceId = 'instance-1';
+  });
+
+  it('reports pending context throughout session and organization loading', async () => {
+    const contextRead = createDeferred<{ data: { organizations: [] } }>();
+    getMyOrganizationContextMock.mockReturnValueOnce(contextRead.promise);
+    authMockValue.isAuthenticated = false;
+    authMockValue.isLoading = true;
+    const loadingStates: boolean[] = [];
+    const { result, rerender } = renderHook(
+      () => {
+        const state = useOrganizationContext();
+        loadingStates.push(state.isLoading);
+        return state;
+      },
+      { wrapper }
+    );
+
+    expect(result.current.isLoading).toBe(true);
+    expect(getMyOrganizationContextMock).not.toHaveBeenCalled();
+
+    authMockValue.isAuthenticated = true;
+    authMockValue.isLoading = false;
+    rerender();
+    await waitFor(() => expect(getMyOrganizationContextMock).toHaveBeenCalledTimes(1));
+    expect(loadingStates).not.toContain(false);
+
+    await act(async () => contextRead.resolve({ data: { organizations: [] } }));
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.context?.organizations).toEqual([]);
   });
 
   it('loads the active organization context for authenticated users', async () => {

@@ -1,5 +1,6 @@
 import type { IamInstanceDetail, IamInstanceListItem } from '@sva/core';
 import React from 'react';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import {
   asIamError,
@@ -28,17 +29,15 @@ type InstanceFilters = {
   readonly status: InstanceStatusFilter;
 };
 
+const EMPTY_INSTANCES: readonly IamInstanceListItem[] = [];
 const instancesLogger = createOperationLogger('instances-hook', 'debug');
 export const useInstances = () => {
   const { refreshSession } = useAuth();
   const [filters, setFilters] = React.useState<InstanceFilters>({ search: '', status: 'all' });
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [instances, setInstances] = React.useState<readonly IamInstanceListItem[]>([]);
   const [selectedInstance, setSelectedInstance] = React.useState<IamInstanceDetail | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(false);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
@@ -96,20 +95,18 @@ export const useInstances = () => {
     [refreshSession]
   );
 
-  const refetch = React.useCallback(async () => {
+  const query = {
+    search: debouncedSearch || undefined,
+    status: filters.status === 'all' ? undefined : filters.status,
+  };
+  const list = useStudioTableQuery(['iam-instances', query], async (signal) => {
     logBrowserOperationStart(instancesLogger, 'instance_list_refetch_started', {
       operation: 'list_instances',
-      search: debouncedSearch || undefined,
+      search: query.search,
       status: filters.status,
     });
-    setIsLoading(true);
-    setError(null);
     try {
-      const response = await listInstances({
-        search: debouncedSearch || undefined,
-        status: filters.status === 'all' ? undefined : filters.status,
-      });
-      setInstances(response.data);
+      const response = await listInstances(query);
       logBrowserOperationSuccess(
         instancesLogger,
         'instance_list_refetch_succeeded',
@@ -119,29 +116,29 @@ export const useInstances = () => {
         },
         'debug'
       );
+      return response;
     } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401) {
-        await refreshSession();
-        instancesLogger.info('session_refreshed_after_401', {
+      if (signal.aborted) throw cause;
+      const error = asIamError(cause);
+      if (error.status === 401) {
+        await refreshSessionAfter401({
           operation: 'list_instances',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
+          status: error.status,
+          errorCode: error.code,
         });
       }
-      setInstances([]);
-      setError(resolvedError);
-      logBrowserOperationFailure(instancesLogger, 'instance_list_refetch_failed', resolvedError, {
+      logBrowserOperationFailure(instancesLogger, 'instance_list_refetch_failed', error, {
         operation: 'list_instances',
       });
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
-  }, [debouncedSearch, filters.status, refreshSession]);
-
-  React.useEffect(() => {
-    void refetch();
-  }, [refetch]);
+  });
+  const instances = list.data?.data ?? EMPTY_INSTANCES;
+  const isLoading = list.state === 'loading';
+  const error = list.error as IamHttpError | null;
+  const refetch = React.useCallback(async () => {
+    await list.refetch();
+  }, [list.refetch]);
 
   const {
     instancesAuditRun,
@@ -255,7 +252,7 @@ export const useInstances = () => {
         }
         await refetch();
         if (instanceId && operation === 'delete_instance') {
-          setSelectedInstance((current) => current?.instanceId === instanceId ? null : current);
+          setSelectedInstance((current) => (current?.instanceId === instanceId ? null : current));
         } else if (instanceId) {
           await loadInstance(instanceId);
           await refreshInstanceAudit(instanceId);

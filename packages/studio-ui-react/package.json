@@ -28,6 +28,7 @@
     "@sva/media": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@tabler/icons-react": "^3.46.0",
+    "@tanstack/react-query": "^5.108.4",
     "@tanstack/react-table": "^9.3.1",
     "@tiptap/extension-link": "3.31.3",
     "@tiptap/react": "3.31.3",

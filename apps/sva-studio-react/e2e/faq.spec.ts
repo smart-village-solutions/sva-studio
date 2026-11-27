@@ -33,6 +33,103 @@ const faqPermissions = {
   evaluatedAt: '2026-08-23T12:00:00.000Z',
 };
 
+test('restores the FAQ content table before its refreshed page arrives', async ({ page }) => {
+  await mockSharedShellRequests(page);
+  await page.route('**/auth/me', (route) => route.fulfill({ json: faqUser }));
+  await page.route('**/iam/me/permissions?**', (route) => route.fulfill({ json: faqPermissions }));
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+    route.fulfill({ json: { enabledActions: [] } })
+  );
+  await page.route('**/api/v1/iam/contents/refresh', (route) =>
+    route.fulfill({ json: { data: { status: 'completed', syncStates: [] } } })
+  );
+  let returning = false;
+  let backgroundRead = false;
+  let releaseRefresh: () => void = () => undefined;
+  const refresh = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  await page.route('**/api/v1/iam/contents?**', async (route) => {
+    const refreshRead = returning;
+    if (refreshRead) {
+      backgroundRead = true;
+      await refresh;
+    }
+    await route.fulfill({
+      json: {
+        data: [
+          {
+            id: 'faq-1',
+            contentType: 'faq.faq',
+            title: refreshRead ? 'Neue Öffnungszeiten' : 'Bisherige Öffnungszeiten',
+            status: 'published',
+            author: 'Editor One',
+            createdAt: '2026-08-23T10:00:00.000Z',
+            updatedAt: '2026-08-23T10:00:00.000Z',
+            payload: { languageCode: 'de' },
+            access: { state: 'read_only', canRead: true, canUpdate: false },
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: refreshRead ? 3 : 1 },
+      },
+    });
+  });
+  await gotoHomeAsAuthenticatedUser(page);
+  try {
+    await navigateClientSide(page, '/admin/content?type=faq.faq&page=1');
+    await expect(page.getByRole('row', { name: /Bisherige Öffnungszeiten/ })).toBeVisible();
+    await page.getByRole('complementary').getByRole('link', { name: 'Übersicht' }).click();
+    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+    returning = true;
+    await page.goBack();
+    await expect.poll(() => backgroundRead).toBe(true);
+    await expect(page.getByRole('row', { name: /Bisherige Öffnungszeiten/ })).toBeVisible();
+    releaseRefresh();
+    await expect(page.getByRole('row', { name: /Neue Öffnungszeiten/ })).toBeVisible();
+    await expect(page.getByText('1–1 von 3 Inhalten')).toBeVisible();
+  } finally {
+    releaseRefresh();
+  }
+});
+
+test('reserves the sidebar during a full reload with delayed authentication', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockSharedShellRequests(page);
+  await page.route('**/auth/me', (route) => route.fulfill({ json: faqUser }));
+  await page.route('**/iam/me/permissions?**', (route) => route.fulfill({ json: faqPermissions }));
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+    route.fulfill({ json: { enabledActions: [] } })
+  );
+  await page.route('**/api/v1/iam/contents?**', (route) =>
+    route.fulfill({ json: { data: [], pagination: { page: 1, pageSize: 25, total: 0 } } })
+  );
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/admin/content?type=faq.faq&page=1');
+  const sidebar = page.getByRole('complementary', { name: 'Seitenleiste' });
+  await expect(sidebar).toBeVisible();
+  const originalMain = await page.locator('main').boundingBox();
+  let releaseAuth!: () => void;
+  const auth = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+  await page.route('**/auth/me', async (route) => {
+    await auth;
+    await route.fulfill({ json: faqUser });
+  });
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('aside[aria-hidden="true"]')).toBeVisible();
+    expect((await page.locator('main').boundingBox())?.x).toBe(originalMain?.x);
+    await expect(
+      page.getByText(/Autorenkontext konnte nicht eindeutig bestimmt werden/)
+    ).toHaveCount(0);
+    releaseAuth();
+    await expect(sidebar).toBeVisible();
+  } finally {
+    releaseAuth();
+  }
+});
+
 test('creates an FAQ on one page and retains edit tabs for update and delete', async ({ page }) => {
   test.setTimeout(60_000);
   await mockSharedShellRequests(page);

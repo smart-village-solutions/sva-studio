@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IamViewerPage } from './-iam-page';
@@ -476,7 +476,7 @@ describe('IamViewerPage', () => {
         expect.anything()
       );
     });
-    expect(screen.getByText('75 Einträge')).toBeTruthy();
+    expect(await screen.findByText('75 Einträge')).toBeTruthy();
     const pageSize = screen.getByLabelText('Einträge pro Seite') as HTMLSelectElement;
     expect(Array.from(pageSize.options).map(({ value }) => value)).toEqual(['25', '50', '100']);
 
@@ -488,7 +488,7 @@ describe('IamViewerPage', () => {
       );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Aktualisiert' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Aktualisiert' }));
     await waitFor(() => {
       expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ page: 1, sortBy: 'updatedAt' }),
@@ -496,7 +496,9 @@ describe('IamViewerPage', () => {
       );
     });
 
-    fireEvent.change(pageSize, { target: { value: '50' } });
+    fireEvent.change(await screen.findByLabelText('Einträge pro Seite'), {
+      target: { value: '50' },
+    });
     await waitFor(() => {
       expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ page: 1, pageSize: 50, sortBy: 'updatedAt' }),
@@ -1151,6 +1153,7 @@ describe('IamViewerPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'org-1' }));
+    expect(screen.getByRole('button', { name: 'org-1' }).className).toContain('border-primary');
     fireEvent.change(
       screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }),
       {
@@ -1164,7 +1167,9 @@ describe('IamViewerPage', () => {
       }
     );
 
-    expect(screen.getByRole('button', { name: 'org-1' }).className).toContain('border-primary');
+    expect((await screen.findByRole('button', { name: 'org-1' })).className).toContain(
+      'border-primary'
+    );
     expect(
       (
         screen.getByLabelText('Organisation', {
@@ -1364,15 +1369,14 @@ describe('IamViewerPage', () => {
     await vi.advanceTimersByTimeAsync(299);
     expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(1);
-    await Promise.resolve();
-    await Promise.resolve();
+    await act(() => vi.advanceTimersByTimeAsync(1));
     expect(listGovernanceCasesMock).toHaveBeenCalledTimes(2);
     expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ search: 'beta' }),
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
 
+    await act(() => vi.advanceTimersByTimeAsync(5));
     vi.useRealTimers();
 
     await waitFor(() => {
@@ -1426,11 +1430,13 @@ describe('IamViewerPage', () => {
     const statusSelect = screen.getByLabelText('Status', {
       selector: '#iam-governance-status',
     }) as HTMLSelectElement;
-    expect(Array.from(statusSelect.options).map((option) => option.value)).toEqual([
-      '',
-      'open',
-      'submitted',
-    ]);
+    await waitFor(() => {
+      expect(Array.from(statusSelect.options).map((option) => option.value)).toEqual([
+        '',
+        'open',
+        'submitted',
+      ]);
+    });
 
     fireEvent.change(statusSelect, { target: { value: 'submitted' } });
 

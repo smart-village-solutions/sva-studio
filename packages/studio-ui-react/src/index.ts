@@ -1,5 +1,10 @@
 export { Alert, AlertDescription, AlertTitle } from './alert.js';
 export {
+  StudioTableQueryProvider,
+  useStudioTableInvalidation,
+  useStudioTableQuery,
+} from './studio-table-query.js';
+export {
   StudioEditorLeaveGuardProvider,
   useStudioEditorLeaveGuard,
   type StudioEditorLeaveGuardRegister,

@@ -292,3 +292,4 @@ export { mapstickResourcePath, mapstickStyleIds, type MapstickStyleId } from './
 export { readMapStylePreferenceKey } from './map-geocoding-client.js';
 
 export type { SsfRecordingGatewayRequest } from './plugin-registry-types.js';
+export { notifyStudioTableDataChanged, STUDIO_TABLE_DATA_CHANGED } from './mainserver-request.js';

@@ -17,7 +17,8 @@ export function FaqDetailHistoryTab({ contentId, pt }: Props) {
   return (
     <StudioContentHistory
       contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'faq.faq' })}
+      contentType={'faq.faq'}
+      loadHistory={(id, signal) => fetchIamContentHistory(id, { contentType: 'faq.faq', signal })}
       labels={{
         loading: pt('history.loading'), error: pt('history.errors.load'), empty: pt('history.empty'),
         createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),

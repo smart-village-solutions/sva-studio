@@ -1,7 +1,7 @@
 import { meilisearchInterfaceDraftSchema } from '../../lib/instance-interface-meilisearch';
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
-import { useStudioSaveFeedback } from '@sva/studio-ui-react';
+import { useStudioSaveFeedback, useStudioTableQuery } from '@sva/studio-ui-react';
 
 import { t } from '../../i18n';
 import { readErrorMessage } from '../../lib/error-message-utils';
@@ -204,19 +204,33 @@ const useServerFnRefs = () => {
   };
 };
 
+const EMPTY_INTERFACES: readonly InstanceInterface[] = [];
+
 export const useInterfacesPageController = () => {
   const { checkDeepL, listInterfacesRef, saveMainserverRef, upsertInterfaceRef } =
     useServerFnRefs();
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
-  const [instanceId, setInstanceId] = React.useState('');
-  const [interfaces, setInterfaces] = React.useState<readonly InstanceInterface[]>([]);
-  const [availableTypes, setAvailableTypes] =
-    React.useState<readonly InstanceInterfaceType[]>(DEFAULT_AVAILABLE_TYPES);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
+  const list = useStudioTableQuery(['interfaces'], async () => {
+    const result = await listInterfacesRef.current();
+    if (!isInstanceInterfacesResponse(result)) {
+      throw new Error('invalid_interfaces_payload');
+    }
+    return result;
+  });
+  const instanceId = list.data?.instanceId ?? '';
+  const interfaces = list.data?.entries ?? EMPTY_INTERFACES;
+  const availableTypes = list.data?.availableTypes.length
+    ? list.data.availableTypes
+    : DEFAULT_AVAILABLE_TYPES;
+  const isLoading = list.state === 'loading';
+  const [reportRefreshError, setReportRefreshError] = React.useState(true);
+  const errorMessage =
+    reportRefreshError && list.error
+      ? translateInterfacesErrorMessage(list.error, t('interfaces.messages.loadError'))
+      : null;
   const { mailTestPendingId, mailTestResult, onTestMail } = useMailInterfaceTest(
     instanceId,
     translateInterfacesErrorMessage
@@ -227,40 +241,17 @@ export const useInterfacesPageController = () => {
 
   const refresh = React.useCallback(
     async (reportError = true) => {
-      setIsLoading(true);
-      setErrorMessage(null);
-      try {
-        const result = await listInterfacesRef.current();
-        if (!isInstanceInterfacesResponse(result)) {
-          throw new Error('invalid_interfaces_payload');
-        }
-
-        const nextAvailableTypes =
-          result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
-        setInstanceId(result.instanceId);
-        setInterfaces(result.entries);
-        setAvailableTypes(nextAvailableTypes);
-        setPickerType((current) =>
-          nextAvailableTypes.includes(current) ? current : (nextAvailableTypes[0] ?? 's3')
-        );
-        return result;
-      } catch (error) {
-        if (reportError) {
-          setErrorMessage(
-            translateInterfacesErrorMessage(error, t('interfaces.messages.loadError'))
-          );
-        }
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
+      setReportRefreshError(reportError);
+      return (await list.refresh()) ?? null;
     },
-    [listInterfacesRef]
+    [list.refresh]
   );
 
   React.useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    setPickerType((current) =>
+      availableTypes.includes(current) ? current : (availableTypes[0] ?? 's3')
+    );
+  }, [availableTypes]);
 
   const deletion = useInterfaceDeletion(instanceId, refresh, translateInterfacesErrorMessage);
 

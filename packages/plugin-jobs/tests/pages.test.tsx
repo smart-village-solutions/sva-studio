@@ -146,7 +146,8 @@ describe('Job list and history journeys', () => {
         page: 2,
         pageSize: 50,
       },
-      'user'
+      'user',
+      expect.any(AbortSignal)
     );
     expect((screen.getByLabelText('Anstellungsart') as HTMLSelectElement).value).toBe('Altwert');
     fireEvent.change(screen.getByLabelText('Titel suchen'), { target: { value: 'Neue Suche' } });
@@ -202,7 +203,7 @@ describe('Job list and history journeys', () => {
       />
     );
     await screen.findByText('Keine passenden Stellenanzeigen vorhanden.');
-    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'organization');
+    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'organization', expect.any(AbortSignal));
     fireEvent.change(screen.getByLabelText('Handeln als'), { target: { value: 'user' } });
     view.rerender(
       <JobsListPage
@@ -217,7 +218,7 @@ describe('Job list and history journeys', () => {
       />
     );
     await screen.findByText('Die Stellenanzeigen konnten nicht geladen werden.');
-    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user');
+    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user', expect.any(AbortSignal));
   });
 
   it('renders visible records with missing optional employer, expiry and updated-time data', async () => {
@@ -241,7 +242,7 @@ describe('Job list and history journeys', () => {
     expect(row?.textContent).toContain('Sichtbar');
     expect(row?.textContent).toContain('Zeitraum unvollständig');
     expect(row?.textContent).toContain('unbekannt');
-    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'organization');
+    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'organization', expect.any(AbortSignal));
   });
 
   it('loads Job-specific history and distinguishes create, update and visibility changes', async () => {
@@ -262,7 +263,7 @@ describe('Job list and history journeys', () => {
     expect(table.textContent).toContain('Bearbeitet');
     expect(table.textContent).toContain('Sichtbarkeit geändert');
     expect(table.textContent).toContain('nicht-datiert');
-    expect(api.history).toHaveBeenCalledWith('42', { contentType: 'jobs.job' });
+    expect(api.history).toHaveBeenCalledWith('42', { contentType: 'jobs.job', signal: expect.any(AbortSignal) });
   });
 
   it('changes the editing principal without reusing the previous provider context', async () => {
@@ -357,7 +358,7 @@ describe('Job principal navigation', () => {
       expect(link.getAttribute('href')).toBe('/admin/jobs/42?principal=user');
     for (const link of screen.getAllByRole('link', { name: 'Stellenanzeige anlegen' }))
       expect(link.getAttribute('href')).toBe('/admin/jobs/new?principal=user');
-    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user');
+    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user', expect.any(AbortSignal));
     list.unmount();
     render(<JobsEditPage principalControl={selectableControl} />);
     await waitFor(() => expect(api.get).toHaveBeenLastCalledWith('42', 'user'));

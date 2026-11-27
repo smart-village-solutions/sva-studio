@@ -31,16 +31,16 @@ vi.mock('@tanstack/react-start', () => ({
 vi.mock('../components/AppShell', () => ({
   default: ({
     children,
-    isLoading,
+    isNavigating,
     currentPathname,
   }: {
     children: React.ReactNode;
-    isLoading: boolean;
+    isNavigating: boolean;
     currentPathname: string;
   }) => (
     <div
       data-current-pathname={currentPathname}
-      data-is-loading={String(isLoading)}
+      data-is-navigating={String(isNavigating)}
       data-testid="app-shell"
     >
       {children}
@@ -424,17 +424,18 @@ describe('root route document', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('false');
+      expect(screen.getByTestId('app-shell').getAttribute('data-is-navigating')).toBe('false');
     });
     expect(screen.getByDisplayValue('Unsaved question')).toBeTruthy();
   });
 
-  it('keeps the shell mounted and forwards route-level pending state to the content area', async () => {
+  it('reports navigation in progress while keeping the current route visible', async () => {
     await renderPendingRootDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('true');
+      expect(screen.getByTestId('app-shell').getAttribute('data-is-navigating')).toBe('true');
     });
+    expect(screen.getByText('content')).toBeTruthy();
   });
 
   it('renders pending shell content as non-loading during server render to keep hydration stable', async () => {
@@ -448,16 +449,16 @@ describe('root route document', () => {
       </RootDocument>
     );
 
-    expect(markup).toContain('data-is-loading="false"');
+    expect(markup).toContain('data-is-navigating="false"');
     expect(markup).toContain('data-theme-bootstrap="true"');
   });
 
-  it('keeps the shell mounted with the current pathname during route-level pending navigation', async () => {
+  it('keeps the current layout until the destination is ready', async () => {
     await renderPendingRootDocument();
 
     await waitFor(() => {
       expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe(
-        '/admin/users'
+        '/admin/content'
       );
     });
   });

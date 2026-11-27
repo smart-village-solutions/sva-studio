@@ -2,6 +2,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
+import { useStudioTableQuery } from '@sva/studio-ui-react';
 
 import { EffectiveAccessProvider, useEffectiveAccess } from './effective-access-provider';
 
@@ -172,10 +173,39 @@ describe('EffectiveAccessProvider', () => {
     });
   });
 
+  it('never displays a previous organization table response after switching organizations', async () => {
+    let finishOldRead!: (value: string) => void;
+    const oldRead = new Promise<string>((resolve) => {
+      finishOldRead = resolve;
+    });
+    const read = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('organization 1')
+      .mockReturnValueOnce(oldRead)
+      .mockResolvedValueOnce('organization 2');
+    const { result, rerender } = renderHook(() => useStudioTableQuery(['table'], read), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.data).toBe('organization 1'));
+    let refresh!: Promise<string | undefined>;
+    act(() => {
+      refresh = result.current.refresh();
+    });
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    organizationContextMockValue.context.activeOrganizationId = 'org-2';
+    rerender();
+    expect(result.current.data).toBeUndefined();
+    await waitFor(() => expect(result.current.data).toBe('organization 2'));
+    await act(async () => finishOldRead('stale organization 1'));
+    expect(await refresh).toBeUndefined();
+    expect(result.current.data).toBe('organization 2');
+  });
+
   it('does not publish the previous user access while identical roles are being reloaded', async () => {
     fetchWithRequestTimeoutMock.mockResolvedValueOnce(response([{ action: 'news.create' }]));
     const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+    expect(result.current.isCurrent).toBe(true);
     expect(readSessionAccessSnapshot()).toMatchObject({
       subjectId: 'user-1',
       permissionActions: ['news.create'],
@@ -191,6 +221,7 @@ describe('EffectiveAccessProvider', () => {
     rerender();
 
     await waitFor(() => expect(result.current.snapshot.status).toBe('loading'));
+    expect(result.current.isCurrent).toBe(false);
     expect(readSessionAccessSnapshot()).toMatchObject({
       isResolved: false,
       subjectId: 'user-2',
@@ -201,6 +232,7 @@ describe('EffectiveAccessProvider', () => {
       resolveNext?.(response([{ action: 'news.create' }]));
     });
     await waitFor(() => expect(readSessionAccessSnapshot().isResolved).toBe(true));
+    expect(result.current.isCurrent).toBe(true);
     expect(readSessionAccessSnapshot().subjectId).toBe('user-2');
   });
 

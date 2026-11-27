@@ -23,6 +23,13 @@ export const tourAudioTranslations = {
     audioRemoved: 'Hörbeitrag entfernt.',
     audioReferenceError:
       'Die Tour wurde gespeichert. Speichern Sie erneut, um die Medienverknüpfungen zu synchronisieren.',
+    audioReferencesLoading:
+      'Medienverknüpfungen werden geladen. Andere Felder können Sie weiterhin bearbeiten.',
+    audioReferencesLoadError:
+      'Medienverknüpfungen konnten nicht geladen werden. Hörbeiträge und die Reihenfolge betroffener Stationen bleiben gesperrt.',
+    audioReferencesUnavailable:
+      'Für Änderungen an Hörbeiträgen und der Reihenfolge betroffener Stationen fehlt die Medienberechtigung.',
+    audioReferencesRetry: 'Medienverknüpfungen erneut laden',
   },
   en: {
     ownAudio: 'Own audio',
@@ -47,5 +54,11 @@ export const tourAudioTranslations = {
     audioMoved: 'Audio moved.',
     audioRemoved: 'Audio removed.',
     audioReferenceError: 'The tour was saved. Save again to synchronize the media references.',
+    audioReferencesLoading: 'Loading media references. You can still edit other fields.',
+    audioReferencesLoadError:
+      'The media references could not be loaded. Audio and the order of affected stops cannot be changed.',
+    audioReferencesUnavailable:
+      'You need media permissions to edit audio or change the order of affected stops.',
+    audioReferencesRetry: 'Retry loading media references',
   },
 } as const;

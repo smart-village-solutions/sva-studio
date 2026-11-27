@@ -1,5 +1,5 @@
 import { translatePluginKey, type usePluginTranslation } from '@sva/plugin-sdk';
-import { ContentMediaUsageBlock, StudioMediaPickerOverlay } from '@sva/studio-ui-react';
+import { Button, ContentMediaUsageBlock, StudioMediaPickerOverlay } from '@sva/studio-ui-react';
 
 import type { TourAudio } from './tour-edit-data.js';
 import type { useTourAudio } from './tour-audio-state.js';
@@ -121,6 +121,7 @@ export function TourAudioFields({
       ) : null}
       <p className="font-medium">{pt('ownAudio')}</p>
       <ContentMediaUsageBlock
+        disabled={editor.referenceStatus !== 'ready'}
         addButtonId={`${target}-audio-add`}
         showHeader={false}
         usages={editor.audio[target] ?? []}
@@ -131,6 +132,25 @@ export function TourAudioFields({
         supportedFields={{ altText: false, caption: true, credit: true }}
         labels={audioUsageLabels(pt)}
       />
+    </div>
+  );
+}
+
+export function TourAudioReferenceStatus({ editor }: { editor: AudioEditor }) {
+  const { pt, referenceStatus, retryReferences } = editor;
+  if (referenceStatus === 'ready') return null;
+  if (referenceStatus === 'loading') return <p role="status">{pt('audioReferencesLoading')}</p>;
+  const error = referenceStatus === 'error';
+  return (
+    <div className="space-y-2">
+      <p role="alert">
+        {error ? pt('audioReferencesLoadError') : pt('audioReferencesUnavailable')}
+      </p>
+      {error ? (
+        <Button type="button" variant="secondary" onClick={retryReferences}>
+          {pt('audioReferencesRetry')}
+        </Button>
+      ) : null}
     </div>
   );
 }

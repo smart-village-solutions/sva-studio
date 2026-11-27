@@ -56,6 +56,20 @@ export const editableStops = (tour: EditableTour): Stop[] =>
     longitude: String(stop.geoLocation?.longitude ?? ''),
   }));
 
+export const audioStopKeys = (tour: EditableTour) =>
+  new Set(tour.tourStops.filter((stop) => stop.mediaContents?.length).map(({ id }) => id));
+
+export const preservesAudioStopOrder = (
+  stops: readonly Stop[],
+  originalAudioStops: ReadonlySet<string>
+) => {
+  const next = stops.map(({ key }) => key).filter((key) => originalAudioStops.has(key));
+  return (
+    next.length === originalAudioStops.size &&
+    Array.from(originalAudioStops).every((key, index) => key === next[index])
+  );
+};
+
 const normalizedAudio = (entry: TourAudio) => ({
   contentType: 'audio' as const,
   captionText: entry.captionText ?? '',

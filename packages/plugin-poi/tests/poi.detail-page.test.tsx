@@ -424,7 +424,7 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(false);
     fireEvent.click(document.getElementById('content-media-add')!);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/image.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
@@ -969,7 +969,7 @@ describe('PoiDetailPage', () => {
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/image.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
@@ -994,7 +994,7 @@ describe('PoiDetailPage', () => {
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.mediaUrl' }), {
       target: { value: 'https://example.test/stadtpark.mp3' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));

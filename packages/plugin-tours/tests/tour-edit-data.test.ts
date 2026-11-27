@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  audioStopKeys,
   buildTourDraft,
   buildTourEdit,
   editableStops,
+  preservesAudioStopOrder,
   tourAudioTarget,
   type EditableTour,
   type TourAudio,
@@ -48,6 +50,30 @@ const tourForm = () => {
 };
 
 describe('tour audio writes', () => {
+  it('preserves audio reference order for text and audio-free station changes', () => {
+    const original = {
+      ...tour,
+      tourStops: tour.tourStops.map((stop) =>
+        stop.id === 'stop-1' ? { ...stop, mediaContents: [clip] } : stop
+      ),
+    };
+    const [first, second, third] = editableStops(original);
+    if (!first || !second || !third) throw new Error('Missing test stations');
+    const locked = audioStopKeys(original);
+    const safeChange = [{ ...first, name: 'Entlang des Flusses' }, third, second];
+
+    expect(preservesAudioStopOrder(safeChange, locked)).toBe(true);
+    expect(buildTourEdit(tourForm(), safeChange, original).patch).toEqual({
+      tourStops: [
+        { id: first.key, name: 'Entlang des Flusses' },
+        { id: third.key },
+        { id: second.key },
+      ],
+    });
+    expect(preservesAudioStopOrder([second, first, third], locked)).toBe(false);
+    expect(preservesAudioStopOrder([second, third], locked)).toBe(false);
+  });
+
   it('uses ID-less media input, preserves station order and omits other station fields', () => {
     const changed = { ...clip, sourceUrl: { url: 'https://example.test/new.mp3' } };
     expect(

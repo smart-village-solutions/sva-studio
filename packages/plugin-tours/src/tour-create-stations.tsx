@@ -91,6 +91,7 @@ function StationActions({
   pt,
   first,
   last,
+  removeDisabled,
   moveUp,
   moveDown,
   remove,
@@ -98,6 +99,7 @@ function StationActions({
   pt: Translate;
   first: boolean;
   last: boolean;
+  removeDisabled: boolean;
   moveUp: () => void;
   moveDown: () => void;
   remove: () => void;
@@ -110,7 +112,7 @@ function StationActions({
       <Button type="button" variant="secondary" disabled={last} onClick={moveDown}>
         {pt('moveDown')}
       </Button>
-      <Button type="button" variant="secondary" onClick={remove}>
+      <Button type="button" variant="secondary" disabled={removeDisabled} onClick={remove}>
         {pt('removeStop')}
       </Button>
     </div>
@@ -122,19 +124,27 @@ export function Stations({
   stops,
   setStops,
   renderAudio,
+  lockedAudioStops,
 }: {
   pt: Translate;
   stops: Stop[];
   setStops: (next: Stop[]) => void;
   renderAudio?: (stop: Stop) => ReactNode;
+  lockedAudioStops?: ReadonlySet<string>;
 }) {
   const [pendingRemoval, setPendingRemoval] = useState<Stop>();
-  const remove = (stop: Stop) => setStops(stops.filter(({ key }) => key !== stop.key));
+  const remove = (stop: Stop) => {
+    if (!lockedAudioStops?.has(stop.key)) setStops(stops.filter(({ key }) => key !== stop.key));
+  };
+  const swapBlocked = (index: number, target: number) =>
+    !!lockedAudioStops?.has(stops[index]?.key ?? '') &&
+    lockedAudioStops.has(stops[target]?.key ?? '');
   const change = (index: number, patch: Partial<Stop>) =>
     setStops(
       stops.map((stop, indexOfStop) => (indexOfStop === index ? { ...stop, ...patch } : stop))
     );
   const move = (index: number, target: number) => {
+    if (swapBlocked(index, target)) return;
     const next = [...stops];
     [next[index], next[target]] = [next[target]!, next[index]!];
     setStops(next);
@@ -153,8 +163,9 @@ export function Stations({
               {renderAudio?.(stop)}
               <StationActions
                 pt={pt}
-                first={index === 0}
-                last={index === stops.length - 1}
+                first={index === 0 || swapBlocked(index, index - 1)}
+                last={index === stops.length - 1 || swapBlocked(index, index + 1)}
+                removeDisabled={lockedAudioStops?.has(stop.key) === true}
                 moveUp={() => move(index, index - 1)}
                 moveDown={() => move(index, index + 1)}
                 remove={() => (stop.id ? setPendingRemoval(stop) : remove(stop))}

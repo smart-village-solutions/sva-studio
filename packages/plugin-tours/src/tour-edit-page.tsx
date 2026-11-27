@@ -18,8 +18,10 @@ import { toursPath } from './descriptor.js';
 import { TourBasisFields, TourRouteFields } from './tour-create-fields.js';
 import { Stations } from './tour-create-stations.js';
 import {
+  audioStopKeys,
   buildTourEdit,
   editableStops,
+  preservesAudioStopOrder,
   routeValue,
   tourAudioTarget,
   type EditableTour,
@@ -28,6 +30,7 @@ import {
   serializeTourAudio,
   TourAudioFields,
   TourAudioPicker,
+  TourAudioReferenceStatus,
   useTourAudio,
 } from './tour-audio.js';
 import { useTourSave } from './tour-save.js';
@@ -88,36 +91,45 @@ function useEditTourForm({ snapshot, principalControl, canSave, onSaved }: EditF
   const markAudioChanged: () => void = () => save.markChanged();
   const audio = useTourAudio(tour, canSave, markAudioChanged);
   const targets = [tourAudioTarget, ...stops.map(({ key }) => key)];
-  const usages = audio.usagesFor(targets);
+  const syncReferences = audio.shouldSync(targets);
+  const referencesReady = audio.referenceStatus === 'ready';
+  const lockedAudioStops = referencesReady ? undefined : audioStopKeys(tour);
+  const maySave =
+    canSave &&
+    (!lockedAudioStops ||
+      (!audio.audioChanged && preservesAudioStopOrder(stops, lockedAudioStops)));
   const save = useTourSave<EditableTour>({
     url: `/api/v1/mainserver/tours/${encodeURIComponent(tour.id)}`,
     method: 'PATCH',
     principalControl,
     contextBinding,
     media: {
-      usages,
+      usages:
+        referencesReady && (audio.audioChanged || syncReferences) ? audio.usagesFor(targets) : [],
       instanceId: audio.mediaInstanceId,
-      syncReferences: audio.shouldSync(targets),
+      syncReferences,
     },
     buildBody: (form, resolutions) => {
       const update = buildTourEdit(
         form,
         stops,
         tour,
-        serializeTourAudio(audio.audio, targets, resolutions)
+        referencesReady && audio.audioChanged
+          ? serializeTourAudio(audio.audio, targets, resolutions)
+          : undefined
       );
       return Object.keys(update.patch).length > 0 ? update : undefined;
     },
     onSaved,
   });
-  return { audio, stops, setStops, save };
+  return { audio, stops, setStops, save, lockedAudioStops, maySave };
 }
 
 function EditForm(props: EditFormProps) {
   const { snapshot, saved, canSave, principalControl } = props;
   const { tour } = snapshot;
   const pt = usePluginTranslation('tours');
-  const { audio, stops, setStops, save } = useEditTourForm(props);
+  const { audio, stops, setStops, save, lockedAudioStops, maySave } = useEditTourForm(props);
   const { principal, busy, dirty, error, submit, markChanged, referenceSyncPending } = save;
   const storedStops = new Map(tour.tourStops.map((stop) => [stop.id, stop]));
   return (
@@ -132,7 +144,7 @@ function EditForm(props: EditFormProps) {
         <Button
           form="tour-edit-form"
           type="submit"
-          disabled={busy || !dirty || !canSave || error === 'editConflict'}
+          disabled={busy || !dirty || !maySave || error === 'editConflict'}
         >
           {pt('save')}
         </Button>
@@ -143,12 +155,13 @@ function EditForm(props: EditFormProps) {
         className="space-y-5"
         onChange={markChanged}
         onSubmit={(event) => {
-          if (canSave && error !== 'editConflict') void submit(event);
+          if (maySave && error !== 'editConflict') void submit(event);
           else event.preventDefault();
         }}
       >
         {error ? <StudioErrorState>{pt(error)}</StudioErrorState> : null}
         {saved && !dirty ? <p role="status">{pt('saved')}</p> : null}
+        {canSave ? <TourAudioReferenceStatus editor={audio} /> : null}
         <fieldset disabled={busy || referenceSyncPending || !canSave} className="space-y-5">
           <TourBasisFields
             pt={pt}
@@ -163,6 +176,7 @@ function EditForm(props: EditFormProps) {
           <Stations
             pt={pt}
             stops={stops}
+            lockedAudioStops={lockedAudioStops}
             setStops={(next) => {
               markChanged();
               setStops(next);

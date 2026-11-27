@@ -6,8 +6,17 @@ import { audioRole, initialAudio } from './tour-audio-data.js';
 import { tourAudioTarget, type EditableTour } from './tour-edit-data.js';
 
 type AudioAssetIds = Readonly<Record<string, string>>;
+type LookupResult = { key: string; references: readonly HostMediaReferenceSelection[] | null };
 
-const lookupAssetIds = (tour: EditableTour, refs: readonly HostMediaReferenceSelection[]) => {
+const hasOwnAudio = (tour?: EditableTour): boolean =>
+  Boolean(
+    tour?.mediaContents?.length || tour?.tourStops.some((stop) => stop.mediaContents?.length)
+  );
+
+const lookupAssetIds = (
+  tour: EditableTour,
+  refs: readonly HostMediaReferenceSelection[]
+): AudioAssetIds => {
   const audio = initialAudio(tour);
   const usages = [tourAudioTarget, ...tour.tourStops.map(({ id }) => id)].flatMap(
     (key) => audio[key] ?? []
@@ -25,9 +34,12 @@ export function useTourAudioReferences(
   canSelect: boolean,
   instanceId?: string
 ) {
-  const [assetIds, setAssetIds] = useState<AudioAssetIds>();
+  const [result, setResult] = useState<LookupResult>();
+  const [attempt, setAttempt] = useState(0);
+  const needsLookup = hasOwnAudio(tour);
+  const key = JSON.stringify([instanceId, tour?.id, tour?.revision, attempt]);
   useEffect(() => {
-    if (!tour || !canSelect) return;
+    if (!tour || !canSelect || !needsLookup) return;
     let active = true;
     void listHostMediaReferencesByTarget({
       fetch: globalThis.fetch.bind(globalThis),
@@ -36,28 +48,54 @@ export function useTourAudioReferences(
       instanceId,
     }).then(
       (ref) => {
-        if (active) setAssetIds(lookupAssetIds(tour, ref));
+        if (active) setResult({ key, references: ref });
       },
-      () => undefined
+      () => {
+        if (active) setResult({ key, references: null });
+      }
     );
     return () => {
       active = false;
     };
-  }, [canSelect, instanceId, tour]);
+  }, [canSelect, instanceId, key, needsLookup, tour]);
 
+  return {
+    ...buildAudioReferences(tour, canSelect, result?.key === key ? result.references : undefined),
+    retry: () => setAttempt((value) => value + 1),
+  };
+}
+
+export const buildAudioReferences = (
+  tour: EditableTour | undefined,
+  canSelect: boolean,
+  references?: readonly HostMediaReferenceSelection[] | null
+) => {
+  const status = referenceStatus(hasOwnAudio(tour), canSelect, references);
+  const assetIds = canSelect && tour && references ? lookupAssetIds(tour, references) : {};
   const withReference = (usage: ContentMediaUsage): ContentMediaUsage => {
-    const assetId = assetIds?.[usage.uiId];
+    const assetId = assetIds[usage.uiId];
     return usage.assetId || !assetId ? usage : { ...usage, assetId };
   };
   const syncNeeded = (usages: readonly ContentMediaUsage[]) => {
-    if (!canSelect || (tour && !assetIds)) return false;
+    if (!canSelect || status !== 'ready') return false;
     const initial = initialAudio(tour);
     const targets = tour ? [tourAudioTarget, ...tour.tourStops.map(({ id }) => id)] : [];
     const original = targets.flatMap((key) => initial[key] ?? []).map(withReference);
     return JSON.stringify(referenceOrder(original)) !== JSON.stringify(referenceOrder(usages));
   };
-  return { ready: !tour || assetIds !== undefined, withReference, syncNeeded };
-}
+  return { status, withReference, syncNeeded };
+};
+
+const referenceStatus = (
+  needsLookup: boolean,
+  canSelect: boolean,
+  references?: readonly HostMediaReferenceSelection[] | null
+) => {
+  if (!needsLookup) return 'ready';
+  if (!canSelect) return 'unavailable';
+  if (references) return 'ready';
+  return references === null ? 'error' : 'loading';
+};
 
 const referenceOrder = (usages: readonly ContentMediaUsage[]) =>
   usages.flatMap(({ assetId }, index) => (assetId ? [[assetId, index]] : []));

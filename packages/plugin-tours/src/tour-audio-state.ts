@@ -57,9 +57,11 @@ export function useTourAudio(
   });
   const references = useTourAudioReferences(tour, canSelect, mediaInstanceId);
   const [audio, setAudio] = useState(() => initialAudio(tour));
+  const [audioChanged, setAudioChanged] = useState(false);
   const [target, setTarget] = useState(tourAudioTarget);
   const change = (key: string, next: readonly ContentMediaUsage[]) => {
     setAudio((previous) => ({ ...previous, [key]: next }));
+    setAudioChanged(true);
     onChanged();
   };
   const add = (key: string, url?: string, asset?: StudioMediaPickerAssetDetail) => {
@@ -96,8 +98,11 @@ export function useTourAudio(
     open,
     usagesFor,
     audio: withReferences,
-    canSelect: canSelect && references.ready,
-    canUpload: canUpload && references.ready,
+    canSelect: canSelect && references.status === 'ready',
+    canUpload: canUpload && references.status === 'ready',
+    referenceStatus: references.status,
+    audioChanged,
+    retryReferences: references.retry,
     shouldSync: (targets: readonly string[]) => references.syncNeeded(usagesFor(targets)),
   };
 }

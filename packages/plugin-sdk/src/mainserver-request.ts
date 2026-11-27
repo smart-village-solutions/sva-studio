@@ -1,5 +1,6 @@
 import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva/core';
 import { mergeRequestHeaders } from './http-client.js';
+import { publishMainserverTableMutation } from './studio-table-events.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
 import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
 export type MainserverErrorFactory<TError extends Error> = (
@@ -33,14 +34,6 @@ type ApiErrorResponse = Readonly<{
 }>;
 
 const DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
-
-export const STUDIO_TABLE_DATA_CHANGED = 'studio:table-data-changed';
-
-export function notifyStudioTableDataChanged(resource: string, deleted = false) {
-  globalThis.window?.dispatchEvent(
-    new CustomEvent(STUDIO_TABLE_DATA_CHANGED, { detail: { resource, deleted } })
-  );
-}
 
 const isApiErrorResponse = (value: unknown): value is ApiErrorResponse =>
   typeof value === 'object' && value !== null;
@@ -165,11 +158,7 @@ const readResponseContentType = (response: Response): string | null => {
 };
 
 const isHtmlLikeContentType = (response: Response): boolean => {
-  const contentType = readResponseContentType(response);
-  if (contentType === null || contentType.length === 0) {
-    return false;
-  }
-  const normalized = contentType.toLowerCase();
+  const normalized = readResponseContentType(response)?.toLowerCase() ?? '';
   return normalized.includes('text/html') || normalized.includes('application/xhtml+xml');
 };
 
@@ -298,10 +287,11 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         fetch: input.fetch,
         signal: combinedSignal.signal,
       });
+      const method = (input.init?.method ?? 'GET').toUpperCase();
       const contextBinding = response.headers?.get(MAINSERVER_CONTEXT_BINDING_HEADER)?.trim();
       input.onResponse?.({
         url: input.url,
-        method: (input.init?.method ?? 'GET').toUpperCase(),
+        method,
         status: response.status,
         ok: response.ok,
         contentType: readResponseContentType(response),
@@ -316,11 +306,7 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         );
       }
       const payload = (await response.json()) as T;
-      const method = (input.init?.method ?? 'GET').toUpperCase();
-      const match = /\/api\/v1\/mainserver\/([\w-]+)(?:\/|\?|$)/.exec(input.url);
-      if (match?.[1] && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-        notifyStudioTableDataChanged(match[1], method === 'DELETE');
-      }
+      publishMainserverTableMutation(input.url, method);
       return payload;
     } catch (error) {
       return wrapMainserverTimeoutError(error, input.errorFactory, combinedSignal.signal);

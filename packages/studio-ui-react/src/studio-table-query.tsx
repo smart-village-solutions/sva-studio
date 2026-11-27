@@ -5,7 +5,7 @@ import {
   useQuery,
   type QueryKey,
 } from '@tanstack/react-query';
-import { STUDIO_TABLE_DATA_CHANGED } from '@sva/plugin-sdk';
+import { STUDIO_TABLE_DATA_CHANGED } from '@sva/plugin-sdk/studio-table-events';
 import {
   createContext,
   useCallback,
@@ -90,6 +90,71 @@ function isAccessDenied(error: unknown): boolean {
   );
 }
 
+async function readTableResult<T>(
+  read: (signal: AbortSignal, previous: T | undefined) => Promise<T>,
+  signal: AbortSignal,
+  client: QueryClient,
+  queryKey: QueryKey
+): Promise<ReadResult<T>> {
+  try {
+    const previous = client.getQueryData<ReadResult<T>>(queryKey);
+    return { data: await read(signal, previous && 'data' in previous ? previous.data : undefined) };
+  } catch (error) {
+    if (!isAccessDenied(error)) throw error;
+    return { denied: error };
+  }
+}
+
+type ActiveTable = Readonly<{ current: string | null }>;
+
+async function refreshTable<T>(
+  client: QueryClient | undefined,
+  activeHash: ActiveTable,
+  queryHash: string,
+  replacePending: boolean
+): Promise<T | undefined> {
+  if (!client || activeHash.current !== queryHash) return undefined;
+  const exactQuery = client.getQueryCache().get<ReadResult<T>>(queryHash);
+  if (!exactQuery) return undefined;
+  if (replacePending) {
+    await client.cancelQueries({ queryKey: exactQuery.queryKey, exact: true });
+  }
+  if (activeHash.current !== queryHash || client.getQueryCache().get(queryHash) !== exactQuery)
+    return undefined;
+  try {
+    const result = await exactQuery.fetch(undefined, { cancelRefetch: true });
+    return activeHash.current === queryHash && 'data' in result ? result.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function replaceTableData<T>(
+  client: QueryClient | undefined,
+  activeHash: ActiveTable,
+  queryHash: string,
+  queryKey: QueryKey,
+  data: T
+) {
+  if (activeHash.current !== queryHash || !client) return;
+  await client.cancelQueries({ queryKey, exact: true });
+  if (activeHash.current === queryHash && client.getQueryState(queryKey)) {
+    client.setQueryData<ReadResult<T>>(queryKey, () => ({ data }));
+  }
+}
+
+function readTableView<T>(
+  available: boolean,
+  result: ReadResult<T> | undefined,
+  queryError: unknown
+) {
+  if (!available) return { data: undefined, error: null };
+  return {
+    data: result && 'data' in result ? result.data : undefined,
+    error: result && 'denied' in result ? result.denied : queryError,
+  };
+}
+
 export function useStudioTableQuery<T>(
   key: QueryKey,
   read: (signal: AbortSignal, previous: T | undefined) => Promise<T>,
@@ -112,51 +177,17 @@ export function useStudioTableQuery<T>(
     {
       queryKey,
       enabled: available,
-      queryFn: async ({ signal, client, queryKey }) => {
-        try {
-          const previous = client.getQueryData<ReadResult<T>>(queryKey);
-          return {
-            data: await read(signal, previous && 'data' in previous ? previous.data : undefined),
-          };
-        } catch (error) {
-          if (!isAccessDenied(error)) throw error;
-          return { denied: error };
-        }
-      },
+      queryFn: ({ signal, client, queryKey }) => readTableResult(read, signal, client, queryKey),
     },
     client
   );
-  const result = available ? query.data : undefined;
-  const data = result && 'data' in result ? result.data : undefined;
-  const error = available ? (result && 'denied' in result ? result.denied : query.error) : null;
+  const { data, error } = readTableView(available, query.data, query.error);
   const refresh = useCallback(
-    async (replacePending = false) => {
-      if (!client || activeHash.current !== queryHash) return undefined;
-      const exactQuery = client.getQueryCache().get<ReadResult<T>>(queryHash);
-      if (!exactQuery) return undefined;
-      if (replacePending) {
-        await client.cancelQueries({ queryKey: exactQuery.queryKey, exact: true });
-      }
-      if (activeHash.current !== queryHash || client.getQueryCache().get(queryHash) !== exactQuery)
-        return undefined;
-      try {
-        const result = await exactQuery.fetch(undefined, { cancelRefetch: true });
-        return activeHash.current === queryHash && 'data' in result ? result.data : undefined;
-      } catch {
-        return undefined;
-      }
-    },
+    (replacePending = false) => refreshTable<T>(client, activeHash, queryHash, replacePending),
     [client, queryHash]
   );
   const refetch = useCallback(async () => (await refresh()) !== undefined, [refresh]);
-  const replaceData = async (data: T) => {
-    if (activeHash.current !== queryHash || !client) return;
-    await client.cancelQueries({ queryKey, exact: true });
-    if (activeHash.current === queryHash && client.getQueryState(queryKey)) {
-      const result: ReadResult<T> = { data };
-      client.setQueryData<ReadResult<T>>(queryKey, () => result);
-    }
-  };
+  const replaceData = (data: T) => replaceTableData(client, activeHash, queryHash, queryKey, data);
   return {
     data,
     dataUpdatedAt: available ? query.dataUpdatedAt : 0,

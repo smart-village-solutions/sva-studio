@@ -110,22 +110,15 @@ const FaqListContent = ({
   );
 };
 
-export const FaqListPage = () => {
-  const pt = usePluginTranslation('faq');
-  const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as FaqListSearch;
-  const page = toPage(search.page);
-  const pageSize = toPageSize(search.pageSize);
-  const languageCode = normalizeLanguageFilter(search.languageCode);
-  const query = { page, pageSize, languageCode };
-  const {
-    data,
-    state: status,
-    error,
-    refetch,
-  } = useStudioTableQuery(['faqs', query], (signal) => listFaqs(query, signal));
-  const result = data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
-
+function useCanonicalFaqSearch(
+  search: FaqListSearch,
+  {
+    page,
+    pageSize,
+    languageCode,
+  }: { page: number; pageSize: number; languageCode: string | undefined },
+  navigate: ReturnType<typeof useNavigate>
+) {
   React.useEffect(() => {
     if (
       search.page === page &&
@@ -144,6 +137,25 @@ export const FaqListPage = () => {
       }),
     });
   }, [languageCode, navigate, page, pageSize, search.languageCode, search.page, search.pageSize]);
+}
+
+export const FaqListPage = () => {
+  const pt = usePluginTranslation('faq');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as FaqListSearch;
+  const page = toPage(search.page);
+  const pageSize = toPageSize(search.pageSize);
+  const languageCode = normalizeLanguageFilter(search.languageCode);
+  const query = { page, pageSize, languageCode };
+  const {
+    data,
+    state: status,
+    error,
+    refetch,
+  } = useStudioTableQuery(['faqs', query], (signal) => listFaqs(query, signal));
+  const result = data ?? { data: [], pagination: { page, pageSize, hasNextPage: false } };
+
+  useCanonicalFaqSearch(search, query, navigate);
 
   const navigateToPage = (nextPage: number) =>
     void navigate({

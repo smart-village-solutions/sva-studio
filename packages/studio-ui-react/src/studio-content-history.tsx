@@ -1,4 +1,4 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk/plugin-translations';
 
 import { Button } from './button.js';
 import { useStudioTableQuery } from './studio-table-query.js';

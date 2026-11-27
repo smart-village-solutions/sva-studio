@@ -26,8 +26,8 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
 
   useLayoutEffect(() => {
     setOverview(scheduling.data ?? null);
-    setAvailableTours(tours.data?.tours ?? []);
-    setLocationOverview(locations.data ?? null);
+    setAvailableTours(scheduling.data ? (tours.data?.tours ?? []) : []);
+    setLocationOverview(scheduling.data ? (locations.data ?? null) : null);
     setLoading(scheduling.state === 'loading');
     setError(
       scheduling.error

@@ -24,7 +24,8 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   usePluginTranslation: () => (key: string) => key,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioDestructiveActionDialog: ({
     open,
@@ -479,7 +480,7 @@ describe('waste-management scheduling low coverage views', () => {
     });
   });
 
-  it('falls back to empty tours and locations when the background Promise.allSettled step itself fails', async () => {
+  it('falls back to empty tours and locations when both background reads fail', async () => {
     const { useWasteSchedulingOverview: actualUseWasteSchedulingOverview } = await vi.importActual<
       typeof import('../src/use-waste-scheduling-overview.js')
     >('../src/use-waste-scheduling-overview.js');
@@ -488,7 +489,8 @@ describe('waste-management scheduling low coverage views', () => {
       globalDateShifts: [],
       tourDateShifts: [],
     });
-    const allSettledSpy = vi.spyOn(Promise, 'allSettled').mockRejectedValueOnce(new Error('boom'));
+    apiMocks.getWasteManagementToursOverview.mockRejectedValue(new Error('boom'));
+    apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('boom'));
 
     const state = {
       setAvailableTours: vi.fn(),
@@ -509,8 +511,6 @@ describe('waste-management scheduling low coverage views', () => {
       expect(state.setAvailableTours).toHaveBeenCalledWith([]);
       expect(state.setLocationOverview).toHaveBeenCalledWith(null);
     });
-
-    allSettledSpy.mockRestore();
   });
 
   it('builds scheduling view model data for schadstoffmobil tour assignments and sorted location labels', () => {

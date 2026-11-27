@@ -15,10 +15,7 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
-import {
-  instanceInterfaceTypeMeta,
-  type InstanceInterface,
-} from '../../lib/instance-interfaces';
+import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
 import {
   draftFromEntry,
   type EditState,
@@ -72,7 +69,28 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     : t('interfaces.edit.title');
 
 const hasStoredMeilisearchKey = (editState: EditState): boolean =>
-  editState.mode === 'edit' && editState.entry.type === 'meilisearch' && editState.entry.apiKeyConfigured;
+  editState.mode === 'edit' &&
+  editState.entry.type === 'meilisearch' &&
+  editState.entry.apiKeyConfigured;
+
+function MailTestResult({
+  result,
+}: {
+  result: ReturnType<typeof useInterfacesPageController>['mailTestResult'];
+}) {
+  return result ? (
+    <Alert
+      role={result.kind === 'error' ? 'alert' : 'status'}
+      className={
+        result.kind === 'error'
+          ? 'border-destructive/40 bg-destructive/10 text-destructive'
+          : undefined
+      }
+    >
+      <AlertDescription>{result.message}</AlertDescription>
+    </Alert>
+  ) : null;
+}
 
 export const InterfacesPage = () => {
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
@@ -200,18 +218,7 @@ export const InterfacesPage = () => {
         />
       )}
 
-      {mailTestResult ? (
-        <Alert
-          role={mailTestResult.kind === 'error' ? 'alert' : 'status'}
-          className={
-            mailTestResult.kind === 'error'
-              ? 'border-destructive/40 bg-destructive/10 text-destructive'
-              : undefined
-          }
-        >
-          <AlertDescription>{mailTestResult.message}</AlertDescription>
-        </Alert>
-      ) : null}
+      <MailTestResult result={mailTestResult} />
 
       {deleteResultMessage ? (
         <StudioPersistentActionResult

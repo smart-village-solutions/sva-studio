@@ -48,7 +48,8 @@ describe('faq api wrapper', () => {
       visible: true,
     };
 
-    await expect(listFaqs({ page: 1, pageSize: 25, languageCode: 'de' })).resolves.toEqual({
+    const { signal } = new AbortController();
+    await expect(listFaqs({ page: 1, pageSize: 25, languageCode: 'de' }, signal)).resolves.toEqual({
       data: [],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
@@ -57,7 +58,7 @@ describe('faq api wrapper', () => {
     await expect(updateFaq('faq-3', input, 'organization')).resolves.toEqual({ id: 'faq-3' });
     await expect(deleteFaq('faq-4', 'organization')).resolves.toBeUndefined();
 
-    expect(listMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'de' });
+    expect(listMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'de' }, signal);
     expect(getMock).toHaveBeenCalledWith('faq-1');
     expect(createMock).toHaveBeenCalledWith(input, 'organization');
     expect(updateMock).toHaveBeenCalledWith('faq-3', input, 'organization');

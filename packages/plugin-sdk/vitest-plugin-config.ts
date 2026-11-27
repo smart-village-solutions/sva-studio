@@ -26,6 +26,8 @@ export const createPluginVitestConfig = (
           currentDir,
           './src/content-media-contracts-public-api.ts'
         ),
+        '@sva/plugin-sdk/plugin-translations': resolve(currentDir, './src/plugin-translations.ts'),
+        '@sva/plugin-sdk/studio-table-events': resolve(currentDir, './src/studio-table-events.ts'),
         '@sva/plugin-sdk/temporal': resolve(currentDir, './src/temporal.ts'),
         '@sva/plugin-sdk': resolve(currentDir, './src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),

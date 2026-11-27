@@ -10,15 +10,16 @@ import type { WasteToursState } from './use-waste-tours-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => {
-  const invalidate = useStudioTableInvalidation();
-  const tours = useStudioTableQuery(['waste', 'tours'], (signal) =>
-    getWasteManagementToursOverview(signal)
+function getToursLoadError(error: unknown, pt: Translate) {
+  if (!error) return null;
+  return pt(
+    resolveApiErrorCode(error) === 'forbidden'
+      ? 'tours.messages.loadForbidden'
+      : 'tours.messages.loadError'
   );
-  const fractions = useStudioTableQuery(['waste', 'master-data', 'fractions'], (signal) =>
-    getWasteManagementMasterDataOverview({ scope: 'fractions', signal })
-  );
-  const ready = Boolean(tours.data && fractions.data);
+}
+
+function useWasteTourAssignmentQueries(ready: boolean) {
   const locations = useStudioTableQuery(
     ['waste', 'master-data', 'locations'],
     (signal) => getWasteManagementMasterDataOverview({ scope: 'locations', signal }),
@@ -29,6 +30,20 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
     (signal) => getWasteManagementSchedulingOverview({ signal }),
     ready
   );
+  return { locations, scheduling };
+}
+
+export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => {
+  const invalidate = useStudioTableInvalidation();
+  const tours = useStudioTableQuery(['waste', 'tours'], (signal) =>
+    getWasteManagementToursOverview(signal)
+  );
+  const fractions = useStudioTableQuery(['waste', 'master-data', 'fractions'], (signal) =>
+    getWasteManagementMasterDataOverview({ scope: 'fractions', signal })
+  );
+  const overview = fractions.data ? tours.data : undefined;
+  const ready = overview !== undefined;
+  const { locations, scheduling } = useWasteTourAssignmentQueries(ready);
   const {
     setAssignmentContextLoading,
     setAvailableFractions,
@@ -44,25 +59,17 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
   const loading = tours.state === 'loading' || fractions.state === 'loading';
 
   useLayoutEffect(() => {
-    setOverview(ready ? (tours.data ?? null) : null);
+    setOverview(overview ?? null);
     setCustomRecurrencePresets(tours.data?.customRecurrencePresets ?? []);
     setAvailableFractions(fractions.data?.fractions ?? []);
     setLoading(loading && !error);
-    setError(
-      error
-        ? pt(
-            resolveApiErrorCode(error) === 'forbidden'
-              ? 'tours.messages.loadForbidden'
-              : 'tours.messages.loadError'
-          )
-        : null
-    );
+    setError(getToursLoadError(error, pt));
   }, [
     error,
     fractions.data,
     loading,
     pt,
-    ready,
+    overview,
     setAvailableFractions,
     setCustomRecurrencePresets,
     setError,

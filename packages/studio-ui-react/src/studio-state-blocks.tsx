@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk/plugin-translations';
 
 import { Button } from './button.js';
 import { cn } from './utils.js';

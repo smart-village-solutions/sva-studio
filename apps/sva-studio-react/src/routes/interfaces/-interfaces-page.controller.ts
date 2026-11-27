@@ -206,6 +206,23 @@ const useServerFnRefs = () => {
 
 const EMPTY_INTERFACES: readonly InstanceInterface[] = [];
 
+function findSavedInterface(
+  entries: readonly InstanceInterface[],
+  edit: Exclude<EditState, { mode: 'closed' }>
+) {
+  return (
+    entries.find((entry) =>
+      edit.mode === 'edit' ? entry.id === edit.entry.id : entry.type === edit.draft.type
+    ) ?? null
+  );
+}
+
+async function readInterfaces(read: () => Promise<unknown>) {
+  const result = await read();
+  if (!isInstanceInterfacesResponse(result)) throw new Error('invalid_interfaces_payload');
+  return result;
+}
+
 export const useInterfacesPageController = () => {
   const { checkDeepL, listInterfacesRef, saveMainserverRef, upsertInterfaceRef } =
     useServerFnRefs();
@@ -213,13 +230,7 @@ export const useInterfacesPageController = () => {
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
-  const list = useStudioTableQuery(['interfaces'], async () => {
-    const result = await listInterfacesRef.current();
-    if (!isInstanceInterfacesResponse(result)) {
-      throw new Error('invalid_interfaces_payload');
-    }
-    return result;
-  });
+  const list = useStudioTableQuery(['interfaces'], () => readInterfaces(listInterfacesRef.current));
   const instanceId = list.data?.instanceId ?? '';
   const interfaces = list.data?.entries ?? EMPTY_INTERFACES;
   const availableTypes = list.data?.availableTypes.length
@@ -293,10 +304,7 @@ export const useInterfacesPageController = () => {
       if (!refreshed) {
         throw new Error(t('interfaces.messages.refreshAfterSaveError'));
       }
-      savedEntry ??=
-        refreshed?.entries.find((entry) =>
-          editState.mode === 'edit' ? entry.id === editState.entry.id : entry.type === draft.type
-        ) ?? null;
+      savedEntry ??= findSavedInterface(refreshed.entries, editState);
       if (savedEntry) {
         setEditState({ mode: 'edit', entry: savedEntry, draft: draftFromEntry(savedEntry) });
       }

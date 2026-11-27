@@ -230,6 +230,12 @@ export const sharedVitestConfig = defineConfig({
           import.meta.url
         )
       ),
+      '@sva/plugin-sdk/plugin-translations': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/plugin-translations.ts', import.meta.url)
+      ),
+      '@sva/plugin-sdk/studio-table-events': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/studio-table-events.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk/temporal': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/temporal.ts', import.meta.url)
       ),

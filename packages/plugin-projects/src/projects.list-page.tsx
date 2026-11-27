@@ -48,37 +48,7 @@ export function ProjectsListPage() {
       ) : null}
       {state === 'ready' && items.length > 0 ? (
         <div className="space-y-4">
-          <StudioDataTable
-            sorting={{ mode: 'disabled' }}
-            ariaLabel={pt('list.title')}
-            data={items}
-            columns={[
-              { id: 'title', header: pt('fields.title'), cell: (item) => item.title },
-              { id: 'language', header: pt('fields.language'), cell: (item) => item.language },
-              {
-                id: 'status',
-                header: pt('fields.status'),
-                cell: (item) => pt(`status.${item.status}`),
-              },
-            ]}
-            rowActions={(project) => (
-              <Button asChild variant="secondary" size="sm">
-                <Link to="/admin/projects/$id" params={{ id: project.id }}>
-                  {pt('actions.edit')}
-                </Link>
-              </Button>
-            )}
-            getRowId={(project) => project.id}
-            selectionMode="none"
-            emptyState={null}
-            labels={{
-              selectionColumn: pt('fields.actions'),
-              actionsColumn: pt('fields.actions'),
-              loading: pt('messages.loading'),
-              selectAllRows: (label) => label,
-              selectRow: ({ label }) => label,
-            }}
-          />
+          <ProjectsTable items={items} pt={pt} />
           <StudioPagination
             page={page}
             hasNextPage={hasNextPage}
@@ -100,5 +70,47 @@ export function ProjectsListPage() {
         </div>
       ) : null}
     </StudioOverviewPageTemplate>
+  );
+}
+
+function ProjectsTable({
+  items,
+  pt,
+}: {
+  items: Awaited<ReturnType<typeof listProjects>>['data'];
+  pt: ReturnType<typeof usePluginTranslation>;
+}) {
+  return (
+    <StudioDataTable
+      sorting={{ mode: 'disabled' }}
+      ariaLabel={pt('list.title')}
+      data={items}
+      columns={[
+        { id: 'title', header: pt('fields.title'), cell: (item) => item.title },
+        { id: 'language', header: pt('fields.language'), cell: (item) => item.language },
+        {
+          id: 'status',
+          header: pt('fields.status'),
+          cell: (item) => pt(`status.${item.status}`),
+        },
+      ]}
+      rowActions={(project) => (
+        <Button asChild variant="secondary" size="sm">
+          <Link to="/admin/projects/$id" params={{ id: project.id }}>
+            {pt('actions.edit')}
+          </Link>
+        </Button>
+      )}
+      getRowId={(project) => project.id}
+      selectionMode="none"
+      emptyState={null}
+      labels={{
+        selectionColumn: pt('fields.actions'),
+        actionsColumn: pt('fields.actions'),
+        loading: pt('messages.loading'),
+        selectAllRows: (label) => label,
+        selectRow: ({ label }) => label,
+      }}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { notifyStudioTableDataChanged } from '@sva/plugin-sdk';
+import { notifyStudioTableDataChanged } from '@sva/plugin-sdk/studio-table-events';
 import { afterEach, expect, it, vi } from 'vitest';
 import { StudioTableQueryProvider, useStudioTableQuery } from './studio-table-query.js';
 

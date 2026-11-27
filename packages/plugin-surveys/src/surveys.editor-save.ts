@@ -44,18 +44,11 @@ export const createSurveyEditorSubmit = (input: SurveySaveInput) =>
         if (!canSaveSurvey(input)) return;
 
         operationId = input.saveFeedback.beginSaving();
-        if (input.mode === 'edit' && input.contentId && input.loadedItem) {
-          const current = await input.readCurrentItem();
-          if (!current) {
-            input.saveFeedback.markFailed(operationId);
-            input.setStatus({ kind: 'error', text: input.pt('messages.loadError') });
-            return;
-          }
-          if (editableSurveySnapshot(current) !== editableSurveySnapshot(input.loadedItem)) {
-            input.saveFeedback.markFailed(operationId);
-            input.setStatus({ kind: 'error', text: input.pt('messages.editConflict') });
-            return;
-          }
+        const preflightError = await findEditPreflightError(input);
+        if (preflightError) {
+          input.saveFeedback.markFailed(operationId);
+          input.setStatus({ kind: 'error', text: input.pt(preflightError) });
+          return;
         }
         const savedItem = await saveSurveyMutation(input, values);
 
@@ -91,6 +84,15 @@ export const createSurveyEditorSubmit = (input: SurveySaveInput) =>
     },
     () => input.saveFeedback.reset()
   );
+
+async function findEditPreflightError(input: SurveySaveInput) {
+  if (input.mode !== 'edit' || !input.contentId || !input.loadedItem) return;
+  const current = await input.readCurrentItem();
+  if (!current) return 'messages.loadError';
+  if (editableSurveySnapshot(current) !== editableSurveySnapshot(input.loadedItem)) {
+    return 'messages.editConflict';
+  }
+}
 
 const orderedText = (text: SurveyLocalizedText | undefined) =>
   Object.entries(text ?? {}).sort(([left], [right]) => left.localeCompare(right));

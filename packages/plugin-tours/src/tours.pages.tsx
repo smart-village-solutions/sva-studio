@@ -150,40 +150,7 @@ export function ToursListPage() {
       {list?.data.length === 0 ? (
         <StudioEmptyState>{pt(query.page === 1 ? 'empty' : 'emptyPage')}</StudioEmptyState>
       ) : null}
-      {list && list.data.length > 0 ? (
-        <StudioDataTable
-          ariaLabel={pt('title')}
-          data={list.data}
-          columns={[
-            {
-              id: 'name',
-              header: pt('name'),
-              cell: (tour) => (
-                <Link
-                  to={tourDetailPath}
-                  params={{ id: tour.id }}
-                  search={query}
-                  className="font-medium underline underline-offset-4"
-                >
-                  {tour.name || pt('unknown')}
-                </Link>
-              ),
-            },
-            ...summaryFields(pt),
-          ]}
-          getRowId={(tour) => tour.id}
-          emptyState={null}
-          selectionMode="none"
-          sorting={{ mode: 'disabled' }}
-          labels={{
-            selectionColumn: pt('name'),
-            actionsColumn: pt('open'),
-            loading: pt('loading'),
-            selectAllRows: (label) => label,
-            selectRow: ({ label }) => label,
-          }}
-        />
-      ) : null}
+      {list && list.data.length > 0 ? <ToursTable list={list} query={query} pt={pt} /> : null}
       {list && (list.pagination.page > 1 || list.pagination.hasNextPage) ? (
         <StudioPagination
           page={list.pagination.page}
@@ -198,5 +165,50 @@ export function ToursListPage() {
         />
       ) : null}
     </StudioOverviewPageTemplate>
+  );
+}
+
+function ToursTable({
+  list,
+  query,
+  pt,
+}: {
+  list: TourList;
+  query: ReturnType<typeof normalizeListSearch>;
+  pt: Translator;
+}) {
+  return (
+    <StudioDataTable
+      ariaLabel={pt('title')}
+      data={list.data}
+      columns={[
+        {
+          id: 'name',
+          header: pt('name'),
+          cell: (tour) => (
+            <Link
+              to={tourDetailPath}
+              params={{ id: tour.id }}
+              search={query}
+              className="font-medium underline underline-offset-4"
+            >
+              {tour.name || pt('unknown')}
+            </Link>
+          ),
+        },
+        ...summaryFields(pt),
+      ]}
+      getRowId={(tour) => tour.id}
+      emptyState={null}
+      selectionMode="none"
+      sorting={{ mode: 'disabled' }}
+      labels={{
+        selectionColumn: pt('name'),
+        actionsColumn: pt('open'),
+        loading: pt('loading'),
+        selectAllRows: (label) => label,
+        selectRow: ({ label }) => label,
+      }}
+    />
   );
 }

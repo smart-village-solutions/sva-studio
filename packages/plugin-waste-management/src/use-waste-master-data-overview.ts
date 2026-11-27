@@ -11,6 +11,23 @@ import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
+function getMasterDataError(error: unknown, pt: Translate) {
+  if (!error) return null;
+  return pt(
+    resolveApiErrorCode(error) === 'forbidden'
+      ? 'masterData.messages.loadForbidden'
+      : 'masterData.messages.loadError'
+  );
+}
+
+async function readLocationAssignmentOverview() {
+  try {
+    return await getWasteManagementMasterDataOverview({ scope: 'locations', fresh: true });
+  } catch {
+    return null;
+  }
+}
+
 export const useWasteMasterDataOverview = (
   state: WasteMasterDataState,
   pt: Translate,
@@ -45,15 +62,7 @@ export const useWasteMasterDataOverview = (
   useLayoutEffect(() => {
     setOverview(list.data ?? null);
     setLoading(list.state === 'loading');
-    setOverviewError(
-      list.error
-        ? pt(
-            resolveApiErrorCode(list.error) === 'forbidden'
-              ? 'masterData.messages.loadForbidden'
-              : 'masterData.messages.loadError'
-          )
-        : null
-    );
+    setOverviewError(getMasterDataError(list.error, pt));
     setAvailableTours(tours.data?.tours ?? []);
     setLocationCoverageFractions(fractions.data?.fractions ?? []);
     setLocationCoverageFractionsStatus(isLocations ? fractions.state : 'idle');
@@ -89,12 +98,6 @@ export const useWasteMasterDataOverview = (
   return {
     loadOverview,
     overviewRefreshing: list.isFetching || fractions.isFetching || tours.isFetching,
-    readLocationAssignmentOverview: async () => {
-      try {
-        return await getWasteManagementMasterDataOverview({ scope: 'locations', fresh: true });
-      } catch {
-        return null;
-      }
-    },
+    readLocationAssignmentOverview,
   };
 };

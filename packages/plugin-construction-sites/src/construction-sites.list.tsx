@@ -161,6 +161,20 @@ function listPrincipal(
     />
   );
 }
+function listEmptyState(
+  state: ReturnType<typeof useListData>['state'],
+  refetch: () => Promise<boolean>,
+  pt: ReturnType<typeof usePluginTranslation>
+) {
+  if (state === 'loading') return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
+  if (state === 'error') {
+    return (
+      <StudioErrorState onRetry={() => void refetch()}>{pt('messages.loadError')}</StudioErrorState>
+    );
+  }
+  return <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>;
+}
+
 export function ConstructionSitesListPage({
   principalControl,
 }: Readonly<{ principalControl?: MainserverPrincipalControlModel }>) {
@@ -211,17 +225,7 @@ export function ConstructionSitesListPage({
           data={state === 'ready' ? (result?.data ?? []) : []}
           getRowId={(item) => item.id}
           selectionMode="none"
-          emptyState={
-            state === 'loading' ? (
-              <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>
-            ) : state === 'error' ? (
-              <StudioErrorState onRetry={() => void refetch()}>
-                {pt('messages.loadError')}
-              </StudioErrorState>
-            ) : (
-              <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
-            )
-          }
+          emptyState={listEmptyState(state, refetch, pt)}
           columns={listColumns(pt, today)}
           toolbarCenter={<ListFilters filters={filters} categories={categories} filter={filter} />}
           toolbarEnd={

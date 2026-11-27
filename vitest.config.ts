@@ -16,6 +16,14 @@ export default defineConfig({
         replacement: resolve(__dirname, './packages/media/src/index.ts'),
       },
       {
+        find: /^@sva\/plugin-sdk\/studio-table-events$/,
+        replacement: resolve(__dirname, './packages/plugin-sdk/src/studio-table-events.ts'),
+      },
+      {
+        find: /^@sva\/plugin-sdk\/plugin-translations$/,
+        replacement: resolve(__dirname, './packages/plugin-sdk/src/plugin-translations.ts'),
+      },
+      {
         find: /^@sva\/plugin-sdk\/temporal$/,
         replacement: resolve(__dirname, './packages/plugin-sdk/src/temporal.ts'),
       },

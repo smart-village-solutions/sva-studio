@@ -49,6 +49,73 @@ function useSurveyCreateGuard(
   return { createdContentIdRef, createdContentId, rememberCreated, leaveGuard };
 }
 
+function useSurveyFormBaseline(
+  editing: boolean,
+  contentId: string | undefined,
+  detail: Pick<
+    ReturnType<typeof useStudioTableQuery<Awaited<ReturnType<typeof getSurveyDetail>>>>,
+    'data' | 'isAvailable' | 'error'
+  >,
+  methods: UseFormReturn<SurveyDetailFormValues>
+) {
+  const [formBaseline, setFormBaseline] = React.useState<SurveyContentItem | null>(null);
+  const lastDetail = React.useRef<typeof detail.data>(undefined);
+  const isDirty = methods.formState.isDirty;
+  const shouldClearForm =
+    !editing || !contentId || !detail.isAvailable || (!detail.data && Boolean(detail.error));
+  React.useLayoutEffect(() => {
+    if (!shouldClearForm) return;
+    lastDetail.current = undefined;
+    setFormBaseline(null);
+    methods.reset(createDefaultSurveyDetailFormValues());
+  }, [contentId, shouldClearForm, methods]);
+  React.useLayoutEffect(() => {
+    if (shouldClearForm || !detail.data || lastDetail.current === detail.data) return;
+    lastDetail.current = detail.data;
+    const item = detail.data.data;
+    if (formBaseline?.id === contentId && isDirty) return;
+    setFormBaseline(item);
+    methods.reset(mapSurveyItemToFormValues(item));
+  }, [contentId, detail.data, formBaseline?.id, isDirty, methods, shouldClearForm]);
+  return { formBaseline, setFormBaseline };
+}
+
+function useInitialSaveFeedback(
+  isDirty: boolean,
+  isLoading: boolean,
+  initiallySaved: boolean,
+  onInitialSavedConsumed: (() => Promise<void>) | undefined,
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>
+) {
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [isDirty, saveFeedback.markDirty]);
+  React.useEffect(() => {
+    if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void onInitialSavedConsumed?.();
+  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
+}
+
+function getSurveyLoadStatus(
+  editing: boolean,
+  contentId: string | undefined,
+  error: unknown,
+  pt: SurveyEditorTranslation
+): SurveyEditorStatus {
+  if (editing && !contentId) return { kind: 'error', text: pt('messages.missingContentId') };
+  return error
+    ? { kind: 'error', text: getSurveyEditorErrorMessage(error, pt('messages.loadError')) }
+    : null;
+}
+
 export const useSurveyEditorController = ({
   mode,
   contentId,
@@ -69,7 +136,6 @@ export const useSurveyEditorController = ({
   actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
-  const [formBaseline, setFormBaseline] = React.useState<SurveyContentItem | null>(null);
   const editing = mode === 'edit';
   const detail = useStudioTableQuery(
     ['surveys', 'detail', contentId, actingPrincipalType],
@@ -79,52 +145,24 @@ export const useSurveyEditorController = ({
     },
     editing && Boolean(contentId)
   );
-  const lastDetail = React.useRef<typeof detail.data>(undefined);
-  const isDirty = methods.formState.isDirty;
-  const shouldClearForm =
-    !editing || !contentId || !detail.isAvailable || (!detail.data && Boolean(detail.error));
-  React.useLayoutEffect(() => {
-    if (!shouldClearForm) return;
-    lastDetail.current = undefined;
-    setFormBaseline(null);
-    methods.reset(createDefaultSurveyDetailFormValues());
-  }, [contentId, shouldClearForm, methods]);
-  React.useLayoutEffect(() => {
-    if (shouldClearForm || !detail.data || lastDetail.current === detail.data) return;
-    lastDetail.current = detail.data;
-    const item = detail.data.data;
-    if (formBaseline?.id === contentId && isDirty) return;
-    setFormBaseline(item);
-    methods.reset(mapSurveyItemToFormValues(item));
-  }, [contentId, detail.data, formBaseline?.id, isDirty, methods, shouldClearForm]);
+  const { formBaseline, setFormBaseline } = useSurveyFormBaseline(
+    editing,
+    contentId,
+    detail,
+    methods
+  );
   const isLoading = editing && Boolean(contentId) && detail.state === 'loading';
-  const loadStatus: SurveyEditorStatus =
-    editing && !contentId
-      ? { kind: 'error', text: pt('messages.missingContentId') }
-      : detail.error
-        ? {
-            kind: 'error',
-            text: getSurveyEditorErrorMessage(detail.error, pt('messages.loadError')),
-          }
-        : null;
+  const loadStatus = getSurveyLoadStatus(editing, contentId, detail.error, pt);
   const saveFeedback = useStudioSaveFeedback();
   const { createdContentIdRef, createdContentId, rememberCreated, leaveGuard } =
     useSurveyCreateGuard(mode, methods);
-  const initialSaveFeedbackShownRef = React.useRef(false);
-  React.useEffect(() => {
-    if (methods.formState.isDirty) {
-      saveFeedback.markDirty();
-    }
-  }, [methods.formState.isDirty, saveFeedback.markDirty]);
-  React.useEffect(() => {
-    if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
-      return;
-    }
-
-    initialSaveFeedbackShownRef.current = true;
-    saveFeedback.showSaved();
-    void onInitialSavedConsumed?.();
-  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
+  useInitialSaveFeedback(
+    methods.formState.isDirty,
+    isLoading,
+    initiallySaved,
+    onInitialSavedConsumed,
+    saveFeedback
+  );
   const submit = createSurveyEditorSubmit({
     methods,
     leaveGuard,

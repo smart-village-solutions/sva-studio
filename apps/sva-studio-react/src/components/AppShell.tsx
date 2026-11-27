@@ -115,6 +115,38 @@ const LegalTextAcceptanceDialogSlot = ({
   return <DialogComponent pathname={pathname} />;
 };
 
+function useRoleAssignmentPending(auth: ReturnType<typeof useAuth>) {
+  const {
+    user,
+    isAuthenticated: authenticated,
+    isLoading: isLoading,
+    hasResolvedSession,
+    isRecoveringSession,
+    error: authError,
+  } = auth;
+  const effectiveAccess = useEffectiveAccess();
+  const showRoleAssignmentPending =
+    authenticated &&
+    hasResolvedSession &&
+    !isLoading &&
+    !isRecoveringSession &&
+    !authError &&
+    user?.permissionStatus === 'ok' &&
+    user.roles.length === 0 &&
+    user.permissionActions?.length === 0 &&
+    effectiveAccess.snapshot.status === 'ready' &&
+    effectiveAccess.snapshot.scope.kind === 'tenant' &&
+    effectiveAccess.snapshot.scope.instanceId === user.instanceId &&
+    effectiveAccess.permissionActions.length === 0;
+  const rolelessRedirectUrl = user?.rolelessRedirectUrl;
+  React.useEffect(() => {
+    if (showRoleAssignmentPending) {
+      redirectRolelessUser(rolelessRedirectUrl);
+    }
+  }, [showRoleAssignmentPending, rolelessRedirectUrl]);
+  return showRoleAssignmentPending;
+}
+
 /**
  * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
  *
@@ -134,34 +166,9 @@ export default function AppShell({
   sidebarSlot,
   documentationPageId,
 }: AppShellProps) {
-  const {
-    user,
-    isAuthenticated,
-    isLoading: isAuthLoading,
-    hasResolvedSession,
-    isRecoveringSession,
-    error: authError,
-  } = useAuth();
-  const effectiveAccess = useEffectiveAccess();
-  const showRoleAssignmentPending =
-    isAuthenticated &&
-    hasResolvedSession &&
-    !isAuthLoading &&
-    !isRecoveringSession &&
-    !authError &&
-    user?.permissionStatus === 'ok' &&
-    user.roles.length === 0 &&
-    user.permissionActions?.length === 0 &&
-    effectiveAccess.snapshot.status === 'ready' &&
-    effectiveAccess.snapshot.scope.kind === 'tenant' &&
-    effectiveAccess.snapshot.scope.instanceId === user.instanceId &&
-    effectiveAccess.permissionActions.length === 0;
-  const rolelessRedirectUrl = user?.rolelessRedirectUrl;
-  React.useEffect(() => {
-    if (showRoleAssignmentPending) {
-      redirectRolelessUser(rolelessRedirectUrl);
-    }
-  }, [showRoleAssignmentPending, rolelessRedirectUrl]);
+  const auth = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = auth;
+  const showRoleAssignmentPending = useRoleAssignmentPending(auth);
   const [isHydrated, setIsHydrated] = React.useState(false);
   const hasSidebarLayout = !studioPlugins.some((plugin) =>
     plugin.routes.some((route) => route.path === currentPathname && route.layout === 'content-only')

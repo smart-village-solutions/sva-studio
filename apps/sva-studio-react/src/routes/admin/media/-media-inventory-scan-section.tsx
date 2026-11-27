@@ -45,6 +45,9 @@ const InventoryReport = ({ report }: { report: MediaInventoryScanReport }) => (
   </div>
 );
 
+const isValidScanLimit = (limit: number) =>
+  Number.isInteger(limit) && limit >= 1 && limit <= mediaScanLimits.maxInventoryFiles;
+
 export const MediaInventoryScanSection = () => {
   const [limit, setLimit] = React.useState<number>(mediaScanLimits.maxInventoryFiles);
   const [starting, setStarting] = React.useState(false);
@@ -65,14 +68,7 @@ export const MediaInventoryScanSection = () => {
   }, [job?.id, pending, refetch, scan.error, scan.isFetching]);
 
   const start = async (cursor?: string) => {
-    if (
-      !Number.isInteger(limit) ||
-      limit < 1 ||
-      limit > mediaScanLimits.maxInventoryFiles ||
-      starting ||
-      pending
-    )
-      return;
+    if (!isValidScanLimit(limit) || starting || pending) return;
     setStarting(true);
     setError(false);
     try {

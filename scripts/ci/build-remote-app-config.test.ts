@@ -14,7 +14,9 @@ import { remoteConfigContract } from './remote-config-contract.ts';
 import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
 
 const profile = Object.entries(remoteConfigContract)
-  .filter(([, contract]) => contract.kind === 'config')
+  .filter(
+    ([key, contract]) => contract.kind === 'config' && !key.startsWith('SVA_SSF_TRANSLATION_')
+  )
   .map(([key, contract]) => {
     if (contract.type === 'boolean') return `${key}=false`;
     if (contract.type === 'integer') return `${key}=5000`;
@@ -27,7 +29,8 @@ const profile = Object.entries(remoteConfigContract)
 const overrides = Object.entries(remoteConfigContract)
   .filter(
     ([key, contract]) =>
-      contract.kind !== 'config' && key !== 'FALLOW_BROWSER_INGEST_KEY' && key !== 'BEACON_API_KEY'
+      contract.kind !== 'config' &&
+      !['FALLOW_BROWSER_INGEST_KEY', 'BEACON_API_KEY', 'SVA_SSF_TRANSLATION_API_KEY'].includes(key)
   )
   .map(
     ([key, contract]) =>
@@ -45,6 +48,42 @@ const dockerComposeAvailable = (() => {
 })();
 
 describe('remote app config builder', () => {
+  it('requires complete staging-only SSF configuration with a separate secret', () => {
+    const ssfProfile = [
+      profile,
+      'SVA_SSF_TRANSLATION_INSTANCE_ID=st-magdeburg',
+      'SVA_SSF_TRANSLATION_ORIGIN=https://ssf.example',
+      'SVA_SSF_TRANSLATION_LOCALES=en,pl,ja',
+    ].join('\n');
+    const ssfTranslationApiKey = 'b'.repeat(64);
+    const candidate = buildRemoteAppConfig({
+      environment: 'staging',
+      profile: ssfProfile,
+      overrides,
+      ssfTranslationApiKey,
+    });
+    expect(candidate.source).toContain(`SVA_SSF_TRANSLATION_API_KEY=${ssfTranslationApiKey}\n`);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'dev',
+        profile: ssfProfile,
+        overrides,
+        ssfTranslationApiKey,
+      })
+    ).toThrow();
+    expect(() =>
+      buildRemoteAppConfig({ environment: 'staging', profile: ssfProfile, overrides })
+    ).toThrow();
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: ssfProfile.replace('SVA_SSF_TRANSLATION_LOCALES=en,pl,ja', ''),
+        overrides,
+        ssfTranslationApiKey,
+      })
+    ).toThrow();
+  });
+
   it('injects the separate search key without changing the source scope or config revision', () => {
     const existingBundle = overrides
       .split('\n')
@@ -299,11 +338,18 @@ describe('remote app config builder', () => {
         new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
         'utf8'
       );
-      const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
+      const result = buildRemoteAppConfig({
+        environment,
+        profile: remoteProfile,
+        overrides,
+        ssfTranslationApiKey: environment === 'staging' ? 'b'.repeat(64) : undefined,
+      });
 
       expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
       expect(result.source).toContain('BUS_API_BASE_URL=https://bus-api.smart-village.app\n');
-      expect(result.source).toContain('SVA_MANAGED_MAPSTICK_URL=https://mapstick.smart-village.app/\n');
+      expect(result.source).toContain(
+        'SVA_MANAGED_MAPSTICK_URL=https://mapstick.smart-village.app/\n'
+      );
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
     }
@@ -313,22 +359,63 @@ describe('remote app config builder', () => {
     'passes the managed Mapstick URL from the %s profile to app and provisioner',
     (environment) => {
       const remoteProfile = readFileSync(
-        new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url), 'utf8'
+        new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
+        'utf8'
       );
       const render = (source: string) => {
-        const config = buildRemoteAppConfig({ environment, profile: source, overrides });
-        const env = Object.fromEntries(parseRemoteConfigLayer(environment, 'test output', config.source).values);
-        return JSON.parse(execFileSync('docker', [
-          'compose', '-f', 'compose.yaml', '-f', `deploy/compose.${environment}.yaml`,
-          'config', '--no-normalize', '--format', 'json',
-        ], { cwd: new URL('../../', import.meta.url), env: { ...process.env, ...env, IMAGE_REF: 'ghcr.io/smart-village-solutions/sva-studio:test', SVA_CONFIG_REVISION: 'a'.repeat(64), REDIS_SNAPSHOT_HMAC_SECRET: 'synthetic-test-only-hmac-value-32chars' },
-          encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })).services as Record<
-          string, { environment: Record<string, string> }
-        >;
+        const config = buildRemoteAppConfig({
+          environment,
+          profile: source,
+          overrides,
+          ssfTranslationApiKey: environment === 'staging' ? 'b'.repeat(64) : undefined,
+        });
+        const env = Object.fromEntries(
+          parseRemoteConfigLayer(environment, 'test output', config.source).values
+        );
+        return JSON.parse(
+          execFileSync(
+            'docker',
+            [
+              'compose',
+              '-f',
+              'compose.yaml',
+              '-f',
+              `deploy/compose.${environment}.yaml`,
+              'config',
+              '--no-normalize',
+              '--format',
+              'json',
+            ],
+            {
+              cwd: new URL('../../', import.meta.url),
+              env: {
+                ...process.env,
+                ...env,
+                IMAGE_REF: 'ghcr.io/smart-village-solutions/sva-studio:test',
+                SVA_CONFIG_REVISION: 'a'.repeat(64),
+                REDIS_SNAPSHOT_HMAC_SECRET: 'synthetic-test-only-hmac-value-32chars',
+              },
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe'],
+            }
+          )
+        ).services as Record<string, { environment: Record<string, string> }>;
       };
       const own = render(remoteProfile);
-      expect(own.app.environment.SVA_MANAGED_MAPSTICK_URL).toBe('https://mapstick.smart-village.app/');
-      expect(own.provisioner.environment.SVA_MANAGED_MAPSTICK_URL).toBe('https://mapstick.smart-village.app/');
+      for (const service of [own.app, own.provisioner]) {
+        expect(service.environment.SVA_SSF_TRANSLATION_INSTANCE_ID).toBe(
+          environment === 'staging' ? 'st-magdeburg' : ''
+        );
+        expect(service.environment.SVA_SSF_TRANSLATION_API_KEY).toBe(
+          environment === 'staging' ? 'b'.repeat(64) : ''
+        );
+      }
+      expect(own.app.environment.SVA_MANAGED_MAPSTICK_URL).toBe(
+        'https://mapstick.smart-village.app/'
+      );
+      expect(own.provisioner.environment.SVA_MANAGED_MAPSTICK_URL).toBe(
+        'https://mapstick.smart-village.app/'
+      );
       const generic = render(remoteProfile.replace(/^SVA_MANAGED_MAPSTICK_URL=.*\n/m, ''));
       expect(generic.app.environment.SVA_MANAGED_MAPSTICK_URL).toBe('');
       expect(generic.provisioner.environment.SVA_MANAGED_MAPSTICK_URL).toBe('');
@@ -336,15 +423,22 @@ describe('remote app config builder', () => {
   );
 
   it.each([
-    'http://maps.example/', 'ftp://maps.example/',
+    'http://maps.example/',
+    'ftp://maps.example/',
     'https://user:synthetic@maps.example/',
-    'https://maps.example/?token=synthetic', 'https://maps.example/#fragment',
+    'https://maps.example/?token=synthetic',
+    'https://maps.example/#fragment',
   ])('rejects Mapstick URL constraints before deployment: %s', (url) => {
-    expect(() => buildRemoteAppConfig({
-      environment: 'dev',
-      profile: profile.replace(/^SVA_MANAGED_MAPSTICK_URL=.*$/m, `SVA_MANAGED_MAPSTICK_URL=${url}`),
-      overrides,
-    })).toThrow(PromoteContractError);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'dev',
+        profile: profile.replace(
+          /^SVA_MANAGED_MAPSTICK_URL=.*$/m,
+          `SVA_MANAGED_MAPSTICK_URL=${url}`
+        ),
+        overrides,
+      })
+    ).toThrow(PromoteContractError);
   });
 
   it('fails compose interpolation when the deployment environment is missing', () => {

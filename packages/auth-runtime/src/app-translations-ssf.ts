@@ -1,6 +1,10 @@
 import type { CatalogValue } from '@sva/core';
 import { z } from 'zod';
-import { readResponse, translateProtectedValues } from './app-translations-provider-values.js';
+import {
+  InvalidProviderResponse,
+  readResponse,
+  translateProtectedValues,
+} from './app-translations-provider-values.js';
 
 const targetSchema = z.enum(['en', 'pl', 'ja']);
 const languageSchema = z.object({ languages: z.array(z.string()).min(1).max(500) });
@@ -22,6 +26,7 @@ export const readSsfTranslationConfig = (instanceId: string) => {
   const locales = z.array(targetSchema).min(1).max(3).safeParse(rawLocales);
   if (
     !key ||
+    !/^[a-f0-9]{64}$/u.test(key) ||
     !origin ||
     origin.protocol !== 'https:' ||
     origin.href !== `${origin.origin}/` ||
@@ -59,7 +64,13 @@ const ssfRequest = async (
       response.status === 413 ? 'ssf_translation_too_large' : 'ssf_translation_rejected'
     );
   }
-  return readResponse(response, 262144);
+  try {
+    return await readResponse(response);
+  } catch (error) {
+    if (error instanceof InvalidProviderResponse)
+      throw terminal('ssf_translation_invalid_response');
+    throw new Error('ssf_translation_unavailable');
+  }
 };
 
 export const verifySsfTranslationLocales = async (config: SsfTranslationConfig) => {

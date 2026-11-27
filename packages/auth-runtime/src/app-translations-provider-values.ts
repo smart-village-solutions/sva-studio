@@ -1,31 +1,48 @@
 import type { CatalogValue } from '@sva/core';
 
+export class InvalidProviderResponse extends Error {}
+
 export const readResponse = async (response: Response, limit = 262144): Promise<unknown> => {
   const reader = response.body?.getReader();
-  if (!reader) throw new Error('deepl_invalid_response');
+  if (!reader) throw new InvalidProviderResponse();
   let size = 0;
   const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => undefined);
+      throw new InvalidProviderResponse();
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        await reader.cancel();
-        throw new Error('deepl_invalid_response');
-      }
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.length;
-    }
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown;
   } catch {
-    throw new Error('deepl_invalid_response');
+    throw new InvalidProviderResponse();
   }
+};
+
+export const translationFailureIsTerminal = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const cause = error.cause as { retry?: { kind?: unknown } } | undefined;
+  return (
+    cause?.retry?.kind === 'terminal' ||
+    [
+      'deepl_invalid_response',
+      'deepl_text_too_large',
+      'deepl_auth_failed',
+      'deepl_quota_exceeded',
+      'catalog_setup_required',
+    ].includes(error.message)
+  );
 };
 
 const fail = (code: string): never => {

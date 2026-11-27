@@ -95,7 +95,7 @@ afterEach(() => {
 const configureSsfPilot = (instanceId = 'de-town') => {
   vi.stubEnv('SVA_SSF_TRANSLATION_INSTANCE_ID', instanceId);
   vi.stubEnv('SVA_SSF_TRANSLATION_ORIGIN', 'https://ssf.example');
-  vi.stubEnv('SVA_SSF_TRANSLATION_API_KEY', 'test-only-ssf-key');
+  vi.stubEnv('SVA_SSF_TRANSLATION_API_KEY', 'a'.repeat(64));
   vi.stubEnv('SVA_SSF_TRANSLATION_LOCALES', 'en,pl,ja');
 };
 
@@ -122,7 +122,7 @@ describe('technical app translation', () => {
     expect(fetchSsf).toHaveBeenCalledOnce();
     const [url, options] = fetchSsf.mock.calls[0]!;
     expect(url).toBe('https://ssf.example/api/v1/translate');
-    expect(new Headers(options.headers).get('x-api-key')).toBe('test-only-ssf-key');
+    expect(new Headers(options.headers).get('x-api-key')).toBe('a'.repeat(64));
     expect(String(options.body)).toMatch(/SVA[0-9a-f]{32}X1ZHalloSVA[0-9a-f]{32}X2Z/);
     expect(state.translate).not.toHaveBeenCalled();
   });

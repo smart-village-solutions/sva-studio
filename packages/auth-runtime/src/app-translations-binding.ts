@@ -167,6 +167,13 @@ const newsSetupSchema = identitySchema.extend({
   generation: z.number().int().positive(),
 });
 
+const readNewsLocales = async (instanceId: string): Promise<string[]> => {
+  const ssf = readSsfTranslationConfig(instanceId);
+  if (ssf) return [...(await verifySsfTranslationLocales(ssf))].sort();
+  const provider = await readDeepLSetupStatus(instanceId);
+  return provider.ready ? [...provider.selectedLocales].sort() : [];
+};
+
 export const synchronizeAppTranslationNews = async (
   context: StudioJobExecutionHandlerContext
 ): Promise<boolean> => {
@@ -187,16 +194,7 @@ export const synchronizeAppTranslationNews = async (
   ).toString();
   const url = await resolveIdentityUrl(String(connection.publicConfig.graphqlBaseUrl));
   if (!url) throw new Error('mainserver_identity_unavailable');
-  let locales: string[] = [];
-  if (lifecycle.operation !== 'suspend') {
-    const ssf = readSsfTranslationConfig(instanceId);
-    if (ssf) {
-      locales = [...(await verifySsfTranslationLocales(ssf))].sort();
-    } else {
-      const provider = await readDeepLSetupStatus(instanceId);
-      if (provider.ready) locales = [...provider.selectedLocales].sort();
-    }
-  }
+  const locales = lifecycle.operation === 'suspend' ? [] : await readNewsLocales(instanceId);
   const newsEnabled = locales.length > 0;
   const languageNames = appTranslationLanguageNames(locales);
   const generation = lifecycle.generation;

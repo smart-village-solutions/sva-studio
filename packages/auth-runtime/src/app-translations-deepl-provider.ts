@@ -9,8 +9,18 @@ import {
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import { z } from 'zod';
 import { revealField } from './iam-account-management/encryption.js';
-import { readResponse, translateProtectedValues } from './app-translations-provider-values.js';
-export { readResponse } from './app-translations-provider-values.js';
+import {
+  readResponse as readProviderResponse,
+  translateProtectedValues,
+} from './app-translations-provider-values.js';
+
+export const readResponse = async (response: Response, limit?: number): Promise<unknown> => {
+  try {
+    return await readProviderResponse(response, limit);
+  } catch {
+    throw new Error('deepl_invalid_response');
+  }
+};
 
 export const deepLApiOrigin = (plan: 'free' | 'pro'): string =>
   plan === 'free' ? 'https://api-free.deepl.com' : 'https://api.deepl.com';

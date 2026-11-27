@@ -18,6 +18,7 @@ import {
   selectSsfTranslationTarget,
   translateSsfValues,
 } from './app-translations-ssf.js';
+import { translationFailureIsTerminal } from './app-translations-provider-values.js';
 import { translateStaticHtml } from './app-translations-static-html.js';
 import { consumeRateLimit } from './shared/rate-limit.js';
 import {
@@ -140,14 +141,13 @@ const readAccess = async (
     return result.rows.length === 1 ? result.rows[0] : null;
   });
   if (!scope) return null;
+  const common = { binding: binding.data, connection, scope };
   const ssf = readSsfTranslationConfig(instanceId);
   if (ssf) {
     const targetCode = selectSsfTranslationTarget(ssf, targetLocale);
     if (!targetCode) return null;
     return {
-      binding: binding.data,
-      connection,
-      scope,
+      ...common,
       providerVersion: ['ssf', ssf.origin, ...ssf.locales],
       pilotKey: ssf.key,
       targetCode,
@@ -170,9 +170,7 @@ const readAccess = async (
     settings.availableLanguages
   );
   return {
-    binding: binding.data,
-    connection,
-    scope,
+    ...common,
     providerVersion: ['deepl', provider.id, provider.updatedAt, settings.credentialRevision],
     pilotKey: undefined,
     targetCode,
@@ -220,19 +218,6 @@ const accessUnchanged = (
   JSON.stringify(current.providerVersion) === JSON.stringify(access.providerVersion) &&
   current.pilotKey === access.pilotKey &&
   current.targetCode === access.targetCode;
-const translationFailureIsTerminal = (error: unknown): boolean =>
-  (error instanceof Error &&
-    'cause' in error &&
-    z.object({ retry: z.object({ kind: z.literal('terminal') }) }).safeParse(error.cause)
-      .success) ||
-  [
-    'deepl_invalid_response',
-    'deepl_text_too_large',
-    'deepl_auth_failed',
-    'deepl_quota_exceeded',
-    'catalog_setup_required',
-  ].includes(error instanceof Error ? error.message : '');
-
 /** Bounded technical translation; Main-Server owns persistence and retry. */
 
 const authenticateTranslation = async (

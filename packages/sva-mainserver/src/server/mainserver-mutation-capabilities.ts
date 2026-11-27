@@ -28,6 +28,7 @@ const defaultCapabilities = new Set([
   'projects.delete',
   'projects.update',
   'surveys.create',
+  'tours.update',
 ]);
 
 const readConfirmedCapabilities = (): ReadonlySet<string> => {

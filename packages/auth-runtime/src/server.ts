@@ -21,11 +21,9 @@ export {
 export {
   readEffectiveSvaMainserverCredentials,
   readEffectiveSvaMainserverCredentialsWithStatus,
-} from './mainserver-effective-credentials.js';
-export type {
-  EffectiveMainserverCredentialsInput,
-  EffectiveMainserverCredentialSource,
-  EffectiveSvaMainserverCredentialsResult,
+  type EffectiveMainserverCredentialsInput,
+  type EffectiveMainserverCredentialSource,
+  type EffectiveSvaMainserverCredentialsResult,
 } from './mainserver-effective-credentials.js';
 export { resolveMutationPrincipalContext } from './mainserver-mutation-principal.js';
 export type {
@@ -240,6 +238,7 @@ export {
   type MainserverContentAuthorizationMode,
   type MainserverScopeResolverMode,
 } from './iam-contents/mainserver-content-authorization.js';
+export { buildMainserverContentMutation } from './iam-contents/mainserver-content-mutation-input.js';
 export {
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,

@@ -43,7 +43,12 @@ const state = vi.hoisted(() => ({
 
 export const getProjectionTestState = () => state;
 
-vi.mock('@sva/auth-runtime/server', () => ({
+vi.mock('@sva/auth-runtime/server', async () => ({
+  buildMainserverContentMutation: (
+    await vi.importActual<
+      Pick<typeof import('@sva/auth-runtime/server'), 'buildMainserverContentMutation'>
+    >('../../../../packages/auth-runtime/src/iam-contents/mainserver-content-mutation-input.js')
+  ).buildMainserverContentMutation,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   deferMainserverMutationProjection: state.deferMainserverMutationProjection,
   loadMainserverMutationJournal: state.loadMainserverMutationJournal,

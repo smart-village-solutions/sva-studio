@@ -307,11 +307,12 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         sourceEntityId: 'provider-project-1',
         contentType: 'projects.project',
         ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
-        title: 'Projekt',
-        payload: {},
+        title: 'Später bearbeitetes Projekt',
+        payload: { title: 'Später bearbeitetes Projekt' },
         status: 'published',
         authorDisplayMode: 'organization',
         author: 'Musterhausen',
+        updatedAt: '2026-09-13T12:03:00.000Z',
       }],
     })).resolves.toBe(1);
 
@@ -323,6 +324,11 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     ]);
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({
+        actorAccountId: '22222222-2222-4222-8222-222222222222',
+        actorDisplayName: 'Redaktion',
+        authorDisplayMode: 'organization',
+        authorDisplayName: 'Musterhausen',
+        mutationRef: 'project-transfer-1',
         sourceEntityId: 'provider-project-1',
         contentType: 'projects.project',
         ownershipPrincipal: { type: 'organization', id: '33333333-3333-4333-8333-333333333333' },

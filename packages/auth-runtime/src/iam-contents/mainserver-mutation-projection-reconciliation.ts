@@ -6,6 +6,7 @@ import {
   recordSuccessfulExternalContentMutation,
   type SuccessfulExternalContentMutation,
 } from './external-content-mutations.js';
+import { buildMainserverContentMutation } from './mainserver-content-mutation-input.js';
 import { finalizeMainserverMutationJournal } from './mainserver-mutation-journal.js';
 import { ContentOwnershipTransferError } from './repository-ownership.js';
 
@@ -40,18 +41,6 @@ export type ReconciledMainserverProjectionRow = Readonly<{
 }>;
 
 const rowKey = (contentType: string, entityId: string): string => `${contentType}\0${entityId}`;
-
-const reconciledAuthorDisplay = (
-  row: ReconciledMainserverProjectionRow,
-  actorDisplayName: string,
-  actingPrincipalType: 'organization' | 'user'
-) => {
-  const isPersonalAuthor = actingPrincipalType === 'user' || !row.organizationId;
-  return {
-    authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
-    authorDisplayName: isPersonalAuthor ? actorDisplayName : row.author,
-  };
-};
 
 const confirmedTransferOwner = (
   actionId: string,
@@ -210,30 +199,22 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       input.actingPrincipalId
     );
     if (!row || !actorDisplayName || replayMode === 'skip') continue;
-    const contentId = await recordReconciledMutation({
-      instanceId: input.instanceId,
-      actorAccountId: entry.actor_account_id,
-      actorDisplayName,
-      mutationRef: entry.operation_external_id,
-      operation: entry.action_id.endsWith('.create') ? 'create' : 'update',
-      sourceSystem: 'mainserver',
-      sourceEntityType: row.sourceEntityType,
-      sourceEntityId: row.sourceEntityId,
-      contentType: row.contentType,
-      ...confirmedTransferOwner(entry.action_id, input.actingPrincipalType, input.actingPrincipalId),
-      ...(replayMode === 'owner-only' ? { preserveExistingContentState: true } : {}),
-      ...(row.organizationId ? { organizationId: row.organizationId } : {}),
-      title: row.title,
-      payload: row.payload,
-      status: row.status,
-      ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-      ...(replayMode === 'owner-only'
-        ? {
-            authorDisplayMode: input.actingPrincipalType === 'user' ? 'user' : row.authorDisplayMode,
-            authorDisplayName: row.author,
-          }
-        : reconciledAuthorDisplay(row, actorDisplayName, input.actingPrincipalType)),
-    });
+    const contentId = await recordReconciledMutation(
+      buildMainserverContentMutation({
+        instanceId: input.instanceId,
+        actorAccountId: entry.actor_account_id,
+        actorDisplayName,
+        mutationRef: entry.operation_external_id,
+        operation: entry.action_id.endsWith('.create') ? 'create' : 'update',
+        sourceEntityType: row.sourceEntityType,
+        sourceEntityId: row.sourceEntityId,
+        contentType: row.contentType,
+        actingPrincipalType: input.actingPrincipalType,
+        ...confirmedTransferOwner(entry.action_id, input.actingPrincipalType, input.actingPrincipalId),
+        preserveExistingContentState: replayMode === 'owner-only',
+        row,
+      })
+    );
     if (!contentId) continue;
     const independentReconciliationError =
       [null, 'mainserver_projection_credential_cooldown', 'content_transfer_projection_refresh_failed'].includes(entry.last_error_code)

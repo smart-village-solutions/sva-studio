@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { mapPoiItem } from './iam-content-list-mainserver.js';
 import {
   registerProjectionFixture,
   fixture,
@@ -8,29 +9,47 @@ import {
 } from './iam-content-list-projection.test-fixture.js';
 
 const state = getProjectionTestState();
+const replay = vi.hoisted(() => ({
+  query: vi.fn(),
+  recordMutation: vi.fn(),
+  finalizeJournal: vi.fn(),
+}));
+
+vi.mock('../../../../packages/auth-runtime/src/iam-account-management/shared.js', () => ({
+  withInstanceScopedDb: async (
+    _instanceId: string,
+    work: (client: { query: typeof replay.query }) => unknown
+  ) => work({ query: replay.query }),
+}));
+vi.mock('../../../../packages/auth-runtime/src/iam-contents/external-content-mutations.js', () => ({
+  recordSuccessfulExternalContentMutation: replay.recordMutation,
+}));
+vi.mock(
+  '../../../../packages/auth-runtime/src/iam-contents/mainserver-mutation-journal.js',
+  () => ({
+    finalizeMainserverMutationJournal: replay.finalizeJournal,
+  })
+);
 
 describe('targeted content projection mutations', () => {
   registerProjectionFixture();
 
-  it('refreshes a mainserver projection after direct mainserver mutations', async () => {
-    state.getSvaMainserverPoi.mockResolvedValue({
+  it('passes the same confirmed POI update to persistence directly and on replay', async () => {
+    const poi = {
       id: 'poi-mutation-1',
       name: 'Mutation POI',
       contentType: 'poi.point-of-interest',
-      status: 'published',
       active: true,
       categories: [],
       addresses: [],
-      priceInformations: [],
       openingHours: [],
       webUrls: [],
-      mediaContents: [],
-      certificates: [],
       tags: [],
       visible: true,
       createdAt: '2026-06-20T10:00:00.000Z',
       updatedAt: '2026-06-21T10:00:00.000Z',
-    });
+    } satisfies Parameters<typeof mapPoiItem>[0];
+    state.getSvaMainserverPoi.mockResolvedValue(poi);
 
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'poi.point-of-interest',
@@ -75,6 +94,53 @@ describe('targeted content projection mutations', () => {
         sourceEntityId: 'poi-mutation-1',
         sourceSystem: 'mainserver',
       })
+    );
+
+    state.revealField.mockReturnValueOnce('Redaktion');
+    replay.query.mockResolvedValueOnce({
+      rows: [
+        {
+          operation_external_id: 'mutation-1',
+          action_id: 'poi.update',
+          content_type: 'poi.point-of-interest',
+          content_id: poi.id,
+          provider_content_id: poi.id,
+          actor_account_id: 'account-1',
+          keycloak_subject: 'kc-user-1',
+          display_name_ciphertext: 'fixture-ciphertext',
+          deferred_at: '2026-06-21T10:01:00.000Z',
+          last_error_code: null,
+        },
+      ],
+    });
+    replay.recordMutation.mockResolvedValueOnce('local-poi-1');
+    const { reconcileDeferredMainserverMutationProjections } = await vi.importActual<
+      Pick<
+        typeof import('@sva/auth-runtime/server'),
+        'reconcileDeferredMainserverMutationProjections'
+      >
+    >(
+      '../../../../packages/auth-runtime/src/iam-contents/mainserver-mutation-projection-reconciliation.js'
+    );
+    await expect(
+      reconcileDeferredMainserverMutationProjections({
+        instanceId: 'de-musterhausen',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: 'org-1',
+        activeOrganizationId: 'org-1',
+        credentialFingerprint: 'b'.repeat(64),
+        rows: [
+          {
+            ...mapPoiItem(poi, 'de-musterhausen', []),
+            organizationId: 'org-1',
+            sourceEntityType: poi.contentType,
+            sourceEntityId: poi.id,
+          },
+        ],
+      })
+    ).resolves.toBe(1);
+    expect(replay.recordMutation.mock.calls).toStrictEqual(
+      state.recordSuccessfulExternalContentMutation.mock.calls
     );
   });
 

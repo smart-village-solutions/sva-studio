@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  buildMainserverContentMutation,
   deferMainserverMutationProjection,
   loadMainserverMutationJournal,
   recordSuccessfulExternalContentDeletion,
@@ -104,28 +105,22 @@ const recordMutationAudit = async (
   const auditActorAccountId = target.auditActorAccountId ?? target.actorAccountId;
   if (!auditActorAccountId || !target.actorDisplayName || !target.mutationRef) return;
   if (input.operation !== 'create' && input.operation !== 'update') return;
-  const isPersonalAuthor = target.actingPrincipalType === 'user' || !row.organizationId;
-  await recordSuccessfulExternalContentMutation({
-    instanceId: target.instanceId,
-    actorAccountId: auditActorAccountId,
-    actorDisplayName: target.actorDisplayName,
-    mutationRef: target.mutationRef,
-    operation: input.operation,
-    sourceSystem: 'mainserver',
-    sourceEntityType: target.contentType,
-    sourceEntityId: input.entityId,
-    contentType: target.contentType,
-    ...(target.ownershipPrincipal ? { ownershipPrincipal: target.ownershipPrincipal } : {}),
-    ...(target.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
-    ...(row.organizationId ? { organizationId: row.organizationId } : {}),
-    title: row.title,
-    payload: row.payload,
-    status: row.status,
-    ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-    authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
-    authorDisplayName:
-      isPersonalAuthor && !target.ownershipPrincipal ? target.actorDisplayName : row.author,
-  });
+  await recordSuccessfulExternalContentMutation(
+    buildMainserverContentMutation({
+      instanceId: target.instanceId,
+      actorAccountId: auditActorAccountId,
+      actorDisplayName: target.actorDisplayName,
+      mutationRef: target.mutationRef,
+      operation: input.operation,
+      sourceEntityType: target.contentType,
+      sourceEntityId: input.entityId,
+      contentType: target.contentType,
+      actingPrincipalType: target.actingPrincipalType,
+      ownershipPrincipal: target.ownershipPrincipal,
+      preserveExistingContentState: target.preserveExistingContentState,
+      row,
+    })
+  );
 };
 
 const upsertProjectionMutation = async (

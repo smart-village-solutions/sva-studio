@@ -1,5 +1,59 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  DEFAULT_MAINSERVER_VISIBLE_TYPES,
+  type MainserverContentType,
+} from './iam-content-list-api.shared';
+import { serverEntryRouteDispatchers } from './server-entry-routes.server';
+
+const providerRoutes = vi.hoisted(() => ({
+  news: vi.fn(),
+  events: vi.fn(),
+  poi: vi.fn(),
+  tours: vi.fn(),
+  genericItems: vi.fn(),
+  surveys: vi.fn(),
+  constructionSites: vi.fn(),
+  jobs: vi.fn(),
+  vouchers: vi.fn(),
+}));
+
+const mutationRoutes = {
+  'news.article': ['news', 'news', 'POST', 'news', 'create'],
+  'events.event-record': ['events', 'events', 'PATCH', 'events/42', 'update'],
+  'poi.point-of-interest': ['poi', 'poi', 'PATCH', 'poi/42', 'update'],
+  'tours.tour': ['tours', 'tours', 'PATCH', 'tours/42', 'update'],
+  'generic-items.generic-item': [
+    'generic items',
+    'genericItems',
+    'PATCH',
+    'generic-items/42',
+    'update',
+  ],
+  'faq.faq': ['generic items', 'genericItems', 'PATCH', 'faqs/42', 'update'],
+  'cockpit-cards.cockpit-card': [
+    'generic items',
+    'genericItems',
+    'PATCH',
+    'cockpit-cards/42',
+    'update',
+  ],
+  'projects.project': ['generic items', 'genericItems', 'PATCH', 'projects/42', 'update'],
+  'surveys.survey': ['surveys', 'surveys', 'PATCH', 'surveys/42', 'update'],
+  'construction-sites.construction-site': [
+    'generic items',
+    'constructionSites',
+    'PATCH',
+    'construction-sites/42',
+    'update',
+  ],
+  'jobs.job': ['generic items', 'jobs', 'PATCH', 'jobs/42', 'update'],
+  'vouchers.voucher': ['generic items', 'vouchers', 'POST', 'vouchers/commit', 'update'],
+} as const satisfies Record<
+  MainserverContentType,
+  readonly [string, keyof typeof providerRoutes, 'POST' | 'PATCH', string, 'create' | 'update']
+>;
+
 const state = vi.hoisted(() => ({
   loadMainserverMutationJournal: vi.fn(),
   markMediaContentSaveFromMainserverMutation: vi.fn(),
@@ -14,6 +68,15 @@ vi.mock('@sva/auth-runtime/server', () => ({
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
+  dispatchSvaMainserverNewsRequest: providerRoutes.news,
+  dispatchSvaMainserverEventsRequest: providerRoutes.events,
+  dispatchSvaMainserverPoiRequest: providerRoutes.poi,
+  toursRoute: { dispatchSvaMainserverToursRequest: providerRoutes.tours },
+  dispatchSvaMainserverGenericItemsRequest: providerRoutes.genericItems,
+  dispatchSvaMainserverSurveysRequest: providerRoutes.surveys,
+  dispatchSvaMainserverConstructionSitesRequest: providerRoutes.constructionSites,
+  dispatchSvaMainserverJobsRequest: providerRoutes.jobs,
+  dispatchSvaMainserverVouchersRequest: providerRoutes.vouchers,
   readMainserverMutationFollowUpContext: state.readMainserverMutationFollowUpContext,
 }));
 
@@ -32,6 +95,7 @@ import { refreshProjectionAfterMainserverMutation } from './mainserver-projectio
 
 describe('mainserver projection refresh', () => {
   beforeEach(() => {
+    for (const route of Object.values(providerRoutes)) route.mockReset().mockResolvedValue(null);
     state.loadMainserverMutationJournal.mockReset();
     state.markMediaContentSaveFromMainserverMutation.mockReset();
     state.markMediaContentSaveFromMainserverMutation.mockResolvedValue('marked');
@@ -54,31 +118,40 @@ describe('mainserver projection refresh', () => {
     });
   });
 
-  it('refreshes the projection after successful mutating mainserver responses', async () => {
-    await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/news', { method: 'POST' }),
-      new Response(JSON.stringify({ data: { id: 'news-1' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-      'news.article'
-    );
+  it.each(DEFAULT_MAINSERVER_VISIBLE_TYPES)(
+    'dispatches a supported %s mutation to the canonical projection',
+    async (contentType) => {
+      const [label, providerRoute, method, path, operation] = mutationRoutes[contentType];
+      const descriptor = serverEntryRouteDispatchers.find(
+        (entry) => entry.label === `mainserver ${label}`
+      );
+      if (!descriptor) throw new Error(`Missing Studio dispatcher for ${contentType}`);
+      const request = new Request(`https://studio.test/api/v1/mainserver/${path}`, { method });
+      const response = Response.json({
+        data: { id: '42' },
+        ...(contentType === 'vouchers.voucher' ? { meta: { operation: 'update' } } : {}),
+      });
+      providerRoutes[providerRoute].mockResolvedValueOnce(response);
 
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'kc-user-1',
-      actorAccountId: 'account-1',
-      actorDisplayName: 'Redaktion',
-      mutationRef: 'operation-1',
-      contentType: 'news.article',
-      organizationId: 'org-1',
-      actingPrincipalType: 'organization',
-      credentialFingerprint: 'a'.repeat(64),
-      authorizationMode: 'exact',
-      operation: 'create',
-      entityId: 'news-1',
-    });
-  });
+      const dispatch = await descriptor.getDispatcher();
+      await expect(dispatch(request)).resolves.toBe(response);
+      expect(providerRoutes[providerRoute]).toHaveBeenCalledExactlyOnceWith(request);
+      expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledExactlyOnceWith({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-1',
+        contentType,
+        organizationId: 'org-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+        authorizationMode: 'exact',
+        operation,
+        entityId: '42',
+      });
+    }
+  );
 
   it('refreshes only the updated tour with the bound principal after a successful PATCH', async () => {
     await refreshProjectionAfterMainserverMutation(

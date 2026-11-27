@@ -28,15 +28,22 @@ const toTourAudioInput = (media: z.output<typeof ownAudio>) =>
     copyright,
     sourceUrl,
   }));
-const readAudio = z.array(
-  z.object({
-    id,
-    contentType: z.literal('audio'),
-    captionText: z.string().nullish(),
-    copyright: z.string().nullish(),
-    sourceUrl: z.object({ url: z.string().nullish(), description: z.string().nullish() }).nullish(),
-  })
-);
+const readAudio = z
+  .array(
+    z.object({
+      id,
+      contentType: z.literal('audio'),
+      captionText: z.string().nullish(),
+      copyright: z.string().nullish(),
+      sourceUrl: z.object({ url: z.string().nullish(), description: z.string().nullish() }).nullish(),
+    })
+  )
+  .transform((entries) =>
+    entries.flatMap((entry) => {
+      const url = entry.sourceUrl?.url;
+      return url?.trim() ? [{ ...entry, sourceUrl: { ...entry.sourceUrl, url } }] : [];
+    })
+  );
 const patchInput = z
   .strictObject({
     name: name.optional(),

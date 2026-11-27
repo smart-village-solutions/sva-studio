@@ -85,6 +85,28 @@ beforeEach(() => {
 });
 
 describe('tour editor', () => {
+  it('loads the tour editor when old audio entries have missing sources', async () => {
+    const { execute, editor } = setup();
+    const valid = {
+      id: '51', contentType: 'audio', sourceUrl: { url: 'https://audio.test/valid.mp3' },
+    };
+    const old = { ...valid, id: '52', sourceUrl: null };
+    execute.mockResolvedValueOnce({
+      editableTour: {
+        ...tour, mediaContents: [old, valid],
+        tourStops: tour.tourStops.map((stop) => ({
+          ...stop,
+          mediaContents: [{ ...old, sourceUrl: { url: null } }],
+          inheritedPoiMediaContents: [old, valid],
+        })),
+      },
+    });
+    await expect(editor.read(actor, tour.id)).resolves.toMatchObject({
+      mediaContents: [valid],
+      tourStops: [{ id: '18', mediaContents: [], inheritedPoiMediaContents: [valid] }],
+    });
+  });
+
   it('validates changed audio across the tour and all stations in one claim and strips media ids', async () => {
     const { execute, update } = setup();
     const audio = { contentType: 'audio' as const, sourceUrl: { url: 'https://audio.test/tour.mp3' } };
@@ -114,9 +136,9 @@ describe('tour editor', () => {
       instanceId: 'tenant', targetType: 'tours.tour', targetId: '42',
       urls: [audio.sourceUrl.url, stationAudio.sourceUrl.url],
     }));
-    const { variables } = execute.mock.calls[1]?.[0];
-    expect(variables.mediaContents).toEqual([audio]);
-    expect(variables.tourStops).toEqual([{ id: '18', mediaContents: [stationAudio, unchanged] }]);
+    const variables = execute.mock.calls[1]?.[0]?.variables;
+    expect(variables?.mediaContents).toEqual([audio]);
+    expect(variables?.tourStops).toEqual([{ id: '18', mediaContents: [stationAudio, unchanged] }]);
   });
 
   it('rejects an ineligible managed station audio source before any provider write', async () => {

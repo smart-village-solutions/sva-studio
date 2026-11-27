@@ -262,11 +262,11 @@ describe('useSurveyEditorController', () => {
     });
   });
 
-  it('preserves loaded survey results after edit saves that return no results payload', async () => {
+  it('accepts reordered translations and preserves results when edit saves omit them', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
-    getSurveyMock.mockResolvedValue({
+    const existing = {
       id: 'survey-1',
-      title: { de: 'Bestandsumfrage' },
+      title: { de: 'Bestandsumfrage', en: 'Existing survey' },
       status: 'ACTIVE',
       isAnonymous: false,
       resultVisibility: 'NONE',
@@ -284,7 +284,13 @@ describe('useSurveyEditorController', () => {
         submissionCount: 3,
         questions: [],
       },
-    });
+    };
+    getSurveyMock
+      .mockResolvedValueOnce(existing)
+      .mockResolvedValueOnce({
+        ...existing,
+        title: { en: 'Existing survey', de: 'Bestandsumfrage' },
+      });
     updateSurveyMock.mockResolvedValue({
       id: 'survey-1',
       title: { de: 'Bestandsumfrage aktualisiert' },

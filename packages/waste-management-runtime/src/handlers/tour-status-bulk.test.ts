@@ -63,6 +63,45 @@ describe('waste-management tour status bulk handler', () => {
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'success');
   });
 
+  it.each(['today', 'clear'])(
+    'updates review (%s) without changing operational status',
+    async (review) => {
+      const deps = createDeps();
+      const input = { tourIds: [tourIdOne, tourIdTwo], review };
+      const response =
+        await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
+          createRequest(input),
+          actor,
+          deps
+        );
+
+      expect(response.status).toBe(200);
+      expect(deps.updateWasteTourStatusBulk).toHaveBeenCalledWith('tenant-a', input);
+      expect(deps.emitAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginAction: expect.objectContaining({
+            actionId: 'waste-management.tour.review-bulk-updated',
+            resourceId: `count:2;review:${review}`,
+          }),
+        })
+      );
+      expect(updateWasteVisibleStatusMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a combined publication and review operation', async () => {
+    const deps = createDeps();
+    const response =
+      await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
+        createRequest({ tourIds: [tourIdOne], status: 'published', review: 'today' }),
+        actor,
+        deps
+      );
+
+    expect(response.status).toBe(400);
+    expect(deps.updateWasteTourStatusBulk).not.toHaveBeenCalled();
+  });
+
   it('rejects duplicate IDs and oversized requests before persistence', async () => {
     const deps = createDeps();
     const duplicateResponse =

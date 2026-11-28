@@ -32,7 +32,12 @@ export const createUpdateTourStatusBulkHandler =
       startTransition(() => {
         state.setMessage({
           kind: 'success',
-          text: pt('tours.messages.statusBulkUpdateSuccess', { value: result.updatedCount }),
+          text: pt(
+            'review' in input
+              ? 'tours.bulkStatusDialog.reviewSuccess'
+              : 'tours.messages.statusBulkUpdateSuccess',
+            { value: result.updatedCount }
+          ),
         });
       });
       return { ok: true };

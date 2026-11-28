@@ -8,11 +8,14 @@ import {
   deriveWasteTenantDatabaseNames,
 } from './waste-tenant-database-provisioner.server.js';
 import { wasteTourStatements } from '../repositories/master-data.tours.js';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- Run the deployed tenant migrator against real PostgreSQL.
 import { migrateWasteTenantDatabase } from '../../../../deploy/portainer/migrate-waste-tenants.mjs';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- Verify the deployed migration catalog against runtime provisioning.
 import {
   wasteTenantMigrations,
   wasteTenantContractMigrations,
 } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
+import { buildWasteTourReviewStatements } from './waste-management-operations.schema.js';
 import { buildWasteTourFractionsExpandStatements } from './waste-tour-fractions.schema.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -37,6 +40,78 @@ afterAll(async () => {
   }
   await admin.end();
 });
+
+const verifyTourReview = async (client: Pool, tourId: string) => {
+  const otherTour = randomUUID();
+  const city = randomUUID();
+  const location = randomUUID();
+  const assignment = randomUUID();
+  await client.query(
+    "INSERT INTO waste_tours (id, name, status) VALUES ($1, 'Andere Tour', 'draft')",
+    [otherTour]
+  );
+  await client.query("INSERT INTO waste_cities (id, name) VALUES ($1, 'Testort')", [city]);
+  await client.query('INSERT INTO waste_collection_locations (id, city_id) VALUES ($1, $2)', [
+    location,
+    city,
+  ]);
+
+  const getTour = async (id: string) => {
+    const { text, values } = wasteTourStatements.getWasteTourById(id);
+    return (await client.query(text, [...values])).rows[0];
+  };
+  const updateReview = async (review: 'today' | 'clear') => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds: [tourId, otherTour],
+      review,
+    });
+    expect((await client.query(text, [...values])).rowCount).toBe(2);
+  };
+  const today = (
+    await client.query(
+      "SELECT ((statement_timestamp() AT TIME ZONE 'Europe/Berlin')::date)::text AS day"
+    )
+  ).rows[0].day;
+
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: null });
+  await updateReview('today');
+  expect(await getTour(tourId)).toMatchObject({ status: 'published', reviewed_on: today });
+  expect(await getTour(otherTour)).toMatchObject({ status: 'draft', reviewed_on: today });
+
+  await client.query("UPDATE waste_tours SET status = 'archived' WHERE id = $1", [tourId]);
+  expect(await getTour(tourId)).toMatchObject({ status: 'archived', reviewed_on: today });
+  await client.query("UPDATE waste_tours SET name = 'Geändert' WHERE id = $1", [tourId]);
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+
+  await updateReview('today');
+  await client.query(
+    'INSERT INTO waste_location_tour_links (location_id, tour_id) VALUES ($1, $2)',
+    [location, tourId]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+  await client.query(
+    "INSERT INTO waste_tour_assignments (id, tour_id, pickup_date) VALUES ($1, $2, '2027-01-25')",
+    [assignment, tourId]
+  );
+
+  await updateReview('today');
+  await client.query(
+    'INSERT INTO waste_tour_assignment_locations (assignment_id, collection_location_id) VALUES ($1, $2)',
+    [assignment, location]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+
+  await updateReview('today');
+  await client.query(
+    "INSERT INTO waste_tour_date_shifts (tour_id, original_date, actual_date) VALUES ($1, '2027-01-01', '2027-01-02')",
+    [tourId]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: today });
+
+  await updateReview('clear');
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: null });
+};
 
 describe('Waste provisioning with a restricted PostgreSQL principal', () => {
   it('creates and reconciles tenant roles without superuser, replication or RLS bypass privileges', async () => {
@@ -101,6 +176,10 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
         expect(expandMigration?.statements.slice(0, 4)).toEqual(
           buildWasteTourFractionsExpandStatements('public')
         );
+        expect(
+          wasteTenantMigrations.find(({ id }) => id === '20261128_01_add_waste_tour_review')
+            ?.statements
+        ).toEqual(buildWasteTourReviewStatements('"public"'));
         await migrateWasteTenantDatabase({
           client: migrationClient,
           migrations: wasteTenantMigrations,
@@ -141,6 +220,7 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
           ...names,
         });
         await appConsumer.query(statement.text, [...statement.values]);
+        await verifyTourReview(appConsumer, tourId);
         await expect(
           publicConsumer.query('SELECT fraction_id FROM waste_tour_fractions WHERE tour_id = $1', [
             tourId,

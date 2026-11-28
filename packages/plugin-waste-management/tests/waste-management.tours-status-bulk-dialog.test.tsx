@@ -75,6 +75,37 @@ describe('WasteToursStatusBulkDialog', () => {
     expect(onUpdated).toHaveBeenCalledOnce();
   });
 
+  it.each(['today', 'clear'])(
+    'submits the selected review action (%s) for all selected tours',
+    async (review) => {
+      const onSubmit = vi.fn().mockResolvedValue({ ok: true });
+      render(
+        <WasteToursStatusBulkDialog
+          open
+          mode="review"
+          selectedTourIds={['tour-1', 'tour-2']}
+          saving={false}
+          onOpenChange={vi.fn()}
+          onSubmit={onSubmit}
+          onUpdated={vi.fn()}
+        />
+      );
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+        'tours.bulkStatusDialog.reviewPlaceholder',
+        'tours.bulkStatusDialog.reviewToday',
+        'tours.bulkStatusDialog.reviewClear',
+      ]);
+      fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.reviewLabel'), {
+        target: { value: review },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.reviewApply' }));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith({ tourIds: ['tour-1', 'tour-2'], review })
+      );
+    }
+  );
+
   it('shows the current status when changing a single tour', () => {
     render(
       <WasteToursStatusBulkDialog

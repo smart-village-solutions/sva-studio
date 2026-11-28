@@ -14,6 +14,7 @@ import {
   resolveTourShiftDetails,
 } from './waste-management.tours.presentation.js';
 import {
+  formatTourDisplayDate,
   WasteToursRowActionsCell,
   WasteToursRowDatesCell,
   WasteToursRowFractionCell,
@@ -155,6 +156,11 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
         onOpenAssignments={props.onOpenAssignments}
       />
       <WasteToursRowStatusCell tour={tour} onOpenStatusDialog={props.onOpenStatusDialog} />
+      <td className="w-[110px] whitespace-nowrap px-3 py-3 text-sm">
+        {tour.reviewedOn ? (
+          <time dateTime={tour.reviewedOn}>{formatTourDisplayDate(tour.reviewedOn)}</time>
+        ) : null}
+      </td>
       <WasteToursRowActionsCell
         tour={tour}
         onOpenCalendar={props.onOpenCalendar}

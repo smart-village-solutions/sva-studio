@@ -1,3 +1,6 @@
+-- Externe Waste-Tenant-Datenbanken: waste_tours.reviewed_on (DATE, nullable)
+-- und die Trigger zum Zurücksetzen liegen im versionierten Waste-Migrationskatalog
+-- (20261128_01_add_waste_tour_review). Das externe Schema gehört nicht zum IAM-Dump.
 -- Migration 0119 erweitert nur Provider-JSON-Metadaten um mapstick; keine DDL-Änderung.
 -- Das Graphile-Schema einschließlich sva_lock_exhausted_studio_job wird separat
 -- durch deploy/portainer/migrate-graphile-worker.mjs verwaltet.

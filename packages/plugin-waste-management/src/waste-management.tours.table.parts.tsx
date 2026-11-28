@@ -137,6 +137,9 @@ export const WasteToursTableHeader = ({
             onSortChange={onSortChange}
           />
         ))}
+        <th scope="col" className="w-[110px] whitespace-nowrap px-3 py-3 font-semibold">
+          {pt('tours.table.reviewedOn')}
+        </th>
         <th scope="col" className="w-[150px] px-3 py-3 text-right">
           {pt('tours.table.actions')}
         </th>

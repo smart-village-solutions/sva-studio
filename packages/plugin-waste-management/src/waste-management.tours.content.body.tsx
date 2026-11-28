@@ -112,7 +112,7 @@ type WasteToursContentBodyProps = {
   readonly onOpenCreateDialog: () => void;
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
-  readonly setBulkStatusOpen: Dispatch<SetStateAction<boolean>>;
+  readonly setBulkStatusMode: (mode: 'status' | 'review') => void;
   readonly onOpenAnnualTransfer: () => void;
   readonly onOpenTourMerge?: () => void;
   readonly filters: WasteToursFilterViewModel;
@@ -126,7 +126,7 @@ export const WasteToursContentBody = ({
   onOpenCreateDialog,
   setBulkDeleteOpen,
   setBulkValidityOpen,
-  setBulkStatusOpen,
+  setBulkStatusMode,
   onOpenAnnualTransfer,
   onOpenTourMerge,
   filters,
@@ -156,7 +156,8 @@ export const WasteToursContentBody = ({
         canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}
         onOpenBulkValidity={() => setBulkValidityOpen(true)}
-        onOpenBulkStatus={() => setBulkStatusOpen(true)}
+        onOpenBulkStatus={() => setBulkStatusMode('status')}
+        onOpenBulkReview={() => setBulkStatusMode('review')}
         onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
         onClearSelection={table.clearSelection}
       />

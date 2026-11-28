@@ -28,6 +28,7 @@ type WasteTourRow = {
   readonly end_date: string | null;
   readonly custom_dates: unknown;
   readonly status: WasteTourRecord['status'];
+  readonly reviewed_on: string | null;
   readonly location_count?: number | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -46,6 +47,7 @@ const mapWasteTourRow = (row: WasteTourRow): WasteTourRecord => ({
   endDate: row.end_date ?? undefined,
   customDates: normalizeCustomDates(row.custom_dates),
   status: row.status,
+  reviewedOn: row.reviewed_on ?? undefined,
   locationCount: typeof row.location_count === 'number' ? row.location_count : undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -90,6 +92,7 @@ SELECT
   t.end_date::text,
   t.custom_dates,
   t.status,
+  t.reviewed_on::text,
   COUNT(ltl.id)::int AS location_count,
   t.created_at::text,
   t.updated_at::text
@@ -121,6 +124,7 @@ SELECT
   t.end_date::text,
   t.custom_dates,
   t.status,
+  t.reviewed_on::text,
   COUNT(ltl.id)::int AS location_count,
   t.created_at::text,
   t.updated_at::text

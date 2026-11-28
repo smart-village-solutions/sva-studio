@@ -6,8 +6,7 @@ export const wasteTourStatusBulkLimit = 1_000;
 
 export type WasteTourStatusBulkUpdateInput = {
   readonly tourIds: readonly string[];
-  readonly status: WasteTourStatus;
-};
+} & ({ readonly status: WasteTourStatus } | { readonly review: 'today' | 'clear' });
 
 export type WasteTourStatusBulkUpdateResult = {
   readonly updatedCount: number;

@@ -22,6 +22,7 @@ type WasteToursToolbarActionsProps = {
   readonly onOpenBulkDelete: () => void;
   readonly onOpenBulkValidity: () => void;
   readonly onOpenBulkStatus: () => void;
+  readonly onOpenBulkReview: () => void;
   readonly onOpenTourMerge?: () => void;
   readonly onToggleSelectAllFiltered: (checked: boolean) => void;
   readonly onClearSelection: () => void;
@@ -91,6 +92,7 @@ const WasteToursBulkActions = ({
   onOpenBulkDelete,
   onOpenBulkValidity,
   onOpenBulkStatus,
+  onOpenBulkReview,
   onOpenTourMerge,
 }: WasteToursToolbarActionsProps) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -126,6 +128,15 @@ const WasteToursBulkActions = ({
       >
         <IconToggleRight aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkStatusDialog.open')}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        aria-haspopup="dialog"
+        className="h-11 rounded-md px-3"
+        onClick={onOpenBulkReview}
+      >
+        {pt('tours.bulkStatusDialog.reviewOpen')}
       </Button>
       <Button
         type="button"

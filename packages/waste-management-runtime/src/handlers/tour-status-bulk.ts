@@ -41,26 +41,29 @@ export const wasteManagementTourStatusBulkHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    const resourceId = `count:${parsed.data.tourIds.length};status:${parsed.data.status}`;
+    const input = { ...parsed.data, tourIds: parsed.data.tourIds.map((id) => id.toLowerCase()) };
+    const review = 'review' in input;
+    const actionId = review
+      ? 'waste-management.tour.review-bulk-updated'
+      : 'waste-management.tour.status-bulk-updated';
+    const target = review ? `review:${input.review}` : `status:${input.status}`;
+    const resourceId = `count:${input.tourIds.length};${target}`;
     try {
       const result = await requireDeps(deps.updateWasteTourStatusBulk, 'updateWasteTourStatusBulk')(
         instanceId,
-        {
-          tourIds: parsed.data.tourIds.map((tourId) => tourId.trim()),
-          status: parsed.data.status,
-        }
+        input
       );
 
       await emitWasteAuditEvent({
         deps,
         ctx,
         instanceId,
-        actionId: 'waste-management.tour.status-bulk-updated',
+        actionId,
         result: 'success',
         resourceType: 'waste_tour_batch',
         resourceId,
       });
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
+      if (!review) await updateWasteVisibleStatus(deps, instanceId, 'success');
 
       return new Response(JSON.stringify(asApiItem(result, requestId)), {
         status: 200,
@@ -77,7 +80,7 @@ export const wasteManagementTourStatusBulkHandlers = {
         deps,
         ctx,
         instanceId,
-        actionId: 'waste-management.tour.status-bulk-updated',
+        actionId,
         result: 'failure',
         reasonCode: notFound ? 'tour_not_found' : 'database_unavailable',
         resourceType: 'waste_tour_batch',
@@ -93,11 +96,13 @@ export const wasteManagementTourStatusBulkHandlers = {
         );
       }
 
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+      if (!review) await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
       return createApiError(
         503,
         'database_unavailable',
-        'Der Status der Waste-Touren konnte nicht gespeichert werden.',
+        review
+          ? 'Das Prüfdatum der Waste-Touren konnte nicht gespeichert werden.'
+          : 'Der Status der Waste-Touren konnte nicht gespeichert werden.',
         requestId
       );
     }

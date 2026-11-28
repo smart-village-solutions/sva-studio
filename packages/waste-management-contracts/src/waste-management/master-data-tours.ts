@@ -38,6 +38,7 @@ export type WasteTourRecord = {
   readonly endDate?: string;
   readonly customDates?: readonly WasteCustomTourDate[];
   readonly status: WasteTourStatus;
+  readonly reviewedOn?: string;
   readonly locationCount?: number;
   readonly createdAt: string;
   readonly updatedAt: string;

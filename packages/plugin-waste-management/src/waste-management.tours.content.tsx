@@ -87,8 +87,8 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setBulkDeleteOpen,
     bulkValidityOpen,
     setBulkValidityOpen,
-    bulkStatusOpen,
-    setBulkStatusOpen,
+    bulkStatusMode,
+    setBulkStatusMode,
     allVisibleSelected,
     someVisibleSelected,
     allFilteredSelected,
@@ -218,7 +218,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
-        setBulkStatusOpen={setBulkStatusOpen}
+        setBulkStatusMode={setBulkStatusMode}
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         onOpenAnnualTransfer={annualTransfer.open}
@@ -236,14 +236,14 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         tourPendingDelete={tourPendingDelete}
         bulkDeleteOpen={bulkDeleteOpen}
         bulkValidityOpen={bulkValidityOpen}
-        bulkStatusOpen={bulkStatusOpen}
+        bulkStatusMode={bulkStatusMode}
         tourPendingStatusChange={tourPendingStatusChange}
         selectedTourIds={selectedTourIds}
         setSelectedTourIds={setSelectedTourIds}
         setTourPendingDelete={setTourPendingDelete}
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
-        setBulkStatusOpen={setBulkStatusOpen}
+        setBulkStatusMode={setBulkStatusMode}
         setTourPendingStatusChange={setTourPendingStatusChange}
         onDeleteTour={onDeleteTour}
         onDeleteTours={onDeleteTours}

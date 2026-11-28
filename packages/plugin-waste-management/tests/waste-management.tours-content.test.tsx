@@ -429,7 +429,7 @@ describe('WasteToursContent', () => {
     const onUpdateTourStatusBulk = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'write' })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValue({ ok: true });
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -442,6 +442,7 @@ describe('WasteToursContent', () => {
         { date: '2026-12-31', description: '' },
       ],
       status: 'published',
+      reviewedOn: '2026-11-28',
     };
 
     render(
@@ -501,6 +502,8 @@ describe('WasteToursContent', () => {
       screen.getByRole('columnheader', { name: 'tours.table.name' }).getAttribute('aria-sort')
     ).toBe('none');
     expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.reviewedOn' })).toBeTruthy();
+    expect(document.querySelector('time[datetime="2026-11-28"]')?.textContent).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
@@ -581,6 +584,17 @@ describe('WasteToursContent', () => {
       expect(document.activeElement).toBe(screen.getByRole('region', { name: 'tabs.tours.title' }))
     );
     expect(onUpdateTourStatusBulk).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tours.table.selectAll' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.reviewOpen' }));
+    fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.reviewLabel'), {
+      target: { value: 'clear' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.reviewApply' }));
+    await waitFor(() => {
+      expect(onUpdateTourStatusBulk).toHaveBeenLastCalledWith({ tourIds: ['tour-1'], review: 'clear' });
+      expect(screen.queryByText('tours.bulkStatusDialog.reviewTitle')).toBeNull();
+    });
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {

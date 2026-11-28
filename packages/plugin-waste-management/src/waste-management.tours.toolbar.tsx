@@ -48,6 +48,7 @@ type WasteToursToolbarProps = {
   readonly onOpenBulkDelete: () => void;
   readonly onOpenBulkValidity: () => void;
   readonly onOpenBulkStatus: () => void;
+  readonly onOpenBulkReview: () => void;
   readonly onOpenTourMerge?: () => void;
   readonly onToggleSelectAllFiltered: (checked: boolean) => void;
   readonly onClearSelection: () => void;
@@ -89,6 +90,7 @@ const toWasteToursToolbarActionsProps = ({
   onOpenBulkDelete,
   onOpenBulkValidity,
   onOpenBulkStatus,
+  onOpenBulkReview,
   onOpenTourMerge,
   onToggleSelectAllFiltered,
   onClearSelection,
@@ -105,6 +107,7 @@ const toWasteToursToolbarActionsProps = ({
   onOpenBulkDelete,
   onOpenBulkValidity,
   onOpenBulkStatus,
+  onOpenBulkReview,
   onOpenTourMerge,
   onToggleSelectAllFiltered,
   onClearSelection,

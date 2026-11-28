@@ -93,7 +93,7 @@ const useWasteToursDialogState = () => {
   const [tourPendingDelete, setTourPendingDelete] = useState<WasteTourRecord | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkValidityOpen, setBulkValidityOpen] = useState(false);
-  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkStatusMode, setBulkStatusMode] = useState<'status' | 'review' | null>(null);
 
   return {
     filterDialogOpen,
@@ -104,8 +104,8 @@ const useWasteToursDialogState = () => {
     setBulkDeleteOpen,
     bulkValidityOpen,
     setBulkValidityOpen,
-    bulkStatusOpen,
-    setBulkStatusOpen,
+    bulkStatusMode,
+    setBulkStatusMode,
   };
 };
 

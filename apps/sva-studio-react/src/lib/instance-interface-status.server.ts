@@ -54,7 +54,8 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
   }
   if (entry.type === 'meilisearch') return { status: 'unknown', checkedAt };
 
-  if (entry.type === 'deepl') return { status: 'unknown', checkedAt };
+  if (entry.type === 'deepl' || entry.type === 'ssf_translation')
+    return { status: 'unknown', checkedAt };
 
   if (entry.type === 's3') {
     if (!entry.config.endpoint || !entry.config.bucket || !entry.config.accessKeyId) {

@@ -1,5 +1,6 @@
 const externalInterfaceTypeKeys = [
   'deepl',
+  'ssf_translation',
   'sva_mainserver',
   's3',
   'supabase',
@@ -11,6 +12,7 @@ const externalInterfaceCategories = ['api', 'object_storage', 'database', 'feed'
 const externalInterfaceStatusCheckKinds = [
   'none',
   'deepl',
+  'ssf_translation',
   'sva_mainserver',
   's3',
   'supabase',

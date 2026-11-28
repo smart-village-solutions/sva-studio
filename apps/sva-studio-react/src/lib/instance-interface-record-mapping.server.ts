@@ -14,7 +14,7 @@ import type {
   InstanceInterfaceMapGeocoding,
   InstanceInterface,
 } from './instance-interfaces';
-import { readDeepLSettings, mailTransportContract } from '@sva/core';
+import { readSsfTranslationSettings, readDeepLSettings, mailTransportContract } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 
@@ -67,6 +67,10 @@ export type StoredEntry =
       'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
     >
   | StoredDeepL
+  | Omit<
+      Extract<InstanceInterface, { type: 'ssf_translation' }>,
+      'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+    >
   | StoredS3
   | StoredSupabase
   | StoredPostgresql
@@ -125,6 +129,7 @@ export const mapStoredTypeToKey = (
   | 'mail_transport'
   | 'map_geocoding'
   | 'deepl'
+  | 'ssf_translation'
   | 'meilisearch' =>
   type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
@@ -161,6 +166,31 @@ const mapMeilisearchRecord = (
   };
 };
 
+const mapTranslationRecord = (
+  record: ExternalInterfaceRecord,
+  createdAt: string,
+  updatedAt: string
+): PersistedStoredEntry | null => {
+  const shared = {
+    id: record.id,
+    instanceId: record.instanceId,
+    name: record.displayName,
+    enabled: record.enabled,
+    apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+    createdAt,
+    updatedAt,
+    visibleStatus: record.visibleStatus,
+    lastCheckedAt: record.lastCheckedAt,
+    lastCheckErrorCode: record.lastCheckErrorCode,
+  };
+  if (record.typeKey === 'ssf_translation') {
+    const config = readSsfTranslationSettings(record.publicConfig);
+    return config ? { ...shared, type: 'ssf_translation', config } : null;
+  }
+  const config = readDeepLSettings(record.publicConfig);
+  return config ? { ...shared, type: 'deepl', config } : null;
+};
+
 export const mapRecordToStoredEntry = (
   record: ExternalInterfaceRecord
 ): PersistedStoredEntry | null => {
@@ -169,24 +199,8 @@ export const mapRecordToStoredEntry = (
 
   if (record.typeKey === 'meilisearch') return mapMeilisearchRecord(record, createdAt, updatedAt);
 
-  if (record.typeKey === 'deepl') {
-    const config = readDeepLSettings(record.publicConfig);
-    if (!config) return null;
-    return {
-      id: record.id,
-      instanceId: record.instanceId,
-      type: 'deepl',
-      name: record.displayName,
-      enabled: record.enabled,
-      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
-      config,
-      createdAt,
-      updatedAt,
-      visibleStatus: record.visibleStatus,
-      lastCheckedAt: record.lastCheckedAt,
-      lastCheckErrorCode: record.lastCheckErrorCode,
-    };
-  }
+  if (record.typeKey === 'ssf_translation' || record.typeKey === 'deepl')
+    return mapTranslationRecord(record, createdAt, updatedAt);
   if (record.typeKey === 's3') {
     return {
       id: record.id,

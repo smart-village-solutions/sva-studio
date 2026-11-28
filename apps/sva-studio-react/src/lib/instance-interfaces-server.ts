@@ -7,7 +7,7 @@ import {
   loadExternalInterfaceRecordById,
   loadInstanceById,
   saveExternalInterfaceRecord,
-  saveDeepLInterfaceRecord,
+  saveTranslationInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { createSdkLogger } from '@sva/server-runtime';
 import { type InstanceInterfaceDraft } from './instance-interfaces';
@@ -67,7 +67,8 @@ export const upsertStoredInterface = async (
   });
 
   try {
-    if (draft.type === 'deepl') await saveDeepLInterfaceRecord(record, draft.config.revision);
+    if (draft.type === 'deepl' || draft.type === 'ssf_translation')
+      await saveTranslationInterfaceRecord(record, draft.config.revision);
     else await saveExternalInterfaceRecord(record);
   } catch (error) {
     logger.error('Failed to persist external interface record', {
@@ -117,6 +118,11 @@ export const deleteStoredInterface = async (instanceId: string, id: string): Pro
   if (record.ownerKind === 'plugin') {
     throw new Error('plugin_managed_interface_read_only');
   }
+  if (
+    record.typeKey === 'ssf_translation' &&
+    process.env.SVA_SSF_TRANSLATION_INSTANCE_ID === instanceId
+  )
+    throw new Error('ssf_translation_disable_before_cutover');
   if (record.typeKey === 'meilisearch') {
     if (!(await loadInstanceById(instanceId))?.assignedModules.includes('search'))
       throw new Error('meilisearch_requires_search_module');

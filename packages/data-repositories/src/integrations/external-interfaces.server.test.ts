@@ -28,7 +28,8 @@ describe('external interfaces server', () => {
   });
 
   it('persists and reads interface records inside the IAM transaction boundary', async () => {
-    const { listExternalInterfaceRecords, saveExternalInterfaceRecord } = await import('./external-interfaces.server.js');
+    const { listExternalInterfaceRecords, saveExternalInterfaceRecord } =
+      await import('./external-interfaces.server.js');
 
     const queries: string[] = [];
     const release = vi.fn();
@@ -191,7 +192,8 @@ describe('external interfaces server', () => {
   });
 
   it('logs pool connection failures before rethrowing them', async () => {
-    const { listExternalInterfaceTypeDefinitions } = await import('./external-interfaces.server.js');
+    const { listExternalInterfaceTypeDefinitions } =
+      await import('./external-interfaces.server.js');
 
     mocks.poolFactory.mockReturnValue({
       connect: vi.fn(async () => {
@@ -378,9 +380,15 @@ describe('external interfaces server', () => {
     expect(queries.some((text) => text.includes('FROM iam.external_interface_types'))).toBe(true);
     expect(queries.some((text) => text.includes('AND alias = $3'))).toBe(true);
     expect(queries.some((text) => text.includes('AND is_default = true'))).toBe(true);
-    expect(queries.some((text) => text.includes('DELETE FROM iam.instance_external_interfaces'))).toBe(true);
-    expect(queries.some((text) => text.includes('INSERT INTO iam.external_interface_types'))).toBe(true);
-    expect(queries.some((text) => text.includes('UPDATE iam.instance_external_interfaces'))).toBe(true);
+    expect(
+      queries.some((text) => text.includes('DELETE FROM iam.instance_external_interfaces'))
+    ).toBe(true);
+    expect(queries.some((text) => text.includes('INSERT INTO iam.external_interface_types'))).toBe(
+      true
+    );
+    expect(queries.some((text) => text.includes('UPDATE iam.instance_external_interfaces'))).toBe(
+      true
+    );
     expect(release).toHaveBeenCalledTimes(6);
 
     process.env.IAM_DATABASE_URL = previousUrl;
@@ -451,13 +459,13 @@ describe('DeepL credential transaction guards', () => {
   });
 
   it('rejects non-host or non-DeepL records without opening a connection', async () => {
-    const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
-    await expect(saveDeepLInterfaceRecord({ ...record, typeKey: 's3' }, '7')).rejects.toThrow(
+    const { saveTranslationInterfaceRecord } = await import('./external-interfaces.server.js');
+    await expect(saveTranslationInterfaceRecord({ ...record, typeKey: 's3' }, '7')).rejects.toThrow(
       'invalid_config'
     );
-    await expect(saveDeepLInterfaceRecord({ ...record, ownerKind: 'plugin' }, '7')).rejects.toThrow(
-      'invalid_config'
-    );
+    await expect(
+      saveTranslationInterfaceRecord({ ...record, ownerKind: 'plugin' }, '7')
+    ).rejects.toThrow('invalid_config');
     expect(mocks.poolFactory).not.toHaveBeenCalled();
   });
 
@@ -466,12 +474,12 @@ describe('DeepL credential transaction guards', () => {
     async (operation) => {
       const { query, release } = database();
       query.mockResolvedValueOnce(empty).mockResolvedValueOnce(empty);
-      const { saveDeepLInterfaceRecord, saveDeepLInterfaceCheck } =
+      const { saveTranslationInterfaceRecord, saveTranslationInterfaceCheck } =
         await import('./external-interfaces.server.js');
       await expect(
         operation === 'record'
-          ? saveDeepLInterfaceRecord(record, '7')
-          : saveDeepLInterfaceCheck({
+          ? saveTranslationInterfaceRecord(record, '7')
+          : saveTranslationInterfaceCheck({
               instanceId: 'tenant-a',
               interfaceId: record.id,
               expectedRevision: '7',
@@ -494,11 +502,11 @@ describe('DeepL credential transaction guards', () => {
       .mockResolvedValueOnce(activeModule)
       .mockResolvedValueOnce({ rows: [{ revision: '8' }], rowCount: 1 })
       .mockResolvedValueOnce(empty);
-    const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
-    await expect(saveDeepLInterfaceRecord(record, '7')).rejects.toThrow('interface_conflict');
+    const { saveTranslationInterfaceRecord } = await import('./external-interfaces.server.js');
+    await expect(saveTranslationInterfaceRecord(record, '7')).rejects.toThrow('interface_conflict');
     expect(query.mock.calls[3]).toEqual([
       expect.stringContaining('FOR UPDATE'),
-      ['tenant-a', record.id],
+      ['tenant-a', record.id, 'deepl'],
     ]);
     expect(query.mock.calls.at(-1)).toEqual(['ROLLBACK']);
     expect(query).toHaveBeenCalledTimes(5);
@@ -514,8 +522,8 @@ describe('DeepL credential transaction guards', () => {
         .mockResolvedValueOnce(initial ? empty : { rows: [{ revision: '7' }], rowCount: 1 })
         .mockResolvedValueOnce(empty)
         .mockResolvedValueOnce(empty);
-      const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
-      await saveDeepLInterfaceRecord(record, initial ? '0' : '7');
+      const { saveTranslationInterfaceRecord } = await import('./external-interfaces.server.js');
+      await saveTranslationInterfaceRecord(record, initial ? '0' : '7');
       const write = query.mock.calls[4] ?? [];
       expect(write[0]).toContain('INSERT INTO iam.instance_external_interfaces');
       expect(write[1]).toEqual([
@@ -558,11 +566,11 @@ describe('DeepL credential transaction guards', () => {
         .mockResolvedValueOnce(activeModule)
         .mockResolvedValueOnce({ rows: [{ id: record.id }], rowCount: 1 })
         .mockResolvedValueOnce(empty);
-      const { saveDeepLInterfaceCheck } = await import('./external-interfaces.server.js');
+      const { saveTranslationInterfaceCheck } = await import('./external-interfaces.server.js');
       const languages = errorCode
         ? undefined
         : [{ code: 'EN', name: 'English', tagHandling: true }];
-      await saveDeepLInterfaceCheck({
+      await saveTranslationInterfaceCheck({
         instanceId: 'tenant-a',
         interfaceId: record.id,
         expectedRevision: '7',
@@ -584,6 +592,7 @@ describe('DeepL credential transaction guards', () => {
         errorCode ? 'error' : 'ok',
         errorCode ? 'failed' : 'succeeded',
         errorCode ?? null,
+        'deepl',
       ]);
       expect(query.mock.calls.at(-3)).toEqual(['SET LOCAL ROLE iam_app;']);
       expect(query.mock.calls.at(-2)).toEqual([
@@ -601,9 +610,9 @@ describe('DeepL credential transaction guards', () => {
       .mockResolvedValueOnce(activeModule)
       .mockResolvedValueOnce(empty)
       .mockResolvedValueOnce(empty);
-    const { saveDeepLInterfaceCheck } = await import('./external-interfaces.server.js');
+    const { saveTranslationInterfaceCheck } = await import('./external-interfaces.server.js');
     await expect(
-      saveDeepLInterfaceCheck({
+      saveTranslationInterfaceCheck({
         instanceId: 'tenant-a',
         interfaceId: record.id,
         expectedRevision: '7',

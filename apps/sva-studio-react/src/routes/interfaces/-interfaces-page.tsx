@@ -15,10 +15,7 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
-import {
-  instanceInterfaceTypeMeta,
-  type InstanceInterface,
-} from '../../lib/instance-interfaces';
+import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
 import {
   draftFromEntry,
   type EditState,
@@ -71,8 +68,17 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
     : t('interfaces.edit.title');
 
+const translationEntries = (state: EditState) => {
+  if (state.mode !== 'edit') return {};
+  if (state.entry.type === 'deepl') return { deepLEntry: state.entry };
+  if (state.entry.type === 'ssf_translation') return { ssfEntry: state.entry };
+  return {};
+};
+
 const hasStoredMeilisearchKey = (editState: EditState): boolean =>
-  editState.mode === 'edit' && editState.entry.type === 'meilisearch' && editState.entry.apiKeyConfigured;
+  editState.mode === 'edit' &&
+  editState.entry.type === 'meilisearch' &&
+  editState.entry.apiKeyConfigured;
 
 export const InterfacesPage = () => {
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
@@ -231,11 +237,7 @@ export const InterfacesPage = () => {
             <InterfaceForm
               draft={editState.draft}
               hasStoredMeilisearchKey={hasStoredMeilisearchKey(editState)}
-              deepLEntry={
-                editState.mode === 'edit' && editState.entry.type === 'deepl'
-                  ? editState.entry
-                  : undefined
-              }
+              {...translationEntries(editState)}
               deepLChecking={deepLChecking}
               onCheckDeepL={() => void onCheckDeepL()}
               hasStoredS3SecretAccessKey={

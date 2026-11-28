@@ -1,0 +1,4 @@
+{
+  "prNumber": 2309,
+  "body": "Studio instances can now configure Smart Speech Flow and DeepL side by side. Studio uses Smart Speech Flow first for verified target languages and uses DeepL for other target languages that the instance has enabled. The same rule applies to app text catalogs and dynamic app content."
+}

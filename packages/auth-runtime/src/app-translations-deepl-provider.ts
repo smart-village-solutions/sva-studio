@@ -6,7 +6,7 @@ import {
   type ExternalInterfaceRecord,
   type CatalogValue,
 } from '@sva/core';
-import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
+import { buildExternalInterfaceSecretConfigAad, type fetchPublicHttps } from '@sva/server-runtime';
 import { z } from 'zod';
 import { revealField } from './iam-account-management/encryption.js';
 import {
@@ -119,7 +119,7 @@ const translateBatch = async (
   targetCode: string,
   batch: string[],
   signal: AbortSignal,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetchPublicHttps
 ) => {
   let response: Response;
   try {
@@ -168,7 +168,7 @@ export const translateDeepLValues = async (
   targetCode: string,
   values: readonly CatalogValue[],
   signal: AbortSignal,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetchPublicHttps = fetch
 ): Promise<CatalogValue[]> => {
   const settings = readDeepLSettings(record.publicConfig);
   const key = readKey(record);

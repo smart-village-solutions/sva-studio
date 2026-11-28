@@ -13,7 +13,10 @@ import type { StudioJobExecutionHandlerContext } from './plugin-operations/types
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { selectAppTranslationSetupCredentials } from './app-translations-setup-credentials.js';
-import { readDeepLSetupStatus } from './app-translations-deepl.js';
+import {
+  loadTranslationProviderRecords,
+  resolveTranslationProviders,
+} from './app-translations-providers.js';
 import { readSsfTranslationConfig, verifySsfTranslationLocales } from './app-translations-ssf.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
 import {
@@ -168,10 +171,11 @@ const newsSetupSchema = identitySchema.extend({
 });
 
 const readNewsLocales = async (instanceId: string): Promise<string[]> => {
-  const ssf = readSsfTranslationConfig(instanceId);
-  if (ssf) return [...(await verifySsfTranslationLocales(ssf))].sort();
-  const provider = await readDeepLSetupStatus(instanceId);
-  return provider.ready ? [...provider.selectedLocales].sort() : [];
+  const { deepL, ssf } = await loadTranslationProviderRecords(instanceId);
+  const selection = resolveTranslationProviders(deepL, ssf);
+  const pilot = ssf ? null : readSsfTranslationConfig(instanceId);
+  const pilotLocales = pilot ? await verifySsfTranslationLocales(pilot) : [];
+  return [...new Set([...selection.setup.selectedLocales, ...pilotLocales])].sort();
 };
 
 export const synchronizeAppTranslationNews = async (

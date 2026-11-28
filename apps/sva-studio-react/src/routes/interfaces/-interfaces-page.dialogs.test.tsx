@@ -1,3 +1,4 @@
+import type { InstanceInterface } from '../../lib/instance-interfaces';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -64,6 +65,57 @@ const createMapGeocodingDraft = (): Extract<InstanceInterfaceDraft, { type: 'map
 describe('interfaces-page dialogs', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('offers verified SSF languages separately from DeepL', () => {
+    const draft = createEmptyInstanceInterfaceDraft('ssf_translation');
+    if (draft.type !== 'ssf_translation') throw new Error('fixture');
+    const onChange = vi.fn();
+    const ssfEntry: Extract<InstanceInterface, { type: 'ssf_translation' }> = {
+      id: 'ssf-a',
+      instanceId: 'tenant-a',
+      name: draft.name,
+      type: draft.type,
+      enabled: true,
+      status: 'connected',
+      apiKeyConfigured: true,
+      createdAt: 'now',
+      updatedAt: 'now',
+      config: {
+        origin: 'https://ssf.example',
+        revision: 'r1',
+        credentialRevision: 'k1',
+        verifiedCredentialRevision: 'k1',
+        selectedLocales: [],
+        availableLanguages: ['pl'],
+      },
+    };
+    render(
+      <InterfaceForm
+        draft={{
+          ...draft,
+          config: { ...draft.config, origin: ssfEntry.config.origin, revision: 'r1' },
+        }}
+        ssfEntry={ssfEntry}
+        saveStatus="idle"
+        saveErrorMessage={null}
+        onChange={onChange}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Polnisch' }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'ssf_translation',
+        config: expect.objectContaining({ selectedLocales: ['pl'], apiKey: '' }),
+      })
+    );
+    expect(screen.queryByRole('checkbox', { name: 'Englisch' })).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: /Verbindung erneut prüfen/ }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
   });
 
   it('requires saved credentials before the explicit DeepL query and offers only verified supported targets', () => {

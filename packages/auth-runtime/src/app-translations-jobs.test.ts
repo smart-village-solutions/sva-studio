@@ -18,6 +18,14 @@ const deps = vi.hoisted(() => ({
   permissions: vi.fn(),
   translate: vi.fn(),
   enqueue: vi.fn(),
+  ssfFetch: vi.fn(),
+}));
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
+  fetchPublicHttps: deps.ssfFetch,
+}));
+vi.mock('./iam-account-management/encryption.js', () => ({
+  revealField: () => JSON.stringify({ apiKey: 'a'.repeat(64) }),
 }));
 vi.mock('./db.js', () => ({
   withIamAppDb: deps.transaction,
@@ -51,6 +59,7 @@ let job: StudioJobRecord;
 let generation: string;
 let appModuleRevision: string | undefined;
 let credentials: string;
+let ssf: Record<string, unknown> | undefined;
 const query = vi.fn();
 const context = (): StudioJobExecutionHandlerContext =>
   ({
@@ -72,6 +81,7 @@ beforeEach(() => {
   generation = '1';
   appModuleRevision = '1';
   credentials = 'credential-1';
+  ssf = undefined;
   const keys = Object.fromEntries(
     Array.from({ length: 60 }, (_, index) => [
       `key${String(index).padStart(2, '0')}`,
@@ -163,16 +173,21 @@ beforeEach(() => {
         rows: [
           {
             id: 'deepl',
+            typeKey: 'deepl',
             publicConfig: {
               revision: 'r1',
               credentialRevision: credentials,
               verifiedCredentialRevision: credentials,
               plan: 'pro',
               englishVariant: 'en-GB',
-              selectedLocales: ['fr'],
-              availableLanguages: [{ code: 'fr', name: 'French', tagHandling: false }],
+              selectedLocales: ssf ? ['fr', 'en'] : ['fr'],
+              availableLanguages: [
+                { code: 'fr', name: 'French', tagHandling: false },
+                ...(ssf ? [{ code: 'en-GB', name: 'English', tagHandling: false }] : []),
+              ],
             },
           },
+          ...(ssf ? [ssf] : []),
         ],
         rowCount: 1,
       };
@@ -228,6 +243,69 @@ beforeEach(() => {
   );
 });
 describe('catalog translation worker', () => {
+  it('pins each locale and processes the same catalog through SSF and DeepL', async () => {
+    ssf = {
+      id: 'ssf-interface',
+      typeKey: 'ssf_translation',
+      ownerKind: 'host',
+      enabled: true,
+      lastCheckStatus: 'succeeded',
+      secretConfigCiphertext: 'cipher',
+      publicConfig: {
+        origin: 'https://ssf.example',
+        revision: 'ssf-1',
+        credentialRevision: 'ssf-key-1',
+        verifiedCredentialRevision: 'ssf-key-1',
+        selectedLocales: ['en'],
+        availableLanguages: ['en'],
+      },
+    };
+    deps.ssfFetch.mockImplementation(async (_url, init: RequestInit) => {
+      const { text } = JSON.parse(String(init.body)) as { text: string[] };
+      return Response.json({
+        source_lang: 'de',
+        target_lang: 'en',
+        translations: text.map((value) => ({ text: `SSF ${value}` })),
+      });
+    });
+    draft = { ...draft, supportedLocales: ['de', 'en', 'fr'] };
+    job = { ...job, status: 'failed' };
+    const scope = draft.scope as Extract<CatalogDraft['scope'], { kind: 'municipal' }>;
+    await startCatalogTranslation({ query }, scope, 'actor', {
+      operation: 'translate',
+      contractId: 'app-texts',
+      expectedRevision: '1',
+      mode: 'standard',
+      key: 'key00',
+      locales: ['en', 'fr'],
+    });
+    expect(job.inputPayload.providerPins).toEqual({
+      en: { interfaceId: 'ssf-interface', credentialRevision: 'ssf-key-1' },
+      fr: { interfaceId: 'deepl', credentialRevision: 'credential-1' },
+    });
+    job = {
+      ...job,
+      status: 'running',
+      attempts: 1,
+      workerId: 'worker',
+      heartbeatAt: new Date().toISOString(),
+    };
+    await runCatalogTranslation(context());
+    expect(deps.ssfFetch).toHaveBeenCalledWith(
+      'https://ssf.example/api/v1/translate',
+      expect.any(Object)
+    );
+    expect(deps.translate).toHaveBeenCalledExactlyOnceWith(
+      expect.any(Object),
+      'fr',
+      ['Quelle 0'],
+      expect.any(AbortSignal),
+      expect.any(Function)
+    );
+    expect(draft.machineStandardValuesByLocale?.en?.key00?.value).toBe('SSF Quelle 0');
+    expect(draft.machineStandardValuesByLocale?.fr?.key00?.value).toBe('Translated Quelle 0');
+  });
+
   it('deduplicates only the same active request and rejects another action or revision', async () => {
     const scope = draft.scope as Extract<CatalogDraft['scope'], { kind: 'municipal' }>;
     const request = {

@@ -15,8 +15,8 @@ import {
   type AppTranslationRepository,
 } from './app-translations.js';
 import {
-  saveDeepLInterfaceRecord,
-  saveDeepLInterfaceCheck,
+  saveTranslationInterfaceRecord,
+  saveTranslationInterfaceCheck,
   loadExternalInterfaceRecordById,
   saveExternalInterfaceRecord,
   saveMainserverTranslationServiceBinding,
@@ -254,13 +254,13 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
         availableLanguages: [],
       },
     };
-    await saveDeepLInterfaceRecord(record, '0');
+    await saveTranslationInterfaceRecord(record, '0');
     expect(await loadExternalInterfaceRecordById(tenantB, record.id)).toBeNull();
     await expect(
-      saveDeepLInterfaceRecord({ ...record, id: `second-${suffix}` }, '0')
+      saveTranslationInterfaceRecord({ ...record, id: `second-${suffix}` }, '0')
     ).rejects.toMatchObject({ code: '23505' });
     const languages = [{ code: 'en-GB', name: 'English', tagHandling: true }];
-    await saveDeepLInterfaceCheck({
+    await saveTranslationInterfaceCheck({
       instanceId: tenantA,
       interfaceId: record.id,
       expectedRevision: 'r1',
@@ -271,7 +271,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     expect(checked?.publicConfig.verifiedCredentialRevision).toBe('k1');
     const outcomes = await Promise.allSettled(
       ['r2', 'r3'].map((revision) =>
-        saveDeepLInterfaceRecord(
+        saveTranslationInterfaceRecord(
           { ...record, publicConfig: { ...record.publicConfig, revision } },
           'r1'
         )
@@ -280,7 +280,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(1);
     await expect(
-      saveDeepLInterfaceCheck({
+      saveTranslationInterfaceCheck({
         instanceId: tenantA,
         interfaceId: record.id,
         expectedRevision: 'r1',
@@ -294,7 +294,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       [tenantA]
     );
     await expect(
-      saveDeepLInterfaceCheck({
+      saveTranslationInterfaceCheck({
         instanceId: tenantA,
         interfaceId: record.id,
         expectedRevision: String(current?.publicConfig.revision),
@@ -303,7 +303,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       })
     ).rejects.toThrow('deepl_module_unavailable');
     await expect(
-      saveDeepLInterfaceRecord(current!, String(current?.publicConfig.revision))
+      saveTranslationInterfaceRecord(current!, String(current?.publicConfig.revision))
     ).rejects.toThrow('deepl_module_unavailable');
     expect(
       (await loadExternalInterfaceRecordById(tenantA, record.id))?.secretConfigCiphertext

@@ -1,3 +1,4 @@
+import { ssfInterfaceDraftSchema } from './instance-interface-ssf';
 import { meilisearchInterfaceDraftSchema } from './instance-interface-meilisearch.js';
 import { deepLInterfaceDraftSchema } from './instance-interfaces';
 import { isValidInstanceId, mailTransportContract } from '@sva/core';
@@ -99,6 +100,7 @@ const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
       deepLInterfaceDraftSchema,
+      ssfInterfaceDraftSchema,
       meilisearchInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
@@ -123,6 +125,7 @@ const readInterfaceId = (pathname: string): string | null => {
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   deepl: ['apiKey'],
+  ssf_translation: ['apiKey'],
   meilisearch: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],
@@ -167,7 +170,8 @@ const responseStatusFor = (error: unknown): number => {
   if (
     message.includes('conflict') ||
     message === 'meilisearch_already_configured' ||
-    message === 'meilisearch_disable_before_cutover'
+    message === 'meilisearch_disable_before_cutover' ||
+    message === 'ssf_translation_disable_before_cutover'
   )
     return 409;
   if (message.startsWith('meilisearch_')) return 400;

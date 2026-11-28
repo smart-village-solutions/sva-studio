@@ -17,3 +17,5 @@ export {
   reconcileAppTranslationServiceBinding,
   synchronizeAppTranslationNews,
 } from './app-translations-binding.js';
+
+export { checkSsfLanguages } from './app-translations-ssf.js';

@@ -1,3 +1,5 @@
+import { SsfFields, TranslationCheck } from './-interfaces-page.translation-fields';
+import type { InstanceInterface } from '../../lib/instance-interfaces';
 import { DeepLFields } from './-interfaces-page.deepl-fields';
 import { t } from '../../i18n';
 import {
@@ -113,6 +115,7 @@ type InterfaceFormProps = Readonly<{
   hasStoredMeilisearchKey?: boolean;
   hasStoredMapApiKey?: boolean;
   deepLEntry?: InstanceInterfaceDeepL;
+  ssfEntry?: Extract<InstanceInterface, { type: 'ssf_translation' }>;
   deepLChecking?: boolean;
   onCheckDeepL?: () => void;
   saveStatus: StudioSaveStatus;
@@ -206,12 +209,30 @@ const deepLRequiresSave = (
     draft.config.plan !== deepLEntry.config.plan ||
     draft.enabled !== deepLEntry.enabled);
 
+const translationRequiresSave = (
+  draft: InstanceInterfaceDraft,
+  ssfEntry: InterfaceFormProps['ssfEntry'],
+  deepLEntry: InterfaceFormProps['deepLEntry']
+) =>
+  draft.type === 'ssf_translation'
+    ? !ssfEntry ||
+      !!draft.config.apiKey ||
+      draft.config.origin !== ssfEntry.config.origin ||
+      draft.enabled !== ssfEntry.enabled
+    : deepLRequiresSave(draft, deepLEntry);
+const isTranslationVerified = (
+  translationEntry: InterfaceFormProps['ssfEntry'] | InterfaceFormProps['deepLEntry']
+) =>
+  translationEntry?.status === 'connected' &&
+  translationEntry.config.verifiedCredentialRevision === translationEntry.config.credentialRevision;
+
 export const InterfaceForm = ({
   draft,
   hasStoredS3SecretAccessKey = false,
   hasStoredMeilisearchKey = false,
   hasStoredMapApiKey = false,
   deepLEntry,
+  ssfEntry,
   deepLChecking = false,
   onCheckDeepL,
   saveStatus,
@@ -221,10 +242,10 @@ export const InterfaceForm = ({
   onSubmit,
   onRetry = onSubmit,
 }: InterfaceFormProps) => {
-  const deepLNeedsSave = deepLRequiresSave(draft, deepLEntry);
-  const deepLVerified =
-    deepLEntry?.status === 'connected' &&
-    deepLEntry.config.verifiedCredentialRevision === deepLEntry.config.credentialRevision;
+  const translationEntry = draft.type === 'ssf_translation' ? ssfEntry : deepLEntry;
+  const isTranslation = draft.type === 'deepl' || draft.type === 'ssf_translation';
+  const translationNeedsSave = translationRequiresSave(draft, ssfEntry, deepLEntry);
+  const translationVerified = isTranslationVerified(translationEntry);
   return (
     <form
       className="grid gap-4"
@@ -247,6 +268,15 @@ export const InterfaceForm = ({
           draft={draft}
           entry={deepLEntry}
           checking={deepLChecking}
+          onChange={onChange}
+        />
+      ) : draft.type === 'ssf_translation' ? (
+        <SsfFields
+          draft={draft}
+          entry={ssfEntry}
+          checking={deepLChecking}
+          verified={translationVerified}
+          needsSave={translationNeedsSave}
           onChange={onChange}
         />
       ) : draft.type === 'meilisearch' ? (
@@ -298,34 +328,26 @@ export const InterfaceForm = ({
         />
       ) : null}
 
-      {draft.type === 'deepl' && deepLNeedsSave && (
-        <p className="text-sm text-muted-foreground">{t('interfaces.deepl.saveFirst')}</p>
+      {isTranslation && translationNeedsSave && (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            draft.type === 'ssf_translation'
+              ? 'interfaces.ssf.saveFirst'
+              : 'interfaces.deepl.saveFirst'
+          )}
+        </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        {draft.type === 'deepl' && (
-          <>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                deepLNeedsSave || deepLChecking || saveStatus === 'saving' || !deepLEntry?.enabled
-              }
-              onClick={onCheckDeepL}
-            >
-              {t(
-                deepLChecking
-                  ? 'interfaces.deepl.checking'
-                  : deepLVerified
-                    ? 'interfaces.deepl.recheck'
-                    : 'interfaces.deepl.check'
-              )}
-            </Button>
-            {deepLVerified && !deepLNeedsSave && (
-              <span role="status" className="text-sm text-muted-foreground">
-                {t('interfaces.deepl.verified')}
-              </span>
-            )}
-          </>
+        {isTranslation && (
+          <TranslationCheck
+            draft={draft}
+            translationEntry={translationEntry}
+            translationNeedsSave={translationNeedsSave}
+            deepLChecking={deepLChecking}
+            saveStatus={saveStatus}
+            translationVerified={translationVerified}
+            onCheckDeepL={onCheckDeepL}
+          />
         )}
         <StudioSaveButton
           type="submit"

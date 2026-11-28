@@ -52,6 +52,7 @@ const getDisplayStatus = (entry: InstanceInterface): DisplayStatus =>
 
 const getInterfaceEndpoint = (entry: InstanceInterface): string => {
   if (entry.type === 'meilisearch') return entry.config.origin;
+  if (entry.type === 'ssf_translation') return entry.config.origin;
   if (entry.type === 'deepl')
     return entry.config.plan === 'free' ? 'api-free.deepl.com' : 'api.deepl.com';
   if (entry.type === 'mainserver') return entry.config.graphqlBaseUrl || '-';

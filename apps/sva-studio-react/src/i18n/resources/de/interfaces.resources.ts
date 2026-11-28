@@ -1,3 +1,5 @@
+import { ssfInterfaceResources, ssfInterfaceTypeResources } from './interfaces-ssf.resources';
+
 export const interfacesDEResources = {
   appConfiguration: {
     createVariant: 'Neue Variante anlegen',
@@ -95,6 +97,7 @@ export const interfacesDEResources = {
         'Deaktiviere die Schnittstelle. Löschen ist nach Abschluss der Umstellung verfügbar.',
     },
   },
+  ssf: ssfInterfaceResources,
   deepl: {
     refreshFailed:
       'Prüfung beendet, aber der aktuelle Schnittstellenstand konnte nicht geladen werden. Bitte erneut versuchen.',
@@ -254,6 +257,7 @@ export const interfacesDEResources = {
       label: 'Meilisearch',
       description: 'Verbindet das Suchmodul mit dem Mainserver-Suchindex.',
     },
+    ssf_translation: ssfInterfaceTypeResources,
     deepl: {
       label: 'DeepL',
       description: 'Übersetzungszugang und verfügbare Sprachen dieser Instanz verwalten.',

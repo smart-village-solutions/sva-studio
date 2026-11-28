@@ -55,6 +55,7 @@ vi.mock('./iam-authorization/permission-store.queries.js', () => ({
 }));
 vi.mock('@sva/data-repositories/server', () => ({
   createAppTranslationRepository: (...args: unknown[]) => state.createRepo(...args),
+  loadDefaultExternalInterfaceRecord: async () => null,
 }));
 vi.mock('./plugin-tenant-lifecycle/access.js', () => ({
   readConfiguredPluginTenantAccess: (...args: unknown[]) => state.pluginAccess(...args),
@@ -200,6 +201,7 @@ describe('internal catalog session facade', () => {
               ? [
                   {
                     id: 'deepl',
+                    typeKey: 'deepl',
                     publicConfig: {
                       revision: 'r1',
                       credentialRevision: 'k1',

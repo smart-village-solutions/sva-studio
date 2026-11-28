@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({
   loadExternalInterfaceRecordById: vi.fn(),
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
-  saveDeepLInterfaceRecord: vi.fn(),
+  saveTranslationInterfaceRecord: vi.fn(),
   deleteExternalInterfaceRecord: vi.fn(),
   checkStudioSearchConnection: vi.fn(),
   loadSvaMainserverSettings: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('@sva/data-repositories/server', () => ({
   loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord: state.saveExternalInterfaceRecord,
-  saveDeepLInterfaceRecord: state.saveDeepLInterfaceRecord,
+  saveTranslationInterfaceRecord: state.saveTranslationInterfaceRecord,
   deleteExternalInterfaceRecord: state.deleteExternalInterfaceRecord,
 }));
 
@@ -72,6 +72,57 @@ const createMapGeocodingDraft = () => ({
 });
 
 describe('instance-interfaces-server', () => {
+  it('keeps the stored SSF key private and requires a replacement when the origin changes', async () => {
+    const apiKey = 'example-ssf-credential';
+    const draft = {
+      type: 'ssf_translation' as const,
+      name: 'Smart Speech Flow',
+      enabled: true,
+      config: {
+        origin: 'https://ssf.example',
+        apiKey,
+        revision: '0',
+        selectedLocales: [],
+      },
+    };
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce(null);
+    let saved: unknown;
+    state.saveTranslationInterfaceRecord.mockImplementationOnce(async (record) => {
+      saved = record;
+      state.loadExternalInterfaceRecordById.mockResolvedValueOnce(record);
+    });
+    const result = await upsertStoredInterface('tenant-a', draft);
+    if (result.type !== 'ssf_translation') throw new Error('fixture');
+    expect(state.protectField).toHaveBeenCalledWith(
+      JSON.stringify({ apiKey }),
+      expect.stringContaining(result.id)
+    );
+    expect(JSON.stringify(result)).not.toContain(apiKey);
+    expect(result).toMatchObject({
+      apiKeyConfigured: true,
+      config: { origin: 'https://ssf.example' },
+    });
+
+    state.loadExternalInterfaceRecordById.mockResolvedValueOnce(saved);
+    await expect(
+      upsertStoredInterface(
+        'tenant-a',
+        {
+          ...draft,
+          config: {
+            ...draft.config,
+            origin: 'https://other-ssf.example',
+            apiKey: '',
+            revision: result.config.revision,
+          },
+        },
+        result.id
+      )
+    ).rejects.toThrow('ssf_translation_origin_key_required');
+    expect(state.saveTranslationInterfaceRecord).toHaveBeenCalledTimes(1);
+  });
+
   it('verifies the search indices before storing a tenant-bound and encrypted Meilisearch connection', async () => {
     const graphqlBaseUrl = 'https://mainserver.example/graphql';
     const origin = 'https://search.example';
@@ -127,6 +178,7 @@ describe('instance-interfaces-server', () => {
     state.loadExternalInterfaceRecordById.mockReset();
     state.loadDefaultExternalInterfaceRecord.mockReset();
     state.saveExternalInterfaceRecord.mockReset();
+    state.saveTranslationInterfaceRecord.mockReset();
     state.deleteExternalInterfaceRecord.mockReset();
     state.protectField.mockClear();
     state.revealField.mockClear();
@@ -1775,7 +1827,6 @@ describe('instance-interfaces-server', () => {
   });
 });
 
-
 describe('managed Mapstick target immutability', () => {
   const draft = () => ({
     ...createMapGeocodingDraft(),
@@ -1790,39 +1841,63 @@ describe('managed Mapstick target immutability', () => {
     },
   });
   const existing = () => ({
-    id: 'managed-map', instanceId: 'tenant-a', typeKey: 'map_geocoding',
-    ownerKind: 'host' as const, ownerId: 'host', displayName: 'Mapstick',
-    alias: 'operator-mapstick', enabled: true, isDefault: true,
-    category: 'api' as const, statusCheckKind: 'map_geocoding',
-    visibleStatus: 'unknown' as const, publicConfig: draft().config,
+    id: 'managed-map',
+    instanceId: 'tenant-a',
+    typeKey: 'map_geocoding',
+    ownerKind: 'host' as const,
+    ownerId: 'host',
+    displayName: 'Mapstick',
+    alias: 'operator-mapstick',
+    enabled: true,
+    isDefault: true,
+    category: 'api' as const,
+    statusCheckKind: 'map_geocoding',
+    visibleStatus: 'unknown' as const,
+    publicConfig: draft().config,
   });
   const input = () => ({
-    instanceId: 'tenant-a', interfaceId: 'managed-map', draft: draft(),
-    existing: existing(), hasDefaultRecord: false, previousSecrets: {},
+    instanceId: 'tenant-a',
+    interfaceId: 'managed-map',
+    draft: draft(),
+    existing: existing(),
+    hasDefaultRecord: false,
+    previousSecrets: {},
   });
   it('rejects Mapstick creation and switching another provider to Mapstick', async () => {
-    const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+    const { buildMapGeocodingRecord: build } =
+      await import('./instance-interface-map-record.server');
     expect(() => build({ ...input(), existing: null })).toThrow('invalid_config');
-    expect(() => build({ ...input(), existing: { ...existing(), publicConfig: { provider: 'custom' } } })).toThrow('invalid_config');
+    expect(() =>
+      build({ ...input(), existing: { ...existing(), publicConfig: { provider: 'custom' } } })
+    ).toThrow('invalid_config');
   });
   it.each(['styleUrl', 'suggestEndpoint', 'geocodeEndpoint', 'reverseGeocodeEndpoint'] as const)(
-    'rejects changing the provisioned %s', async (field) => {
-      const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+    'rejects changing the provisioned %s',
+    async (field) => {
+      const { buildMapGeocodingRecord: build } =
+        await import('./instance-interface-map-record.server');
       const value = input();
       value.draft.config[field] = 'https://other.example/styles/osm-bright/style.json';
       expect(() => build(value)).toThrow('invalid_config');
     }
   );
   it('allows runtime changes while keeping the provisioned targets', async () => {
-    const { buildMapGeocodingRecord: build } = await import('./instance-interface-map-record.server');
+    const { buildMapGeocodingRecord: build } =
+      await import('./instance-interface-map-record.server');
     const value = input();
     value.draft.enabled = false;
     value.draft.config.killSwitchEnabled = true;
     value.draft.config.rateLimitPerMinute = '12';
     value.draft.config.requestTimeoutMs = '5000';
-    expect(build(value)).toMatchObject({ enabled: false, publicConfig: {
-      provider: 'mapstick', styleUrl: value.existing.publicConfig.styleUrl,
-      killSwitchEnabled: true, rateLimitPerMinute: 12, requestTimeoutMs: 5000,
-    }});
+    expect(build(value)).toMatchObject({
+      enabled: false,
+      publicConfig: {
+        provider: 'mapstick',
+        styleUrl: value.existing.publicConfig.styleUrl,
+        killSwitchEnabled: true,
+        rateLimitPerMinute: 12,
+        requestTimeoutMs: 5000,
+      },
+    });
   });
 });

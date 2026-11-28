@@ -1,5 +1,11 @@
 # Change: Zentrale App-Sprachkataloge und dynamische Übersetzungen in Studio
 
+## SSF and DeepL per Studio instance
+
+Studio administrators need to configure Smart Speech Flow (SSF) and DeepL independently in the existing Interfaces area. Both providers can be active for the same instance. For each target locale, Studio selects an active, verified SSF connection first and uses an active, verified DeepL connection when SSF is ineligible for that locale. The same rule applies to fixed app catalogs and dynamic app content. A provider failure after dispatch stays with that provider for retry.
+
+The change extends the existing external-interface registry, translation service and catalog worker. The [design](./design.md#ssf-and-deepl-provider-selection) covers provider verification, dispatch and migration of the Magdeburg pilot. See arc42 [3](../../../docs/architecture/03-context-and-scope.md), [6](../../../docs/architecture/06-runtime-view.md), [7](../../../docs/architecture/07-deployment-view.md) and [8](../../../docs/architecture/08-cross-cutting-concepts.md).
+
 **Freigegebener Lieferabschnitt vom 11. November 2026:** Die Instanzzuweisung des optionalen Host-Moduls „App“ steuert die kommunale Redaktion für App-Texte und Mehrsprachigkeit. Bestehende und neue Instanzen starten inaktiv und werden bei Bedarf manuell aktiviert. Der Abschnitt betrifft Modulverwaltung, Navigation, Katalogautorisierung und feste redaktionelle Übersetzungsaufträge. Globale Standardpflege, App-Auslieferung, technische Übersetzungsdienste und manuelle Keys gehören außerhalb dieses Lieferabschnitts.
 
 ## Why

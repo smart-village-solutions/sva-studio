@@ -1,16 +1,13 @@
 import {
   AppTranslationError,
-  deepLTargetCode,
-  readDeepLSettings,
   type CatalogScope,
   type AppTranslationLocale,
   type DeepLSetupStatus,
-  type ExternalInterfaceRecord,
 } from '@sva/core';
 import { createAppTranslationRepository } from '@sva/data-repositories/server';
 import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { withIamAppDb, type QueryClient } from './db.js';
-import { getDeepLSetupStatus } from './app-translations-deepl.js';
+import { readCatalogTranslationProviders } from './app-translations-providers.js';
 import {
   startCatalogTranslation,
   catalogTranslationStatus,
@@ -147,21 +144,11 @@ const readCatalogSetup = async (
       if (!module.rows[0]) throw new AppTranslationError('catalog_forbidden');
     }
     // Hold the saved configuration through mutation, so rotation or language changes cannot race a seal.
-    const provider = await client.query<ExternalInterfaceRecord>(
-      `SELECT id,type_key AS "typeKey",owner_kind AS "ownerKind",enabled,public_config_json AS "publicConfig",secret_config_ciphertext AS "secretConfigCiphertext",last_check_status AS "lastCheckStatus" FROM iam.instance_external_interfaces WHERE instance_id=$1 AND type_key='deepl' AND owner_kind='host' AND is_default ${isRead ? '' : 'FOR SHARE'}`,
-      [scope.instanceId]
-    );
-    setup = getDeepLSetupStatus(provider.rows[0] ?? null);
-    const settings = provider.rows[0]
-      ? readDeepLSettings(provider.rows[0].publicConfig)
-      : undefined;
-    if (settings)
-      targetCodes = Object.fromEntries(
-        settings.selectedLocales.map((locale) => [
-          locale,
-          deepLTargetCode(locale, settings.englishVariant, settings.availableLanguages),
-        ])
-      );
+    ({ setup, targetCodes } = await readCatalogTranslationProviders(
+      client,
+      scope.instanceId,
+      !isRead
+    ));
     if (!isRead && !setup.ready) throw new AppTranslationError('catalog_setup_required');
   }
   return { setup, targetCodes };

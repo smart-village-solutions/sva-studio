@@ -2,7 +2,7 @@
 
 ### Requirement: Zentrale Studio-Quelle für feste und dynamische App-Übersetzungen
 
-Das System MUST feste App-Kataloge einschließlich Deutsch, gemeinsame Standards und kommunale Overrides zentral im Studio-Backend/PostgreSQL führen. Dynamische Ergebnisse MUST ausschließlich im Main-Server in MySQL liegen; Studio MUST den authentifizierten Übersetzungsdienst liefern und darf keinen dauerhaften zweiten dynamischen Inhaltsbestand führen. Der Main-Server MUST für feste Kataloge ausschließlich Auslieferungsreplik sein. Host-i18n und SSF-Konfigurationssprachen MUST getrennte Verantwortlichkeiten behalten. Die erste Produktauslieferung MUST feste und dynamische Strecken gemeinsam und sämtliche zulässigen Anzeigetexte unabhängig vom Inhaltstyp abdecken. Magdeburg MUST als erste Pilotkommune alle 19 benannten Zielsprachen erhalten; andere Kommunen MUST ihre Auswahl aus den stabilen Zielsprachen ihrer geprüften instanzgebundenen DeepL-Schnittstelle selbst bestimmen können. Das System MUST alle solchen Zielsprachen anbieten, ohne Begrenzung auf den Pilotumfang. Je Sprachstamm MUST genau eine Variante auswählbar sein; zusätzliche Varianten MUST nach Auswahl der Sprache in derselben Zeile angeboten und mit ihrer exakten Kennung gespeichert werden. Bestehendes englisches Katalogformat MUST kompatibel bleiben.
+Das System MUST feste App-Kataloge einschließlich Deutsch, gemeinsame Standards und kommunale Overrides zentral im Studio-Backend/PostgreSQL führen. Dynamische Ergebnisse MUST ausschließlich im Main-Server in MySQL liegen; Studio MUST den authentifizierten Übersetzungsdienst liefern und darf keinen dauerhaften zweiten dynamischen Inhaltsbestand führen. Der Main-Server MUST für feste Kataloge ausschließlich Auslieferungsreplik sein. Host-i18n und SSF-Konfigurationssprachen MUST getrennte Verantwortlichkeiten behalten. Die erste Produktauslieferung MUST feste und dynamische Strecken gemeinsam und sämtliche zulässigen Anzeigetexte unabhängig vom Inhaltstyp abdecken. Magdeburg MUST als erste Pilotkommune alle 19 benannten Zielsprachen erhalten; andere Kommunen MUST ihre Auswahl aus den stabilen Zielsprachen ihrer geprüften instanzgebundenen Übersetzungsschnittstellen selbst bestimmen können. Das System MUST alle solchen Zielsprachen anbieten, ohne Begrenzung auf den Pilotumfang. Je Sprachstamm MUST genau eine Variante auswählbar sein; zusätzliche Varianten MUST nach Auswahl der Sprache in derselben Zeile angeboten und mit ihrer exakten Kennung gespeichert werden. Bestehendes englisches Katalogformat MUST kompatibel bleiben.
 
 #### Scenario: Kommunales Deutsch ohne doppelte manuelle Quelle
 
@@ -246,7 +246,7 @@ Das System MUST dynamische Inhalte über die bestehenden Ressourcenqueries mit z
 
 ### Requirement: Zugängliche Katalogpflege und kontrollierte LTR-Aktivierung
 
-Das System MUST bei Katalogpflege Standard/Override je Sprache, tatsächliche Übersetzungsquelle, Entwurf/Veröffentlichung, manuelle Korrektur/Prüffälligkeit, Platzhalter und Übertragungsfehler verständlich unterscheiden und vorhandenes Design-System, Tastatur/Fokus und de/en-Host-i18n verwenden. Die zentrale LTR-Liste MUST Deutsch sowie Englisch, Ukrainisch, Spanisch, Italienisch, Portugiesisch aus Portugal, Griechisch, Koreanisch, Indonesisch, vereinfachtes Chinesisch, Japanisch, Thailändisch, Türkisch, Polnisch, Dänisch, Schwedisch, Finnisch, Russisch, Lettisch und Rumänisch umfassen. Jede Kommune MUST daraus selbst auswählen können; Magdeburg MUST alle 19 Zielsprachen im ersten Pilot erhalten. Erweiterungen MUST zentral geprüft werden. Aktivierung MUST nachgewiesene DeepL-Abdeckung, technische Darstellung und Datenschutz-/Haftungshinweise berücksichtigen, ohne eine beschlossene Pilotzielsprache still zu entfernen.
+Das System MUST bei Katalogpflege Standard/Override je Sprache, tatsächliche Übersetzungsquelle, Entwurf/Veröffentlichung, manuelle Korrektur/Prüffälligkeit, Platzhalter und Übertragungsfehler verständlich unterscheiden und vorhandenes Design-System, Tastatur/Fokus und de/en-Host-i18n verwenden. Die zentrale LTR-Liste MUST Deutsch sowie Englisch, Ukrainisch, Spanisch, Italienisch, Portugiesisch aus Portugal, Griechisch, Koreanisch, Indonesisch, vereinfachtes Chinesisch, Japanisch, Thailändisch, Türkisch, Polnisch, Dänisch, Schwedisch, Finnisch, Russisch, Lettisch und Rumänisch umfassen. Jede Kommune MUST daraus selbst auswählen können; Magdeburg MUST alle 19 Zielsprachen im ersten Pilot erhalten. Erweiterungen MUST zentral geprüft werden. Aktivierung MUST nachgewiesene Anbieterabdeckung, technische Darstellung und Datenschutz-/Haftungshinweise berücksichtigen, ohne eine beschlossene Pilotzielsprache still zu entfernen.
 
 #### Scenario: Kommunale Auswahl und noch nicht nachgewiesene Anbieterabdeckung
 
@@ -256,9 +256,9 @@ Das System MUST bei Katalogpflege Standard/Override je Sprache, tatsächliche Ü
 - **AND** bleibt eine nicht nachgewiesene Pilotsprachenabdeckung eine offene Lieferabhängigkeit statt einer stillen Reduktion
 - **AND** gehören RTL und ein Original-anzeigen-Button je Element nicht zu V1
 
-### Requirement: DeepL-Zugang je Instanz für beide Textstrecken
+### Requirement: Instanzgebundene Anbieterzugänge für beide Textstrecken
 
-Das System MUST zunächst DeepL als gemeinsamen Anbietertyp für feste und dynamische Texte verwenden, aber Zugangsdaten je Instanz in der vorhandenen Schnittstellenverwaltung führen. Ein fremder Instanz-Key oder Environment-Key MUST nicht als impliziter Fallback dienen. Dynamische Treffer MUST kommunal getrennt bleiben. Gemeinsame deutsche Standards MUST zentral bleiben; ihre Übersetzungen, Aufträge und Kosten MUST je Instanz über deren eigenen Key geführt werden. Ein zusätzlicher zentraler Anbieterzugang und eine globale kostenpflichtige Fremdsprachenquelle MUST entfallen. Öffentliche Dokumentation MUST von tatsächlicher geprüfter Konto-/Featureabdeckung unterschieden werden. Zielvarianten und optionale HTML-/Glossar-/Formalitätsfähigkeiten MUST explizit validiert werden. Anbieter-Secrets MUST serverseitig bleiben; keine vorsorgliche Provider-Registry oder SSF-Adapter. Manuelle Korrekturen MUST zunächst auf feste Kataloge beschränkt bleiben.
+Studio MUST use the configured instance translation providers for both catalog and dynamic translation according to the provider selection requirement below. Ein fremder Instanz-Key oder Environment-Key MUST nicht als impliziter Fallback dienen. Dynamische Treffer MUST kommunal getrennt bleiben. Gemeinsame deutsche Standards MUST zentral bleiben; ihre Übersetzungen, Aufträge und Kosten MUST je Instanz über deren eigenen Key geführt werden. Ein zusätzlicher zentraler Anbieterzugang und eine globale kostenpflichtige Fremdsprachenquelle MUST entfallen. Öffentliche Dokumentation MUST von tatsächlicher geprüfter Konto-/Featureabdeckung unterschieden werden. Zielvarianten und optionale HTML-/Glossar-/Formalitätsfähigkeiten MUST explizit validiert werden. Provider secrets MUST remain server-side in the existing external interface registry. Manuelle Korrekturen MUST zunächst auf feste Kataloge beschränkt bleiben.
 
 #### Scenario: Derselbe Standard und derselbe dynamische Text in zwei Kommunen
 
@@ -267,6 +267,34 @@ Das System MUST zunächst DeepL als gemeinsamen Anbietertyp für feste und dynam
 - **THEN** pinnen beide dieselbe deutsche Standardrevision, erzeugen ihre Standardübersetzungen aber instanzgebunden mit ihrem eigenen Key
 - **AND** teilen ihre dynamischen Texte keinen kommunalen Cacheeintrag
 - **AND** bleibt eine manuelle feste Korrektur vor Maschinenjobs geschützt
+
+### Requirement: Instance translation provider selection
+
+Studio MUST allow authorized administrators to configure one SSF and one DeepL translation interface for the same instance. Studio MUST use the union of eligible target locales for fixed catalogs and dynamic content. A provider is eligible for a locale when its interface is enabled, its current credentials and target support have been verified, and the locale is selected and allowed by Studio. Studio MUST resolve SSF before DeepL for each target locale.
+
+#### Scenario: Both providers support the target locale
+
+- **GIVEN** both interfaces are eligible for the requested target locale
+- **WHEN** Studio dispatches a fixed-catalog batch or a dynamic translation
+- **THEN** Studio sends the text to SSF using the current instance credentials
+
+#### Scenario: SSF is ineligible for the target locale
+
+- **GIVEN** SSF is absent, disabled, unverified, or ineligible for the requested target locale
+- **WHEN** Studio dispatches a translation for a locale eligible for DeepL
+- **THEN** Studio sends the text to the same instance's DeepL interface
+
+#### Scenario: Transient error after SSF selection
+
+- **GIVEN** Studio has selected SSF for a translation request
+- **WHEN** a transient provider error occurs
+- **THEN** retries retain the SSF selection while its configuration remains eligible
+- **AND** Studio does not send the request text to DeepL
+
+#### Scenario: No eligible connection
+
+- **WHEN** neither provider is eligible for the requested target locale
+- **THEN** Studio reports that translation is unavailable and sends no provider request
 
 ### Requirement: Sprachbezogene Overrides und automatische Standardübernahme
 
@@ -431,7 +459,7 @@ Die vorhandenen Hostübergänge MUST im lokalen Pluginanschluss gezielt angepass
 
 ### Requirement: Anbieterzugänge verwenden vorhandene Host-Secretpfade
 
-Das System MUST DeepL als benutzerkonfigurierte instanzgebundene Schnittstelle über vorhandene Typregistrierung, Hostresolver und datensatzgebundene Secretverschlüsselung verwalten. Browserantworten MUST ausschließlich redigierten Konfigurations-/Prüfstatus erhalten; Keys/Ciphertexts MUST nicht in Browserantworten, App-Builds, Jobpayloads oder Logs erscheinen. Fehlende/unlesbare Secrets MUST neue Anbieteraufrufe verhindern. Key-/Zugangskonfigurationswechsel MUST bisherigen positiven Prüfnachweis ungültig machen; verspätete Prüfantworten MUST eine geänderte Konfiguration nicht freischalten. Rotation MUST vorhandene gültige Übersetzungen erhalten und benötigt keine Anbieteridentität im dynamischen Cache-Key. Weitere Anbieter MUST erst mit konkretem Verbraucher ergänzt werden.
+Das System MUST DeepL und SSF als benutzerkonfigurierte instanzgebundene Schnittstellen über vorhandene Typregistrierung, Hostresolver und datensatzgebundene Secretverschlüsselung verwalten. Browserantworten MUST ausschließlich redigierten Konfigurations-/Prüfstatus erhalten; Keys/Ciphertexts MUST nicht in Browserantworten, App-Builds, Jobpayloads oder Logs erscheinen. Fehlende/unlesbare Secrets MUST neue Anbieteraufrufe verhindern. Key-/Zugangskonfigurationswechsel MUST bisherigen positiven Prüfnachweis ungültig machen; verspätete Prüfantworten MUST eine geänderte Konfiguration nicht freischalten. Rotation MUST vorhandene gültige Übersetzungen erhalten und benötigt keine Anbieteridentität im dynamischen Cache-Key. Weitere Anbieter MUST erst mit konkretem Verbraucher ergänzt werden.
 
 #### Scenario: Key fehlt oder wird rotiert
 
@@ -492,14 +520,14 @@ Das System MUST „App“ als optionales Modul ohne automatische Bestandszuweisu
 - **THEN** bleibt die globale Standardpflege für berechtigte Plattformadministratoren verfügbar
 - **AND** bleiben App-Auslieferung, DeepL-Schnittstelle und technischer Übersetzungsdienst unabhängig von der App-Zuweisung
 
-### Requirement: Sprachwahl in der instanzgebundenen DeepL-Konfiguration
+### Requirement: Sprachwahl in der instanzgebundenen Schnittstellenkonfiguration
 
-Das System MUST den Schnittstellentyp DeepL erst nach Mehrsprachigkeits-Modulaktivierung für die Instanz anbieten. Fehlender Anbieterzugang MUST Einrichtung/Diagnose erreichbar lassen; der Modulbereich MUST zunächst auf die nötige Einrichtung hinweisen. API-Key und instanzgebundene Zielsprachauswahl MUST innerhalb dieser Schnittstellenkonfiguration gepflegt werden. Einen separaten Hauptmenüpunkt „Sprachen“ MUST es nicht geben. Die ausdrückliche serverseitige Anbieterabfrage MUST unterstützte Textübersetzungsziele und Fähigkeiten laden, validieren und an die aktuelle Zugangskonfiguration binden. Deutsch MUST immer als Ausgangssprache verfügbar bleiben. Anbieterunterstützung MUST von technischer Studio-/Appfreigabe unterschieden werden. Abhängige Funktionen MUST serverseitig aktuelle Modul-/Zugangsbereitschaft und ausgewählte Sprache prüfen. Vorbereitete andere Plugins MUST denselben Instanzzugang verwenden und erhalten keinen Key. Setupstatus allein MUST keine noch nicht implementierte Übersetzungsfunktion behaupten.
+Das System MUST die Schnittstellentypen DeepL und SSF erst nach Mehrsprachigkeits-Modulaktivierung für die Instanz anbieten. Fehlender Anbieterzugang MUST Einrichtung/Diagnose erreichbar lassen; der Modulbereich MUST zunächst auf die nötige Einrichtung hinweisen. API-Key und instanzgebundene Zielsprachauswahl MUST innerhalb dieser Schnittstellenkonfiguration gepflegt werden. Einen separaten Hauptmenüpunkt „Sprachen“ MUST es nicht geben. Die ausdrückliche serverseitige Anbieterabfrage MUST unterstützte Textübersetzungsziele und Fähigkeiten laden, validieren und an die aktuelle Zugangskonfiguration binden. Deutsch MUST immer als Ausgangssprache verfügbar bleiben. Anbieterunterstützung MUST von technischer Studio-/Appfreigabe unterschieden werden. Abhängige Funktionen MUST serverseitig aktuelle Modul-/Zugangsbereitschaft und ausgewählte Sprache prüfen. Vorbereitete andere Plugins MUST denselben Instanzzugang verwenden und erhalten keinen Key. Setupstatus allein MUST keine noch nicht implementierte Übersetzungsfunktion behaupten.
 
-#### Scenario: Modul aktiv, DeepL noch nicht eingerichtet
+#### Scenario: Modul aktiv, Übersetzungsschnittstelle noch nicht eingerichtet
 
-- **WHEN** eine Instanz das Modul aktiviert und noch keinen geprüften DeepL-Zugang besitzt
-- **THEN** kann ein entsprechend berechtigter Benutzer DeepL in der Schnittstellenverwaltung einrichten
+- **WHEN** eine Instanz das Modul aktiviert und noch keinen geprüften Übersetzungszugang besitzt
+- **THEN** kann ein entsprechend berechtigter Benutzer SSF, DeepL oder beide Schnittstellen einrichten
 - **AND** erklärt der Modulbereich den fehlenden Schritt, ohne bereits Übersetzungsoperationen freizuschalten
 - **AND** bleiben deutsche Hosttexte mit aktivem Modul „App“ und den vorhandenen Hostrechten nutzbar
 
@@ -517,12 +545,12 @@ Das System MUST den Schnittstellentyp DeepL erst nach Mehrsprachigkeits-Modulakt
 #### Scenario: Anbieterfehler oder Abschaltung
 
 - **WHEN** der Zugang abgewiesen oder die Schnittstelle deaktiviert wird
-- **THEN** werden neue abhängige Anbieteroperationen gesperrt und bleibt die Einrichtung erreichbar
+- **THEN** bleibt die Einrichtung erreichbar und verwenden neue Übersetzungsaufträge nur eine für die Zielsprache berechtigte Schnittstelle
 - **AND** werden vorhandene Texte/Sprachfassungen nicht gelöscht und wird ein bloßer Anbieterausfall nicht als App-Sprachdeaktivierung behandelt
 
 ### Requirement: Instanzgebundene Maschinenübersetzung fester App-Texte lokal vorbereiten
 
-Das System MUST im vorhandenen kommunalen Mehrsprachigkeitseditor fehlende oder veraltete feste Sprachwerte ausdrücklich über den geprüften eigenen DeepL-Zugang erzeugen können. Start MUST aktuelle Session-/Organisationsbindung, `app-translations.catalog.write`, CSRF, Modulzugang, gültige Zugangsevidenz und übernommene erlaubte Zielsprachen prüfen. Deutschpflege MUST unabhängig bleiben. Reines Lesen, Speichern oder Auswählen einer Sprache MUST keinen Anbieterjob auslösen. Die Vorbereitung MUST weder veröffentlichen noch eine Appaktivierung oder einen abgeschlossenen dynamischen Übersetzungsdienst behaupten. Sie MUST denselben fachlichen Übersetzungspfad für die spätere Veröffentlichung vorbereiten.
+Das System MUST im vorhandenen kommunalen Mehrsprachigkeitseditor fehlende oder veraltete feste Sprachwerte ausdrücklich über den ausgewählten, geprüften Instanzzugang erzeugen können. Start MUST aktuelle Session-/Organisationsbindung, `app-translations.catalog.write`, CSRF, Modulzugang, gültige Zugangsevidenz und übernommene erlaubte Zielsprachen prüfen. Deutschpflege MUST unabhängig bleiben. Reines Lesen, Speichern oder Auswählen einer Sprache MUST keinen Anbieterjob auslösen. Die Vorbereitung MUST weder veröffentlichen noch eine Appaktivierung oder einen abgeschlossenen dynamischen Übersetzungsdienst behaupten. Sie MUST denselben fachlichen Übersetzungspfad für die spätere Veröffentlichung vorbereiten.
 
 Maschinelle Standardwerte MUST im bestehenden Draft von eigenen Sprachkorrekturen getrennt bleiben. Standardquelle MUST die gepinnte unveränderliche deutsche globale Basis sein; ein deutscher kommunaler Override MUST andere Sprachstandards nicht automatisch verändern. Eine ausdrückliche gezielte Übernahme MUST eigene Sprachfassungen aus gespeichertem kommunalem Deutsch erzeugen können. Manuelle Korrekturen MUST vorrangig bleiben und von Bulk-/Retryjobs unangetastet bleiben. Eine gezielte Neuübersetzung eines manuellen Werts MUST eine ausdrückliche, an Sprache/Schlüssel, Quelle, aktuellen Override und Revision gebundene Ersetzungsbestätigung verlangen. Änderung der tatsächlichen Quelle beziehungsweise Zielvariante MUST Korrekturentscheidungen erneut erfordern, ohne Werte zu löschen. Reset MUST nur den eigenen Wert entfernen und die passende aktuelle maschinelle Standardfassung beziehungsweise einen erklärbaren Fehlzustand zeigen; kein impliziter Anbieteraufruf. Bestehende Manuellwerte und versiegelte Kataloge MUST erhalten bleiben.
 
@@ -534,7 +562,7 @@ Strings/Stringarrays MUST in unveränderter Zuordnung und mit exakt validierten 
 
 - **GIVEN** eine Organisation besitzt eine deutsche gepinnte Basis und drei übernommene erlaubte Zielsprachen
 - **WHEN** eine berechtigte Redaktion ausdrücklich fehlende Übersetzungen erstellen lässt
-- **THEN** verarbeitet ein Katalogjob die gültigen deutschen Standardtexte in begrenzten DeepL-Batches mit dem eigenen Instanz-Key
+- **THEN** verarbeitet ein Katalogjob die gültigen deutschen Standardtexte in begrenzten Anbieter-Batches mit dem eigenen Instanz-Key
 - **AND** werden geprüfte Ergebnisse im bestehenden Entwurf sichtbar, ohne die App oder historische Snapshots zu ändern
 - **AND** verursacht ein erneuter Start ohne fehlende oder veraltete Werte keinen Anbieteraufruf
 

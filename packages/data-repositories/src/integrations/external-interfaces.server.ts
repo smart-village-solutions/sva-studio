@@ -125,7 +125,9 @@ export const saveMainserverTranslationServiceBinding = async (input: {
          AND m.effective_active AND l.desired_generation=$3::bigint
          AND l.active_job_id=$4::uuid AND l.claimed_generation=l.desired_generation AND l.desired_operation=$5
          AND (l.access_state='active' OR ($5='reactivate' AND l.access_state='suspended'))
-       FOR SHARE OF i,m,l`, [connection.instanceId, input.hostname, input.generation, input.jobId, input.operation]);
+       FOR SHARE OF i,m,l`,
+      [connection.instanceId, input.hostname, input.generation, input.jobId, input.operation]
+    );
     if (!scope.rows[0]) return false;
     const result = await client.query(
       `UPDATE iam.instance_external_interfaces
@@ -134,13 +136,21 @@ export const saveMainserverTranslationServiceBinding = async (input: {
          AND enabled AND is_default AND public_config_json=$3::jsonb AND base_url IS NOT DISTINCT FROM $5
          AND xmin::text=$6
        RETURNING id`,
-      [connection.instanceId, connection.id, JSON.stringify(connection.publicConfig), JSON.stringify(input.binding), connection.baseUrl ?? null, input.assignmentRevision]);
+      [
+        connection.instanceId,
+        connection.id,
+        JSON.stringify(connection.publicConfig),
+        JSON.stringify(input.binding),
+        connection.baseUrl ?? null,
+        input.assignmentRevision,
+      ]
+    );
     return result.rowCount === 1;
   });
 };
 
 // Commit provider changes and their reconciliation request together.
-const enqueueDeepLReconcile = async (client: QueryClient, instanceId: string) => {
+const enqueueTranslationReconcile = async (client: QueryClient, instanceId: string) => {
   await client.query('SET LOCAL ROLE iam_app;');
   await client.query(
     `SELECT graphile_worker.sva_enqueue_job(
@@ -163,7 +173,8 @@ export const deleteExternalInterfaceRecord = async (
   withDefaultDatabase(instanceId, options.getDatabaseUrl, async (client) => {
     const statement = externalInterfaceStatements.deleteById(instanceId, id);
     const result = await client.query<{ type_key: string }>(statement.text, statement.values);
-    if (result.rows[0]?.type_key === 'deepl') await enqueueDeepLReconcile(client, instanceId);
+    if (['deepl', 'ssf_translation'].includes(result.rows[0]?.type_key ?? ''))
+      await enqueueTranslationReconcile(client, instanceId);
     return result.rowCount > 0;
   });
 
@@ -178,12 +189,13 @@ export const saveExternalInterfaceConnectionCheck = async (
   });
 };
 
-/** DeepL is configured by the tenant but available only while its module is active. */
-export const saveDeepLInterfaceRecord = async (
+/** Tenant translation credentials are available while the module is active. */
+export const saveTranslationInterfaceRecord = async (
   record: ExternalInterfaceRecord,
   expectedRevision: string
 ): Promise<void> => {
-  if (record.typeKey !== 'deepl' || record.ownerKind !== 'host') throw new Error('invalid_config');
+  if (!['deepl', 'ssf_translation'].includes(record.typeKey) || record.ownerKind !== 'host')
+    throw new Error('invalid_config');
   await withDefaultDatabase(record.instanceId, undefined, async (client) => {
     const module = await client.query(
       `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,
@@ -191,23 +203,24 @@ export const saveDeepLInterfaceRecord = async (
     );
     if (!module.rows[0]) throw new Error('deepl_module_unavailable');
     const current = await client.query<{ revision: string }>(
-      `SELECT public_config_json->>'revision' AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2 AND type_key='deepl' AND owner_kind='host' FOR UPDATE`,
-      [record.instanceId, record.id]
+      `SELECT public_config_json->>'revision' AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2 AND type_key=$3 AND owner_kind='host' FOR UPDATE`,
+      [record.instanceId, record.id, record.typeKey]
     );
     if ((current.rows[0]?.revision ?? '0') !== expectedRevision)
       throw new Error('interface_conflict');
     await createExternalInterfaceRepository(createExecutor(client)).upsert(record);
-    await enqueueDeepLReconcile(client, record.instanceId);
+    await enqueueTranslationReconcile(client, record.instanceId);
   });
 };
 
 /** Compare the exact saved configuration before accepting an asynchronous provider response. */
-export const saveDeepLInterfaceCheck = async (input: {
+export const saveTranslationInterfaceCheck = async (input: {
   instanceId: string;
   interfaceId: string;
   expectedRevision: string;
   checkedAt: string;
-  languages?: readonly import('@sva/core').DeepLLanguage[];
+  typeKey?: 'ssf_translation';
+  languages?: readonly (import('@sva/core').DeepLLanguage | string)[];
   errorCode?: string;
 }): Promise<void> =>
   withDefaultDatabase(input.instanceId, undefined, async (client) => {
@@ -217,7 +230,7 @@ export const saveDeepLInterfaceCheck = async (input: {
     );
     if (!module.rows[0]) throw new Error('deepl_module_unavailable');
     const result = await client.query(
-      `UPDATE iam.instance_external_interfaces SET public_config_json=public_config_json || CASE WHEN $5::jsonb IS NOT NULL THEN jsonb_build_object('availableLanguages',$5::jsonb,'verifiedCredentialRevision',public_config_json->>'credentialRevision') ELSE '{}'::jsonb END,visible_status=$6,last_checked_at=$4::timestamptz,last_check_status=$7,last_check_error_code=$8,last_check_error_message=NULL,updated_at=now() WHERE instance_id=$1 AND id=$2 AND type_key='deepl' AND owner_kind='host' AND enabled AND public_config_json->>'revision'=$3 RETURNING id`,
+      `UPDATE iam.instance_external_interfaces SET public_config_json=public_config_json || CASE WHEN $5::jsonb IS NOT NULL THEN jsonb_build_object('availableLanguages',$5::jsonb,'verifiedCredentialRevision',public_config_json->>'credentialRevision') ELSE '{}'::jsonb END,visible_status=$6,last_checked_at=$4::timestamptz,last_check_status=$7,last_check_error_code=$8,last_check_error_message=NULL,updated_at=now() WHERE instance_id=$1 AND id=$2 AND type_key=$9 AND owner_kind='host' AND enabled AND public_config_json->>'revision'=$3 RETURNING id`,
       [
         input.instanceId,
         input.interfaceId,
@@ -227,8 +240,9 @@ export const saveDeepLInterfaceCheck = async (input: {
         input.errorCode ? 'error' : 'ok',
         input.errorCode ? 'failed' : 'succeeded',
         input.errorCode ?? null,
+        input.typeKey ?? 'deepl',
       ]
     );
     if (result.rowCount !== 1) throw new Error('interface_conflict');
-    await enqueueDeepLReconcile(client, input.instanceId);
+    await enqueueTranslationReconcile(client, input.instanceId);
   });

@@ -1,3 +1,5 @@
+import { ssfInterfaceResources, ssfInterfaceTypeResources } from './interfaces-ssf.resources';
+
 export const interfacesENResources = {
   appConfiguration: {
     createVariant: 'Create variant',
@@ -95,6 +97,7 @@ export const interfacesENResources = {
         'Disable the interface. Deletion is available after the transition.',
     },
   },
+  ssf: ssfInterfaceResources,
   deepl: {
     refreshFailed:
       'The check finished, but the latest interface settings could not be loaded. Please retry.',
@@ -173,6 +176,7 @@ export const interfacesENResources = {
       label: 'Meilisearch',
       description: 'Connects the search module to the Mainserver search index.',
     },
+    ssf_translation: ssfInterfaceTypeResources,
     deepl: {
       label: 'DeepL',
       description: 'Manage the translation account and available languages for this instance.',

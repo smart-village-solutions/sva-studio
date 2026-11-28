@@ -1,3 +1,4 @@
+import { ssfInterfaceDraftSchema } from './instance-interface-ssf';
 import { z } from 'zod';
 import {
   emptyMeilisearchDraft,
@@ -9,10 +10,12 @@ import {
   appTranslationLanguage,
   isAppTranslationLocale,
 } from '@sva/core';
+import { type SsfTranslationSettings } from '@sva/core';
 import type { DeepLSettings, MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 
 export type InstanceInterfaceType =
   | 'deepl'
+  | 'ssf_translation'
   | 'mainserver'
   | 's3'
   | 'supabase'
@@ -130,7 +133,11 @@ export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
 export type InstanceInterfaceDeepL = InstanceInterfaceBase &
   Readonly<{ type: 'deepl'; apiKeyConfigured: boolean; config: DeepLSettings }>;
 
+type InstanceInterfaceSsf = InstanceInterfaceBase &
+  Readonly<{ type: 'ssf_translation'; apiKeyConfigured: boolean; config: SsfTranslationSettings }>;
+
 export type InstanceInterface =
+  | InstanceInterfaceSsf
   | InstanceInterfaceDeepL
   | (InstanceInterfaceBase & MeilisearchInterfaceFields)
   | InstanceInterfaceMainserver
@@ -141,6 +148,7 @@ export type InstanceInterface =
   | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
+  | z.infer<typeof ssfInterfaceDraftSchema>
   | z.infer<typeof meilisearchInterfaceDraftSchema>
   | {
       type: 'deepl';
@@ -191,6 +199,10 @@ export const instanceInterfaceTypeMeta: Record<
   InstanceInterfaceType,
   { titleKey: string; descriptionKey: string }
 > = {
+  ssf_translation: {
+    titleKey: 'interfaces.types.ssf_translation.label',
+    descriptionKey: 'interfaces.types.ssf_translation.description',
+  },
   deepl: {
     titleKey: 'interfaces.types.deepl.label',
     descriptionKey: 'interfaces.types.deepl.description',
@@ -229,6 +241,13 @@ export const createEmptyInstanceInterfaceDraft = (
   type: InstanceInterfaceType
 ): InstanceInterfaceDraft => {
   if (type === 'meilisearch') return emptyMeilisearchDraft();
+  if (type === 'ssf_translation')
+    return {
+      type,
+      name: 'Smart Speech Flow',
+      enabled: true,
+      config: { origin: '', apiKey: '', revision: '0', selectedLocales: [] },
+    };
   if (type === 'deepl')
     return {
       type: 'deepl',

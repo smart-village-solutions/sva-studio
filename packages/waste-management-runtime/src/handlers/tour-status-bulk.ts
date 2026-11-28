@@ -1,3 +1,4 @@
+import type { WasteTourStatusBulkUpdateInput } from '@sva/waste-management-contracts';
 import type { AuthenticatedRequestContext } from './types.js';
 import { validateCsrf } from './host-controls.js';
 import { asApiItem, createApiError, parseRequestBody } from '@sva/server-runtime';
@@ -8,6 +9,22 @@ import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { updateWasteTourStatusBulkSchema } = wasteManagementTourSchemas;
+
+const describeTourBatch = (input: WasteTourStatusBulkUpdateInput) => {
+  const count = input.tourIds.length;
+  return 'review' in input
+    ? {
+        actionId: 'waste-management.tour.review-bulk-updated',
+        resourceId: `count:${count};review:${input.review}`,
+        errorMessage: 'Das Prüfdatum der Waste-Touren konnte nicht gespeichert werden.',
+      }
+    : {
+        actionId: 'waste-management.tour.status-bulk-updated',
+        resourceId: `count:${count};status:${input.status}`,
+        errorMessage: 'Der Status der Waste-Touren konnte nicht gespeichert werden.',
+        updateVisibleStatus: updateWasteVisibleStatus,
+      };
+};
 
 export const wasteManagementTourStatusBulkHandlers = {
   updateWasteManagementTourStatusBulkInternal: async (
@@ -42,12 +59,7 @@ export const wasteManagementTourStatusBulkHandlers = {
     }
 
     const input = { ...parsed.data, tourIds: parsed.data.tourIds.map((id) => id.toLowerCase()) };
-    const review = 'review' in input;
-    const actionId = review
-      ? 'waste-management.tour.review-bulk-updated'
-      : 'waste-management.tour.status-bulk-updated';
-    const target = review ? `review:${input.review}` : `status:${input.status}`;
-    const resourceId = `count:${input.tourIds.length};${target}`;
+    const operation = describeTourBatch(input);
     try {
       const result = await requireDeps(deps.updateWasteTourStatusBulk, 'updateWasteTourStatusBulk')(
         instanceId,
@@ -58,12 +70,12 @@ export const wasteManagementTourStatusBulkHandlers = {
         deps,
         ctx,
         instanceId,
-        actionId,
+        actionId: operation.actionId,
         result: 'success',
         resourceType: 'waste_tour_batch',
-        resourceId,
+        resourceId: operation.resourceId,
       });
-      if (!review) await updateWasteVisibleStatus(deps, instanceId, 'success');
+      await operation.updateVisibleStatus?.(deps, instanceId, 'success');
 
       return new Response(JSON.stringify(asApiItem(result, requestId)), {
         status: 200,
@@ -80,11 +92,11 @@ export const wasteManagementTourStatusBulkHandlers = {
         deps,
         ctx,
         instanceId,
-        actionId,
+        actionId: operation.actionId,
         result: 'failure',
         reasonCode: notFound ? 'tour_not_found' : 'database_unavailable',
         resourceType: 'waste_tour_batch',
-        resourceId,
+        resourceId: operation.resourceId,
       });
 
       if (notFound) {
@@ -96,13 +108,11 @@ export const wasteManagementTourStatusBulkHandlers = {
         );
       }
 
-      if (!review) await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+      await operation.updateVisibleStatus?.(deps, instanceId, 'revalidate');
       return createApiError(
         503,
         'database_unavailable',
-        review
-          ? 'Das Prüfdatum der Waste-Touren konnte nicht gespeichert werden.'
-          : 'Der Status der Waste-Touren konnte nicht gespeichert werden.',
+        operation.errorMessage,
         requestId
       );
     }

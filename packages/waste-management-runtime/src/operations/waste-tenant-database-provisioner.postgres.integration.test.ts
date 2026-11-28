@@ -15,7 +15,7 @@ import {
   wasteTenantMigrations,
   wasteTenantContractMigrations,
 } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
-import { buildWasteTourReviewStatements } from './waste-management-operations.schema.js';
+import { buildWasteTourReviewStatements } from './waste-tour-review.schema.js';
 import { buildWasteTourFractionsExpandStatements } from './waste-tour-fractions.schema.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;

@@ -119,35 +119,29 @@ const WasteToursBulkActions = ({
           {pt('tours.merge.tooMany', { count: wasteTourStatusBulkLimit })}
         </span>
       ) : null}
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-11 rounded-md px-3"
-        disabled={selectedCount === 0}
-        onClick={onOpenBulkStatus}
-      >
-        <IconToggleRight aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.bulkStatusDialog.open')}
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        aria-haspopup="dialog"
-        className="h-11 rounded-md px-3"
-        onClick={onOpenBulkReview}
-      >
-        {pt('tours.bulkStatusDialog.reviewOpen')}
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-11 rounded-md px-3"
-        disabled={selectedCount === 0 || validitySelectionExceedsLimit}
-        onClick={onOpenBulkValidity}
-      >
-        <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.bulkValidityDialog.title')}
-      </Button>
+      {[
+        { label: 'tours.bulkStatusDialog.open', icon: IconToggleRight, onClick: onOpenBulkStatus },
+        { label: 'tours.bulkStatusDialog.reviewOpen', onClick: onOpenBulkReview },
+        {
+          label: 'tours.bulkValidityDialog.title',
+          icon: IconCalendarTime,
+          onClick: onOpenBulkValidity,
+          disabled: validitySelectionExceedsLimit,
+        },
+      ].map(({ label, icon: Icon, onClick, disabled }) => (
+        <Button
+          key={label}
+          type="button"
+          variant="secondary"
+          aria-haspopup="dialog"
+          className="h-11 rounded-md px-3"
+          disabled={selectedCount === 0 || disabled}
+          onClick={onClick}
+        >
+          {Icon ? <Icon aria-hidden="true" className="h-4 w-4" /> : null}
+          {pt(label)}
+        </Button>
+      ))}
       {validitySelectionExceedsLimit ? (
         <span className="text-sm font-medium text-destructive" role="status">
           {pt('tours.bulkValidityDialog.tooMany', { value: wasteTourValidityBulkLimit })}

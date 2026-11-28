@@ -225,6 +225,10 @@ const main = async (): Promise<void> => {
     });
     try {
       await assertStudioJobReconciliation(port, () => adminPool.connect());
+      const readiness = await runWorkerReadiness(port, 'sva_app', 'sva_job_worker');
+      if (readiness.ok || !readiness.failedChecks.includes('effective_app_can_reconcile_jobs')) {
+        throw new Error('graphile_contract_missing_reconciliation_grant_not_detected');
+      }
     } finally {
       await adminPool.end();
     }

@@ -92,25 +92,38 @@ export const reconcileStudioJob = (instanceId: string, jobId: string) => {
 const emptyCounts = () => ({ confirmed: 0, finalized: 0, unresolved: 0, unknown: 0 });
 let latest: { counts: ReturnType<typeof emptyCounts>; lastSuccess: number } | undefined;
 
+type InstanceScan = {
+  readonly afterId?: string;
+  readonly pending: Partial<Record<'unresolved' | 'unknown', string>>;
+};
+
+const observeJob = (instanceId: string, id: string) =>
+  reconcileStudioJob(instanceId, id).catch(() => 'unknown' as const);
+
 const reconcileInstanceJobs = async (
   instanceId: string,
-  afterId: string | null,
+  scan: InstanceScan | undefined,
   counts: ReturnType<typeof emptyCounts>
-) => {
-  const ids = await listStudioJobReconciliationCandidates(instanceId, afterId, batchSize);
-  let observationOk = true;
-  for (const id of ids) {
-    try {
-      const outcome = await reconcileStudioJob(instanceId, id);
-      if (outcome && outcome !== 'available') counts[outcome]++;
-    } catch {
-      counts.unknown++;
-      observationOk = false;
+): Promise<InstanceScan> => {
+  // Recheck one representative of each outstanding outcome within the page budget.
+  const outstanding = scan ? Object.values(scan.pending) : [];
+  const pageSize = batchSize - outstanding.length;
+  const ids = await listStudioJobReconciliationCandidates(
+    instanceId,
+    scan?.afterId ?? null,
+    pageSize
+  );
+  const pending: InstanceScan['pending'] = {};
+  for (const id of new Set([...outstanding, ...ids])) {
+    const outcome = await observeJob(instanceId, id);
+    if (outcome && outcome !== 'available') counts[outcome]++;
+    if (outcome === 'unknown' || outcome === 'unresolved') {
+      pending[outcome] ??= id;
     }
   }
   return {
-    nextCursor: ids.length === batchSize ? ids[ids.length - 1] : undefined,
-    observationOk,
+    afterId: ids.length === pageSize ? ids[ids.length - 1] : undefined,
+    pending,
   };
 };
 
@@ -125,7 +138,7 @@ lastSuccessfulRound.addCallback((result) => {
 });
 
 export const createStudioJobReconciliation = () => {
-  const cursors = new Map<string, string>();
+  const scans = new Map<string, InstanceScan>();
   let running = false;
   return async (): Promise<void> => {
     if (running) return;
@@ -135,19 +148,15 @@ export const createStudioJobReconciliation = () => {
     try {
       const instanceIds = await listActiveInstanceIdsForWorker();
       const activeInstances = new Set(instanceIds);
-      for (const instanceId of cursors.keys()) {
-        if (!activeInstances.has(instanceId)) cursors.delete(instanceId);
+      for (const instanceId of scans.keys()) {
+        if (!activeInstances.has(instanceId)) scans.delete(instanceId);
       }
       for (const instanceId of instanceIds) {
         try {
-          const result = await reconcileInstanceJobs(
+          scans.set(
             instanceId,
-            cursors.get(instanceId) ?? null,
-            counts
+            await reconcileInstanceJobs(instanceId, scans.get(instanceId), counts)
           );
-          observationOk &&= result.observationOk;
-          if (result.nextCursor) cursors.set(instanceId, result.nextCursor);
-          else cursors.delete(instanceId);
         } catch {
           observationOk = false;
         }
@@ -155,6 +164,7 @@ export const createStudioJobReconciliation = () => {
     } catch {
       observationOk = false;
     } finally {
+      observationOk &&= counts.unknown === 0;
       counts.confirmed = counts.finalized + counts.unresolved;
       latest = {
         counts,

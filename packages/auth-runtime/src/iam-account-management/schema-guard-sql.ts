@@ -15,6 +15,14 @@ WITH principals AS (
           'text, json, text, integer, text, timestamp with time zone'
     ) AS enqueue_function_oid,
     (
+      SELECT p.oid
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'graphile_worker'
+        AND p.proname = 'sva_lock_exhausted_studio_job'
+        AND oidvectortypes(p.proargtypes) = 'uuid, text, text, integer'
+    ) AS reconciliation_function_oid,
+    (
       SELECT c.oid
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -34,6 +42,13 @@ SELECT
   ), false)
     AND COALESCE(has_schema_privilege(principals.app_role_oid, 'graphile_worker', 'USAGE'), false)
     AS effective_app_can_enqueue,
+  COALESCE(has_function_privilege(
+    principals.app_role_oid,
+    graphile_objects.reconciliation_function_oid,
+    'EXECUTE'
+  ), false)
+    AND COALESCE(has_schema_privilege(principals.app_role_oid, 'graphile_worker', 'USAGE'), false)
+    AS effective_app_can_reconcile_jobs,
   NOT COALESCE(has_table_privilege(
     principals.app_role_oid,
     graphile_objects.jobs_table_oid,
@@ -98,6 +113,7 @@ export const GRAPHILE_WORKER_READINESS_FIELDS = [
   'worker_role_exists',
   'effective_app_role_exists',
   'effective_app_can_enqueue',
+  'effective_app_can_reconcile_jobs',
   'effective_app_cannot_process',
   'app_login_cannot_enqueue_directly',
   'app_cannot_create',

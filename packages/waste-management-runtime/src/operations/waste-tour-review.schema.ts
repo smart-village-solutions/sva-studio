@@ -43,6 +43,30 @@ const buildSharedTourReviewStatements = (schema: string) => [
   `CREATE TRIGGER waste_tours_reset_review AFTER UPDATE OF interval_days ON ${schema}.waste_custom_recurrence_presets
     FOR EACH ROW WHEN (OLD.interval_days IS DISTINCT FROM NEW.interval_days)
     EXECUTE FUNCTION ${schema}.reset_preset_tour_review();`,
+  `CREATE OR REPLACE FUNCTION ${schema}.reset_holiday_rule_tour_review() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = pg_catalog AS $review$
+    DECLARE
+      old_schedule text[] := CASE
+        WHEN TG_OP = 'INSERT' THEN NULL
+        WHEN OLD.scope IS NOT NULL AND OLD.strategy IS NOT NULL
+          THEN ARRAY[OLD.holiday_date::text, OLD.scope, OLD.strategy]
+      END;
+      new_schedule text[] := CASE
+        WHEN TG_OP = 'DELETE' THEN NULL
+        WHEN NEW.scope IS NOT NULL AND NEW.strategy IS NOT NULL
+          THEN ARRAY[NEW.holiday_date::text, NEW.scope, NEW.strategy]
+      END;
+    BEGIN
+      IF old_schedule IS DISTINCT FROM new_schedule THEN
+        -- Configured holiday rules apply across the tenant.
+        PERFORM 1 FROM ${schema}.waste_tours ORDER BY id FOR NO KEY UPDATE;
+        UPDATE ${schema}.waste_tours SET reviewed_on = NULL WHERE reviewed_on IS NOT NULL;
+      END IF;
+      RETURN NULL;
+    END; $review$;`,
+  `DROP TRIGGER IF EXISTS waste_tours_reset_review ON ${schema}.waste_holiday_rules;`,
+  `CREATE TRIGGER waste_tours_reset_review AFTER INSERT OR UPDATE OR DELETE ON ${schema}.waste_holiday_rules
+    FOR EACH ROW EXECUTE FUNCTION ${schema}.reset_holiday_rule_tour_review();`,
 ];
 
 export const buildWasteTourReviewStatements = (schema: string) => [

@@ -21,6 +21,18 @@ describe('waste-management search params', () => {
     });
   });
 
+  it('validates the tour review filter', () => {
+    expect(normalizeWasteManagementSearchParams({ tourReview: 'reviewed' }).tourReview).toBe(
+      'reviewed'
+    );
+    expect(normalizeWasteManagementSearchParams({ tourReview: 'unreviewed' }).tourReview).toBe(
+      'unreviewed'
+    );
+    expect(
+      normalizeWasteManagementSearchParams({ tourReview: 'unknown' }).tourReview
+    ).toBeUndefined();
+  });
+
   it('defaults to 100 rows while honoring every explicit allowed page size', () => {
     expect(normalizeWasteManagementSearchParams({}).pageSize).toBe(100);
     for (const pageSize of [10, 25, 50, 100]) {

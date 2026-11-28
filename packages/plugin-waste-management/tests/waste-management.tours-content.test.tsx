@@ -502,7 +502,12 @@ describe('WasteToursContent', () => {
       screen.getByRole('columnheader', { name: 'tours.table.name' }).getAttribute('aria-sort')
     ).toBe('none');
     expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.reviewedOn' })).toBeTruthy();
+    const reviewColumn = screen.getByRole('columnheader', { name: 'tours.table.reviewedOn' });
+    const reviewSort = screen.getByRole('button', { name: 'tours.table.reviewedOn' });
+    fireEvent.click(reviewSort);
+    expect(reviewColumn.getAttribute('aria-sort')).toBe('ascending');
+    fireEvent.click(reviewSort);
+    expect(reviewColumn.getAttribute('aria-sort')).toBe('descending');
     expect(document.querySelector('time[datetime="2026-11-28"]')?.textContent).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
@@ -846,6 +851,9 @@ describe('WasteToursContent', () => {
     fireEvent.change(screen.getByLabelText('tours.filters.endDateToLabel'), {
       target: { value: '2026-10-31' },
     });
+    fireEvent.change(screen.getByLabelText('tours.filters.reviewLabel'), {
+      target: { value: 'reviewed' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
 
     expect(onFiltersChange).toHaveBeenCalledWith(
@@ -856,11 +864,12 @@ describe('WasteToursContent', () => {
       '2026-02-01',
       undefined,
       undefined,
-      '2026-10-31'
+      '2026-10-31',
+      'reviewed'
     );
   });
 
-  it('shows a direct reset action for active tour filters', () => {
+  it('shows and clears the review criterion when it is the only active tour filter', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([]);
 
     const onFiltersChange = vi.fn();
@@ -897,11 +906,12 @@ describe('WasteToursContent', () => {
         saving={false}
         page={1}
         pageSize={25}
-        query="Bio"
-        status="published"
-        tourValidityPeriod="current"
-        tourWasteFractionId={'fraction-2'}
-        firstDateFrom={'2026-01-01'}
+        query=""
+        status="all"
+        tourValidityPeriod="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        search={{ ...toursSearch, tourReview: 'reviewed' }}
         firstDateTo={undefined}
         endDateFrom={undefined}
         endDateTo={undefined}
@@ -913,6 +923,7 @@ describe('WasteToursContent', () => {
       />
     );
 
+    expect(screen.getByText('tours.filters.review.reviewed')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
     expect(onFiltersChange).toHaveBeenCalledWith(
       '',

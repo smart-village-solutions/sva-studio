@@ -52,6 +52,8 @@ export const wasteManagementPluginTranslationsENToursList = {
     nameLabel: 'Name',
     namePlaceholder: 'Search by name',
     statusLabel: 'Status',
+    reviewLabel: 'Review',
+    review: { all: 'All', unreviewed: 'Unreviewed', reviewed: 'Reviewed' },
     validityPeriodLabel: 'Validity period',
     fractionLabel: 'Waste fraction',
     fractionAll: 'All',

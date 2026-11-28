@@ -52,6 +52,8 @@ export const wasteManagementPluginTranslationsDEToursList = {
     nameLabel: 'Name',
     namePlaceholder: 'Nach Name suchen',
     statusLabel: 'Status',
+    reviewLabel: 'Prüfung',
+    review: { all: 'Alle', unreviewed: 'Ungeprüft', reviewed: 'Geprüft' },
     validityPeriodLabel: 'Gültigkeitszeitraum',
     fractionLabel: 'Abfallart',
     fractionAll: 'Alle',

@@ -20,9 +20,9 @@ Die Auswahl bleibt bei Filterwechseln erhalten; die Oberfläche nennt deshalb zu
 
 ## Fachliche Prüfung kennzeichnen
 
-In der Tourenliste zeigt **Geprüft am** das gespeicherte Prüfdatum. Bei ungeprüften Touren bleibt die Spalte leer. Wählen Sie eine oder mehrere Touren aus, öffnen Sie **Prüfung ändern** und wählen Sie **Heute geprüft** oder **Als ungeprüft markieren**. Das heutige Datum richtet sich nach der Zeitzone Europe/Berlin.
+In der Tourenliste zeigt **Geprüft am** das gespeicherte Prüfdatum. Bei ungeprüften Touren bleibt die Spalte leer. Wählen Sie eine oder mehrere Touren aus, öffnen Sie **Prüfung ändern** und wählen Sie **Heute geprüft** oder **Als ungeprüft markieren**. Das heutige Datum richtet sich nach der Zeitzone Europe/Berlin. Unter **Filter → Prüfung** wählen Sie **Alle**, **Ungeprüft** oder **Geprüft**. Ein Klick auf die Spaltenüberschrift **Geprüft am** wechselt zwischen aufsteigender und absteigender Sortierung. Ungeprüfte Touren stehen in beiden Richtungen am Ende.
 
-Änderungen an der Tour, ihren Abholpunkten, Einsätzen oder tourbezogenen Ausweichterminen löschen das Prüfdatum. Globale Terminverschiebungen und Änderungen am Intervall einer Turnusvorlage löschen es für die betroffenen Touren. Die Aktion **Status ändern** behält es bei. Neue, duplizierte und ins Folgejahr übernommene Touren beginnen ungeprüft.
+Änderungen an der Tour, ihren Abholpunkten, Einsätzen oder tourbezogenen Ausweichterminen löschen das Prüfdatum. Globale Terminverschiebungen und Änderungen am Intervall einer Turnusvorlage löschen es für die betroffenen Touren. Das Anlegen, Entfernen oder terminwirksame Ändern einer konfigurierten Feiertagsregel setzt die Prüfdaten aller Touren der Instanz zurück. Die Aktion **Status ändern** behält das Prüfdatum bei. Neue, duplizierte und ins Folgejahr übernommene Touren beginnen ungeprüft.
 
 ## Mehrere Touren bearbeiten
 

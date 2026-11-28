@@ -4,6 +4,7 @@ import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import {
   type WasteToursFilterDate,
   type WasteToursFilterFraction,
+  type WasteToursFilterReview,
   type WasteToursFilterStatus,
   type WasteToursFilterValidityPeriod,
   useWasteToursDraftFiltersState,
@@ -21,6 +22,7 @@ type UseWasteToursSelectionStateArgs = {
   readonly query: string;
   readonly status: WasteToursFilterStatus;
   readonly tourValidityPeriod: WasteToursFilterValidityPeriod;
+  readonly tourReview: WasteToursFilterReview;
   readonly tourWasteFractionId: WasteToursFilterFraction;
   readonly firstDateFrom: WasteToursFilterDate;
   readonly firstDateTo: WasteToursFilterDate;
@@ -117,6 +119,7 @@ export const useWasteToursSelectionState = ({
   query,
   status,
   tourValidityPeriod,
+  tourReview,
   tourWasteFractionId,
   firstDateFrom,
   firstDateTo,
@@ -130,30 +133,12 @@ export const useWasteToursSelectionState = ({
     page,
     pageSize,
   });
-  const {
-    draftQuery,
-    setDraftQuery,
-    draftStatus,
-    setDraftStatus,
-    draftTourValidityPeriod,
-    setDraftTourValidityPeriod,
-    draftTourWasteFractionId,
-    setDraftTourWasteFractionId,
-    draftFirstDateFrom,
-    setDraftFirstDateFrom,
-    draftFirstDateTo,
-    setDraftFirstDateTo,
-    draftEndDateFrom,
-    setDraftEndDateFrom,
-    draftEndDateTo,
-    setDraftEndDateTo,
-    hasActiveFilters,
-    syncDraftFilters,
-  } = useWasteToursDraftFiltersState({
+  const draftFilters = useWasteToursDraftFiltersState({
     filterDialogOpen: dialogState.filterDialogOpen,
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -164,23 +149,6 @@ export const useWasteToursSelectionState = ({
   return {
     ...dialogState,
     ...visibleSelectionState,
-    draftQuery,
-    setDraftQuery,
-    draftStatus,
-    setDraftStatus,
-    draftTourValidityPeriod,
-    setDraftTourValidityPeriod,
-    draftTourWasteFractionId,
-    setDraftTourWasteFractionId,
-    draftFirstDateFrom,
-    setDraftFirstDateFrom,
-    draftFirstDateTo,
-    setDraftFirstDateTo,
-    draftEndDateFrom,
-    setDraftEndDateFrom,
-    draftEndDateTo,
-    setDraftEndDateTo,
-    hasActiveFilters,
-    syncDraftFilters,
+    ...draftFilters,
   };
 };

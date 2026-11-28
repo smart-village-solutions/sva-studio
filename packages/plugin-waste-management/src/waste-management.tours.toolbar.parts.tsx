@@ -3,13 +3,17 @@ import type { WasteTourStatus } from '@sva/waste-management-contracts';
 import { WasteListFilterDialog } from './waste-management.list-filter-dialog.js';
 
 import { WasteToursToolbarFilterFields } from './waste-management.tours.toolbar.filter-fields.js';
-import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import type {
+  WasteManagementSearchParams,
+  WasteManagementTourValidityPeriod,
+} from './search-params.js';
 
 type WasteToursToolbarFiltersProps = {
   readonly filterDialogOpen: boolean;
   readonly query: string;
   readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly tourReview: WasteManagementSearchParams['tourReview'];
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -19,6 +23,7 @@ type WasteToursToolbarFiltersProps = {
   readonly draftQuery: string;
   readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly draftTourReview: WasteManagementSearchParams['tourReview'];
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -28,6 +33,7 @@ type WasteToursToolbarFiltersProps = {
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
+  readonly onDraftTourReviewChange: (value: WasteManagementSearchParams['tourReview']) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -36,48 +42,11 @@ type WasteToursToolbarFiltersProps = {
   readonly onApplyFilters: () => void;
 };
 
-const toWasteToursToolbarFilterFieldProps = ({
-  fractions,
-  draftQuery,
-  draftStatus,
-  draftTourValidityPeriod,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourValidityPeriodChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-}: WasteToursToolbarFiltersProps) => ({
-  fractions,
-  draftQuery,
-  draftStatus,
-  draftTourValidityPeriod,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourValidityPeriodChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-});
-
 const hasWasteToursDraftFilterChanges = ({
   query,
   status,
   tourValidityPeriod,
+  tourReview,
   tourWasteFractionId,
   firstDateFrom,
   firstDateTo,
@@ -86,6 +55,7 @@ const hasWasteToursDraftFilterChanges = ({
   draftQuery,
   draftStatus,
   draftTourValidityPeriod,
+  draftTourReview,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -95,6 +65,7 @@ const hasWasteToursDraftFilterChanges = ({
   readonly query: string;
   readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly tourReview: WasteManagementSearchParams['tourReview'];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
   readonly firstDateTo: string | undefined;
@@ -103,6 +74,7 @@ const hasWasteToursDraftFilterChanges = ({
   readonly draftQuery: string;
   readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly draftTourReview: WasteManagementSearchParams['tourReview'];
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -112,6 +84,7 @@ const hasWasteToursDraftFilterChanges = ({
   draftQuery !== query ||
   draftStatus !== status ||
   draftTourValidityPeriod !== tourValidityPeriod ||
+  draftTourReview !== tourReview ||
   draftTourWasteFractionId !== tourWasteFractionId ||
   draftFirstDateFrom !== firstDateFrom ||
   draftFirstDateTo !== firstDateTo ||
@@ -121,7 +94,6 @@ const hasWasteToursDraftFilterChanges = ({
 export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const hasDraftChanges = hasWasteToursDraftFilterChanges(props);
-  const filterFieldProps = toWasteToursToolbarFilterFieldProps(props);
 
   const invalidRange = [
     [props.draftFirstDateFrom, props.draftFirstDateTo],
@@ -141,6 +113,7 @@ export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) =
         props.onDraftQueryChange('');
         props.onDraftStatusChange('all');
         props.onDraftTourValidityPeriodChange('all');
+        props.onDraftTourReviewChange(undefined);
         props.onDraftTourWasteFractionIdChange(undefined);
         props.onDraftFirstDateFromChange(undefined);
         props.onDraftFirstDateToChange(undefined);
@@ -148,7 +121,7 @@ export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) =
         props.onDraftEndDateToChange(undefined);
       }}
     >
-      <WasteToursToolbarFilterFields {...filterFieldProps} />
+      <WasteToursToolbarFilterFields {...props} />
       {invalidRange ? (
         <p role="alert" className="text-sm text-destructive">
           {pt('filters.invalidRange')}

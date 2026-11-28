@@ -14,6 +14,7 @@ export const tourSortFields = [
   'shifts',
   'locations',
   'status',
+  'reviewedOn',
 ] as const;
 export type WasteToursSortField = (typeof tourSortFields)[number];
 export type WasteToursSortDirection = 'asc' | 'desc';
@@ -96,6 +97,7 @@ const tourColumnWidths: Record<WasteToursSortField, string> = {
   shifts: 'w-[168px]',
   locations: 'w-[94px]',
   status: 'w-[92px]',
+  reviewedOn: 'w-[110px]',
 };
 
 export const WasteToursTableHeader = ({
@@ -137,9 +139,6 @@ export const WasteToursTableHeader = ({
             onSortChange={onSortChange}
           />
         ))}
-        <th scope="col" className="w-[110px] whitespace-nowrap px-3 py-3 font-semibold">
-          {pt('tours.table.reviewedOn')}
-        </th>
         <th scope="col" className="w-[150px] px-3 py-3 text-right">
           {pt('tours.table.actions')}
         </th>

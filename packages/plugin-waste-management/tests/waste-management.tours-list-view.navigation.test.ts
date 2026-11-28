@@ -158,7 +158,8 @@ describe('waste-management.tours-list-view.navigation', () => {
         '2026-02-01',
         '2026-03-31',
         '2026-10-01',
-        '2026-11-30'
+        '2026-11-30',
+        'unreviewed'
       )
     ).toEqual({
       ...search,
@@ -170,6 +171,7 @@ describe('waste-management.tours-list-view.navigation', () => {
       firstDateTo: '2026-03-31',
       endDateFrom: '2026-10-01',
       endDateTo: '2026-11-30',
+      tourReview: 'unreviewed',
       page: 1,
     });
   });

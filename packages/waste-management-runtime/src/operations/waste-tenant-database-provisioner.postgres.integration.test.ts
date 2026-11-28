@@ -178,6 +178,55 @@ const verifySharedTourReview = async (client: Pool) => {
   await markReviewed();
   await client.query('DELETE FROM waste_global_date_shifts WHERE id = $1', [shift]);
   expect(await readReviewedTourIds()).toEqual([]);
+  await verifyHolidayTourReview(client, tourIds);
+};
+
+const verifyHolidayTourReview = async (client: Pool, tourIds: readonly string[]) => {
+  const holidayId = randomUUID();
+  const markReviewed = async () => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds,
+      review: 'today',
+    });
+    await client.query(text, [...values]);
+  };
+  const readReviewedCount = async () =>
+    (
+      await client.query<{ count: number }>(
+        'SELECT COUNT(*)::int AS count FROM waste_tours WHERE id = ANY($1::uuid[]) AND reviewed_on IS NOT NULL',
+        [tourIds]
+      )
+    ).rows[0]?.count;
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_holiday_rules (id, holiday_date, holiday_name, year, state_code,
+       source_status, configuration_status, conflict_status)
+     VALUES ($1, '2027-01-01', 'Neujahr', 2027, 'BB', 'confirmed', 'draft', 'none')`,
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(tourIds.length);
+
+  await client.query(
+    "UPDATE waste_holiday_rules SET scope = 'full-week', strategy = 'postpone', configuration_status = 'configured' WHERE id = $1",
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(0);
+
+  await markReviewed();
+  await client.query(
+    "UPDATE waste_holiday_rules SET source_status = 'not-confirmed', holiday_name = 'Neujahrstag', updated_at = NOW() WHERE id = $1",
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(tourIds.length);
+  await client.query("UPDATE waste_holiday_rules SET strategy = 'advance' WHERE id = $1", [
+    holidayId,
+  ]);
+  expect(await readReviewedCount()).toBe(0);
+
+  await markReviewed();
+  await client.query('DELETE FROM waste_holiday_rules WHERE id = $1', [holidayId]);
+  expect(await readReviewedCount()).toBe(0);
 };
 
 describe('Waste provisioning with a restricted PostgreSQL principal', () => {

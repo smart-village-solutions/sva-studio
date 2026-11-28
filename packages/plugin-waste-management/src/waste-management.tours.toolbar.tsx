@@ -25,6 +25,7 @@ type WasteToursToolbarProps = {
   readonly query: string;
   readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly tourReview: WasteManagementSearchParams['tourReview'];
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -34,6 +35,7 @@ type WasteToursToolbarProps = {
   readonly draftQuery: string;
   readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly draftTourReview: WasteManagementSearchParams['tourReview'];
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -55,6 +57,7 @@ type WasteToursToolbarProps = {
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
+  readonly onDraftTourReviewChange: (value: WasteManagementSearchParams['tourReview']) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -69,6 +72,7 @@ type WasteToursToolbarProps = {
         | 'q'
         | 'tourStatus'
         | 'tourValidityPeriod'
+        | 'tourReview'
         | 'tourWasteFractionId'
         | 'firstDateFrom'
         | 'firstDateTo'
@@ -115,70 +119,9 @@ const toWasteToursToolbarActionsProps = ({
   onResetFilters,
 });
 
-const toWasteToursToolbarFiltersProps = ({
-  filterDialogOpen,
-  query,
-  status,
-  tourValidityPeriod,
-  fractions,
-  tourWasteFractionId,
-  firstDateFrom,
-  firstDateTo,
-  endDateFrom,
-  endDateTo,
-  draftQuery,
-  draftStatus,
-  draftTourValidityPeriod,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  onFilterDialogOpenChange,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourValidityPeriodChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-  onApplyFilters,
-}: WasteToursToolbarProps) => ({
-  filterDialogOpen,
-  query,
-  status,
-  tourValidityPeriod,
-  fractions,
-  tourWasteFractionId,
-  firstDateFrom,
-  firstDateTo,
-  endDateFrom,
-  endDateTo,
-  draftQuery,
-  draftStatus,
-  draftTourValidityPeriod,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  onFilterDialogOpenChange,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourValidityPeriodChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-  onApplyFilters,
-});
-
 export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
   const { onOpenCreateDialog, onOpenAnnualTransfer, canTransferAnnualTours } = props;
   const actionsProps = toWasteToursToolbarActionsProps(props);
-  const filtersProps = toWasteToursToolbarFiltersProps(props);
   const pt = usePluginTranslation('wasteManagement');
   const selectedFraction = props.fractions.find(
     (fraction) => fraction.id === props.tourWasteFractionId
@@ -190,6 +133,11 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
       id: 'status',
       label: props.status !== 'all' ? pt(`tours.status.${props.status}`) : '',
       clear: () => props.onSetCriterion({ tourStatus: 'all' }),
+    },
+    {
+      id: 'review',
+      label: props.tourReview ? pt(`tours.filters.review.${props.tourReview}`) : '',
+      clear: () => props.onSetCriterion({ tourReview: undefined }),
     },
     {
       id: 'validity',
@@ -245,7 +193,7 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
         onCommit={(q) => props.onSetCriterion({ q })}
       />
       <WasteToursFilterActions {...actionsProps} />
-      <WasteToursToolbarFilters {...filtersProps} />
+      <WasteToursToolbarFilters {...props} />
     </WastePanelTableTopBar>
   );
 };

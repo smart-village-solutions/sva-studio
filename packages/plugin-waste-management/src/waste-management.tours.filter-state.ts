@@ -4,6 +4,7 @@ import type { WasteManagementSearchParams } from './search-params.js';
 
 export type WasteToursFilterStatus = WasteManagementSearchParams['tourStatus'];
 export type WasteToursFilterValidityPeriod = WasteManagementSearchParams['tourValidityPeriod'];
+export type WasteToursFilterReview = WasteManagementSearchParams['tourReview'];
 export type WasteToursFilterDate = WasteManagementSearchParams['firstDateFrom'];
 export type WasteToursFilterFraction = WasteManagementSearchParams['tourWasteFractionId'];
 
@@ -12,6 +13,7 @@ type WasteToursDraftFiltersArgs = {
   readonly query: string;
   readonly status: WasteToursFilterStatus;
   readonly tourValidityPeriod: WasteToursFilterValidityPeriod;
+  readonly tourReview: WasteToursFilterReview;
   readonly tourWasteFractionId: WasteToursFilterFraction;
   readonly firstDateFrom: WasteToursFilterDate;
   readonly firstDateTo: WasteToursFilterDate;
@@ -23,6 +25,7 @@ const hasActiveWasteToursFilters = ({
   query,
   status,
   tourValidityPeriod,
+  tourReview,
   tourWasteFractionId,
   firstDateFrom,
   firstDateTo,
@@ -32,26 +35,30 @@ const hasActiveWasteToursFilters = ({
   query.trim().length > 0 ||
   status !== 'all' ||
   tourValidityPeriod !== 'all' ||
+  tourReview !== undefined ||
   tourWasteFractionId !== undefined ||
   firstDateFrom !== undefined ||
   firstDateTo !== undefined ||
   endDateFrom !== undefined ||
   endDateTo !== undefined;
 
-export const useWasteToursDraftFiltersState = ({
-  filterDialogOpen,
-  query,
-  status,
-  tourValidityPeriod,
-  tourWasteFractionId,
-  firstDateFrom,
-  firstDateTo,
-  endDateFrom,
-  endDateTo,
-}: WasteToursDraftFiltersArgs) => {
+export const useWasteToursDraftFiltersState = (args: WasteToursDraftFiltersArgs) => {
+  const {
+    filterDialogOpen,
+    query,
+    status,
+    tourValidityPeriod,
+    tourReview,
+    tourWasteFractionId,
+    firstDateFrom,
+    firstDateTo,
+    endDateFrom,
+    endDateTo,
+  } = args;
   const [draftQuery, setDraftQuery] = useState(query);
   const [draftStatus, setDraftStatus] = useState(status);
   const [draftTourValidityPeriod, setDraftTourValidityPeriod] = useState(tourValidityPeriod);
+  const [draftTourReview, setDraftTourReview] = useState(tourReview);
   const [draftTourWasteFractionId, setDraftTourWasteFractionId] =
     useState<WasteToursFilterFraction>(tourWasteFractionId);
   const [draftFirstDateFrom, setDraftFirstDateFrom] = useState<WasteToursFilterDate>(firstDateFrom);
@@ -63,6 +70,7 @@ export const useWasteToursDraftFiltersState = ({
     setDraftQuery(query);
     setDraftStatus(status);
     setDraftTourValidityPeriod(tourValidityPeriod);
+    setDraftTourReview(tourReview);
     setDraftTourWasteFractionId(tourWasteFractionId);
     setDraftFirstDateFrom(firstDateFrom);
     setDraftFirstDateTo(firstDateTo);
@@ -83,6 +91,7 @@ export const useWasteToursDraftFiltersState = ({
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
   ]);
 
@@ -92,7 +101,9 @@ export const useWasteToursDraftFiltersState = ({
     draftStatus,
     setDraftStatus,
     draftTourValidityPeriod,
+    draftTourReview,
     setDraftTourValidityPeriod,
+    setDraftTourReview,
     draftTourWasteFractionId,
     setDraftTourWasteFractionId,
     draftFirstDateFrom,
@@ -103,16 +114,7 @@ export const useWasteToursDraftFiltersState = ({
     setDraftEndDateFrom,
     draftEndDateTo,
     setDraftEndDateTo,
-    hasActiveFilters: hasActiveWasteToursFilters({
-      query,
-      status,
-      tourValidityPeriod,
-      tourWasteFractionId,
-      firstDateFrom,
-      firstDateTo,
-      endDateFrom,
-      endDateTo,
-    }),
+    hasActiveFilters: hasActiveWasteToursFilters(args),
     syncDraftFilters,
   };
 };

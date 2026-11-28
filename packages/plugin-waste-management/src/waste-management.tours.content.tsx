@@ -35,10 +35,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onOpenAssignments,
     onOpenCalendar,
     onOpenEditFraction,
-    onDeleteTour,
-    onDeleteTours,
-    onUpdateTourValidityBulk,
-    onUpdateTourStatusBulk,
     canDuplicateTour = false,
     canManageScheduling = false,
     search,
@@ -60,6 +56,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onStatusChange,
     onFiltersChange,
   } = props;
+  const tourReview = search?.tourReview;
   const pt = usePluginTranslation('wasteManagement');
   const [tourPendingStatusChange, setTourPendingStatusChange] = useState<
     (typeof tours)[number] | null
@@ -75,6 +72,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setDraftQuery,
     setDraftStatus,
     setDraftTourValidityPeriod,
+    setDraftTourReview,
     setDraftTourWasteFractionId,
     setDraftFirstDateFrom,
     setDraftFirstDateTo,
@@ -107,6 +105,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -123,6 +122,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -137,6 +137,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onDraftQueryChange: setDraftQuery,
     onDraftStatusChange: setDraftStatus,
     onDraftTourValidityPeriodChange: setDraftTourValidityPeriod,
+    onDraftTourReviewChange: setDraftTourReview,
     onDraftTourWasteFractionIdChange: setDraftTourWasteFractionId,
     onDraftFirstDateFromChange: setDraftFirstDateFrom,
     onDraftFirstDateToChange: setDraftFirstDateTo,
@@ -156,6 +157,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
           q: query,
           tourStatus: status,
           tourValidityPeriod,
+          tourReview,
           tourWasteFractionId,
           firstDateFrom,
           firstDateTo,
@@ -230,6 +232,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       />
       {merge.dialog}
       <WasteToursContentDialogs
+        {...props}
         annualTransferDialog={annualTransfer.dialog}
         allTours={allTours}
         saving={saving}
@@ -245,10 +248,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         setBulkValidityOpen={setBulkValidityOpen}
         setBulkStatusMode={setBulkStatusMode}
         setTourPendingStatusChange={setTourPendingStatusChange}
-        onDeleteTour={onDeleteTour}
-        onDeleteTours={onDeleteTours}
-        onUpdateTourValidityBulk={onUpdateTourValidityBulk}
-        onUpdateTourStatusBulk={onUpdateTourStatusBulk}
         fallbackFocusRef={deleteFocusFallbackRef}
       />
     </div>

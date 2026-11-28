@@ -187,6 +187,18 @@ describe('personal interface HTTP routes', () => {
     expect(unsupported?.status).toBe(405);
   });
 
+  it('returns a conflict when the SSF pilot prevents interface deletion', async () => {
+    const code = 'ssf_translation_disable_before_cutover';
+    state.remove.mockRejectedValueOnce(new Error(code));
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces/ssf-1', { method: 'DELETE' })
+    );
+
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toEqual({ error: { code } });
+  });
+
   it('updates a migrated DeepL interface without changing its id and redacts its API key', async () => {
     const id = 'deepl:de-musterhausen';
     const draft = {

@@ -170,7 +170,8 @@ const responseStatusFor = (error: unknown): number => {
   if (
     message.includes('conflict') ||
     message === 'meilisearch_already_configured' ||
-    message === 'meilisearch_disable_before_cutover'
+    message === 'meilisearch_disable_before_cutover' ||
+    message === 'ssf_translation_disable_before_cutover'
   )
     return 409;
   if (message.startsWith('meilisearch_')) return 400;

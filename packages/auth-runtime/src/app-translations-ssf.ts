@@ -124,6 +124,10 @@ export const translateSsfValues = (
 ): Promise<CatalogValue[]> =>
   translateProtectedValues(values, {
     maxItems: 10,
+    errors: {
+      tooLarge: 'ssf_translation_too_large',
+      invalidResponse: 'ssf_translation_invalid_response',
+    },
     skipWhitespace: true,
     fits: (texts) =>
       texts.reduce((count, text) => count + Array.from(text).length, 0) <= 5000 &&

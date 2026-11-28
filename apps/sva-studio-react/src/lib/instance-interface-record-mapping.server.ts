@@ -7,7 +7,6 @@ import type {
 } from '@sva/core';
 import type {
   InstanceInterfaceDeepL,
-  InstanceInterfaceSsf,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
   InstanceInterfacePostgresql,
@@ -68,7 +67,10 @@ export type StoredEntry =
       'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
     >
   | StoredDeepL
-  | Omit<InstanceInterfaceSsf, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+  | Omit<
+      Extract<InstanceInterface, { type: 'ssf_translation' }>,
+      'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+    >
   | StoredS3
   | StoredSupabase
   | StoredPostgresql
@@ -164,6 +166,31 @@ const mapMeilisearchRecord = (
   };
 };
 
+const mapTranslationRecord = (
+  record: ExternalInterfaceRecord,
+  createdAt: string,
+  updatedAt: string
+): PersistedStoredEntry | null => {
+  const shared = {
+    id: record.id,
+    instanceId: record.instanceId,
+    name: record.displayName,
+    enabled: record.enabled,
+    apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+    createdAt,
+    updatedAt,
+    visibleStatus: record.visibleStatus,
+    lastCheckedAt: record.lastCheckedAt,
+    lastCheckErrorCode: record.lastCheckErrorCode,
+  };
+  if (record.typeKey === 'ssf_translation') {
+    const config = readSsfTranslationSettings(record.publicConfig);
+    return config ? { ...shared, type: 'ssf_translation', config } : null;
+  }
+  const config = readDeepLSettings(record.publicConfig);
+  return config ? { ...shared, type: 'deepl', config } : null;
+};
+
 export const mapRecordToStoredEntry = (
   record: ExternalInterfaceRecord
 ): PersistedStoredEntry | null => {
@@ -172,42 +199,8 @@ export const mapRecordToStoredEntry = (
 
   if (record.typeKey === 'meilisearch') return mapMeilisearchRecord(record, createdAt, updatedAt);
 
-  if (record.typeKey === 'ssf_translation') {
-    const config = readSsfTranslationSettings(record.publicConfig);
-    if (!config) return null;
-    return {
-      id: record.id,
-      instanceId: record.instanceId,
-      type: 'ssf_translation',
-      name: record.displayName,
-      enabled: record.enabled,
-      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
-      config,
-      createdAt,
-      updatedAt,
-      visibleStatus: record.visibleStatus,
-      lastCheckedAt: record.lastCheckedAt,
-      lastCheckErrorCode: record.lastCheckErrorCode,
-    };
-  }
-  if (record.typeKey === 'deepl') {
-    const config = readDeepLSettings(record.publicConfig);
-    if (!config) return null;
-    return {
-      id: record.id,
-      instanceId: record.instanceId,
-      type: 'deepl',
-      name: record.displayName,
-      enabled: record.enabled,
-      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
-      config,
-      createdAt,
-      updatedAt,
-      visibleStatus: record.visibleStatus,
-      lastCheckedAt: record.lastCheckedAt,
-      lastCheckErrorCode: record.lastCheckErrorCode,
-    };
-  }
+  if (record.typeKey === 'ssf_translation' || record.typeKey === 'deepl')
+    return mapTranslationRecord(record, createdAt, updatedAt);
   if (record.typeKey === 's3') {
     return {
       id: record.id,

@@ -1,3 +1,4 @@
+import { ssfInterfaceDraftSchema } from './instance-interface-ssf';
 import { meilisearchInterfaceDraftSchema } from './instance-interface-meilisearch.js';
 import { createServerFn } from '@tanstack/react-start';
 
@@ -36,7 +37,6 @@ import {
 } from './interfaces-api-list';
 import {
   deepLInterfaceDraftSchema,
-  ssfInterfaceDraftSchema,
   type InstanceInterface,
   type InstanceInterfaceDraft,
 } from './instance-interfaces';

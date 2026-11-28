@@ -1,3 +1,4 @@
+import { ssfInterfaceDraftSchema } from './instance-interface-ssf';
 import { z } from 'zod';
 import {
   emptyMeilisearchDraft,
@@ -9,7 +10,7 @@ import {
   appTranslationLanguage,
   isAppTranslationLocale,
 } from '@sva/core';
-import { isSsfTranslationLocaleList, type SsfTranslationSettings } from '@sva/core';
+import { type SsfTranslationSettings } from '@sva/core';
 import type { DeepLSettings, MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 
 export type InstanceInterfaceType =
@@ -132,26 +133,8 @@ export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
 export type InstanceInterfaceDeepL = InstanceInterfaceBase &
   Readonly<{ type: 'deepl'; apiKeyConfigured: boolean; config: DeepLSettings }>;
 
-export type InstanceInterfaceSsf = InstanceInterfaceBase &
+type InstanceInterfaceSsf = InstanceInterfaceBase &
   Readonly<{ type: 'ssf_translation'; apiKeyConfigured: boolean; config: SsfTranslationSettings }>;
-
-export const ssfInterfaceDraftSchema = z
-  .object({
-    type: z.literal('ssf_translation'),
-    name: z.string().trim().min(1).max(120),
-    enabled: z.boolean(),
-    config: z
-      .object({
-        origin: z.string().trim().min(1).max(512),
-        apiKey: z.string().max(4096),
-        revision: z.string().min(1).max(128),
-        selectedLocales: z.custom<import('@sva/core').SsfTranslationTarget[]>(
-          isSsfTranslationLocaleList
-        ),
-      })
-      .strict(),
-  })
-  .strict();
 
 export type InstanceInterface =
   | InstanceInterfaceSsf

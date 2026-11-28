@@ -68,6 +68,13 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
     : t('interfaces.edit.title');
 
+const translationEntries = (state: EditState) => {
+  if (state.mode !== 'edit') return {};
+  if (state.entry.type === 'deepl') return { deepLEntry: state.entry };
+  if (state.entry.type === 'ssf_translation') return { ssfEntry: state.entry };
+  return {};
+};
+
 const hasStoredMeilisearchKey = (editState: EditState): boolean =>
   editState.mode === 'edit' &&
   editState.entry.type === 'meilisearch' &&
@@ -230,16 +237,7 @@ export const InterfacesPage = () => {
             <InterfaceForm
               draft={editState.draft}
               hasStoredMeilisearchKey={hasStoredMeilisearchKey(editState)}
-              deepLEntry={
-                editState.mode === 'edit' && editState.entry.type === 'deepl'
-                  ? editState.entry
-                  : undefined
-              }
-              ssfEntry={
-                editState.mode === 'edit' && editState.entry.type === 'ssf_translation'
-                  ? editState.entry
-                  : undefined
-              }
+              {...translationEntries(editState)}
               deepLChecking={deepLChecking}
               onCheckDeepL={() => void onCheckDeepL()}
               hasStoredS3SecretAccessKey={

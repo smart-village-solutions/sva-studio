@@ -1,10 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  isSsfTranslationApiKey,
-  parseSsfTranslationOrigin,
-  readSsfTranslationSettings,
-  type ExternalInterfaceRecord,
-} from '@sva/core';
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
@@ -23,6 +18,7 @@ import {
 import { buildMailTransportRecord } from './instance-interface-mail-record.server.js';
 import { buildMapGeocodingRecord } from './instance-interface-map-record.server.js';
 import { buildDeepLRecord } from './instance-interface-deepl-record.server.js';
+import { buildSsfTranslationRecord } from './instance-interface-ssf-record.server.js';
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
 const buildS3Record = (input: {
@@ -245,6 +241,31 @@ const buildMeilisearchRecord = async (input: {
   };
 };
 
+const readPreviousSecrets = (
+  input: Parameters<typeof buildRecordFromDraft>[0],
+  existing: ExternalInterfaceRecord | null,
+  interfaceId: string
+): Record<string, string> => {
+  try {
+    return existing ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId) : {};
+  } catch (error) {
+    logger.error('Failed to read stored external interface secrets', {
+      operation: 'build_interface_record',
+      workspace_id: input.instanceId,
+      interface_type: input.draft.type,
+      existing_interface_id: input.existingId,
+      interface_id: interfaceId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    if (
+      (input.draft.type === 'deepl' || input.draft.type === 'ssf_translation') &&
+      input.draft.config.apiKey.trim()
+    )
+      return {};
+    throw error;
+  }
+};
+
 export const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<
@@ -293,27 +314,7 @@ export const buildRecordFromDraft = async (input: {
   }
 
   const interfaceId = existing?.id ?? randomUUID();
-  let previousSecrets: Record<string, string>;
-  try {
-    previousSecrets = existing
-      ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId)
-      : {};
-  } catch (error) {
-    logger.error('Failed to read stored external interface secrets', {
-      operation: 'build_interface_record',
-      workspace_id: input.instanceId,
-      interface_type: input.draft.type,
-      existing_interface_id: input.existingId,
-      interface_id: interfaceId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-    if (
-      (input.draft.type === 'deepl' || input.draft.type === 'ssf_translation') &&
-      input.draft.config.apiKey.trim()
-    )
-      previousSecrets = {};
-    else throw error;
-  }
+  const previousSecrets = readPreviousSecrets(input, existing, interfaceId);
 
   if (existing && existing.typeKey !== mapStoredTypeToKey(input.draft.type)) {
     logger.warn('Rejected external interface type change', {
@@ -342,76 +343,8 @@ export const buildRecordFromDraft = async (input: {
   } as const;
 
   if (input.draft.type === 'deepl') return buildDeepLRecord({ ...sharedInput, draft: input.draft });
-  if (input.draft.type === 'ssf_translation') {
-    if (defaultRecord && !existing) throw new Error('interface_conflict');
-    const { draft } = input;
-    const previous = existing ? readSsfTranslationSettings(existing.publicConfig) : undefined;
-    if (draft.config.revision !== (previous?.revision ?? '0'))
-      throw new Error('interface_conflict');
-    const origin = parseSsfTranslationOrigin(draft.config.origin);
-    const replacementKey = draft.config.apiKey.trim();
-    if (previous && origin !== previous.origin && previousSecrets.apiKey && !replacementKey)
-      throw new Error('ssf_translation_origin_key_required');
-    const apiKey = replacementKey || previousSecrets.apiKey || '';
-    if (!origin || ((draft.enabled || apiKey) && !isSsfTranslationApiKey(apiKey)))
-      throw new Error('ssf_translation_invalid_config');
-    const changed =
-      !previous ||
-      origin !== previous.origin ||
-      apiKey !== previousSecrets.apiKey ||
-      (!existing?.enabled && draft.enabled);
-    const selectedLocales = draft.config.selectedLocales;
-    const availableLanguages = changed ? [] : previous.availableLanguages;
-    const canSelect =
-      !changed &&
-      existing?.lastCheckStatus === 'succeeded' &&
-      previous.verifiedCredentialRevision === previous.credentialRevision;
-    if (
-      selectedLocales.some(
-        (locale) =>
-          !previous?.selectedLocales.includes(locale) &&
-          !(canSelect && availableLanguages.includes(locale))
-      )
-    )
-      throw new Error('ssf_translation_invalid_config');
-    const secretConfigCiphertext = buildSecretCiphertext({
-      interfaceId,
-      secretConfig: apiKey ? { apiKey } : {},
-    });
-    if (apiKey && !secretConfigCiphertext) throw new Error('deepl_secret_unavailable');
-    return {
-      id: interfaceId,
-      instanceId: input.instanceId,
-      typeKey: 'ssf_translation',
-      ownerKind: 'host',
-      ownerId: 'host',
-      displayName: draft.name.trim(),
-      alias: 'ssf_translation',
-      enabled: draft.enabled,
-      isDefault: true,
-      category: 'api',
-      baseUrl: origin,
-      authMode: 'api_key',
-      publicConfig: {
-        origin,
-        selectedLocales,
-        availableLanguages,
-        revision: randomUUID(),
-        credentialRevision: changed ? randomUUID() : previous.credentialRevision,
-        verifiedCredentialRevision: changed ? null : (previous.verifiedCredentialRevision ?? null),
-      },
-      secretConfigCiphertext,
-      statusCheckKind: 'ssf_translation',
-      visibleStatus: !draft.enabled
-        ? 'disabled'
-        : changed
-          ? 'unknown'
-          : (existing?.visibleStatus ?? 'unknown'),
-      lastCheckedAt: changed ? undefined : existing?.lastCheckedAt,
-      lastCheckStatus: changed ? undefined : existing?.lastCheckStatus,
-      lastCheckErrorCode: changed ? undefined : existing?.lastCheckErrorCode,
-    };
-  }
+  if (input.draft.type === 'ssf_translation')
+    return buildSsfTranslationRecord({ ...sharedInput, draft: input.draft });
   if (input.draft.type === 'meilisearch') {
     if (defaultRecord && !existing) throw new Error('meilisearch_already_configured');
     return buildMeilisearchRecord({ ...sharedInput, draft: input.draft });

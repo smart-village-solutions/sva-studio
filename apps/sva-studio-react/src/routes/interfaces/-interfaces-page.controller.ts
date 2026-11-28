@@ -1,3 +1,4 @@
+import { useTranslationInterfaceCheck } from './-interfaces-page.translation-check';
 import { meilisearchInterfaceDraftSchema } from '../../lib/instance-interface-meilisearch';
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
@@ -234,8 +235,6 @@ export const useInterfacesPageController = () => {
     instanceId,
     translateInterfacesErrorMessage
   );
-  const [deepLChecking, setDeepLChecking] = React.useState(false);
-  const [deepLCheckFailed, setDeepLCheckFailed] = React.useState(false);
   const saveFeedback = useStudioSaveFeedback();
 
   const refresh = React.useCallback(
@@ -276,6 +275,16 @@ export const useInterfacesPageController = () => {
   }, [refresh]);
 
   const deletion = useInterfaceDeletion(instanceId, refresh, translateInterfacesErrorMessage);
+
+  const { onCheckDeepL, deepLChecking, deepLCheckFailed, setDeepLCheckFailed } =
+    useTranslationInterfaceCheck({
+      editState,
+      checkDeepL,
+      refresh,
+      setEditState,
+      setSaveErrorMessage,
+      translateInterfacesErrorMessage,
+    });
 
   const onConfirmType = () => {
     saveFeedback.reset();
@@ -332,58 +341,6 @@ export const useInterfacesPageController = () => {
     }
   };
 
-  const onCheckDeepL = async () => {
-    if (
-      editState.mode !== 'edit' ||
-      (editState.entry.type !== 'deepl' && editState.entry.type !== 'ssf_translation')
-    )
-      return;
-    const isSsf = editState.entry.type === 'ssf_translation';
-    setDeepLChecking(true);
-    setDeepLCheckFailed(false);
-    setSaveErrorMessage(null);
-    try {
-      const result = await checkDeepL({
-        data: { id: editState.entry.id, ...(isSsf ? { type: 'ssf_translation' as const } : {}) },
-      });
-      const updated = await refresh(false);
-      if (!updated) throw new Error(t('interfaces.deepl.refreshFailed'));
-      const entry = updated?.entries.find((item) => item.id === editState.entry.id);
-      if (entry)
-        setEditState((current) =>
-          current.mode === 'edit' && current.entry.id === entry.id ? { ...current, entry } : current
-        );
-      if (!result.ok) {
-        setDeepLCheckFailed(true);
-        setSaveErrorMessage(
-          translateInterfacesErrorMessage(
-            new Error(
-              result.errorCode ?? (isSsf ? 'ssf_translation_unavailable' : 'deepl_unavailable')
-            ),
-            t(
-              isSsf
-                ? 'interfaces.ssf.errors.ssf_translation_unavailable'
-                : 'interfaces.deepl.checkFailed'
-            )
-          )
-        );
-      }
-    } catch (error) {
-      setDeepLCheckFailed(true);
-      setSaveErrorMessage(
-        translateInterfacesErrorMessage(
-          error,
-          t(
-            isSsf
-              ? 'interfaces.ssf.errors.ssf_translation_unavailable'
-              : 'interfaces.deepl.checkFailed'
-          )
-        )
-      );
-    } finally {
-      setDeepLChecking(false);
-    }
-  };
   return {
     deepLChecking,
     onRetryForm: deepLCheckFailed ? onCheckDeepL : onSaveDraft,

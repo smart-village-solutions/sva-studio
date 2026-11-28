@@ -30,9 +30,8 @@ export const checkDeepLInterfaceForRequest = async (
         'check_deepl_interface',
         data.instanceId
       );
-      const { checkDeepLLanguages, checkSsfLanguages, readConfiguredPluginTenantAccess } =
-        await import('@sva/auth-runtime/server');
-      const access = await readConfiguredPluginTenantAccess(instanceId, 'app-translations');
+      const runtime = await import('@sva/auth-runtime/server');
+      const access = await runtime.readConfiguredPluginTenantAccess(instanceId, 'app-translations');
       if (!access.allowed)
         throw new Error(
           access.reason === 'inactive'
@@ -40,8 +39,8 @@ export const checkDeepLInterfaceForRequest = async (
             : 'deepl_module_unavailable'
         );
       return data.type === 'ssf_translation'
-        ? checkSsfLanguages(instanceId, data.id)
-        : checkDeepLLanguages(instanceId, data.id);
+        ? runtime.checkSsfLanguages(instanceId, data.id)
+        : runtime.checkDeepLLanguages(instanceId, data.id);
     },
   });
 };

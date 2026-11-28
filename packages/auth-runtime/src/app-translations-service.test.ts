@@ -52,6 +52,7 @@ vi.mock('./app-translations-deepl.js', () => ({
 import { appTranslationServiceHandler } from './app-translations-service.js';
 import {
   checkSsfLanguages,
+  translateSsfValues,
   readSsfTranslationConfig,
   verifySsfTranslationLocales,
 } from './app-translations-ssf.js';
@@ -266,6 +267,26 @@ describe('technical app translation', () => {
     expect((await appTranslationServiceHandler(request())).status).toBe(200);
     expect(state.translate).toHaveBeenCalledOnce();
     expect(fetchSsf).not.toHaveBeenCalled();
+  });
+
+  it('reports SSF size and marker failures with SSF error codes', async () => {
+    const config = { origin: 'https://ssf.example', key: 'test-key', locales: ['en'] };
+    const signal = new AbortController().signal;
+    const fetchSsf = vi.fn().mockResolvedValue(
+      Response.json({
+        source_lang: 'de',
+        target_lang: 'en',
+        translations: [{ text: 'Hello' }],
+      })
+    );
+    await expect(
+      translateSsfValues(config, 'en', ['x'.repeat(5001)], signal, fetchSsf)
+    ).rejects.toThrow('ssf_translation_too_large');
+    expect(fetchSsf).not.toHaveBeenCalled();
+    await expect(
+      translateSsfValues(config, 'en', ['Hallo {{name}}'], signal, fetchSsf)
+    ).rejects.toThrow('ssf_translation_invalid_response');
+    expect(fetchSsf).toHaveBeenCalledOnce();
   });
 
   it('dispatches the configured pilot to SSF v1 and restores its HTML markers', async () => {

@@ -1,5 +1,6 @@
+import { ssfInterfaceDraftSchema } from './instance-interface-ssf';
 import { meilisearchInterfaceDraftSchema } from './instance-interface-meilisearch.js';
-import { deepLInterfaceDraftSchema, ssfInterfaceDraftSchema } from './instance-interfaces';
+import { deepLInterfaceDraftSchema } from './instance-interfaces';
 import { isValidInstanceId, mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';

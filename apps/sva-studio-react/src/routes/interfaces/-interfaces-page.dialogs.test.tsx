@@ -1,3 +1,4 @@
+import type { InstanceInterface } from '../../lib/instance-interfaces';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -5,7 +6,6 @@ import {
   createEmptyInstanceInterfaceDraft,
   type InstanceInterfaceDraft,
   type InstanceInterfaceDeepL,
-  type InstanceInterfaceSsf,
 } from '../../lib/instance-interfaces';
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 
@@ -71,7 +71,7 @@ describe('interfaces-page dialogs', () => {
     const draft = createEmptyInstanceInterfaceDraft('ssf_translation');
     if (draft.type !== 'ssf_translation') throw new Error('fixture');
     const onChange = vi.fn();
-    const ssfEntry: InstanceInterfaceSsf = {
+    const ssfEntry: Extract<InstanceInterface, { type: 'ssf_translation' }> = {
       id: 'ssf-a',
       instanceId: 'tenant-a',
       name: draft.name,

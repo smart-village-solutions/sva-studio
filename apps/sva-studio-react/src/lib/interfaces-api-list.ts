@@ -4,7 +4,6 @@ import { readErrorMessage } from './error-message-utils';
 import type {
   InstanceInterface,
   InstanceInterfaceDeepL,
-  InstanceInterfaceSsf,
   InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
   InstanceInterfacePostgresql,
@@ -53,7 +52,10 @@ type ListInstanceInterfacesResponse = Readonly<{
 export const projectStoredEntry = async (
   instanceId: string,
   entry:
-    | Omit<InstanceInterfaceSsf, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<
+        Extract<InstanceInterface, { type: 'ssf_translation' }>,
+        'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+      >
     | Omit<InstanceInterfaceDeepL, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<
         Extract<InstanceInterface, { type: 'meilisearch' }>,

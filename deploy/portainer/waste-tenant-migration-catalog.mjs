@@ -66,20 +66,24 @@ const buildSharedTourReviewStatements = (schema) => [
   `CREATE OR REPLACE FUNCTION ${schema}.reset_global_shift_tour_review() RETURNS trigger
     LANGUAGE plpgsql SET search_path = pg_catalog AS $review$
     DECLARE
-      old_ids text[] := CASE WHEN TG_OP = 'INSERT' THEN '{}' ELSE OLD.tour_ids END;
-      new_ids text[] := CASE WHEN TG_OP = 'DELETE' THEN '{}' ELSE NEW.tour_ids END;
+      old_ids text[] := CASE WHEN TG_OP <> 'INSERT'
+        THEN NULLIF(array_remove(OLD.tour_ids, NULL), '{}'::text[]) END;
+      new_ids text[] := CASE WHEN TG_OP <> 'DELETE'
+        THEN NULLIF(array_remove(NEW.tour_ids, NULL), '{}'::text[]) END;
+      applies_to_all boolean := (TG_OP <> 'INSERT' AND old_ids IS NULL)
+        OR (TG_OP <> 'DELETE' AND new_ids IS NULL);
+      affected_ids text[] := COALESCE(old_ids, '{}') || COALESCE(new_ids, '{}');
     BEGIN
-      IF TG_OP = 'UPDATE' AND (to_jsonb(OLD) - 'updated_at') = (to_jsonb(NEW) - 'updated_at') THEN
+      IF TG_OP = 'UPDATE' AND old_ids IS NOT DISTINCT FROM new_ids
+        AND (to_jsonb(OLD) - ARRAY['updated_at', 'tour_ids']) = (to_jsonb(NEW) - ARRAY['updated_at', 'tour_ids']) THEN
         RETURN NULL;
       END IF;
 
-      -- NULL means all tours. When the scope changes, both scopes lose their review.
+      -- Missing and empty scopes both apply tenant-wide for an existing shift.
       PERFORM 1 FROM ${schema}.waste_tours
-        WHERE old_ids IS NULL OR new_ids IS NULL OR id::text = ANY(old_ids || new_ids)
-        ORDER BY id FOR NO KEY UPDATE;
+        WHERE applies_to_all OR id::text = ANY(affected_ids) ORDER BY id FOR NO KEY UPDATE;
       UPDATE ${schema}.waste_tours SET reviewed_on = NULL
-        WHERE reviewed_on IS NOT NULL
-          AND (old_ids IS NULL OR new_ids IS NULL OR id::text = ANY(old_ids || new_ids));
+        WHERE reviewed_on IS NOT NULL AND (applies_to_all OR id::text = ANY(affected_ids));
       RETURN NULL;
     END; $review$;`,
   `DROP TRIGGER IF EXISTS waste_tours_reset_review ON ${schema}.waste_global_date_shifts;`,

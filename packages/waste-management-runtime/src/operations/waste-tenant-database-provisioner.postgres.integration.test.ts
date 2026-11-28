@@ -172,7 +172,21 @@ const verifySharedTourReview = async (client: Pool) => {
   expect(await readReviewedTourIds()).toEqual([thirdTour]);
 
   await markReviewed();
+  await client.query("UPDATE waste_global_date_shifts SET tour_ids = '{}' WHERE id = $1", [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
   await client.query('UPDATE waste_global_date_shifts SET tour_ids = NULL WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual(tourIds);
+  await client.query('DELETE FROM waste_global_date_shifts WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_global_date_shifts (id, original_date, actual_date, tour_ids)
+     VALUES ($1, '2027-02-01', '2027-02-02', '{}')`,
+    [shift]
+  );
   expect(await readReviewedTourIds()).toEqual([]);
 
   await markReviewed();

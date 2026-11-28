@@ -1,4 +1,6 @@
 -- Migration 0119 erweitert nur Provider-JSON-Metadaten um mapstick; keine DDL-Änderung.
+-- Das Graphile-Schema einschließlich sva_lock_exhausted_studio_job wird separat
+-- durch deploy/portainer/migrate-graphile-worker.mjs verwaltet.
 --
 -- PostgreSQL database dump
 --

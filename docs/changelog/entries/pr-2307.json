@@ -1,0 +1,4 @@
+{
+  "prNumber": 2307,
+  "body": "Studio schließt hängen gebliebene Jobs automatisch ab, sobald die Warteschlange alle Versuche ausgeschöpft hat. Der Abschlussgrund ist im Jobverlauf sichtbar."
+}

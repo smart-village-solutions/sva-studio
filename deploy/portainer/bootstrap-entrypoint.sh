@@ -130,6 +130,7 @@ $worker_role$;`,
   `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM iam_app;`,
   `GRANT USAGE ON SCHEMA graphile_worker TO iam_app;`,
   `GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO iam_app;`,
+  `GRANT EXECUTE ON FUNCTION graphile_worker.sva_lock_exhausted_studio_job(uuid, text, text, integer) TO iam_app;`,
   `BEGIN;
 SET LOCAL ROLE iam_app;
 SELECT graphile_worker.sva_enqueue_job(

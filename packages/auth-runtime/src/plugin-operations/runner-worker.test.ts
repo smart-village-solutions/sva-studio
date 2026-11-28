@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   withIamAppDb: vi.fn(),
   resolveStudioJobWorkerPool: vi.fn(),
   createStudioJobTaskList: vi.fn(),
+  reconcile: vi.fn(async () => undefined),
   getRegisteredStudioJobExecutionRegistry: vi.fn(),
   logger: {
     info: vi.fn(),
@@ -32,6 +33,10 @@ vi.mock('./runner-registry.js', () => ({
   getRegisteredStudioJobExecutionRegistry: state.getRegisteredStudioJobExecutionRegistry,
   studioJobTaskIdentifier: 'studio_job_execute',
   privilegedStudioJobTaskIdentifier: 'studio_job_execute_privileged',
+}));
+
+vi.mock('./runner-reconciliation.js', () => ({
+  createStudioJobReconciliation: () => state.reconcile,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -560,11 +565,13 @@ describe('plugin operation runner worker', () => {
         'plugin_tenant_lifecycle_health',
         expect.objectContaining({ lane: 'default', queued_due: 1, observation_ok: true })
       );
+      expect(state.reconcile).toHaveBeenCalledOnce();
 
       await stopStudioJobWorker();
       const logCount = state.logger.info.mock.calls.length;
       await vi.advanceTimersByTimeAsync(60_000);
       expect(state.logger.info).toHaveBeenCalledTimes(logCount);
+      expect(state.reconcile).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }

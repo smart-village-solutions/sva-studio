@@ -5,6 +5,7 @@ import {
   recordPluginTenantLifecycleLaneHealth,
 } from '../plugin-tenant-lifecycle/observability.js';
 import { privilegedStudioJobTaskIdentifier, studioJobTaskIdentifier } from './runner-registry.js';
+import { createStudioJobReconciliation } from './runner-reconciliation.js';
 import {
   createGraphileWorkerRunner,
   logger,
@@ -30,8 +31,10 @@ const healthLogIntervalMs = 60_000;
 
 const startHealthLogging = (lane: 'default' | 'privileged'): void => {
   if (healthLogTimers[lane]) return;
+  const reconcile = lane === 'default' ? createStudioJobReconciliation() : undefined;
   const timer = setInterval(() => {
     void logPluginTenantLifecycleHealth(lane);
+    if (reconcile) void reconcile();
   }, healthLogIntervalMs);
   timer.unref?.();
   healthLogTimers[lane] = timer;

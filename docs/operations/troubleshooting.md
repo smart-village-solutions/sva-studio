@@ -277,6 +277,18 @@ Praxisbeweis fuer `studio`:
 
 **Typische Ursache:** Unvollständiger lokaler Stack. Siehe `../development/app-e2e-integration-testing.md`.
 
+### Verwaiste Studio-Jobs
+
+Der Standard-Worker prüft die Jobs aktiver Instanzen alle 60 Sekunden in Gruppen von bis zu 25 Kandidaten je Instanz. Erst nach Ablauf der 120-Sekunden-Lease und bei einem entsperrten, nachweislich ausgeschöpften Graphile-Eintrag darf der Host den Job abschließen. Ohne Rückstau soll der Abschluss innerhalb von zwei Minuten ab bestätigbarem Queue-Zustand erfolgen. Graphile kann nach einem abrupten Worker-Ausfall eine alte Sperre noch bis zur eigenen Sperrbereinigung halten.
+
+Ein gestarteter Job mit offenem Ausführungsergebnis erscheint in der Historie als fehlgeschlagen mit dem Fehlercode `studio_job_execution_abandoned`. Eine vorhandene Abbruchanfrage bleibt sichtbar. Nur eine dokumentierte Abbruchanfrage vor dem ersten Start kann zu `cancelled` führen. Vor einem manuell veranlassten neuen Lauf den Zielbestand auf Teiländerungen prüfen. Für Plugin-Tenant-Lifecycle-Jobs gilt weiterhin das [Lifecycle-Runbook](./plugin-tenant-lifecycle-operations.md).
+
+- `sva_studio_job_reconciliation_jobs` zählt pro Runde die Ergebnisse `confirmed`, `finalized`, `unresolved` und `unknown`. Fehlende Queue-Einträge, abweichende Queue-Korrelationen und vorübergehend nicht lesbare Einträge bleiben fachlich offen. Die nächste Runde prüft innerhalb ihres Limits je Instanz wieder einen bekannten Abschlussfehler und einen unbekannten Befund, solange diese vorliegen.
+- `StudioJobReconciliationUnresolved` meldet wiederholt gescheiterte Abschlüsse. Im Jobdetail Lease, Status und Historie prüfen und die korrelierte Queue bei Bedarf über die freigegebene Datenbankdiagnose untersuchen.
+- `StudioJobReconciliationUnavailable` meldet eine fehlende oder veraltete Zeitmarke der letzten erfolgreichen Runde. Worker-Status, Datenbankberechtigungen und OTEL-Export prüfen. Die Regeln liegen in [Prometheus Alert Rules](../../deploy/portainer/monitoring/alert-rules.yml). Im Zielsystem muss der Collector die Studio-Metriken empfangen und der Prometheus diese Regeln laden.
+
+Für die Staging-Abnahme einen Testjob mit einem zulässigen Queue-Versuch in einer dafür vorgesehenen Testinstanz starten. Während des Laufs den zugehörigen Test-Worker beenden und nach Ablauf der Queue-Sperre den Zeitpunkt erfassen, ab dem der Eintrag entsperrt und ausgeschöpft ist. Jobdetail und aktive Liste danach erneut lesen. Erwartet werden `failed`, genau ein Terminalereignis, kein aktiver Eintrag und eine messbare Abschlussdauer. Zusätzlich eine frische Ausführung gegenprüfen. In der isolierten Staging-Prüfung den Beobachtungsausfall und die spätere Auflösung des Alarms verifizieren.
+
 ## FAQ
 
 **1. Darf ich Sicherheitsprobleme als normales GitHub Issue melden?**  

@@ -32,6 +32,7 @@ describe('schema guard helpers', () => {
         {
           effective_app_role_exists: true,
           effective_app_can_enqueue: true,
+          effective_app_can_reconcile_jobs: true,
           effective_app_cannot_process: true,
           app_login_cannot_enqueue_directly: true,
           app_cannot_create: true,

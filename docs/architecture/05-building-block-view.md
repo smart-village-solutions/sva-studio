@@ -244,7 +244,7 @@ Modulen der jeweiligen Bausteine.
 - `@sva/iam-governance` bleibt fachlicher Owner der DSR-Exportdatensätze; Self-Service-Exporte verknüpfen diese Datensätze zusätzlich mit einem Host-Job über `studio_job_id`
 - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin- oder DSR-spezifische Nebenspeicher ausgelagert
 - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil öffentlicher Plugin- oder Self-Service-Verträge
-- die Runtime trennt den enqueue-only Zugriff der App von der Ausführung über den dedizierten Datenbank-Principal `sva_job_worker`; Schema-Migrationen gehören ausschließlich zum privilegierten Deploy-One-shot
+- Die Runtime trennt Einreihung und tenantgebundene Erschöpfungsprüfung der App von der Ausführung durch den Datenbank-Principal `sva_job_worker`. Der Standard-Worker prüft in seinem bestehenden 60-Sekunden-Takt beide Task-Lanes. Jobstatus und Historie schließen unter derselben Studio- und Queue-Zeilensperre atomar ab. Schema-Migrationen gehören zum privilegierten Deploy-One-shot.
 
 15. Waste-Server-Komposition (`packages/plugin-waste-management`, `packages/waste-management-runtime`, `packages/auth-runtime`)
 

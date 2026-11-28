@@ -104,6 +104,8 @@ export const monitoringENResources = {
       writeSummaryDeleteByValue: 'Delete by value',
       writeSummaryErrors: 'Errors',
       errorTitle: 'Error',
+      abandonedExecution:
+        'The queue has exhausted all attempts. The worker reported no result. Check whether any data was already written before starting the job again.',
       historyTitle: 'History',
     },
     actions: {

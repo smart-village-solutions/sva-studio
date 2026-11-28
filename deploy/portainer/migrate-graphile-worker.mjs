@@ -90,6 +90,65 @@ try {
 
     REVOKE ALL ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) FROM PUBLIC;
 
+    -- Only an exhausted, unlocked row is locked through the Studio transaction.
+    -- NULL means the expected entry could not be confirmed.
+    CREATE OR REPLACE FUNCTION graphile_worker.sva_lock_exhausted_studio_job(
+      studio_job_id uuid, task_identifier text, expected_queue text, studio_attempts integer
+    ) RETURNS boolean
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = pg_catalog, graphile_worker
+    AS $reconcile$
+    DECLARE
+      tenant text := nullif(current_setting('app.instance_id', true), '');
+      queue_job record;
+    BEGIN
+      IF tenant IS NULL OR task_identifier IS NULL OR task_identifier NOT IN (
+        'studio_job_execute', 'studio_job_execute_privileged'
+      ) THEN
+        RETURN NULL;
+      END IF;
+
+      SELECT job.id, job.revision, job.attempts >= job.max_attempts AND job.attempts >= studio_attempts
+        AND job.locked_at IS NULL AND job.locked_by IS NULL AS exhausted
+      INTO queue_job
+      FROM graphile_worker._private_jobs AS job
+      JOIN graphile_worker._private_tasks AS task ON task.id = job.task_id
+      JOIN graphile_worker._private_job_queues AS queue ON queue.id = job.job_queue_id
+      WHERE job.key = 'studio-job:' || studio_job_id::text
+        AND task.identifier = task_identifier AND queue.queue_name = expected_queue
+        AND job.payload->>'instanceId' = tenant AND job.payload->>'jobId' = studio_job_id::text;
+
+      IF queue_job.exhausted IS DISTINCT FROM true THEN
+        RETURN queue_job.exhausted;
+      END IF;
+
+      PERFORM 1
+      FROM graphile_worker._private_jobs AS job
+      WHERE job.id = queue_job.id AND job.revision = queue_job.revision
+        AND job.key = 'studio-job:' || studio_job_id::text
+        AND job.attempts >= job.max_attempts AND job.attempts >= studio_attempts
+        AND job.locked_at IS NULL AND job.locked_by IS NULL
+      FOR UPDATE SKIP LOCKED;
+      IF NOT FOUND THEN
+        RETURN NULL;
+      END IF;
+
+      -- Graphile can clear a claimed row's key during a concurrent replacement.
+      -- A displaced claim still counts as an execution for the same Studio job.
+      RETURN NOT EXISTS (
+        SELECT 1
+        FROM graphile_worker._private_jobs AS other
+        WHERE other.id <> queue_job.id AND other.key IS NULL
+          AND (other.locked_at IS NOT NULL OR other.locked_by IS NOT NULL)
+          AND other.payload->>'instanceId' = tenant
+          AND other.payload->>'jobId' = studio_job_id::text
+      );
+    END
+    $reconcile$;
+
+    REVOKE ALL ON FUNCTION graphile_worker.sva_lock_exhausted_studio_job(uuid, text, text, integer) FROM PUBLIC;
+
     DO $ownership$
     DECLARE
       object_record record;

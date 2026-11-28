@@ -120,8 +120,28 @@ groups:
   - name: application_health_alerts
     interval: 1m
     rules:
-      # TODO: Aktivieren sobald Application Metriken verfügbar sind
       # Plugin-Tenant-Lifecycle-Alerts bleiben bis zum produktiven OTEL-Pfad aus Issue #1237 deaktiviert.
+      - alert: StudioJobReconciliationUnavailable
+        expr: |
+          absent(sva_studio_job_reconciliation_last_success_timestamp_seconds)
+          or (time() - max(sva_studio_job_reconciliation_last_success_timestamp_seconds) > 120)
+        for: 5m
+        labels:
+          severity: warning
+          component: studio-jobs
+        annotations:
+          summary: "Studio-Job-Kontrolle liefert keine erfolgreiche Prüfung"
+          description: "Worker, Datenbankzugriff und OTEL-Metrikpfad der Studio-Job-Kontrolle prüfen."
+
+      - alert: StudioJobReconciliationUnresolved
+        expr: max(max_over_time(sva_studio_job_reconciliation_jobs{outcome="unresolved"}[3m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: studio-jobs
+        annotations:
+          summary: "Bestätigte verwaiste Studio-Jobs bleiben offen"
+          description: "Der automatische Abschluss konnte wiederholt nicht gespeichert werden."
 
   - name: iam_role_sync_alerts
     interval: 1m

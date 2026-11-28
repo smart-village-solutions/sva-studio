@@ -104,6 +104,8 @@ export const monitoringDEResources = {
       writeSummaryDeleteByValue: 'Löschung per Wert',
       writeSummaryErrors: 'Fehler',
       errorTitle: 'Fehler',
+      abandonedExecution:
+        'Die Warteschlange hat alle Versuche ausgeschöpft. Der Worker hat kein Ergebnis gemeldet. Prüfen Sie vor einem erneuten Start, ob bereits Daten geschrieben wurden.',
       historyTitle: 'Verlauf',
     },
     actions: {

@@ -17,12 +17,16 @@ import {
   startContractDatabase,
   workerPassword,
 } from './graphile-worker-contract-database.js';
-import { enqueueContractJobs } from './graphile-worker-contract-jobs.js';
+import {
+  assertStudioJobReconciliation,
+  enqueueContractJobs,
+} from './graphile-worker-contract-jobs.js';
 
 const workspaceRequire = createRequire(import.meta.url);
 const requireFromAuthRuntime = createRequire(workspaceRequire.resolve('@sva/auth-runtime'));
 
 interface ContractPool {
+  connect: Parameters<typeof assertStudioJobReconciliation>[1];
   end(): Promise<void>;
 }
 interface ContractRunner {
@@ -215,6 +219,15 @@ const main = async (): Promise<void> => {
     });
     ({ pool: workerPool, runner } = await processContractJob(port));
     assertAppRestrictions(port);
+    const adminPool = new Pool({
+      connectionString: `postgres://postgres:${adminPassword}@127.0.0.1:${port}/${database}`,
+      max: 2,
+    });
+    try {
+      await assertStudioJobReconciliation(port, () => adminPool.connect());
+    } finally {
+      await adminPool.end();
+    }
 
     process.stdout.write('Graphile worker database contract passed\n');
   } finally {

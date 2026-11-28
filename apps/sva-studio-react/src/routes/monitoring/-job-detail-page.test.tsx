@@ -192,6 +192,25 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getAllByText(/service_unavailable/).length).toBeGreaterThan(0);
   });
 
+  it('explains the unknown outcome of an abandoned execution', async () => {
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        errorPayload: { code: 'studio_job_execution_abandoned', category: 'permanent' },
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(
+      await screen.findByText(/Die Warteschlange hat alle Versuche ausgeschöpft/)
+    ).toBeTruthy();
+    expect(screen.getByText('Abbruch angefordert: Ja')).toBeTruthy();
+  });
+
   it('renders a write summary for waste mainserver sync jobs', async () => {
     usePluginOperationJobDetailMock.mockReturnValue({
       detail: {

@@ -256,7 +256,11 @@ const MonitoringJobErrorCard = ({ job }: Readonly<{ job: MonitoringJob }>) =>
           <Badge variant="destructive">{job.errorPayload.code}</Badge>
           <Badge variant="outline">{job.errorPayload.category}</Badge>
         </div>
-        {job.errorPayload.message ? <p className="text-sm">{job.errorPayload.message}</p> : null}
+        {job.errorPayload.code === 'studio_job_execution_abandoned' ? (
+          <p className="text-sm">{t('monitoring.jobs.detail.abandonedExecution')}</p>
+        ) : job.errorPayload.message ? (
+          <p className="text-sm">{job.errorPayload.message}</p>
+        ) : null}
         <pre className="overflow-x-auto rounded-lg bg-muted/40 p-4 text-xs text-foreground">
           {formatStructuredValue(job.errorPayload.details)}
         </pre>

@@ -24,6 +24,7 @@ export type WasteToursFilterViewModel = {
   readonly query: string;
   readonly status: 'all' | WasteTourRecord['status'];
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly tourReview: WasteManagementSearchParams['tourReview'];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
   readonly firstDateTo: string | undefined;
@@ -32,6 +33,7 @@ export type WasteToursFilterViewModel = {
   readonly draftQuery: string;
   readonly draftStatus: 'all' | WasteTourRecord['status'];
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly draftTourReview: WasteManagementSearchParams['tourReview'];
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -43,6 +45,7 @@ export type WasteToursFilterViewModel = {
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | WasteTourRecord['status']) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
+  readonly onDraftTourReviewChange: (value: WasteManagementSearchParams['tourReview']) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -57,6 +60,7 @@ export type WasteToursFilterViewModel = {
         | 'q'
         | 'tourStatus'
         | 'tourValidityPeriod'
+        | 'tourReview'
         | 'tourWasteFractionId'
         | 'firstDateFrom'
         | 'firstDateTo'
@@ -112,7 +116,7 @@ type WasteToursContentBodyProps = {
   readonly onOpenCreateDialog: () => void;
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
-  readonly setBulkStatusOpen: Dispatch<SetStateAction<boolean>>;
+  readonly setBulkStatusMode: (mode: 'status' | 'review') => void;
   readonly onOpenAnnualTransfer: () => void;
   readonly onOpenTourMerge?: () => void;
   readonly filters: WasteToursFilterViewModel;
@@ -126,7 +130,7 @@ export const WasteToursContentBody = ({
   onOpenCreateDialog,
   setBulkDeleteOpen,
   setBulkValidityOpen,
-  setBulkStatusOpen,
+  setBulkStatusMode,
   onOpenAnnualTransfer,
   onOpenTourMerge,
   filters,
@@ -156,7 +160,8 @@ export const WasteToursContentBody = ({
         canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}
         onOpenBulkValidity={() => setBulkValidityOpen(true)}
-        onOpenBulkStatus={() => setBulkStatusOpen(true)}
+        onOpenBulkStatus={() => setBulkStatusMode('status')}
+        onOpenBulkReview={() => setBulkStatusMode('review')}
         onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
         onClearSelection={table.clearSelection}
       />

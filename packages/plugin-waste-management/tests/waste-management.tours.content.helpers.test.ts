@@ -1,6 +1,8 @@
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
+import { filterTours } from '../src/waste-management.tours.filter.js';
 import {
   applyWasteToursFilters,
   createLocationCountByTourId,
@@ -106,6 +108,52 @@ describe('waste-management tours content helpers', () => {
     ).toEqual(['tour-3', 'tour-1', 'tour-2']);
   });
 
+  it('combines the review criterion with publication status', () => {
+    const tours = [
+      createTour({ id: 'reviewed-published', reviewedOn: '2026-11-26' }),
+      createTour({ id: 'reviewed-draft', status: 'draft', reviewedOn: '2026-11-28' }),
+      createTour({ id: 'unreviewed' }),
+    ];
+    const search = normalizeWasteManagementSearchParams({
+      tab: 'tours',
+      tourStatus: 'published',
+      tourReview: 'reviewed',
+    });
+    expect(filterTours(tours, search).map(({ id }) => id)).toEqual(['reviewed-published']);
+    expect(filterTours(tours, { ...search, tourReview: 'unreviewed' }).map(({ id }) => id)).toEqual(
+      ['unreviewed']
+    );
+    expect(filterTours(tours, { ...search, tourReview: undefined }).map(({ id }) => id)).toEqual([
+      'reviewed-published',
+      'unreviewed',
+    ]);
+  });
+
+  it('sorts review dates in both directions with unreviewed tours last', () => {
+    const tours = [
+      createTour({ id: 'unreviewed' }),
+      createTour({ id: 'latest', reviewedOn: '2026-12-02' }),
+      createTour({ id: 'earliest', reviewedOn: '2026-11-28' }),
+    ];
+    const options = {
+      tours,
+      sortField: 'reviewedOn' as const,
+      locationCountByTourId: new Map(),
+      pt,
+    };
+
+    expect(sortWasteTours({ ...options, sortDirection: 'asc' }).map(({ id }) => id)).toEqual([
+      'earliest',
+      'latest',
+      'unreviewed',
+    ]);
+    expect(sortWasteTours({ ...options, sortDirection: 'desc' }).map(({ id }) => id)).toEqual([
+      'latest',
+      'earliest',
+      'unreviewed',
+    ]);
+  });
+
   it('returns the original tour array when no sort field is active', () => {
     const tours = [createTour({ id: 'tour-1' }), createTour({ id: 'tour-2' })];
 
@@ -134,6 +182,7 @@ describe('waste-management tours content helpers', () => {
       draftQuery: 'Bio',
       draftStatus: 'draft',
       draftTourValidityPeriod: 'current',
+      draftTourReview: 'reviewed',
       draftTourWasteFractionId: 'fraction-1',
       draftFirstDateFrom: '2026-01-01',
       draftFirstDateTo: '2026-01-31',
@@ -149,7 +198,8 @@ describe('waste-management tours content helpers', () => {
       '2026-01-01',
       '2026-01-31',
       '2026-12-01',
-      '2026-12-31'
+      '2026-12-31',
+      'reviewed'
     );
     expect(onQueryChange).not.toHaveBeenCalled();
     expect(onStatusChange).not.toHaveBeenCalled();

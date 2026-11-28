@@ -35,10 +35,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onOpenAssignments,
     onOpenCalendar,
     onOpenEditFraction,
-    onDeleteTour,
-    onDeleteTours,
-    onUpdateTourValidityBulk,
-    onUpdateTourStatusBulk,
     canDuplicateTour = false,
     canManageScheduling = false,
     search,
@@ -60,6 +56,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onStatusChange,
     onFiltersChange,
   } = props;
+  const tourReview = search?.tourReview;
   const pt = usePluginTranslation('wasteManagement');
   const [tourPendingStatusChange, setTourPendingStatusChange] = useState<
     (typeof tours)[number] | null
@@ -75,6 +72,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setDraftQuery,
     setDraftStatus,
     setDraftTourValidityPeriod,
+    setDraftTourReview,
     setDraftTourWasteFractionId,
     setDraftFirstDateFrom,
     setDraftFirstDateTo,
@@ -87,8 +85,8 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setBulkDeleteOpen,
     bulkValidityOpen,
     setBulkValidityOpen,
-    bulkStatusOpen,
-    setBulkStatusOpen,
+    bulkStatusMode,
+    setBulkStatusMode,
     allVisibleSelected,
     someVisibleSelected,
     allFilteredSelected,
@@ -107,6 +105,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -123,6 +122,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     query,
     status,
     tourValidityPeriod,
+    tourReview,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -137,6 +137,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onDraftQueryChange: setDraftQuery,
     onDraftStatusChange: setDraftStatus,
     onDraftTourValidityPeriodChange: setDraftTourValidityPeriod,
+    onDraftTourReviewChange: setDraftTourReview,
     onDraftTourWasteFractionIdChange: setDraftTourWasteFractionId,
     onDraftFirstDateFromChange: setDraftFirstDateFrom,
     onDraftFirstDateToChange: setDraftFirstDateTo,
@@ -156,6 +157,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
           q: query,
           tourStatus: status,
           tourValidityPeriod,
+          tourReview,
           tourWasteFractionId,
           firstDateFrom,
           firstDateTo,
@@ -218,7 +220,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
-        setBulkStatusOpen={setBulkStatusOpen}
+        setBulkStatusMode={setBulkStatusMode}
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         onOpenAnnualTransfer={annualTransfer.open}
@@ -230,25 +232,22 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       />
       {merge.dialog}
       <WasteToursContentDialogs
+        {...props}
         annualTransferDialog={annualTransfer.dialog}
         allTours={allTours}
         saving={saving}
         tourPendingDelete={tourPendingDelete}
         bulkDeleteOpen={bulkDeleteOpen}
         bulkValidityOpen={bulkValidityOpen}
-        bulkStatusOpen={bulkStatusOpen}
+        bulkStatusMode={bulkStatusMode}
         tourPendingStatusChange={tourPendingStatusChange}
         selectedTourIds={selectedTourIds}
         setSelectedTourIds={setSelectedTourIds}
         setTourPendingDelete={setTourPendingDelete}
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
-        setBulkStatusOpen={setBulkStatusOpen}
+        setBulkStatusMode={setBulkStatusMode}
         setTourPendingStatusChange={setTourPendingStatusChange}
-        onDeleteTour={onDeleteTour}
-        onDeleteTours={onDeleteTours}
-        onUpdateTourValidityBulk={onUpdateTourValidityBulk}
-        onUpdateTourStatusBulk={onUpdateTourStatusBulk}
         fallbackFocusRef={deleteFocusFallbackRef}
       />
     </div>

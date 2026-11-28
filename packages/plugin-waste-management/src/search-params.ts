@@ -71,6 +71,7 @@ export type WasteManagementSearchParams = Readonly<{
   status: WasteManagementStatusFilter;
   tourStatus: WasteManagementTourStatusFilter;
   tourValidityPeriod: WasteManagementTourValidityPeriod;
+  tourReview?: 'reviewed' | 'unreviewed';
   shiftContext: WasteManagementShiftContext;
   shiftDateFrom?: string;
   shiftDateTo?: string;
@@ -112,28 +113,10 @@ const normalizeMasterDataTab = (value: unknown): WasteManagementMasterDataTabId 
   wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
     ? (value as WasteManagementMasterDataTabId)
     : 'locations';
-const normalizeFractionsView = (value: unknown): WasteManagementFractionsView =>
-  typeof value === 'string' &&
-  wasteManagementFractionsViews.includes(value as WasteManagementFractionsView)
-    ? (value as WasteManagementFractionsView)
-    : 'list';
-
-const normalizeToursView = (value: unknown): WasteManagementToursView =>
-  typeof value === 'string' && wasteManagementToursViews.includes(value as WasteManagementToursView)
-    ? (value as WasteManagementToursView)
-    : 'list';
-
-const normalizeLocationsView = (value: unknown): WasteManagementLocationsView =>
-  typeof value === 'string' &&
-  wasteManagementLocationsViews.includes(value as WasteManagementLocationsView)
-    ? (value as WasteManagementLocationsView)
-    : 'list';
-
-const normalizeSchedulingView = (value: unknown): WasteManagementSchedulingView =>
-  typeof value === 'string' &&
-  wasteManagementSchedulingViews.includes(value as WasteManagementSchedulingView)
-    ? (value as WasteManagementSchedulingView)
-    : 'list';
+const normalizeListView = <View extends string>(
+  value: unknown,
+  views: readonly View[]
+): View | 'list' => views.find((view) => view === value) ?? 'list';
 
 const normalizeStatus = (value: unknown): WasteManagementStatusFilter =>
   typeof value === 'string' &&
@@ -192,7 +175,9 @@ export const normalizeWasteManagementSearchParams = (
   const tab = normalizeTab(search.tab);
   const pageSize = normalizePageSize(search.pageSize);
   const schedulingView =
-    tab === 'tourAssignments' ? 'list' : normalizeSchedulingView(search.schedulingView);
+    tab === 'tourAssignments'
+      ? 'list'
+      : normalizeListView(search.schedulingView, wasteManagementSchedulingViews);
   const schedulingEntryType =
     tab === 'tourAssignments'
       ? undefined
@@ -216,9 +201,9 @@ export const normalizeWasteManagementSearchParams = (
     addressSortDirection: normalizeWasteCollectionLocationSortDirection(
       search.addressSortDirection
     ),
-    fractionsView: normalizeFractionsView(search.fractionsView),
-    toursView: normalizeToursView(search.toursView),
-    locationsView: normalizeLocationsView(search.locationsView),
+    fractionsView: normalizeListView(search.fractionsView, wasteManagementFractionsViews),
+    toursView: normalizeListView(search.toursView, wasteManagementToursViews),
+    locationsView: normalizeListView(search.locationsView, wasteManagementLocationsViews),
     schedulingView,
     q: compactOptionalString(search.q) ?? '',
     page: normalizePositiveInteger(search.page, 1),
@@ -227,6 +212,9 @@ export const normalizeWasteManagementSearchParams = (
     status: normalizeStatus(search.status),
     tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
+    ...(search.tourReview === 'reviewed' || search.tourReview === 'unreviewed'
+      ? { tourReview: search.tourReview }
+      : {}),
     shiftContext: normalizeShiftContext(search.shiftContext),
     ...(shiftDateFrom ? { shiftDateFrom } : {}),
     ...(shiftDateTo ? { shiftDateTo } : {}),

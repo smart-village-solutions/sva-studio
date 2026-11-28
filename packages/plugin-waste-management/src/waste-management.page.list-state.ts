@@ -10,6 +10,7 @@ const tabListStateKeys = {
     'q',
     'tourStatus',
     'tourValidityPeriod',
+    'tourReview',
     'tourWasteFractionId',
     'firstDateFrom',
     'firstDateTo',

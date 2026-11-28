@@ -49,6 +49,9 @@ export const filterTours = (
     if (!matchesStatusFilter(search.tourStatus, tour.status)) {
       return false;
     }
+    if (search.tourReview && Boolean(tour.reviewedOn) !== (search.tourReview === 'reviewed')) {
+      return false;
+    }
     if (search.tourWasteFractionId && !tour.wasteFractionIds.includes(search.tourWasteFractionId)) {
       return false;
     }

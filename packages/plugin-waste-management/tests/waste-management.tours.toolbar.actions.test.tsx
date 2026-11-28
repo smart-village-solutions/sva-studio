@@ -25,6 +25,7 @@ const createProps = (selectedCount: number) => ({
   onOpenBulkDelete: vi.fn(),
   onOpenBulkValidity: vi.fn(),
   onOpenBulkStatus: vi.fn(),
+  onOpenBulkReview: vi.fn(),
   onToggleSelectAllFiltered: vi.fn(),
   onClearSelection: vi.fn(),
   onOpenFilterDialog: vi.fn(),

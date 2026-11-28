@@ -25,6 +25,7 @@ export const wasteManagementPluginTranslationsDEAudit = {
     tourUpdated: 'Tour aktualisiert',
     tourValidityBulkUpdated: 'Gültigkeitszeiträume von Touren gesammelt aktualisiert',
     tourMerged: 'Touren zusammengeführt',
+    tourReviewBulkUpdated: 'Prüfdatum von Touren gesammelt aktualisiert',
     tourStatusBulkUpdated: 'Status von Touren gesammelt aktualisiert',
     annualTourTransferCreated: 'Tourensatz in das direkte Folgejahr übernommen',
     tourDateShiftCreated: 'Tourbezogenen Ausweichtermin angelegt',

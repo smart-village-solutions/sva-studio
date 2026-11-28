@@ -65,21 +65,21 @@ const resolveTourSortValue = ({
       return fractionsById ? (getTourFractionNames(tour, fractionsById)[0]?.name ?? '') : '';
     case 'shifts':
       return String(resolveTourShiftDetails(tour, schedulingOverview ?? null).length);
-    case 'recurrence': {
-      const recurrenceValue = formatTourRecurrence(
+    case 'recurrence':
+      return formatTourRecurrence(
         pt,
         tour.recurrence,
         tour.customRecurrenceName,
         tour.customRecurrenceIntervalDays
-      );
-      return recurrenceValue === '—' ? '' : recurrenceValue;
-    }
+      ).replace(/^—$/u, '');
     case 'dateRange':
       return tour.firstDate ?? '';
     case 'locations':
       return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
     case 'status':
       return pt(`tours.status.${tour.status}`);
+    case 'reviewedOn':
+      return tour.reviewedOn ?? '';
   }
 };
 
@@ -118,6 +118,7 @@ export const applyWasteToursFilters = ({
   draftQuery,
   draftStatus,
   draftTourValidityPeriod,
+  draftTourReview,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -131,6 +132,7 @@ export const applyWasteToursFilters = ({
   readonly draftQuery: string;
   readonly draftStatus: WasteToursContentProps['status'];
   readonly draftTourValidityPeriod: WasteToursContentProps['tourValidityPeriod'];
+  readonly draftTourReview?: NonNullable<WasteToursContentProps['search']>['tourReview'];
   readonly draftTourWasteFractionId: WasteToursContentProps['tourWasteFractionId'];
   readonly draftFirstDateFrom: WasteToursContentProps['firstDateFrom'];
   readonly draftFirstDateTo: WasteToursContentProps['firstDateTo'];
@@ -146,7 +148,8 @@ export const applyWasteToursFilters = ({
       draftFirstDateFrom,
       draftFirstDateTo,
       draftEndDateFrom,
-      draftEndDateTo
+      draftEndDateTo,
+      draftTourReview
     );
     setFilterDialogOpen(false);
     return;
@@ -201,6 +204,7 @@ export const setWasteTourFilterCriterion = (
     | 'q'
     | 'tourStatus'
     | 'tourValidityPeriod'
+    | 'tourReview'
     | 'tourWasteFractionId'
     | 'firstDateFrom'
     | 'firstDateTo'
@@ -228,6 +232,7 @@ export const setWasteTourFilterCriterion = (
     next.firstDateFrom,
     next.firstDateTo,
     next.endDateFrom,
-    next.endDateTo
+    next.endDateTo,
+    next.tourReview
   );
 };

@@ -218,7 +218,8 @@ export type WasteToursQueryProps = {
     firstDateFrom: WasteToursFilterDate,
     firstDateTo: WasteToursFilterDate,
     endDateFrom: WasteToursFilterDate,
-    endDateTo: WasteToursFilterDate
+    endDateTo: WasteToursFilterDate,
+    tourReview?: WasteManagementSearchParams['tourReview']
   ) => void;
 };
 

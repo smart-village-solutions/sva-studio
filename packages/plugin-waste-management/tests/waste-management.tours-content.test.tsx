@@ -429,7 +429,7 @@ describe('WasteToursContent', () => {
     const onUpdateTourStatusBulk = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'write' })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValue({ ok: true });
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -442,6 +442,7 @@ describe('WasteToursContent', () => {
         { date: '2026-12-31', description: '' },
       ],
       status: 'published',
+      reviewedOn: '2026-11-28',
     };
 
     render(
@@ -501,6 +502,13 @@ describe('WasteToursContent', () => {
       screen.getByRole('columnheader', { name: 'tours.table.name' }).getAttribute('aria-sort')
     ).toBe('none');
     expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
+    const reviewColumn = screen.getByRole('columnheader', { name: 'tours.table.reviewedOn' });
+    const reviewSort = screen.getByRole('button', { name: 'tours.table.reviewedOn' });
+    fireEvent.click(reviewSort);
+    expect(reviewColumn.getAttribute('aria-sort')).toBe('ascending');
+    fireEvent.click(reviewSort);
+    expect(reviewColumn.getAttribute('aria-sort')).toBe('descending');
+    expect(document.querySelector('time[datetime="2026-11-28"]')?.textContent).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
@@ -581,6 +589,17 @@ describe('WasteToursContent', () => {
       expect(document.activeElement).toBe(screen.getByRole('region', { name: 'tabs.tours.title' }))
     );
     expect(onUpdateTourStatusBulk).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tours.table.selectAll' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.reviewOpen' }));
+    fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.reviewLabel'), {
+      target: { value: 'clear' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.reviewApply' }));
+    await waitFor(() => {
+      expect(onUpdateTourStatusBulk).toHaveBeenLastCalledWith({ tourIds: ['tour-1'], review: 'clear' });
+      expect(screen.queryByText('tours.bulkStatusDialog.reviewTitle')).toBeNull();
+    });
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {
@@ -832,6 +851,9 @@ describe('WasteToursContent', () => {
     fireEvent.change(screen.getByLabelText('tours.filters.endDateToLabel'), {
       target: { value: '2026-10-31' },
     });
+    fireEvent.change(screen.getByLabelText('tours.filters.reviewLabel'), {
+      target: { value: 'reviewed' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'filters.apply' }));
 
     expect(onFiltersChange).toHaveBeenCalledWith(
@@ -842,11 +864,12 @@ describe('WasteToursContent', () => {
       '2026-02-01',
       undefined,
       undefined,
-      '2026-10-31'
+      '2026-10-31',
+      'reviewed'
     );
   });
 
-  it('shows a direct reset action for active tour filters', () => {
+  it('shows and clears the review criterion when it is the only active tour filter', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([]);
 
     const onFiltersChange = vi.fn();
@@ -883,11 +906,12 @@ describe('WasteToursContent', () => {
         saving={false}
         page={1}
         pageSize={25}
-        query="Bio"
-        status="published"
-        tourValidityPeriod="current"
-        tourWasteFractionId={'fraction-2'}
-        firstDateFrom={'2026-01-01'}
+        query=""
+        status="all"
+        tourValidityPeriod="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        search={{ ...toursSearch, tourReview: 'reviewed' }}
         firstDateTo={undefined}
         endDateFrom={undefined}
         endDateTo={undefined}
@@ -899,6 +923,7 @@ describe('WasteToursContent', () => {
       />
     );
 
+    expect(screen.getByText('tours.filters.review.reviewed')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'filters.reset' }));
     expect(onFiltersChange).toHaveBeenCalledWith(
       '',

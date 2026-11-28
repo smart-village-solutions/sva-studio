@@ -106,7 +106,8 @@ export const toToursFiltersSearch = (
   firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
   firstDateTo: WasteManagementSearchParams['firstDateTo'],
   endDateFrom: WasteManagementSearchParams['endDateFrom'],
-  endDateTo: WasteManagementSearchParams['endDateTo']
+  endDateTo: WasteManagementSearchParams['endDateTo'],
+  tourReview?: WasteManagementSearchParams['tourReview']
 ): WasteManagementSearchParams => ({
   ...search,
   q,
@@ -117,6 +118,7 @@ export const toToursFiltersSearch = (
   firstDateTo,
   endDateFrom,
   endDateTo,
+  tourReview,
   page: 1,
 });
 
@@ -214,7 +216,8 @@ export const useWasteToursListNavigation = (
       firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
       firstDateTo: WasteManagementSearchParams['firstDateTo'],
       endDateFrom: WasteManagementSearchParams['endDateFrom'],
-      endDateTo: WasteManagementSearchParams['endDateTo']
+      endDateTo: WasteManagementSearchParams['endDateTo'],
+      tourReview?: WasteManagementSearchParams['tourReview']
     ) => {
       void navigate({
         to: '/plugins/waste-management',
@@ -227,7 +230,8 @@ export const useWasteToursListNavigation = (
           firstDateFrom,
           firstDateTo,
           endDateFrom,
-          endDateTo
+          endDateTo,
+          tourReview
         ),
       });
     },

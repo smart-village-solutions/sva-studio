@@ -1,3 +1,4 @@
+import { buildWasteTourReviewStatements } from './waste-tour-review.schema.js';
 import { buildWasteTourFractionsExpandStatements, buildWasteTourFractionsVerification } from './waste-tour-fractions.schema.js';
 import { quoteIdentifier, requiredWasteTables } from './waste-management-operations.shared.js';
 import { buildWasteMainserverRevisionSchemaStatements } from './waste-management-mainserver-sync.revision-schema.js';
@@ -337,6 +338,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_state_year ON ${schema}.waste_holiday_rules(state_code, year);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_holiday_date ON ${schema}.waste_holiday_rules(holiday_date);`,
     ...buildWasteTourFractionsExpandStatements(schemaName),
+    ...buildWasteTourReviewStatements(schema),
     ...buildWasteMainserverRevisionSchemaStatements(schemaName),
   ];
 };

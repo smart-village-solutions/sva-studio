@@ -8,11 +8,14 @@ import {
   deriveWasteTenantDatabaseNames,
 } from './waste-tenant-database-provisioner.server.js';
 import { wasteTourStatements } from '../repositories/master-data.tours.js';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- Run the deployed tenant migrator against real PostgreSQL.
 import { migrateWasteTenantDatabase } from '../../../../deploy/portainer/migrate-waste-tenants.mjs';
+// eslint-disable-next-line @nx/enforce-module-boundaries -- Verify the deployed migration catalog against runtime provisioning.
 import {
   wasteTenantMigrations,
   wasteTenantContractMigrations,
 } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
+import { buildWasteTourReviewStatements } from './waste-tour-review.schema.js';
 import { buildWasteTourFractionsExpandStatements } from './waste-tour-fractions.schema.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -37,6 +40,208 @@ afterAll(async () => {
   }
   await admin.end();
 });
+
+const verifyTourReview = async (client: Pool, tourId: string) => {
+  const otherTour = randomUUID();
+  const city = randomUUID();
+  const location = randomUUID();
+  const assignment = randomUUID();
+  await client.query(
+    "INSERT INTO waste_tours (id, name, status) VALUES ($1, 'Andere Tour', 'draft')",
+    [otherTour]
+  );
+  await client.query("INSERT INTO waste_cities (id, name) VALUES ($1, 'Testort')", [city]);
+  await client.query('INSERT INTO waste_collection_locations (id, city_id) VALUES ($1, $2)', [
+    location,
+    city,
+  ]);
+
+  const getTour = async (id: string) => {
+    const { text, values } = wasteTourStatements.getWasteTourById(id);
+    return (await client.query(text, [...values])).rows[0];
+  };
+  const updateReview = async (review: 'today' | 'clear') => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds: [tourId, otherTour],
+      review,
+    });
+    expect((await client.query(text, [...values])).rowCount).toBe(2);
+  };
+  const today = (
+    await client.query(
+      "SELECT ((statement_timestamp() AT TIME ZONE 'Europe/Berlin')::date)::text AS day"
+    )
+  ).rows[0].day;
+
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: null });
+  await updateReview('today');
+  expect(await getTour(tourId)).toMatchObject({ status: 'published', reviewed_on: today });
+  expect(await getTour(otherTour)).toMatchObject({ status: 'draft', reviewed_on: today });
+
+  await client.query("UPDATE waste_tours SET status = 'archived' WHERE id = $1", [tourId]);
+  expect(await getTour(tourId)).toMatchObject({ status: 'archived', reviewed_on: today });
+  await client.query("UPDATE waste_tours SET name = 'Geändert' WHERE id = $1", [tourId]);
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+
+  await updateReview('today');
+  await client.query(
+    'INSERT INTO waste_location_tour_links (location_id, tour_id) VALUES ($1, $2)',
+    [location, tourId]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+  await client.query(
+    "INSERT INTO waste_tour_assignments (id, tour_id, pickup_date) VALUES ($1, $2, '2027-01-25')",
+    [assignment, tourId]
+  );
+
+  await updateReview('today');
+  await client.query(
+    'INSERT INTO waste_tour_assignment_locations (assignment_id, collection_location_id) VALUES ($1, $2)',
+    [assignment, location]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+
+  await updateReview('today');
+  await client.query(
+    "INSERT INTO waste_tour_date_shifts (tour_id, original_date, actual_date) VALUES ($1, '2027-01-01', '2027-01-02')",
+    [tourId]
+  );
+  expect(await getTour(tourId)).toMatchObject({ reviewed_on: null });
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: today });
+
+  await updateReview('clear');
+  expect(await getTour(otherTour)).toMatchObject({ reviewed_on: null });
+};
+
+const verifySharedTourReview = async (client: Pool) => {
+  const preset = randomUUID();
+  const tourIds = [randomUUID(), randomUUID(), randomUUID()].sort();
+  const [firstTour, secondTour, thirdTour] = tourIds;
+  const shift = randomUUID();
+  await client.query(
+    "INSERT INTO waste_custom_recurrence_presets (id, name, interval_days) VALUES ($1, 'Testturnus', 8)",
+    [preset]
+  );
+  await client.query(
+    `INSERT INTO waste_tours (id, name, status, recurrence, custom_recurrence_id)
+     VALUES ($1, 'Mit Vorlage', 'draft', 'custom', $4),
+            ($2, 'Zweite Tour', 'draft', 'weekly', NULL),
+            ($3, 'Dritte Tour', 'draft', 'weekly', NULL)`,
+    [...tourIds, preset]
+  );
+
+  const markReviewed = async () => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds,
+      review: 'today',
+    });
+    await client.query(text, [...values]);
+  };
+  const readReviewedTourIds = async () => {
+    const { rows } = await client.query<{ id: string }>(
+      'SELECT id FROM waste_tours WHERE id = ANY($1::uuid[]) AND reviewed_on IS NOT NULL ORDER BY id',
+      [tourIds]
+    );
+    return rows.map(({ id }) => id);
+  };
+
+  await markReviewed();
+  await client.query(
+    "UPDATE waste_custom_recurrence_presets SET name = 'Umbenannter Turnus' WHERE id = $1",
+    [preset]
+  );
+  expect(await readReviewedTourIds()).toEqual(tourIds);
+  await client.query('UPDATE waste_custom_recurrence_presets SET interval_days = 9 WHERE id = $1', [
+    preset,
+  ]);
+  expect(await readReviewedTourIds()).toEqual([secondTour, thirdTour]);
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_global_date_shifts (id, original_date, actual_date, tour_ids)
+     VALUES ($1, '2027-02-01', '2027-02-02', $2::text[])`,
+    [shift, [firstTour]]
+  );
+  expect(await readReviewedTourIds()).toEqual([secondTour, thirdTour]);
+
+  await markReviewed();
+  await client.query('UPDATE waste_global_date_shifts SET tour_ids = $2::text[] WHERE id = $1', [
+    shift,
+    [secondTour],
+  ]);
+  expect(await readReviewedTourIds()).toEqual([thirdTour]);
+
+  await markReviewed();
+  await client.query("UPDATE waste_global_date_shifts SET tour_ids = '{}' WHERE id = $1", [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
+  await client.query('UPDATE waste_global_date_shifts SET tour_ids = NULL WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual(tourIds);
+  await client.query('DELETE FROM waste_global_date_shifts WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_global_date_shifts (id, original_date, actual_date, tour_ids)
+     VALUES ($1, '2027-02-01', '2027-02-02', '{}')`,
+    [shift]
+  );
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
+  await client.query('DELETE FROM waste_global_date_shifts WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+  await verifyHolidayTourReview(client, tourIds);
+};
+
+const verifyHolidayTourReview = async (client: Pool, tourIds: readonly string[]) => {
+  const holidayId = randomUUID();
+  const markReviewed = async () => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds,
+      review: 'today',
+    });
+    await client.query(text, [...values]);
+  };
+  const readReviewedCount = async () =>
+    (
+      await client.query<{ count: number }>(
+        'SELECT COUNT(*)::int AS count FROM waste_tours WHERE id = ANY($1::uuid[]) AND reviewed_on IS NOT NULL',
+        [tourIds]
+      )
+    ).rows[0]?.count;
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_holiday_rules (id, holiday_date, holiday_name, year, state_code,
+       source_status, configuration_status, conflict_status)
+     VALUES ($1, '2027-01-01', 'Neujahr', 2027, 'BB', 'confirmed', 'draft', 'none')`,
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(tourIds.length);
+
+  await client.query(
+    "UPDATE waste_holiday_rules SET scope = 'full-week', strategy = 'postpone', configuration_status = 'configured' WHERE id = $1",
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(0);
+
+  await markReviewed();
+  await client.query(
+    "UPDATE waste_holiday_rules SET source_status = 'not-confirmed', holiday_name = 'Neujahrstag', updated_at = NOW() WHERE id = $1",
+    [holidayId]
+  );
+  expect(await readReviewedCount()).toBe(tourIds.length);
+  await client.query("UPDATE waste_holiday_rules SET strategy = 'advance' WHERE id = $1", [
+    holidayId,
+  ]);
+  expect(await readReviewedCount()).toBe(0);
+
+  await markReviewed();
+  await client.query('DELETE FROM waste_holiday_rules WHERE id = $1', [holidayId]);
+  expect(await readReviewedCount()).toBe(0);
+};
 
 describe('Waste provisioning with a restricted PostgreSQL principal', () => {
   it('creates and reconciles tenant roles without superuser, replication or RLS bypass privileges', async () => {
@@ -101,6 +306,10 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
         expect(expandMigration?.statements.slice(0, 4)).toEqual(
           buildWasteTourFractionsExpandStatements('public')
         );
+        expect(
+          wasteTenantMigrations.find(({ id }) => id === '20261128_01_add_waste_tour_review')
+            ?.statements
+        ).toEqual(buildWasteTourReviewStatements('"public"'));
         await migrateWasteTenantDatabase({
           client: migrationClient,
           migrations: wasteTenantMigrations,
@@ -141,6 +350,8 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
           ...names,
         });
         await appConsumer.query(statement.text, [...statement.values]);
+        await verifyTourReview(appConsumer, tourId);
+        await verifySharedTourReview(appConsumer);
         await expect(
           publicConsumer.query('SELECT fraction_id FROM waste_tour_fractions WHERE tour_id = $1', [
             tourId,

@@ -14,6 +14,7 @@ export const tourSortFields = [
   'shifts',
   'locations',
   'status',
+  'reviewedOn',
 ] as const;
 export type WasteToursSortField = (typeof tourSortFields)[number];
 export type WasteToursSortDirection = 'asc' | 'desc';
@@ -96,6 +97,7 @@ const tourColumnWidths: Record<WasteToursSortField, string> = {
   shifts: 'w-[168px]',
   locations: 'w-[94px]',
   status: 'w-[92px]',
+  reviewedOn: 'w-[110px]',
 };
 
 export const WasteToursTableHeader = ({

@@ -181,14 +181,15 @@ const updateWasteTourValidityBulkSchema = z
     }
   });
 
+const bulkTourIds = z.array(z.string().trim().uuid()).min(1).max(wasteTourStatusBulkLimit);
+
 const updateWasteTourStatusBulkSchema = z
-  .object({
-    tourIds: z.array(z.string().trim().uuid()).min(1).max(wasteTourStatusBulkLimit),
-    status: z.enum(wasteTourStatuses),
-  })
-  .strict()
+  .union([
+    z.strictObject({ tourIds: bulkTourIds, status: z.enum(wasteTourStatuses) }),
+    z.strictObject({ tourIds: bulkTourIds, review: z.enum(['today', 'clear']) }),
+  ])
   .superRefine((value, ctx) => {
-    const normalizedTourIds = value.tourIds.map((tourId) => tourId.trim());
+    const normalizedTourIds = value.tourIds.map((tourId) => tourId.toLowerCase());
     if (new Set(normalizedTourIds).size !== normalizedTourIds.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

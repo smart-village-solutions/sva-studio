@@ -21,40 +21,41 @@ type WasteToursContentDialogsProps = Pick<
   readonly saving: boolean;
   readonly bulkDeleteOpen: boolean;
   readonly bulkValidityOpen: boolean;
-  readonly bulkStatusOpen: boolean;
+  readonly bulkStatusMode: 'status' | 'review' | null;
   readonly tourPendingDelete: WasteTourRecord | null;
   readonly tourPendingStatusChange: WasteTourRecord | null;
   readonly setSelectedTourIds: Dispatch<SetStateAction<readonly string[]>>;
   readonly setBulkDeleteOpen: (open: boolean) => void;
   readonly setBulkValidityOpen: (open: boolean) => void;
-  readonly setBulkStatusOpen: (open: boolean) => void;
+  readonly setBulkStatusMode: (mode: 'status' | 'review' | null) => void;
   readonly setTourPendingDelete: (tour: WasteTourRecord | null) => void;
   readonly setTourPendingStatusChange: (tour: WasteTourRecord | null) => void;
   readonly fallbackFocusRef: RefObject<HTMLElement | null>;
 };
 
 const WasteToursStatusDialogs = ({
-  bulkStatusOpen,
+  bulkStatusMode,
   selectedTourIds,
   saving,
   onUpdateTourStatusBulk,
   setSelectedTourIds,
-  setBulkStatusOpen,
+  setBulkStatusMode,
   tourPendingStatusChange,
   setTourPendingStatusChange,
   fallbackFocusRef,
 }: WasteToursContentDialogsProps) => (
   <>
-    {bulkStatusOpen ? (
+    {bulkStatusMode ? (
       <WasteToursStatusBulkDialog
         open
         selectedTourIds={selectedTourIds}
         saving={saving}
-        onOpenChange={setBulkStatusOpen}
+        mode={bulkStatusMode}
+        onOpenChange={(open) => !open && setBulkStatusMode(null)}
         onSubmit={onUpdateTourStatusBulk}
         onUpdated={() => {
           setSelectedTourIds([]);
-          setBulkStatusOpen(false);
+          setBulkStatusMode(null);
           window.setTimeout(() => fallbackFocusRef.current?.focus(), 0);
         }}
       />

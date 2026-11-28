@@ -18,6 +18,12 @@ geändert werden.
 
 Die Auswahl bleibt bei Filterwechseln erhalten; die Oberfläche nennt deshalb zusätzlich ausgewählte Touren außerhalb des aktuellen Filters. Mit `Auswahl aufheben` kann sie vollständig verworfen werden. Die Statusänderung wird für alle ausgewählten Touren atomar gespeichert. Fehlt eine Tour oder schlägt das Speichern fehl, wird keine Tour geändert und die Auswahl bleibt für einen erneuten Versuch erhalten. Pro Änderung können höchstens 1.000 Touren ausgewählt werden.
 
+## Fachliche Prüfung kennzeichnen
+
+In der Tourenliste zeigt **Geprüft am** das gespeicherte Prüfdatum. Bei ungeprüften Touren bleibt die Spalte leer. Wählen Sie eine oder mehrere Touren aus, öffnen Sie **Prüfung ändern** und wählen Sie **Heute geprüft** oder **Als ungeprüft markieren**. Das heutige Datum richtet sich nach der Zeitzone Europe/Berlin. Unter **Filter → Prüfung** wählen Sie **Alle**, **Ungeprüft** oder **Geprüft**. Ein Klick auf die Spaltenüberschrift **Geprüft am** wechselt zwischen aufsteigender und absteigender Sortierung. Ungeprüfte Touren stehen in beiden Richtungen am Ende.
+
+Änderungen an der Tour, ihren Abholpunkten, Einsätzen oder tourbezogenen Ausweichterminen löschen das Prüfdatum. Globale Terminverschiebungen und Änderungen am Intervall einer Turnusvorlage löschen es für die betroffenen Touren. Das Anlegen, Entfernen oder terminwirksame Ändern einer konfigurierten Feiertagsregel setzt die Prüfdaten aller Touren der Instanz zurück. Die Aktion **Status ändern** behält das Prüfdatum bei. Neue, duplizierte und ins Folgejahr übernommene Touren beginnen ungeprüft.
+
 ## Mehrere Touren bearbeiten
 
 1. Wählen Sie in der Tourentabelle die gewünschten Touren aus.

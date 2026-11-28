@@ -4,13 +4,17 @@ import { DateInput, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { type WasteTourStatus } from '@sva/waste-management-contracts';
 import { useId, type ReactNode } from 'react';
 
-import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import type {
+  WasteManagementSearchParams,
+  WasteManagementTourValidityPeriod,
+} from './search-params.js';
 
 type WasteToursToolbarFilterFieldsProps = {
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly draftQuery: string;
   readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
+  readonly draftTourReview: WasteManagementSearchParams['tourReview'];
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -19,6 +23,7 @@ type WasteToursToolbarFilterFieldsProps = {
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
+  readonly onDraftTourReviewChange: (value: WasteManagementSearchParams['tourReview']) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -198,48 +203,29 @@ const WasteToursToolbarDateFilterFields = ({
   );
 };
 
-export const WasteToursToolbarFilterFields = ({
-  fractions,
-  draftQuery,
-  draftStatus,
-  draftTourValidityPeriod,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourValidityPeriodChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-}: WasteToursToolbarFilterFieldsProps) => {
+export const WasteToursToolbarFilterFields = (props: WasteToursToolbarFilterFieldsProps) => {
+  const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <WasteToursToolbarBasicFilterFields
-        fractions={fractions}
-        draftQuery={draftQuery}
-        draftStatus={draftStatus}
-        draftTourValidityPeriod={draftTourValidityPeriod}
-        draftTourWasteFractionId={draftTourWasteFractionId}
-        onDraftQueryChange={onDraftQueryChange}
-        onDraftStatusChange={onDraftStatusChange}
-        onDraftTourValidityPeriodChange={onDraftTourValidityPeriodChange}
-        onDraftTourWasteFractionIdChange={onDraftTourWasteFractionIdChange}
-      />
-      <WasteToursToolbarDateFilterFields
-        draftFirstDateFrom={draftFirstDateFrom}
-        draftFirstDateTo={draftFirstDateTo}
-        draftEndDateFrom={draftEndDateFrom}
-        draftEndDateTo={draftEndDateTo}
-        onDraftFirstDateFromChange={onDraftFirstDateFromChange}
-        onDraftFirstDateToChange={onDraftFirstDateToChange}
-        onDraftEndDateFromChange={onDraftEndDateFromChange}
-        onDraftEndDateToChange={onDraftEndDateToChange}
-      />
+      <WasteToursToolbarBasicFilterFields {...props} />
+      <WasteToursToolbarFilterField label={pt('tours.filters.reviewLabel')}>
+        <Select
+          aria-label={pt('tours.filters.reviewLabel')}
+          value={props.draftTourReview ?? ''}
+          className="h-10 rounded-lg"
+          onChange={(event) => {
+            const value = event.target.value;
+            props.onDraftTourReviewChange(
+              value === 'reviewed' || value === 'unreviewed' ? value : undefined
+            );
+          }}
+        >
+          <option value="">{pt('tours.filters.review.all')}</option>
+          <option value="unreviewed">{pt('tours.filters.review.unreviewed')}</option>
+          <option value="reviewed">{pt('tours.filters.review.reviewed')}</option>
+        </Select>
+      </WasteToursToolbarFilterField>
+      <WasteToursToolbarDateFilterFields {...props} />
     </div>
   );
 };

@@ -19,10 +19,11 @@ import {
 
 import type { WasteTourStatusUpdateResult } from './waste-management.tours.status-mutation.js';
 
-type StatusTarget = '' | WasteTourStatus;
+type StatusTarget = '' | WasteTourStatus | 'today' | 'clear';
 
 type WasteToursStatusBulkDialogProps = Readonly<{
   open: boolean;
+  mode?: 'status' | 'review';
   selectedTourIds: readonly string[];
   tourName?: string;
   currentStatus?: WasteTourStatus;
@@ -34,10 +35,12 @@ type WasteToursStatusBulkDialogProps = Readonly<{
 
 const WasteToursStatusTargetField = ({
   target,
+  mode,
   saving,
   onTargetChange,
 }: Readonly<{
   target: StatusTarget;
+  mode: WasteToursStatusBulkDialogProps['mode'];
   saving: boolean;
   onTargetChange: (target: StatusTarget) => void;
 }>) => {
@@ -45,7 +48,11 @@ const WasteToursStatusTargetField = ({
   return (
     <StudioField
       id="waste-tour-bulk-status-target"
-      label={pt('tours.bulkStatusDialog.targetLabel')}
+      label={pt(
+        mode === 'review'
+          ? 'tours.bulkStatusDialog.reviewLabel'
+          : 'tours.bulkStatusDialog.targetLabel'
+      )}
       required
     >
       <Select
@@ -55,10 +62,25 @@ const WasteToursStatusTargetField = ({
         required
         onChange={(event) => onTargetChange(event.target.value as StatusTarget)}
       >
-        <option value="">{pt('tours.bulkStatusDialog.targetPlaceholder')}</option>
-        <option value="draft">{pt('tours.status.draft')}</option>
-        <option value="published">{pt('tours.status.published')}</option>
-        <option value="archived">{pt('tours.status.archived')}</option>
+        <option value="">
+          {pt(
+            mode === 'review'
+              ? 'tours.bulkStatusDialog.reviewPlaceholder'
+              : 'tours.bulkStatusDialog.targetPlaceholder'
+          )}
+        </option>
+        {mode === 'review' ? (
+          <>
+            <option value="today">{pt('tours.bulkStatusDialog.reviewToday')}</option>
+            <option value="clear">{pt('tours.bulkStatusDialog.reviewClear')}</option>
+          </>
+        ) : (
+          <>
+            <option value="draft">{pt('tours.status.draft')}</option>
+            <option value="published">{pt('tours.status.published')}</option>
+            <option value="archived">{pt('tours.status.archived')}</option>
+          </>
+        )}
       </Select>
     </StudioField>
   );
@@ -89,6 +111,7 @@ const WasteToursStatusBulkForm = ({
   selectedTourIds,
   tourName,
   currentStatus,
+  mode,
   saving,
   target,
   error,
@@ -98,7 +121,7 @@ const WasteToursStatusBulkForm = ({
   onSubmit,
 }: Pick<
   WasteToursStatusBulkDialogProps,
-  'selectedTourIds' | 'tourName' | 'currentStatus' | 'saving'
+  'selectedTourIds' | 'tourName' | 'currentStatus' | 'saving' | 'mode'
 > & {
   readonly target: StatusTarget;
   readonly error: string | null;
@@ -113,7 +136,13 @@ const WasteToursStatusBulkForm = ({
     <form className="space-y-5" onSubmit={onSubmit}>
       <DialogHeader>
         <DialogTitle>
-          {tourName ? pt('tours.bulkStatusDialog.singleTitle') : pt('tours.bulkStatusDialog.title')}
+          {pt(
+            mode === 'review'
+              ? 'tours.bulkStatusDialog.reviewTitle'
+              : tourName
+                ? 'tours.bulkStatusDialog.singleTitle'
+                : 'tours.bulkStatusDialog.title'
+          )}
         </DialogTitle>
         <DialogDescription>
           {tourName
@@ -123,14 +152,19 @@ const WasteToursStatusBulkForm = ({
               })
             : pt(
                 selectedTourIds.length === 1
-                  ? 'tours.bulkStatusDialog.descriptionOne'
-                  : 'tours.bulkStatusDialog.descriptionOther',
+                  ? mode === 'review'
+                    ? 'tours.bulkStatusDialog.reviewDescriptionOne'
+                    : 'tours.bulkStatusDialog.descriptionOne'
+                  : mode === 'review'
+                    ? 'tours.bulkStatusDialog.reviewDescriptionOther'
+                    : 'tours.bulkStatusDialog.descriptionOther',
                 { value: selectedTourIds.length }
               )}
         </DialogDescription>
       </DialogHeader>
       <WasteToursStatusTargetField
         target={target}
+        mode={mode}
         saving={saving}
         onTargetChange={onTargetChange}
       />
@@ -140,7 +174,13 @@ const WasteToursStatusBulkForm = ({
           {pt('tours.bulkStatusDialog.cancel')}
         </Button>
         <Button type="submit" disabled={submitDisabled}>
-          {saving ? pt('tours.actions.saving') : pt('tours.bulkStatusDialog.apply')}
+          {saving
+            ? pt('tours.actions.saving')
+            : pt(
+                mode === 'review'
+                  ? 'tours.bulkStatusDialog.reviewApply'
+                  : 'tours.bulkStatusDialog.apply'
+              )}
         </Button>
       </DialogFooter>
     </form>
@@ -152,6 +192,7 @@ export const WasteToursStatusBulkDialog = ({
   selectedTourIds,
   tourName,
   currentStatus,
+  mode,
   saving,
   onOpenChange,
   onSubmit,
@@ -173,7 +214,9 @@ export const WasteToursStatusBulkDialog = ({
     event.preventDefault();
     if (!target || saving || selectedTourIds.length === 0 || exceedsLimit) return;
     setError(null);
-    const result = await onSubmit({ tourIds: selectedTourIds, status: target });
+    const change =
+      target === 'today' || target === 'clear' ? { review: target } : { status: target };
+    const result = await onSubmit({ tourIds: selectedTourIds, ...change });
     if (result.ok) {
       onUpdated();
       return;
@@ -182,9 +225,13 @@ export const WasteToursStatusBulkDialog = ({
       result.reason === 'forbidden'
         ? pt('tours.messages.saveForbidden')
         : pt(
-            result.reason === 'refresh'
-              ? 'tours.bulkStatusDialog.refreshError'
-              : 'tours.bulkStatusDialog.error'
+            mode === 'review'
+              ? result.reason === 'refresh'
+                ? 'tours.bulkStatusDialog.reviewRefreshError'
+                : 'tours.bulkStatusDialog.reviewError'
+              : result.reason === 'refresh'
+                ? 'tours.bulkStatusDialog.refreshError'
+                : 'tours.bulkStatusDialog.error'
           )
     );
   };
@@ -196,6 +243,7 @@ export const WasteToursStatusBulkDialog = ({
           selectedTourIds={selectedTourIds}
           tourName={tourName}
           currentStatus={currentStatus}
+          mode={mode}
           saving={saving}
           target={target}
           error={error}

@@ -113,6 +113,73 @@ const verifyTourReview = async (client: Pool, tourId: string) => {
   expect(await getTour(otherTour)).toMatchObject({ reviewed_on: null });
 };
 
+const verifySharedTourReview = async (client: Pool) => {
+  const preset = randomUUID();
+  const tourIds = [randomUUID(), randomUUID(), randomUUID()].sort();
+  const [firstTour, secondTour, thirdTour] = tourIds;
+  const shift = randomUUID();
+  await client.query(
+    "INSERT INTO waste_custom_recurrence_presets (id, name, interval_days) VALUES ($1, 'Testturnus', 8)",
+    [preset]
+  );
+  await client.query(
+    `INSERT INTO waste_tours (id, name, status, recurrence, custom_recurrence_id)
+     VALUES ($1, 'Mit Vorlage', 'draft', 'custom', $4),
+            ($2, 'Zweite Tour', 'draft', 'weekly', NULL),
+            ($3, 'Dritte Tour', 'draft', 'weekly', NULL)`,
+    [...tourIds, preset]
+  );
+
+  const markReviewed = async () => {
+    const { text, values } = wasteTourStatements.updateWasteTourStatusBulk({
+      tourIds,
+      review: 'today',
+    });
+    await client.query(text, [...values]);
+  };
+  const readReviewedTourIds = async () => {
+    const { rows } = await client.query<{ id: string }>(
+      'SELECT id FROM waste_tours WHERE id = ANY($1::uuid[]) AND reviewed_on IS NOT NULL ORDER BY id',
+      [tourIds]
+    );
+    return rows.map(({ id }) => id);
+  };
+
+  await markReviewed();
+  await client.query(
+    "UPDATE waste_custom_recurrence_presets SET name = 'Umbenannter Turnus' WHERE id = $1",
+    [preset]
+  );
+  expect(await readReviewedTourIds()).toEqual(tourIds);
+  await client.query('UPDATE waste_custom_recurrence_presets SET interval_days = 9 WHERE id = $1', [
+    preset,
+  ]);
+  expect(await readReviewedTourIds()).toEqual([secondTour, thirdTour]);
+
+  await markReviewed();
+  await client.query(
+    `INSERT INTO waste_global_date_shifts (id, original_date, actual_date, tour_ids)
+     VALUES ($1, '2027-02-01', '2027-02-02', $2::text[])`,
+    [shift, [firstTour]]
+  );
+  expect(await readReviewedTourIds()).toEqual([secondTour, thirdTour]);
+
+  await markReviewed();
+  await client.query('UPDATE waste_global_date_shifts SET tour_ids = $2::text[] WHERE id = $1', [
+    shift,
+    [secondTour],
+  ]);
+  expect(await readReviewedTourIds()).toEqual([thirdTour]);
+
+  await markReviewed();
+  await client.query('UPDATE waste_global_date_shifts SET tour_ids = NULL WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+
+  await markReviewed();
+  await client.query('DELETE FROM waste_global_date_shifts WHERE id = $1', [shift]);
+  expect(await readReviewedTourIds()).toEqual([]);
+};
+
 describe('Waste provisioning with a restricted PostgreSQL principal', () => {
   it('creates and reconciles tenant roles without superuser, replication or RLS bypass privileges', async () => {
     const password = randomUUID();
@@ -221,6 +288,7 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
         });
         await appConsumer.query(statement.text, [...statement.values]);
         await verifyTourReview(appConsumer, tourId);
+        await verifySharedTourReview(appConsumer);
         await expect(
           publicConsumer.query('SELECT fraction_id FROM waste_tour_fractions WHERE tour_id = $1', [
             tourId,

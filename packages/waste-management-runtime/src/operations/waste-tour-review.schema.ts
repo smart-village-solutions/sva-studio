@@ -7,6 +7,44 @@ const wasteTourReviewRelations = [
   'waste_tour_date_shifts',
 ];
 
+const buildSharedTourReviewStatements = (schema: string) => [
+  `CREATE OR REPLACE FUNCTION ${schema}.reset_global_shift_tour_review() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = pg_catalog AS $review$
+    DECLARE
+      old_ids text[] := CASE WHEN TG_OP = 'INSERT' THEN '{}' ELSE OLD.tour_ids END;
+      new_ids text[] := CASE WHEN TG_OP = 'DELETE' THEN '{}' ELSE NEW.tour_ids END;
+    BEGIN
+      IF TG_OP = 'UPDATE' AND (to_jsonb(OLD) - 'updated_at') = (to_jsonb(NEW) - 'updated_at') THEN
+        RETURN NULL;
+      END IF;
+
+      -- NULL means all tours. When the scope changes, both scopes lose their review.
+      PERFORM 1 FROM ${schema}.waste_tours
+        WHERE old_ids IS NULL OR new_ids IS NULL OR id::text = ANY(old_ids || new_ids)
+        ORDER BY id FOR NO KEY UPDATE;
+      UPDATE ${schema}.waste_tours SET reviewed_on = NULL
+        WHERE reviewed_on IS NOT NULL
+          AND (old_ids IS NULL OR new_ids IS NULL OR id::text = ANY(old_ids || new_ids));
+      RETURN NULL;
+    END; $review$;`,
+  `DROP TRIGGER IF EXISTS waste_tours_reset_review ON ${schema}.waste_global_date_shifts;`,
+  `CREATE TRIGGER waste_tours_reset_review AFTER INSERT OR UPDATE OR DELETE ON ${schema}.waste_global_date_shifts
+    FOR EACH ROW EXECUTE FUNCTION ${schema}.reset_global_shift_tour_review();`,
+  `CREATE OR REPLACE FUNCTION ${schema}.reset_preset_tour_review() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = pg_catalog AS $review$
+    BEGIN
+      PERFORM 1 FROM ${schema}.waste_tours WHERE custom_recurrence_id = NEW.id
+        ORDER BY id FOR NO KEY UPDATE;
+      UPDATE ${schema}.waste_tours SET reviewed_on = NULL
+        WHERE custom_recurrence_id = NEW.id AND reviewed_on IS NOT NULL;
+      RETURN NULL;
+    END; $review$;`,
+  `DROP TRIGGER IF EXISTS waste_tours_reset_review ON ${schema}.waste_custom_recurrence_presets;`,
+  `CREATE TRIGGER waste_tours_reset_review AFTER UPDATE OF interval_days ON ${schema}.waste_custom_recurrence_presets
+    FOR EACH ROW WHEN (OLD.interval_days IS DISTINCT FROM NEW.interval_days)
+    EXECUTE FUNCTION ${schema}.reset_preset_tour_review();`,
+];
+
 export const buildWasteTourReviewStatements = (schema: string) => [
   `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS reviewed_on DATE;`,
   `CREATE OR REPLACE FUNCTION ${schema}.reset_waste_tour_review() RETURNS trigger
@@ -59,4 +97,5 @@ export const buildWasteTourReviewStatements = (schema: string) => [
         table === 'waste_tour_assignment_locations' ? "'assignment'" : ''
       });`,
   ]),
+  ...buildSharedTourReviewStatements(schema),
 ];

@@ -22,7 +22,7 @@ Die Auswahl bleibt bei Filterwechseln erhalten; die Oberfläche nennt deshalb zu
 
 In der Tourenliste zeigt **Geprüft am** das gespeicherte Prüfdatum. Bei ungeprüften Touren bleibt die Spalte leer. Wählen Sie eine oder mehrere Touren aus, öffnen Sie **Prüfung ändern** und wählen Sie **Heute geprüft** oder **Als ungeprüft markieren**. Das heutige Datum richtet sich nach der Zeitzone Europe/Berlin.
 
-Änderungen an der Tour, ihren Abholpunkten, Einsätzen oder tourbezogenen Ausweichterminen löschen das Prüfdatum. Eine reine Änderung des Veröffentlichungsstatus behält es bei. Neue, duplizierte und ins Folgejahr übernommene Touren beginnen ungeprüft.
+Änderungen an der Tour, ihren Abholpunkten, Einsätzen oder tourbezogenen Ausweichterminen löschen das Prüfdatum. Globale Terminverschiebungen und Änderungen am Intervall einer Turnusvorlage löschen es für die betroffenen Touren. Die Aktion **Status ändern** behält es bei. Neue, duplizierte und ins Folgejahr übernommene Touren beginnen ungeprüft.
 
 ## Mehrere Touren bearbeiten
 

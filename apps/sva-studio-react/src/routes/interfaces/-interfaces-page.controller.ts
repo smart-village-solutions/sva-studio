@@ -65,6 +65,18 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
       enabled: entry.enabled,
       config: { ...entry.config, apiKey: '' },
     };
+  if (entry.type === 'ssf_translation')
+    return {
+      type: entry.type,
+      name: entry.name,
+      enabled: entry.enabled,
+      config: {
+        origin: entry.config.origin,
+        revision: entry.config.revision,
+        selectedLocales: [...entry.config.selectedLocales],
+        apiKey: '',
+      },
+    };
   if (entry.type === 'deepl')
     return {
       type: 'deepl',
@@ -131,6 +143,7 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
   if (permissionMessage) return permissionMessage;
   const message = readErrorMessage(error, fallback);
 
+  if (message.startsWith('ssf_translation_')) return t(`interfaces.ssf.errors.${message}`);
   if (message.startsWith('deepl_') || message === 'interface_conflict')
     return t(`interfaces.deepl.errors.${message}`);
   if (message.startsWith('meilisearch_')) return t(`interfaces.meilisearch.errors.${message}`);
@@ -320,12 +333,19 @@ export const useInterfacesPageController = () => {
   };
 
   const onCheckDeepL = async () => {
-    if (editState.mode !== 'edit' || editState.entry.type !== 'deepl') return;
+    if (
+      editState.mode !== 'edit' ||
+      (editState.entry.type !== 'deepl' && editState.entry.type !== 'ssf_translation')
+    )
+      return;
+    const isSsf = editState.entry.type === 'ssf_translation';
     setDeepLChecking(true);
     setDeepLCheckFailed(false);
     setSaveErrorMessage(null);
     try {
-      const result = await checkDeepL({ data: { id: editState.entry.id } });
+      const result = await checkDeepL({
+        data: { id: editState.entry.id, ...(isSsf ? { type: 'ssf_translation' as const } : {}) },
+      });
       const updated = await refresh(false);
       if (!updated) throw new Error(t('interfaces.deepl.refreshFailed'));
       const entry = updated?.entries.find((item) => item.id === editState.entry.id);
@@ -336,13 +356,29 @@ export const useInterfacesPageController = () => {
       if (!result.ok) {
         setDeepLCheckFailed(true);
         setSaveErrorMessage(
-          t(`interfaces.deepl.errors.${result.errorCode ?? 'deepl_unavailable'}`)
+          translateInterfacesErrorMessage(
+            new Error(
+              result.errorCode ?? (isSsf ? 'ssf_translation_unavailable' : 'deepl_unavailable')
+            ),
+            t(
+              isSsf
+                ? 'interfaces.ssf.errors.ssf_translation_unavailable'
+                : 'interfaces.deepl.checkFailed'
+            )
+          )
         );
       }
     } catch (error) {
       setDeepLCheckFailed(true);
       setSaveErrorMessage(
-        translateInterfacesErrorMessage(error, t('interfaces.deepl.checkFailed'))
+        translateInterfacesErrorMessage(
+          error,
+          t(
+            isSsf
+              ? 'interfaces.ssf.errors.ssf_translation_unavailable'
+              : 'interfaces.deepl.checkFailed'
+          )
+        )
       );
     } finally {
       setDeepLChecking(false);

@@ -3630,6 +3630,13 @@ CREATE INDEX idx_instance_provisioning_runs_instance_created ON iam.instance_pro
 
 
 --
+-- Name: idx_instance_ssf_translation_interface; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_ssf_translation_interface ON iam.instance_external_interfaces USING btree (instance_id) WHERE (type_key = 'ssf_translation'::text);
+
+
+--
 -- Name: idx_instance_waste_provisioning_status_updated_at; Type: INDEX; Schema: iam; Owner: -
 --
 

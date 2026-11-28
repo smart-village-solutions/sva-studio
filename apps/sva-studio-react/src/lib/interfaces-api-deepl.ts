@@ -7,11 +7,12 @@ import {
 } from './interfaces-api-context';
 
 export const checkDeepLInterfaceForRequest = async (
-  data: { instanceId?: string; id: string },
+  data: { instanceId?: string; id: string; type?: 'ssf_translation' },
   request?: Request
 ): Promise<{ ok: boolean; errorCode?: string }> => {
   if (
     !data ||
+    (data.type !== undefined && data.type !== 'ssf_translation') ||
     typeof data.id !== 'string' ||
     !/^[A-Za-z0-9:_-]{1,128}$/.test(data.id) ||
     (data.instanceId !== undefined && typeof data.instanceId !== 'string')
@@ -29,7 +30,7 @@ export const checkDeepLInterfaceForRequest = async (
         'check_deepl_interface',
         data.instanceId
       );
-      const { checkDeepLLanguages, readConfiguredPluginTenantAccess } =
+      const { checkDeepLLanguages, checkSsfLanguages, readConfiguredPluginTenantAccess } =
         await import('@sva/auth-runtime/server');
       const access = await readConfiguredPluginTenantAccess(instanceId, 'app-translations');
       if (!access.allowed)
@@ -38,10 +39,12 @@ export const checkDeepLInterfaceForRequest = async (
             ? 'deepl_requires_multilingual_module'
             : 'deepl_module_unavailable'
         );
-      return checkDeepLLanguages(instanceId, data.id);
+      return data.type === 'ssf_translation'
+        ? checkSsfLanguages(instanceId, data.id)
+        : checkDeepLLanguages(instanceId, data.id);
     },
   });
 };
 export const checkDeepLInterfaceServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { id: string }) => data)
+  .validator((data: { id: string; type?: 'ssf_translation' }) => data)
   .handler(async ({ data }) => checkDeepLInterfaceForRequest(data));

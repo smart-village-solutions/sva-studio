@@ -7,6 +7,7 @@ import type {
 } from '@sva/core';
 import type {
   InstanceInterfaceDeepL,
+  InstanceInterfaceSsf,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
   InstanceInterfacePostgresql,
@@ -14,7 +15,7 @@ import type {
   InstanceInterfaceMapGeocoding,
   InstanceInterface,
 } from './instance-interfaces';
-import { readDeepLSettings, mailTransportContract } from '@sva/core';
+import { readSsfTranslationSettings, readDeepLSettings, mailTransportContract } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 
@@ -67,6 +68,7 @@ export type StoredEntry =
       'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
     >
   | StoredDeepL
+  | Omit<InstanceInterfaceSsf, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
   | StoredS3
   | StoredSupabase
   | StoredPostgresql
@@ -125,6 +127,7 @@ export const mapStoredTypeToKey = (
   | 'mail_transport'
   | 'map_geocoding'
   | 'deepl'
+  | 'ssf_translation'
   | 'meilisearch' =>
   type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
@@ -169,6 +172,24 @@ export const mapRecordToStoredEntry = (
 
   if (record.typeKey === 'meilisearch') return mapMeilisearchRecord(record, createdAt, updatedAt);
 
+  if (record.typeKey === 'ssf_translation') {
+    const config = readSsfTranslationSettings(record.publicConfig);
+    if (!config) return null;
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'ssf_translation',
+      name: record.displayName,
+      enabled: record.enabled,
+      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+      config,
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+      lastCheckErrorCode: record.lastCheckErrorCode,
+    };
+  }
   if (record.typeKey === 'deepl') {
     const config = readDeepLSettings(record.publicConfig);
     if (!config) return null;

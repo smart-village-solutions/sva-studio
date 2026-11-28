@@ -40,6 +40,7 @@ export const isSvaMainserverInstanceConfig = (
 
 const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType =>
   value === 'deepl' ||
+  value === 'ssf_translation' ||
   value === 'mainserver' ||
   value === 's3' ||
   value === 'supabase' ||
@@ -182,7 +183,9 @@ const readClientErrorCode = (error: unknown): string | undefined => {
  * codes such as `invalid_interfaces_payload` describe server defects and stay 5xx.
  */
 export const isClientValidationErrorMessage = (message: string): boolean =>
-  /^(invalid_(?:config|input|request)|.*_invalid|.*_required|.*_not_supported)$/u.test(message);
+  /^(invalid_(?:config|input|request)|ssf_translation_invalid_config|.*_invalid|.*_required|.*_not_supported)$/u.test(
+    message
+  );
 
 export const getErrorStatusCode = (error: unknown, fallback: number): number => {
   if (isRecord(error) && isNumericStatusCode(error.statusCode)) {

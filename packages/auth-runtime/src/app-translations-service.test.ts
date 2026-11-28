@@ -8,10 +8,33 @@ const state = vi.hoisted(() => ({
   translate: vi.fn(),
   ready: vi.fn(),
   rate: vi.fn(),
+  loadById: vi.fn(),
+  saveCheck: vi.fn(),
+  dispatch: new Map<string, string>(),
 }));
 vi.mock('@sva/data-repositories/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/data-repositories/server')>()),
   loadDefaultExternalInterfaceRecord: state.load,
+  loadExternalInterfaceRecordById: state.loadById,
+  saveTranslationInterfaceCheck: state.saveCheck,
+}));
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
+  fetchPublicHttps: (input: string, init: RequestInit) => fetch(input, init),
+}));
+vi.mock('./iam-account-management/encryption.js', () => ({
+  revealField: (ciphertext: string | undefined) =>
+    ciphertext === 'ssf-cipher' ? JSON.stringify({ apiKey: 'b'.repeat(64) }) : undefined,
+}));
+vi.mock('./redis.js', () => ({
+  getRedisClient: () => ({
+    get: async (key: string) => state.dispatch.get(key) ?? null,
+    set: async (key: string, value: string) => {
+      if (state.dispatch.has(key)) return null;
+      state.dispatch.set(key, value);
+      return 'OK';
+    },
+  }),
 }));
 vi.mock('./db.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./db.js')>()),
@@ -27,7 +50,11 @@ vi.mock('./app-translations-deepl.js', () => ({
   translateDeepLValues: state.translate,
 }));
 import { appTranslationServiceHandler } from './app-translations-service.js';
-import { readSsfTranslationConfig, verifySsfTranslationLocales } from './app-translations-ssf.js';
+import {
+  checkSsfLanguages,
+  readSsfTranslationConfig,
+  verifySsfTranslationLocales,
+} from './app-translations-ssf.js';
 const binding = {
   issuer: 'https://identity.example/realms/test',
   clientId: 'main-server',
@@ -58,8 +85,27 @@ const request = (data = payload(), auth = true) =>
   });
 let connection: Record<string, unknown>;
 let provider: Record<string, unknown>;
+let ssf: Record<string, unknown> | null;
+const ssfRecord = () => ({
+  id: 'ssf-record',
+  typeKey: 'ssf_translation',
+  ownerKind: 'host',
+  enabled: true,
+  lastCheckStatus: 'succeeded',
+  secretConfigCiphertext: 'ssf-cipher',
+  publicConfig: {
+    origin: 'https://ssf-tenant.example',
+    revision: '1',
+    credentialRevision: '1',
+    verifiedCredentialRevision: '1',
+    selectedLocales: ['en'],
+    availableLanguages: ['en', 'pl'],
+  },
+});
 beforeEach(() => {
   vi.resetAllMocks();
+  state.dispatch.clear();
+  ssf = null;
   connection = {
     id: 'connection',
     enabled: true,
@@ -80,7 +126,7 @@ beforeEach(() => {
     },
   };
   state.load.mockImplementation(async (_instance, type) =>
-    type === 'sva_mainserver' ? connection : provider
+    type === 'sva_mainserver' ? connection : type === 'ssf_translation' ? ssf : provider
   );
   state.verify.mockResolvedValue({ azp: binding.clientId, sub: binding.subject });
   state.query.mockResolvedValue({ rows: [{ generation: '1' }] });
@@ -145,6 +191,83 @@ describe('SSF pilot configuration and discovery', () => {
 });
 
 describe('technical app translation', () => {
+  it('checks the saved tenant credential and records only validated targets for its revision', async () => {
+    state.loadById.mockResolvedValue(ssfRecord());
+    const fetchSsf = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ languages: ['de', 'pl', 'ja', 'es', 'pt-PT', 'unknown'] })
+      );
+    vi.stubGlobal('fetch', fetchSsf);
+    expect(await checkSsfLanguages('de-town', 'ssf-record')).toEqual({ ok: true });
+    expect(fetchSsf).toHaveBeenCalledWith(
+      'https://ssf-tenant.example/api/v1/languages',
+      expect.objectContaining({
+        redirect: 'error',
+        headers: expect.objectContaining({ 'X-API-Key': 'b'.repeat(64) }),
+      })
+    );
+    expect(state.saveCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'de-town',
+        typeKey: 'ssf_translation',
+        expectedRevision: '1',
+        languages: ['pl', 'ja', 'es'],
+      })
+    );
+  });
+
+  it('prefers registered SSF and keeps a failed request from switching to DeepL', async () => {
+    ssf = ssfRecord();
+    const fetchSsf = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetchSsf);
+    expect((await appTranslationServiceHandler(request())).status).toBe(503);
+    expect(fetchSsf).toHaveBeenCalledOnce();
+    expect(state.translate).not.toHaveBeenCalled();
+    expect((await appTranslationServiceHandler(request())).status).toBe(503);
+    expect(fetchSsf).toHaveBeenCalledTimes(2);
+
+    ssf = {
+      ...ssf,
+      publicConfig: {
+        ...ssfRecord().publicConfig,
+        credentialRevision: '2',
+        verifiedCredentialRevision: '2',
+      },
+    };
+    expect((await appTranslationServiceHandler(request())).status).toBe(403);
+    expect(fetchSsf).toHaveBeenCalledTimes(2);
+    ssf = { ...ssf, enabled: false };
+    expect((await appTranslationServiceHandler(request())).status).toBe(403);
+    expect(state.translate).not.toHaveBeenCalled();
+
+    expect(
+      (
+        await appTranslationServiceHandler(
+          request({
+            ...payload(),
+            requestId: '22222222-2222-4222-8222-222222222222',
+          })
+        )
+      ).status
+    ).toBe(200);
+    expect(state.translate).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { enabled: false },
+    { lastCheckStatus: 'failed' },
+    { publicConfig: { ...ssfRecord().publicConfig, selectedLocales: ['pl'] } },
+  ])('uses DeepL when registered SSF is ineligible (%j)', async (patch) => {
+    configureSsfPilot(); // A saved SSF record supersedes legacy pilot configuration.
+    ssf = { ...ssfRecord(), ...patch };
+    const fetchSsf = vi.fn();
+    vi.stubGlobal('fetch', fetchSsf);
+    expect((await appTranslationServiceHandler(request())).status).toBe(200);
+    expect(state.translate).toHaveBeenCalledOnce();
+    expect(fetchSsf).not.toHaveBeenCalled();
+  });
+
   it('dispatches the configured pilot to SSF v1 and restores its HTML markers', async () => {
     configureSsfPilot();
     const fetchSsf = vi.fn(async (_url: string, options: RequestInit) => {
@@ -283,6 +406,7 @@ describe('technical app translation', () => {
           ...payload(),
           targetLocale,
           profileId: 'global-settings-v1',
+          requestId: crypto.randomUUID(),
           entries: [{ key: 'label', format: 'plain', text: 'Unsere Termine' }],
         })
       );
@@ -294,6 +418,7 @@ describe('technical app translation', () => {
           ...payload(),
           targetLocale,
           profileId: 'static-html-v1',
+          requestId: crypto.randomUUID(),
           entries: [{ key: 'content', format: 'html', text: '<p>Impressum</p>' }],
         })
       );
@@ -533,7 +658,13 @@ it('accepts a title-only news group and all agreed plain metadata fields', async
 });
 it('rejects a different tenant binding, disabled languages and revoked access without provider calls', async () => {
   state.load.mockImplementation(async (instance, type) =>
-    instance === 'de-other' ? null : type === 'sva_mainserver' ? connection : provider
+    instance === 'de-other'
+      ? null
+      : type === 'sva_mainserver'
+        ? connection
+        : type === 'ssf_translation'
+          ? ssf
+          : provider
   );
   expect(
     (await appTranslationServiceHandler(request({ ...payload(), instanceId: 'de-other' }))).status
@@ -712,8 +843,9 @@ it.each([false, true])('compares database timestamp values (changed: %s)', async
   connection.updatedAt = timestamp;
   provider.updatedAt = timestamp;
   state.load.mockImplementation(async (_instance, type) => {
-    const record = type === 'sva_mainserver' ? connection : provider;
-    return { ...record, updatedAt: new Date(record.updatedAt as string) };
+    const record =
+      type === 'sva_mainserver' ? connection : type === 'ssf_translation' ? ssf : provider;
+    return record && { ...record, updatedAt: new Date(record.updatedAt as string) };
   });
   state.translate.mockImplementation(async () => {
     if (changed) provider.updatedAt = '2026-10-27T12:00:00.001Z';

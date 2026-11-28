@@ -1,3 +1,4 @@
+import type { fetchPublicHttps } from '@sva/server-runtime';
 import {
   AppTranslationError,
   catalogAssert,
@@ -13,7 +14,7 @@ import {
 import { createAppTranslationRepository } from '@sva/data-repositories/server';
 import { z } from 'zod';
 import { withInstanceDb, type QueryClient } from './db.js';
-import { translateDeepLValues } from './app-translations-deepl.js';
+import { translateWithInstanceProvider } from './app-translations-providers.js';
 import { isPluginOperationCancellationError } from './plugin-operations/job-cancellation.js';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 import {
@@ -29,7 +30,7 @@ import {
 const prepareTranslationBatch = async (
   input: CatalogTranslationInput,
   data: CatalogEditorData,
-  record: ExternalInterfaceRecord,
+  records: ReadonlyMap<string, ExternalInterfaceRecord>,
   job: StudioJobRecord
 ) => {
   const keys = input.key ? [input.key] : Object.keys(data.draft.manifest.keys).sort();
@@ -91,7 +92,7 @@ const prepareTranslationBatch = async (
     skipped: cursor - startCursor - entries.length,
     locale: slots[Math.max(0, cursor - 1)]?.locale,
     total: slots.length,
-    record,
+    record: entries.length ? records.get(entries[0]!.locale) : undefined,
     revision: data.draft.draftRevision,
   };
 };
@@ -147,17 +148,19 @@ export const runCatalogTranslation = async (context: StudioJobExecutionHandlerCo
       instanceId: context.job.instanceId,
       organizationId: input.organizationId,
     };
-    const fetchWhileAppActive: typeof fetch = async (...args) => {
-      const { response } = await withInstanceDb(scope.instanceId, async (client) => {
-        const revision = await lockAppModuleRevision(client, scope.instanceId);
-        catalogAssert(revision === input.appModuleRevision, 'catalog_forbidden');
-        // Keep the assignment locked through dispatch and release it before waiting for DeepL.
-        const response = fetch(...args);
-        void response.catch(() => undefined);
-        return { response };
-      });
-      return response;
-    };
+    const fetchWhileAppActive =
+      (transport: typeof fetchPublicHttps): typeof fetchPublicHttps =>
+      async (...args) => {
+        const { response } = await withInstanceDb(scope.instanceId, async (client) => {
+          const revision = await lockAppModuleRevision(client, scope.instanceId);
+          catalogAssert(revision === input.appModuleRevision, 'catalog_forbidden');
+          // Keep the assignment locked through dispatch and release it before waiting for the provider.
+          const response = transport(...args);
+          void response.catch(() => undefined);
+          return { response };
+        });
+        return response;
+      };
     while (true) {
       await context.throwIfCancellationRequested();
       const prepared = await withGuardedTranslationJob(
@@ -167,8 +170,8 @@ export const runCatalogTranslation = async (context: StudioJobExecutionHandlerCo
         async (_client, data, record, job) => prepareTranslationBatch(input, data, record, job)
       );
       const values = prepared.entries.length
-        ? await translateDeepLValues(
-            prepared.record,
+        ? await translateWithInstanceProvider(
+            prepared.record!,
             prepared.entries[0]!.targetCode,
             prepared.entries.map((entry) => entry.source),
             context.abortSignal,

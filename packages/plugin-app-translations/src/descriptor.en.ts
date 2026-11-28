@@ -8,13 +8,13 @@ export const englishTranslations = {
       translationProgress:
         'Saved: {{translated}} · Skipped: {{skipped}} · Still pending: {{pending}}',
       translateHelp:
-        'Translate missing or outdated standard texts from the pinned German source using this instance’s DeepL account. Manual corrections are retained. DeepL charges may apply. No app delivery.',
+        'Translate missing or outdated standard texts from the pinned German source using this instance’s selected translation provider. Manual corrections are retained. Provider charges may apply. No app delivery.',
       translateKey: 'Translate this text again',
       machine: 'Machine translated',
       replaceManual: 'Explicitly replace the manual correction for this language',
       transferMunicipal: 'Translate this German text',
       transferHelp:
-        'Uses DeepL to translate this saved municipal German text into the selected languages. Overwriting manual corrections requires separate confirmation for each affected language. DeepL charges may apply.',
+        'Uses the selected provider to translate this saved municipal German text into the selected languages. Overwriting manual corrections requires separate confirmation for each affected language. Provider charges may apply.',
       replaceManualTargets: 'Confirm overwriting manual corrections',
       jobStatus: {
         queued: 'Translation queued',
@@ -24,6 +24,10 @@ export const englishTranslations = {
         failed: 'Translation stopped — resolve the cause and start again',
         cancelled: 'Translation cancelled',
       },
+      ssf_translation_unavailable: 'Smart Speech Flow is currently unavailable.',
+      ssf_translation_rejected: 'Smart Speech Flow rejected the request. Check the interface.',
+      ssf_translation_invalid_response: 'Smart Speech Flow returned an invalid response.',
+      ssf_translation_too_large: 'A text exceeds the Smart Speech Flow request size limit.',
       deepl_auth_failed: 'DeepL rejected the credentials. Check the API key.',
       deepl_quota_exceeded: 'The DeepL quota has been exhausted.',
       deepl_rate_limited: 'DeepL is limiting requests. A bounded retry will follow.',
@@ -34,22 +38,23 @@ export const englishTranslations = {
       title: 'Multilingual content',
       languageTag: 'en',
       sourceTitle: 'App texts',
-      setupTitle: 'Set up the DeepL interface',
-      setupReady: 'DeepL interface ready',
+      setupTitle: 'Set up a translation interface',
+      setupReady: 'Translation interface ready',
       setupLink: 'Open interfaces',
       setupAdmin:
         'Ask an instance administrator with interface management permission to complete setup.',
       setupReasons: {
-        not_configured: 'First configure a dedicated DeepL account for this instance.',
-        disabled: 'The DeepL interface is disabled.',
-        secret_missing: 'A readable DeepL API key is missing.',
+        not_configured: 'First configure an SSF or DeepL interface for this instance.',
+        disabled: 'The translation interface is disabled.',
+        secret_missing: 'A readable API key is missing.',
         check_required: 'Check the connection and load available languages.',
         languages_required:
           'Select and save at least one target language in the verified interface.',
         ready:
           'Verified and selected languages are available for local catalog editing. Automatic translations can be started explicitly. You can publish saved snapshots to the app.',
       },
-      catalog_setup_required: 'First complete and verify DeepL setup. Existing texts are retained.',
+      catalog_setup_required:
+        'First complete and verify a translation interface. Existing texts are retained.',
       sourceRequired: 'First create the German source under App → App texts.',
       sourceDescription:
         'Customize German app texts for your municipality without the multilingual module.',
@@ -186,7 +191,7 @@ export const englishTranslations = {
     readiness: {
       local: 'Check local catalog basis — app integration is not available yet',
       schema: 'Local catalog basis',
-      provider: 'Central DeepL credential configured',
+      provider: 'Translation interface configured',
       service: 'Mainserver authorized for translations',
       serviceMissing:
         'Mainserver authorization is missing. Check the Mainserver assignment and Studio destination, then reconcile the module.',

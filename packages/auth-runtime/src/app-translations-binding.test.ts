@@ -9,7 +9,10 @@ const state = vi.hoisted(() => ({
   permissions: vi.fn(),
   authorize: vi.fn(),
 }));
-vi.mock('@sva/iam-core', () => ({ evaluateAuthorizeDecision: state.authorize }));
+vi.mock('@sva/iam-core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/iam-core')>()),
+  evaluateAuthorizeDecision: state.authorize,
+}));
 vi.mock('./iam-authorization/permission-store.queries.js', () => ({
   loadPermissionsWithClient: state.permissions,
 }));
@@ -24,7 +27,7 @@ vi.mock('./db.js', () => ({
   withIamAppDb: (work: (client: unknown) => unknown) => work({ query: state.query }),
 }));
 vi.mock('./app-translations-deepl.js', () => ({
-  readDeepLSetupStatus: state.providerStatus,
+  getDeepLSetupStatus: state.providerStatus,
 }));
 vi.mock('./upstream-url-validation.js', () => ({ normalizePublicUpstreamUrl: state.url }));
 import { Client } from 'pg';
@@ -70,7 +73,24 @@ beforeEach(() => {
       oauthTokenUrl: 'https://town.main.example/oauth/token',
     },
   };
-  state.load.mockResolvedValue(connection);
+  state.providerStatus.mockReturnValue({ ready: false, selectedLocales: [] });
+  state.load.mockImplementation(async (_, type) => {
+    if (type === 'sva_mainserver') return connection;
+    if (type !== 'deepl') return null;
+    const status = state.providerStatus();
+    return {
+      id: 'deepl',
+      typeKey: 'deepl',
+      publicConfig: {
+        revision: '1',
+        credentialRevision: '1',
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: status.selectedLocales,
+        availableLanguages: [],
+      },
+    };
+  });
   state.query.mockResolvedValue({
     rows: [
       { primary_hostname: 'de-town.studio.example', generation: '1', assignment_revision: '123' },
@@ -399,7 +419,7 @@ it('uses the initiating administrator for setup and policy sync without an organ
   expect(fetcher.mock.calls[2][1].headers.Authorization).toBe('Bearer setup-token');
 
   connection.publicConfig.translationService = binding;
-  state.providerStatus.mockResolvedValue({ ready: true, selectedLocales: ['en'] });
+  state.providerStatus.mockReturnValue({ ready: true, selectedLocales: ['en'] });
   fetcher
     .mockResolvedValueOnce(Response.json({ access_token: 'personal-policy-token' }))
     .mockResolvedValueOnce(
@@ -725,7 +745,6 @@ it.each([
     const newsEnabled = locales.length > 0;
     const studioUrl = 'https://studio.example/api/v1/app-translations/translate';
     connection.publicConfig.translationService = binding;
-    state.load.mockImplementation(async (_, type) => (type === 'deepl' ? null : connection));
     state.providerStatus.mockReturnValue({ ready, selectedLocales });
     prepareMultipleSetupCredentials([]);
     fetcher
@@ -766,7 +785,7 @@ it.each([
   ['suspend', 400],
 ] as const)('handles rejected policy during %s (%s)', async (operation, status) => {
   connection.publicConfig.translationService = binding;
-  state.providerStatus.mockResolvedValue({ ready: false, selectedLocales: [] });
+  state.providerStatus.mockReturnValue({ ready: false, selectedLocales: [] });
   prepareMultipleSetupCredentials([]);
   fetcher
     .mockReset()

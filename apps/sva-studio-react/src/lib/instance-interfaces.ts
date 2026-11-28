@@ -9,10 +9,12 @@ import {
   appTranslationLanguage,
   isAppTranslationLocale,
 } from '@sva/core';
+import { isSsfTranslationLocaleList, type SsfTranslationSettings } from '@sva/core';
 import type { DeepLSettings, MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 
 export type InstanceInterfaceType =
   | 'deepl'
+  | 'ssf_translation'
   | 'mainserver'
   | 's3'
   | 'supabase'
@@ -130,7 +132,29 @@ export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
 export type InstanceInterfaceDeepL = InstanceInterfaceBase &
   Readonly<{ type: 'deepl'; apiKeyConfigured: boolean; config: DeepLSettings }>;
 
+export type InstanceInterfaceSsf = InstanceInterfaceBase &
+  Readonly<{ type: 'ssf_translation'; apiKeyConfigured: boolean; config: SsfTranslationSettings }>;
+
+export const ssfInterfaceDraftSchema = z
+  .object({
+    type: z.literal('ssf_translation'),
+    name: z.string().trim().min(1).max(120),
+    enabled: z.boolean(),
+    config: z
+      .object({
+        origin: z.string().trim().min(1).max(512),
+        apiKey: z.string().max(4096),
+        revision: z.string().min(1).max(128),
+        selectedLocales: z.custom<import('@sva/core').SsfTranslationTarget[]>(
+          isSsfTranslationLocaleList
+        ),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type InstanceInterface =
+  | InstanceInterfaceSsf
   | InstanceInterfaceDeepL
   | (InstanceInterfaceBase & MeilisearchInterfaceFields)
   | InstanceInterfaceMainserver
@@ -141,6 +165,7 @@ export type InstanceInterface =
   | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
+  | z.infer<typeof ssfInterfaceDraftSchema>
   | z.infer<typeof meilisearchInterfaceDraftSchema>
   | {
       type: 'deepl';
@@ -191,6 +216,10 @@ export const instanceInterfaceTypeMeta: Record<
   InstanceInterfaceType,
   { titleKey: string; descriptionKey: string }
 > = {
+  ssf_translation: {
+    titleKey: 'interfaces.types.ssf_translation.label',
+    descriptionKey: 'interfaces.types.ssf_translation.description',
+  },
   deepl: {
     titleKey: 'interfaces.types.deepl.label',
     descriptionKey: 'interfaces.types.deepl.description',
@@ -229,6 +258,13 @@ export const createEmptyInstanceInterfaceDraft = (
   type: InstanceInterfaceType
 ): InstanceInterfaceDraft => {
   if (type === 'meilisearch') return emptyMeilisearchDraft();
+  if (type === 'ssf_translation')
+    return {
+      type,
+      name: 'Smart Speech Flow',
+      enabled: true,
+      config: { origin: '', apiKey: '', revision: '0', selectedLocales: [] },
+    };
   if (type === 'deepl')
     return {
       type: 'deepl',

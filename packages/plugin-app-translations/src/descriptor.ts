@@ -77,7 +77,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
       jobTypeId: APP_TRANSLATIONS_CATALOG_JOB,
       supportsCancellation: true,
       queue: 'app-translations',
-      displayName: 'DeepL',
+      displayName: 'App translation',
       descriptionKey: 'appTranslations.ui.translateMissing',
       startPolicy: 'dedicated',
     },

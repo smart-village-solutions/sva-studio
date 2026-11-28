@@ -1,7 +1,8 @@
 import { DeepLFields } from './-interfaces-page.deepl-fields';
-import { t } from '../../i18n';
+import { getActiveLocale, t } from '../../i18n';
 import {
   Radio,
+  Checkbox,
   Button,
   StudioPersistentFormError,
   StudioSaveButton,
@@ -10,6 +11,7 @@ import {
 import {
   instanceInterfaceTypeMeta,
   type InstanceInterfaceDeepL,
+  type InstanceInterfaceSsf,
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
@@ -113,6 +115,7 @@ type InterfaceFormProps = Readonly<{
   hasStoredMeilisearchKey?: boolean;
   hasStoredMapApiKey?: boolean;
   deepLEntry?: InstanceInterfaceDeepL;
+  ssfEntry?: InstanceInterfaceSsf;
   deepLChecking?: boolean;
   onCheckDeepL?: () => void;
   saveStatus: StudioSaveStatus;
@@ -212,6 +215,7 @@ export const InterfaceForm = ({
   hasStoredMeilisearchKey = false,
   hasStoredMapApiKey = false,
   deepLEntry,
+  ssfEntry,
   deepLChecking = false,
   onCheckDeepL,
   saveStatus,
@@ -221,10 +225,19 @@ export const InterfaceForm = ({
   onSubmit,
   onRetry = onSubmit,
 }: InterfaceFormProps) => {
-  const deepLNeedsSave = deepLRequiresSave(draft, deepLEntry);
-  const deepLVerified =
-    deepLEntry?.status === 'connected' &&
-    deepLEntry.config.verifiedCredentialRevision === deepLEntry.config.credentialRevision;
+  const translationEntry = draft.type === 'ssf_translation' ? ssfEntry : deepLEntry;
+  const isTranslation = draft.type === 'deepl' || draft.type === 'ssf_translation';
+  const translationNeedsSave =
+    draft.type === 'ssf_translation'
+      ? !ssfEntry ||
+        !!draft.config.apiKey ||
+        draft.config.origin !== ssfEntry.config.origin ||
+        draft.enabled !== ssfEntry.enabled
+      : deepLRequiresSave(draft, deepLEntry);
+  const translationVerified =
+    translationEntry?.status === 'connected' &&
+    translationEntry.config.verifiedCredentialRevision ===
+      translationEntry.config.credentialRevision;
   return (
     <form
       className="grid gap-4"
@@ -249,6 +262,79 @@ export const InterfaceForm = ({
           checking={deepLChecking}
           onChange={onChange}
         />
+      ) : draft.type === 'ssf_translation' ? (
+        <fieldset className="grid gap-3" disabled={deepLChecking}>
+          <legend className="text-base font-semibold">
+            {t('interfaces.types.ssf_translation.label')}
+          </legend>
+          <label className="grid gap-2" htmlFor="ssf-origin">
+            {t('interfaces.ssf.origin')}
+            <Input
+              id="ssf-origin"
+              type="url"
+              required
+              value={draft.config.origin}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  config: { ...draft.config, origin: event.currentTarget.value },
+                })
+              }
+            />
+          </label>
+          <label className="grid gap-2" htmlFor="ssf-api-key">
+            {t('interfaces.deepl.apiKey')}
+            <Input
+              id="ssf-api-key"
+              type="password"
+              autoComplete="new-password"
+              maxLength={4096}
+              required={
+                (draft.enabled && !ssfEntry?.apiKeyConfigured) ||
+                (!!ssfEntry?.apiKeyConfigured &&
+                  draft.config.origin.trim().replace(/\/$/u, '') !== ssfEntry.config.origin)
+              }
+              value={draft.config.apiKey}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  config: { ...draft.config, apiKey: event.currentTarget.value },
+                })
+              }
+            />
+          </label>
+          {ssfEntry?.apiKeyConfigured && (
+            <p className="text-sm text-muted-foreground">{t('interfaces.deepl.keyStored')}</p>
+          )}
+          <fieldset className="grid gap-2" disabled={!translationVerified || translationNeedsSave}>
+            <legend>{t('interfaces.deepl.languages')}</legend>
+            {!translationVerified && <p role="status">{t('interfaces.deepl.checkFirst')}</p>}
+            {[
+              ...new Set([
+                ...(ssfEntry?.config.availableLanguages ?? []),
+                ...draft.config.selectedLocales,
+              ]),
+            ].map((locale) => (
+              <label className="flex items-center gap-2" key={locale}>
+                <Checkbox
+                  checked={draft.config.selectedLocales.includes(locale)}
+                  onChange={(event) =>
+                    onChange({
+                      ...draft,
+                      config: {
+                        ...draft.config,
+                        selectedLocales: event.currentTarget.checked
+                          ? [...draft.config.selectedLocales, locale]
+                          : draft.config.selectedLocales.filter((selected) => selected !== locale),
+                      },
+                    })
+                  }
+                />
+                {new Intl.DisplayNames([getActiveLocale()], { type: 'language' }).of(locale)}
+              </label>
+            ))}
+          </fieldset>
+        </fieldset>
       ) : draft.type === 'meilisearch' ? (
         <MeilisearchFields
           draft={draft}
@@ -298,29 +384,40 @@ export const InterfaceForm = ({
         />
       ) : null}
 
-      {draft.type === 'deepl' && deepLNeedsSave && (
-        <p className="text-sm text-muted-foreground">{t('interfaces.deepl.saveFirst')}</p>
+      {isTranslation && translationNeedsSave && (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            draft.type === 'ssf_translation'
+              ? 'interfaces.ssf.saveFirst'
+              : 'interfaces.deepl.saveFirst'
+          )}
+        </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        {draft.type === 'deepl' && (
+        {isTranslation && (
           <>
             <Button
               type="button"
               variant="secondary"
               disabled={
-                deepLNeedsSave || deepLChecking || saveStatus === 'saving' || !deepLEntry?.enabled
+                translationNeedsSave ||
+                deepLChecking ||
+                saveStatus === 'saving' ||
+                !translationEntry?.enabled
               }
               onClick={onCheckDeepL}
             >
               {t(
                 deepLChecking
-                  ? 'interfaces.deepl.checking'
-                  : deepLVerified
+                  ? draft.type === 'ssf_translation'
+                    ? 'interfaces.ssf.checking'
+                    : 'interfaces.deepl.checking'
+                  : translationVerified
                     ? 'interfaces.deepl.recheck'
                     : 'interfaces.deepl.check'
               )}
             </Button>
-            {deepLVerified && !deepLNeedsSave && (
+            {translationVerified && !translationNeedsSave && (
               <span role="status" className="text-sm text-muted-foreground">
                 {t('interfaces.deepl.verified')}
               </span>

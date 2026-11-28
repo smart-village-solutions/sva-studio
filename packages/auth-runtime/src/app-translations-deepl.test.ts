@@ -4,7 +4,7 @@ const deps = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), reveal: vi.fn() }
 vi.mock('@sva/data-repositories/server', () => ({
   loadDefaultExternalInterfaceRecord: deps.load,
   loadExternalInterfaceRecordById: deps.load,
-  saveDeepLInterfaceCheck: deps.save,
+  saveTranslationInterfaceCheck: deps.save,
 }));
 vi.mock('./iam-account-management/encryption.js', () => ({ revealField: deps.reveal }));
 import {

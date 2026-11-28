@@ -1,7 +1,5 @@
 import {
   catalogAssert,
-  deepLTargetCode,
-  readDeepLSettings,
   type CatalogScope,
   type CatalogDraft,
   type CatalogEditorData,
@@ -14,7 +12,7 @@ import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { z } from 'zod';
 import { withIamAppDb, type QueryClient } from './db.js';
 import { loadPersistedEffectiveRoleNames } from './effective-session-roles.js';
-import { getDeepLSetupStatus } from './app-translations-deepl.js';
+import { readCatalogTranslationProviders } from './app-translations-providers.js';
 import { loadPermissionsWithClient } from './iam-authorization/permission-store.queries.js';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 
@@ -63,6 +61,10 @@ export const safeError = (message?: string): string =>
     'deepl_unavailable',
     'deepl_invalid_response',
     'deepl_text_too_large',
+    'ssf_translation_unavailable',
+    'ssf_translation_rejected',
+    'ssf_translation_invalid_response',
+    'ssf_translation_too_large',
   ].includes(message ?? '')
     ? message!
     : 'catalog_unavailable';
@@ -96,23 +98,10 @@ export const configuration = async (client: QueryClient, scope: MunicipalScope) 
     [scope.instanceId, scope.organizationId]
   );
   catalogAssert(lifecycle.rows[0], 'catalog_forbidden');
-  const provider = await client.query<ExternalInterfaceRecord>(
-    `SELECT id,type_key AS "typeKey",owner_kind AS "ownerKind",enabled,public_config_json AS "publicConfig",secret_config_ciphertext AS "secretConfigCiphertext",last_check_status AS "lastCheckStatus" FROM iam.instance_external_interfaces WHERE instance_id=$1 AND type_key='deepl' AND owner_kind='host' AND is_default FOR SHARE`,
-    [scope.instanceId]
-  );
-  const record = provider.rows[0];
-  catalogAssert(record && getDeepLSetupStatus(record).ready, 'catalog_setup_required');
-  const settings = readDeepLSettings(record.publicConfig)!;
-  const targetCodes = Object.fromEntries(
-    settings.selectedLocales.map((locale) => [
-      locale,
-      deepLTargetCode(locale, settings.englishVariant, settings.availableLanguages),
-    ])
-  );
+  const providers = await readCatalogTranslationProviders(client, scope.instanceId, true);
+  catalogAssert(providers.setup.ready, 'catalog_setup_required');
   return {
-    record,
-    settings,
-    targetCodes,
+    ...providers,
     generation: lifecycle.rows[0].generation,
     appModuleRevision,
   };
@@ -127,6 +116,17 @@ export const inputSchema = z
     baseReleaseId: z.uuid(),
     credentialRevision: z.string(),
     interfaceId: z.string(),
+    providerPins: z
+      .record(
+        z.string(),
+        z
+          .object({
+            interfaceId: z.string(),
+            credentialRevision: z.string(),
+          })
+          .strict()
+      )
+      .optional(),
     generation: z.string(),
     appModuleRevision: z.string().optional(),
     targetCodes: z.record(z.string(), z.string()).refine((value) => Object.keys(value).length > 0),
@@ -173,16 +173,21 @@ const assertJobConfiguration = (
   draft: CatalogDraft
 ) => {
   catalogAssert(config.appModuleRevision === input.appModuleRevision, 'catalog_forbidden');
-  catalogAssert(
-    config.generation === input.generation &&
-      config.record.id === input.interfaceId &&
-      config.settings.credentialRevision === input.credentialRevision &&
-      Object.entries(input.targetCodes).every(
-        ([locale, code]) =>
-          draft.supportedLocales.includes(locale) && config.targetCodes[locale] === code
-      ),
-    'catalog_conflict'
-  );
+  catalogAssert(config.generation === input.generation, 'catalog_conflict');
+  const records = new Map<string, ExternalInterfaceRecord>();
+  for (const [locale, code] of Object.entries(input.targetCodes)) {
+    const pin = input.providerPins
+      ? input.providerPins[locale]
+      : { interfaceId: input.interfaceId, credentialRevision: input.credentialRevision };
+    catalogAssert(pin, 'catalog_conflict');
+    const chosen = config.select(locale, pin);
+    catalogAssert(
+      chosen && draft.supportedLocales.includes(locale) && chosen.targetCode === code,
+      'catalog_conflict'
+    );
+    records.set(locale, chosen.record);
+  }
+  return records;
 };
 
 export const withGuardedTranslationJob = async <T>(
@@ -192,7 +197,7 @@ export const withGuardedTranslationJob = async <T>(
   work: (
     client: QueryClient,
     data: CatalogEditorData,
-    record: ExternalInterfaceRecord,
+    records: ReadonlyMap<string, ExternalInterfaceRecord>,
     job: StudioJobRecord
   ) => Promise<T>
 ): Promise<T> =>
@@ -244,6 +249,6 @@ export const withGuardedTranslationJob = async <T>(
       });
       catalogAssert(roles.includes('system_admin'), 'catalog_forbidden');
     }
-    assertJobConfiguration(config, input, draft);
-    return work(client, await repo.readEffective(input.contractId), config.record, job);
+    const records = assertJobConfiguration(config, input, draft);
+    return work(client, await repo.readEffective(input.contractId), records, job);
   });

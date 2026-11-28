@@ -5,7 +5,10 @@ import { withAuthenticatedUser } from './middleware.js';
 import { validateCsrf } from './shared/request-security.js';
 import { withIamAppDb } from './db.js';
 import { readAppTranslationServiceBinding } from './app-translations-binding.js';
-import { readDeepLSetupStatus } from './app-translations-deepl.js';
+import {
+  loadTranslationProviderRecords,
+  resolveTranslationProviders,
+} from './app-translations-providers.js';
 import { operationSchema, actionFor, type Operation } from './app-translations-operations.js';
 import { authorizeCatalogOperation } from './app-translations-execution.js';
 import { publishAppTextCatalog } from './app-translations-publish.js';
@@ -127,8 +130,12 @@ export const readAppTranslationsLocalReadiness = async (
     );
     return result.rows[0]?.ready === true;
   });
-  return { schemaReady, providerConfigured: (await readDeepLSetupStatus(instanceId)).ready,
-    serviceConfigured: await readAppTranslationServiceBinding(instanceId) };
+  const { deepL, ssf } = await loadTranslationProviderRecords(instanceId);
+  return {
+    schemaReady,
+    providerConfigured: resolveTranslationProviders(deepL, ssf).setup.ready,
+    serviceConfigured: await readAppTranslationServiceBinding(instanceId),
+  };
 };
 
 /** UI transport only; the session facade owns every operation's authorization. */

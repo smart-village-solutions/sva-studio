@@ -1,4 +1,20 @@
-import type { CatalogValue } from '@sva/core';
+import {
+  AppTranslationError,
+  isSsfTranslationApiKey,
+  isSsfTranslationLocaleList,
+  isSsfTranslationTarget,
+  parseSsfTranslationOrigin,
+  readSsfTranslationSettings,
+  type CatalogValue,
+  type DeepLSetupStatus,
+  type SsfTranslationTarget,
+} from '@sva/core';
+import {
+  loadExternalInterfaceRecordById,
+  saveTranslationInterfaceCheck,
+} from '@sva/data-repositories/server';
+import { fetchPublicHttps } from '@sva/server-runtime';
+import { readKey, type SetupRecord } from './app-translations-deepl-provider.js';
 import { z } from 'zod';
 import {
   InvalidProviderResponse,
@@ -6,14 +22,14 @@ import {
   translateProtectedValues,
 } from './app-translations-provider-values.js';
 
-const targetSchema = z.enum(['en', 'pl', 'ja']);
+const targetSchema = z.custom<SsfTranslationTarget>(isSsfTranslationTarget);
 const languageSchema = z.object({ languages: z.array(z.string()).min(1).max(500) });
 const responseSchema = z.object({
   source_lang: z.literal('de'),
   target_lang: targetSchema,
   translations: z.array(z.object({ text: z.string().refine((text) => text.trim().length > 0) })),
 });
-type Target = z.infer<typeof targetSchema>;
+type Target = SsfTranslationTarget;
 
 const terminal = (code: string) =>
   Object.assign(new Error(code), { cause: { retry: { kind: 'terminal' } } });
@@ -21,31 +37,34 @@ const terminal = (code: string) =>
 export const readSsfTranslationConfig = (instanceId: string) => {
   if (process.env.SVA_SSF_TRANSLATION_INSTANCE_ID !== instanceId) return null;
   const key = process.env.SVA_SSF_TRANSLATION_API_KEY?.trim();
-  const origin = URL.parse(process.env.SVA_SSF_TRANSLATION_ORIGIN ?? '');
+  const origin = parseSsfTranslationOrigin(process.env.SVA_SSF_TRANSLATION_ORIGIN ?? '');
   const rawLocales = process.env.SVA_SSF_TRANSLATION_LOCALES?.split(',').map((code) => code.trim());
-  const locales = z.array(targetSchema).min(1).max(3).safeParse(rawLocales);
   if (
     !key ||
     !/^[a-f0-9]{64}$/u.test(key) ||
     !origin ||
-    origin.protocol !== 'https:' ||
-    origin.href !== `${origin.origin}/` ||
-    !locales.success ||
-    new Set(locales.data).size !== locales.data.length
+    !isSsfTranslationLocaleList(rawLocales) ||
+    rawLocales.length === 0 ||
+    rawLocales.some((locale) => !['en', 'pl', 'ja'].includes(locale))
   )
     throw terminal('ssf_translation_configuration_invalid');
-  return { origin: origin.origin, key, locales: locales.data };
+  return { origin, key, locales: rawLocales };
 };
 
-export type SsfTranslationConfig = NonNullable<ReturnType<typeof readSsfTranslationConfig>>;
+export type SsfTranslationConfig = Readonly<{
+  origin: string;
+  key: string;
+  locales: readonly Target[];
+}>;
 
 const ssfRequest = async (
   config: SsfTranslationConfig,
   path: '/api/v1/languages' | '/api/v1/translate',
   signal: AbortSignal,
-  body?: string
+  body?: string,
+  fetchImpl: typeof fetchPublicHttps = fetchPublicHttps
 ): Promise<unknown> => {
-  const response = await fetch(`${config.origin}${path}`, {
+  const response = await fetchImpl(`${config.origin}${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     redirect: 'error',
     headers: {
@@ -55,6 +74,9 @@ const ssfRequest = async (
     },
     signal,
     body,
+  }).catch((error: unknown) => {
+    if (error instanceof AppTranslationError) throw error;
+    throw new Error('ssf_translation_unavailable');
   });
   if (!response.ok) {
     await response.body?.cancel();
@@ -97,7 +119,8 @@ export const translateSsfValues = (
   config: SsfTranslationConfig,
   target: Target,
   values: readonly CatalogValue[],
-  signal: AbortSignal
+  signal: AbortSignal,
+  fetchImpl: typeof fetchPublicHttps = fetchPublicHttps
 ): Promise<CatalogValue[]> =>
   translateProtectedValues(values, {
     maxItems: 10,
@@ -111,7 +134,8 @@ export const translateSsfValues = (
           config,
           '/api/v1/translate',
           AbortSignal.any([signal, AbortSignal.timeout(32_000)]),
-          translationBody(target, texts)
+          translationBody(target, texts),
+          fetchImpl
         )
       );
       if (!result.success || result.data.target_lang !== target)
@@ -119,3 +143,73 @@ export const translateSsfValues = (
       return result.data.translations.map(({ text }) => text);
     },
   });
+
+export const readSsfRecordConfig = (record: SetupRecord): SsfTranslationConfig | null => {
+  const settings = readSsfTranslationSettings(record.publicConfig);
+  const key = readKey(record);
+  if (!settings || !key || !isSsfTranslationApiKey(key)) return null;
+  return { origin: settings.origin, key, locales: settings.selectedLocales };
+};
+
+export const getSsfSetupStatus = (record: SetupRecord | null): DeepLSetupStatus => {
+  const settings = record ? readSsfTranslationSettings(record.publicConfig) : undefined;
+  const result = (reason: DeepLSetupStatus['reason']): DeepLSetupStatus => ({
+    ready: reason === 'ready',
+    reason,
+    interfaceId: record?.id ?? null,
+    selectedLocales: settings?.selectedLocales ?? [],
+  });
+  if (!record || record.typeKey !== 'ssf_translation' || record.ownerKind !== 'host' || !settings)
+    return result('not_configured');
+  if (!record.enabled) return result('disabled');
+  if (!readSsfRecordConfig(record)) return result('secret_missing');
+  if (
+    record.lastCheckStatus !== 'succeeded' ||
+    settings.verifiedCredentialRevision !== settings.credentialRevision
+  )
+    return result('check_required');
+  if (!settings.selectedLocales.some((locale) => settings.availableLanguages.includes(locale)))
+    return result('languages_required');
+  return result('ready');
+};
+
+export const checkSsfLanguages = async (instanceId: string, interfaceId: string) => {
+  const record = await loadExternalInterfaceRecordById(instanceId, interfaceId);
+  if (!record || record.typeKey !== 'ssf_translation' || record.ownerKind !== 'host')
+    throw new Error('interface_not_found');
+  if (!record.enabled) throw new Error('ssf_translation_rejected');
+  const settings = readSsfTranslationSettings(record.publicConfig);
+  const config = readSsfRecordConfig(record);
+  if (!settings || !config) throw new Error('ssf_translation_rejected');
+  let languages: Target[] | undefined;
+  let errorCode: string | undefined;
+  try {
+    const response = languageSchema.safeParse(
+      await ssfRequest(config, '/api/v1/languages', AbortSignal.timeout(10_000))
+    );
+    if (!response.success || !response.data.languages.includes('de'))
+      throw new Error('ssf_translation_invalid_response');
+    const targets = [...new Set(response.data.languages.filter(isSsfTranslationTarget))];
+    if (!targets.length) throw new Error('ssf_translation_languages_unavailable');
+    languages = targets;
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    errorCode = [
+      'ssf_translation_rejected',
+      'ssf_translation_invalid_response',
+      'ssf_translation_languages_unavailable',
+    ].includes(code)
+      ? code
+      : 'ssf_translation_unavailable';
+  }
+  await saveTranslationInterfaceCheck({
+    instanceId,
+    interfaceId,
+    typeKey: 'ssf_translation',
+    expectedRevision: settings.revision,
+    checkedAt: new Date().toISOString(),
+    languages,
+    errorCode,
+  });
+  return errorCode ? { ok: false, errorCode } : { ok: true };
+};

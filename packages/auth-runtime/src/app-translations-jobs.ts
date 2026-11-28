@@ -108,24 +108,30 @@ const hasTranslationWork = async (
   data: CatalogEditorData,
   locales: readonly string[],
   keys: readonly string[],
-  targetCodes: Record<string, string>
+  providers: ReadonlyMap<
+    string,
+    NonNullable<ReturnType<Awaited<ReturnType<typeof configuration>>['select']>>
+  >
 ) => {
   let hasWork = false;
   try {
-    for (const locale of locales)
+    for (const locale of locales) {
+      const provider = providers.get(locale)!;
       for (const key of keys) {
         const source = await translationSource(
           data,
           request.mode,
           locale,
           key,
-          targetCodes[locale]!
+          provider.targetCode
         );
         if (source !== undefined) {
           hasWork = true;
-          assertDeepLRequestSize(targetCodes[locale]!, [source]);
+          if (provider.record.typeKey === 'deepl')
+            assertDeepLRequestSize(provider.targetCode, [source]);
         }
       }
+    }
   } catch (error) {
     if (error instanceof Error && error.message === 'deepl_text_too_large')
       throw new AppTranslationError('deepl_text_too_large');
@@ -149,10 +155,18 @@ export const startCatalogTranslation = async (
     return catalogTranslationStatus(existing);
   }
   const locales = validateTranslationRequest(request, draft, config);
+  const providers = new Map(
+    locales.map((locale) => {
+      const chosen = config.select(locale);
+      catalogAssert(chosen, 'catalog_setup_required');
+      return [locale, chosen] as const;
+    })
+  );
+  const firstPin = providers.get(locales[0]!)!.pin;
   const data = await repo.readEffective(request.contractId);
   await assertManualConfirmations(request, draft, data, locales);
   const keys = request.key ? [request.key] : Object.keys(draft.manifest.keys).sort();
-  const hasWork = await hasTranslationWork(request, data, locales, keys, config.targetCodes);
+  const hasWork = await hasTranslationWork(request, data, locales, keys, providers);
   if (!hasWork) return null;
   const id = globalThis.crypto.randomUUID();
   const now = new Date().toISOString();
@@ -176,8 +190,14 @@ export const startCatalogTranslation = async (
       startRevision: draft.draftRevision,
       manifestId: draft.manifestId,
       baseReleaseId: draft.baseReleaseId,
-      credentialRevision: config.settings.credentialRevision,
-      interfaceId: config.record.id,
+      ...firstPin,
+      ...(Array.from(providers.values()).some(({ pin }) => pin.interfaceId !== firstPin.interfaceId)
+        ? {
+            providerPins: Object.fromEntries(
+              Array.from(providers, ([locale, chosen]) => [locale, chosen.pin])
+            ),
+          }
+        : {}),
       generation: config.generation,
       appModuleRevision: config.appModuleRevision,
       targetCodes: Object.fromEntries(

@@ -317,3 +317,13 @@ Kein Bestandteil der ersten Auslieferung; zunächst nur feste Kataloge manuell k
 - [x] Kein Commit, Push, Deployment, Keycloak-Eingriff oder neuer kostenpflichtiger Anbieteraufruf aus diesem Abschlussauftrag.
 
 ST-3-Identitätsabgleich: `organization_mainserver_credentials.technical_account_id` ist die ausgehende Studio→Main-Server-Identität. Sie wird im eingehenden rein instanzgebundenen Adapter nicht als Service-Subject verlangt. Keine Seed-Organisation oder neue Zuordnung; `translationService`-Metadaten der vorhandenen Default-Schnittstelle plus JWT-Issuer/Audience/azp/sub und aktuelle Instanz-/Modul-/Sprachprüfung autorisieren. Live-Eignung und Einrichtung der bestehenden Identitätsmetadaten bleiben unter ST-3.1 offen; kein Livezugang durch diese Umsetzung verändert.
+
+
+## SSF and DeepL provider selection
+
+Arc42 coverage: sections 3 (external interfaces), 6 (provider selection and execution), 7 (pilot cutover) and 8 (credentials and request safety).
+
+- [x] Register the tenant SSF interface and implement settings, redaction, connection verification and revision checks through the existing management flow.
+- [x] Use one provider selection rule for available locales, the fixed catalog worker and the dynamic content service. Preserve cancellation, eligibility checks and retry behavior for in-flight work.
+- [x] Test SSF precedence, DeepL-only operation, unsupported locales, disabled or unverified SSF, retry without forwarding to DeepL, tenant isolation, credential rotation, older job payloads and protected content in both translation paths.
+- [ ] On Magdeburg staging, verify the SSF entry and run a synthetic catalog translation and dynamic translation. Validate DeepL fallback for a configured language outside SSF coverage. Remove the environment pilot after confirming the registry-backed flow.

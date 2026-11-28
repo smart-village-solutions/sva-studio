@@ -8,7 +8,7 @@ import {
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
-  saveDeepLInterfaceCheck,
+  saveTranslationInterfaceCheck,
 } from '@sva/data-repositories/server';
 import { z } from 'zod';
 import {
@@ -118,7 +118,7 @@ export const checkDeepLLanguages = async (
       ? code
       : 'deepl_unavailable';
   }
-  await saveDeepLInterfaceCheck({
+  await saveTranslationInterfaceCheck({
     instanceId,
     interfaceId,
     expectedRevision: settings.revision,

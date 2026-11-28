@@ -4,6 +4,7 @@ import { readErrorMessage } from './error-message-utils';
 import type {
   InstanceInterface,
   InstanceInterfaceDeepL,
+  InstanceInterfaceSsf,
   InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
   InstanceInterfacePostgresql,
@@ -36,7 +37,9 @@ export const resolveAvailableInterfaceTypes = async (
   return [
     ...DEFAULT_AVAILABLE_INTERFACE_TYPES,
     ...(assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID) ? ['supabase' as const] : []),
-    ...(assignedModules.includes('app-translations') ? ['deepl' as const] : []),
+    ...(assignedModules.includes('app-translations')
+      ? (['deepl', 'ssf_translation'] as const)
+      : []),
     ...(assignedModules.includes('search') ? ['meilisearch' as const] : []),
   ];
 };
@@ -50,8 +53,12 @@ type ListInstanceInterfacesResponse = Readonly<{
 export const projectStoredEntry = async (
   instanceId: string,
   entry:
+    | Omit<InstanceInterfaceSsf, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceDeepL, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
-    | Omit<Extract<InstanceInterface, { type: 'meilisearch' }>, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<
+        Extract<InstanceInterface, { type: 'meilisearch' }>,
+        'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+      >
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfacePostgresql, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
@@ -162,7 +169,9 @@ export const listInstanceInterfaces = async (
           ...(mainserverEntry ? [mainserverEntry] : []),
           ...projected.filter(
             (entry) =>
-              (entry.type !== 'deepl' && entry.type !== 'meilisearch') ||
+              (entry.type !== 'deepl' &&
+                entry.type !== 'ssf_translation' &&
+                entry.type !== 'meilisearch') ||
               availableTypes.includes(entry.type)
           ),
         ],

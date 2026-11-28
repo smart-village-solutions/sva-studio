@@ -1,9 +1,8 @@
+import { createHash } from 'node:crypto';
 import {
   appTranslationLanguage,
-  deepLTargetCode,
   isAppTranslationLocale,
   isValidInstanceId,
-  readDeepLSettings,
   type CatalogValue,
 } from '@sva/core';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
@@ -12,7 +11,13 @@ import { z } from 'zod';
 import { withIamAppDb } from './db.js';
 import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
-import { getDeepLSetupStatus, translateDeepLValues } from './app-translations-deepl.js';
+import {
+  loadTranslationProviderRecords,
+  resolveTranslationProviders,
+  translateWithInstanceProvider,
+  type TranslationProviderPin,
+} from './app-translations-providers.js';
+import { getRedisClient } from './redis.js';
 import {
   readSsfTranslationConfig,
   selectSsfTranslationTarget,
@@ -122,7 +127,8 @@ const reply = (status: number, data: unknown) =>
 
 const readAccess = async (
   instanceId: string,
-  targetLocale: z.infer<typeof requestEnvelope>['targetLocale']
+  targetLocale: z.infer<typeof requestEnvelope>['targetLocale'],
+  pin?: TranslationProviderPin
 ) => {
   const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
   const binding = bindingSchema.safeParse(connection?.publicConfig.translationService);
@@ -142,40 +148,35 @@ const readAccess = async (
   });
   if (!scope) return null;
   const common = { binding: binding.data, connection, scope };
-  const ssf = readSsfTranslationConfig(instanceId);
-  if (ssf) {
-    const targetCode = selectSsfTranslationTarget(ssf, targetLocale);
-    if (!targetCode) return null;
+  const { deepL, ssf } = await loadTranslationProviderRecords(instanceId);
+  const pilot = ssf ? null : readSsfTranslationConfig(instanceId);
+  const pilotTarget = pilot && selectSsfTranslationTarget(pilot, targetLocale);
+  if (pilot && pilotTarget && (!pin || pin.interfaceId === 'pilot')) {
+    const pilotPin = {
+      interfaceId: 'pilot',
+      credentialRevision: createHash('sha256')
+        .update(JSON.stringify([pilot.origin, pilot.key, pilot.locales]))
+        .digest('hex'),
+    };
+    if (pin && pin.credentialRevision !== pilotPin.credentialRevision) return null;
     return {
       ...common,
-      providerVersion: ['ssf', ssf.origin, ...ssf.locales],
-      pilotKey: ssf.key,
-      targetCode,
+      providerVersion: [pilotPin.credentialRevision],
+      pin: pilotPin,
+      targetCode: pilotTarget,
       translate: (values: readonly CatalogValue[], signal: AbortSignal) =>
-        translateSsfValues(ssf, targetCode, values, signal),
+        translateSsfValues(pilot, pilotTarget, values, signal),
     };
   }
-  const provider = await loadDefaultExternalInterfaceRecord(instanceId, 'deepl');
-  const settings = provider ? readDeepLSettings(provider.publicConfig) : undefined;
-  if (
-    !provider ||
-    !settings ||
-    !getDeepLSetupStatus(provider).ready ||
-    !settings.selectedLocales.includes(targetLocale)
-  )
-    return null;
-  const targetCode = deepLTargetCode(
-    targetLocale,
-    settings.englishVariant,
-    settings.availableLanguages
-  );
+  const chosen = resolveTranslationProviders(deepL, ssf).select(targetLocale, pin);
+  if (!chosen) return null;
   return {
     ...common,
-    providerVersion: ['deepl', provider.id, provider.updatedAt, settings.credentialRevision],
-    pilotKey: undefined,
-    targetCode,
+    providerVersion: [chosen.record.id, chosen.record.updatedAt, chosen.pin.credentialRevision],
+    pin: chosen.pin,
+    targetCode: chosen.targetCode,
     translate: (values: readonly CatalogValue[], signal: AbortSignal) =>
-      translateDeepLValues(provider, targetCode, values, signal),
+      translateWithInstanceProvider(chosen.record, chosen.targetCode, values, signal),
   };
 };
 
@@ -216,9 +217,16 @@ const accessUnchanged = (
   current.connection.id === access.connection.id &&
   JSON.stringify(current.connection.updatedAt) === JSON.stringify(access.connection.updatedAt) &&
   JSON.stringify(current.providerVersion) === JSON.stringify(access.providerVersion) &&
-  current.pilotKey === access.pilotKey &&
   current.targetCode === access.targetCode;
 /** Bounded technical translation; Main-Server owns persistence and retry. */
+
+// A retry of the same requestId must keep its provider. Store only dispatch metadata.
+const dispatchPinSchema = z.object({
+  interfaceId: z.string(),
+  credentialRevision: z.string(),
+  request: z.string(),
+});
+const dispatchPinTtlSeconds = 7 * 24 * 60 * 60;
 
 const authenticateTranslation = async (
   input: TranslationServiceInput,
@@ -242,10 +250,26 @@ const authenticateTranslation = async (
   }
   if (identity.azp !== binding.data.clientId || identity.sub !== binding.data.subject)
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-  const access = await readAccess(input.instanceId, input.targetLocale);
+  const redis = getRedisClient();
+  const key = `app-translations:dispatch:${input.instanceId}:${input.requestId}`;
+  const request = [
+    input.sourceDigest,
+    input.profileId,
+    input.targetLocale,
+    binding.data.subject,
+  ].join(':');
+  const stored = await redis.get(key);
+  const pin = stored ? dispatchPinSchema.parse(JSON.parse(stored)) : undefined;
+  if (pin && pin.request !== request)
+    return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
+  const access = await readAccess(input.instanceId, input.targetLocale, pin);
   if (!access || JSON.stringify(access.binding) !== JSON.stringify(binding.data))
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-  return { access, identity };
+  return {
+    access,
+    identity,
+    dispatch: { redis, key, value: JSON.stringify({ ...access.pin, request }) },
+  };
 };
 
 export const appTranslationServiceHandler = async (request: Request): Promise<Response> => {
@@ -273,13 +297,17 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
   try {
     const authenticated = await authenticateTranslation(input, token, correlation);
     if (authenticated instanceof Response) return authenticated;
-    const { access, identity } = authenticated;
+    const { access, identity, dispatch } = authenticated;
     const limited = consumeRateLimit({
       instanceId: input.instanceId,
       actorKeycloakSubject: `translation-service:${access.binding.subject}`,
       scope: 'bulk',
     });
     if (limited) return reply(429, { ...correlation, error: 'rate_limited', retryable: true });
+    const { redis, key, value } = dispatch;
+    const stored = await redis.set(key, value, 'EX', dispatchPinTtlSeconds, 'NX');
+    if (!stored && (await redis.get(key)) !== value)
+      return reply(503, { ...correlation, error: 'service_unavailable', retryable: true });
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
     const translated =
       input.profileId === 'static-html-v1'
@@ -296,7 +324,7 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
         retryable: false,
       });
     assertTranslatedEntries(input, translated);
-    const current = await readAccess(input.instanceId, input.targetLocale);
+    const current = await readAccess(input.instanceId, input.targetLocale, access.pin);
     if (!accessUnchanged(current, access))
       return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
     const result = {

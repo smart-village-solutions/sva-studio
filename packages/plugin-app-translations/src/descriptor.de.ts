@@ -9,13 +9,13 @@ export const germanTranslations = {
       translationProgress:
         'Gespeichert: {{translated}} · Übersprungen: {{skipped}} · Noch offen: {{pending}}',
       translateHelp:
-        'Übersetzt fehlende oder veraltete Standardtexte aus dem gepinnten deutschen Ausgangsstand mit dem DeepL-Zugang dieser Instanz. Manuelle Korrekturen bleiben erhalten. Es können DeepL-Kosten entstehen. Keine App-Auslieferung.',
+        'Übersetzt fehlende oder veraltete Standardtexte aus dem gepinnten deutschen Ausgangsstand mit dem gewählten Übersetzungsanbieter dieser Instanz. Manuelle Korrekturen bleiben erhalten. Beim Anbieter können Kosten entstehen. Keine App-Auslieferung.',
       translateKey: 'Diesen Text neu übersetzen',
       machine: 'Maschinell übersetzt',
       replaceManual: 'Manuelle Korrektur für diese Sprache ausdrücklich ersetzen',
       transferMunicipal: 'Diesen deutschen Text übersetzen',
       transferHelp:
-        'Übersetzt diesen gespeicherten eigenen deutschen Text per DeepL in die ausgewählten Sprachen. Das Überschreiben manueller Korrekturen muss für jede betroffene Sprache gesondert bestätigt werden. Es können DeepL-Kosten entstehen.',
+        'Übersetzt diesen gespeicherten eigenen deutschen Text mit dem gewählten Anbieter in die ausgewählten Sprachen. Das Überschreiben manueller Korrekturen muss für jede betroffene Sprache gesondert bestätigt werden. Beim Anbieter können Kosten entstehen.',
       replaceManualTargets: 'Manuelle Korrekturen überschreiben',
       jobStatus: {
         queued: 'Übersetzung vorgemerkt',
@@ -25,6 +25,11 @@ export const germanTranslations = {
         failed: 'Übersetzung gestoppt — Ursache beheben und erneut starten',
         cancelled: 'Übersetzung abgebrochen',
       },
+      ssf_translation_unavailable: 'Smart Speech Flow ist derzeit nicht erreichbar.',
+      ssf_translation_rejected:
+        'Smart Speech Flow hat die Anfrage abgelehnt. Prüfe die Schnittstelle.',
+      ssf_translation_invalid_response: 'Smart Speech Flow hat eine ungültige Antwort gesendet.',
+      ssf_translation_too_large: 'Ein Text überschreitet die zulässige SSF-Anfragegröße.',
       deepl_auth_failed: 'DeepL hat den Zugang abgelehnt. API-Key prüfen.',
       deepl_quota_exceeded: 'Das DeepL-Kontingent ist ausgeschöpft.',
       deepl_rate_limited: 'DeepL begrenzt die Anfragen. Ein begrenzter Wiederholungsversuch folgt.',
@@ -36,16 +41,16 @@ export const germanTranslations = {
       title: 'Mehrsprachigkeit',
       languageTag: 'de',
       sourceTitle: 'App-Texte',
-      setupTitle: 'DeepL-Schnittstelle einrichten',
-      setupReady: 'DeepL-Schnittstelle bereit',
+      setupTitle: 'Übersetzungsschnittstelle einrichten',
+      setupReady: 'Übersetzungsschnittstelle bereit',
       setupLink: 'Schnittstellen öffnen',
       setupAdmin:
         'Bitte einen Instanzadministrator mit dem Recht zur Schnittstellenverwaltung um Einrichtung bitten.',
       setupReasons: {
         not_configured:
-          'Für diese Instanz muss zuerst ein eigener DeepL-Zugang eingerichtet werden.',
-        disabled: 'Die DeepL-Schnittstelle ist deaktiviert.',
-        secret_missing: 'Ein lesbarer DeepL-API-Key fehlt.',
+          'Für diese Instanz muss zuerst eine SSF- oder DeepL-Schnittstelle eingerichtet werden.',
+        disabled: 'Die Übersetzungsschnittstelle ist deaktiviert.',
+        secret_missing: 'Ein lesbarer API-Schlüssel fehlt.',
         check_required: 'Verbindung prüfen und verfügbare Sprachen laden.',
         languages_required:
           'In der geprüften Schnittstelle mindestens eine Zielsprache auswählen und speichern.',
@@ -53,7 +58,7 @@ export const germanTranslations = {
           'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen können ausdrücklich gestartet werden. Gesicherte Textstände kannst du für die App freigeben.',
       },
       catalog_setup_required:
-        'Bitte zuerst die DeepL-Schnittstelle vollständig einrichten und prüfen. Vorhandene Texte bleiben erhalten.',
+        'Bitte zuerst eine Übersetzungsschnittstelle vollständig einrichten und prüfen. Vorhandene Texte bleiben erhalten.',
       sourceRequired: 'Lege zuerst unter App → App-Texte einen deutschen Ausgangsbestand an.',
       sourceDescription:
         'Deutsche App-Texte für deine Kommune anpassen. Dafür wird das Modul Mehrsprachigkeit nicht benötigt.',
@@ -194,7 +199,7 @@ export const germanTranslations = {
     readiness: {
       local: 'Lokale Katalogbasis prüfen — App-Integration noch nicht verfügbar',
       schema: 'Lokale Katalogbasis',
-      provider: 'Zentraler DeepL-Zugang konfiguriert',
+      provider: 'Übersetzungsschnittstelle konfiguriert',
       service: 'Mainserver für Übersetzungen freigegeben',
       serviceMissing:
         'Mainserver-Freigabe fehlt. Mainserver-Zuordnung und Studio-Ziel prüfen, anschließend Modul abgleichen.',

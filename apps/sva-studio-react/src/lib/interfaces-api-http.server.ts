@@ -1,5 +1,5 @@
 import { meilisearchInterfaceDraftSchema } from './instance-interface-meilisearch.js';
-import { deepLInterfaceDraftSchema } from './instance-interfaces';
+import { deepLInterfaceDraftSchema, ssfInterfaceDraftSchema } from './instance-interfaces';
 import { isValidInstanceId, mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
@@ -99,6 +99,7 @@ const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
       deepLInterfaceDraftSchema,
+      ssfInterfaceDraftSchema,
       meilisearchInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
@@ -123,6 +124,7 @@ const readInterfaceId = (pathname: string): string | null => {
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   deepl: ['apiKey'],
+  ssf_translation: ['apiKey'],
   meilisearch: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],

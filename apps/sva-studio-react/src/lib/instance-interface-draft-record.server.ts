@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { type ExternalInterfaceRecord } from '@sva/core';
+import {
+  isSsfTranslationApiKey,
+  parseSsfTranslationOrigin,
+  readSsfTranslationSettings,
+  type ExternalInterfaceRecord,
+} from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
@@ -162,13 +167,15 @@ const buildPostgresqlRecord = (input: {
 const hasSecretInput = (draft: Parameters<typeof buildRecordFromDraft>[0]['draft']): boolean =>
   draft.type === 's3'
     ? draft.config.secretAccessKey.length > 0
-    : draft.type === 'supabase'
-      ? draft.config.databaseUrl.length > 0 || draft.config.serviceRoleKey.length > 0
-      : draft.type === 'postgresql'
-        ? draft.config.databaseUrl.length > 0
-        : draft.type === 'mailTransport'
-          ? draft.config.password.length > 0
-          : draft.config.apiKey.length > 0;
+    : draft.type === 'ssf_translation'
+      ? draft.config.apiKey.length > 0
+      : draft.type === 'supabase'
+        ? draft.config.databaseUrl.length > 0 || draft.config.serviceRoleKey.length > 0
+        : draft.type === 'postgresql'
+          ? draft.config.databaseUrl.length > 0
+          : draft.type === 'mailTransport'
+            ? draft.config.password.length > 0
+            : draft.config.apiKey.length > 0;
 
 const buildMeilisearchRecord = async (input: {
   instanceId: string;
@@ -250,6 +257,7 @@ export const buildRecordFromDraft = async (input: {
         | 'mailTransport'
         | 'mapGeocoding'
         | 'deepl'
+        | 'ssf_translation'
         | 'meilisearch';
     }
   >;
@@ -299,7 +307,11 @@ export const buildRecordFromDraft = async (input: {
       interface_id: interfaceId,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    if (input.draft.type === 'deepl' && input.draft.config.apiKey.trim()) previousSecrets = {};
+    if (
+      (input.draft.type === 'deepl' || input.draft.type === 'ssf_translation') &&
+      input.draft.config.apiKey.trim()
+    )
+      previousSecrets = {};
     else throw error;
   }
 
@@ -330,6 +342,76 @@ export const buildRecordFromDraft = async (input: {
   } as const;
 
   if (input.draft.type === 'deepl') return buildDeepLRecord({ ...sharedInput, draft: input.draft });
+  if (input.draft.type === 'ssf_translation') {
+    if (defaultRecord && !existing) throw new Error('interface_conflict');
+    const { draft } = input;
+    const previous = existing ? readSsfTranslationSettings(existing.publicConfig) : undefined;
+    if (draft.config.revision !== (previous?.revision ?? '0'))
+      throw new Error('interface_conflict');
+    const origin = parseSsfTranslationOrigin(draft.config.origin);
+    const replacementKey = draft.config.apiKey.trim();
+    if (previous && origin !== previous.origin && previousSecrets.apiKey && !replacementKey)
+      throw new Error('ssf_translation_origin_key_required');
+    const apiKey = replacementKey || previousSecrets.apiKey || '';
+    if (!origin || ((draft.enabled || apiKey) && !isSsfTranslationApiKey(apiKey)))
+      throw new Error('ssf_translation_invalid_config');
+    const changed =
+      !previous ||
+      origin !== previous.origin ||
+      apiKey !== previousSecrets.apiKey ||
+      (!existing?.enabled && draft.enabled);
+    const selectedLocales = draft.config.selectedLocales;
+    const availableLanguages = changed ? [] : previous.availableLanguages;
+    const canSelect =
+      !changed &&
+      existing?.lastCheckStatus === 'succeeded' &&
+      previous.verifiedCredentialRevision === previous.credentialRevision;
+    if (
+      selectedLocales.some(
+        (locale) =>
+          !previous?.selectedLocales.includes(locale) &&
+          !(canSelect && availableLanguages.includes(locale))
+      )
+    )
+      throw new Error('ssf_translation_invalid_config');
+    const secretConfigCiphertext = buildSecretCiphertext({
+      interfaceId,
+      secretConfig: apiKey ? { apiKey } : {},
+    });
+    if (apiKey && !secretConfigCiphertext) throw new Error('deepl_secret_unavailable');
+    return {
+      id: interfaceId,
+      instanceId: input.instanceId,
+      typeKey: 'ssf_translation',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: draft.name.trim(),
+      alias: 'ssf_translation',
+      enabled: draft.enabled,
+      isDefault: true,
+      category: 'api',
+      baseUrl: origin,
+      authMode: 'api_key',
+      publicConfig: {
+        origin,
+        selectedLocales,
+        availableLanguages,
+        revision: randomUUID(),
+        credentialRevision: changed ? randomUUID() : previous.credentialRevision,
+        verifiedCredentialRevision: changed ? null : (previous.verifiedCredentialRevision ?? null),
+      },
+      secretConfigCiphertext,
+      statusCheckKind: 'ssf_translation',
+      visibleStatus: !draft.enabled
+        ? 'disabled'
+        : changed
+          ? 'unknown'
+          : (existing?.visibleStatus ?? 'unknown'),
+      lastCheckedAt: changed ? undefined : existing?.lastCheckedAt,
+      lastCheckStatus: changed ? undefined : existing?.lastCheckStatus,
+      lastCheckErrorCode: changed ? undefined : existing?.lastCheckErrorCode,
+    };
+  }
   if (input.draft.type === 'meilisearch') {
     if (defaultRecord && !existing) throw new Error('meilisearch_already_configured');
     return buildMeilisearchRecord({ ...sharedInput, draft: input.draft });
